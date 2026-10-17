@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CheckCircle2, Calendar as CalendarIcon } from 'lucide-react-native';
+import { CheckCircle2 } from 'lucide-react-native';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/shadcn/card';
 import { Button } from '../../../components/ui/shadcn/button';
@@ -63,6 +63,9 @@ export default function FestivalCalendarSettings() {
       await updateFestival.mutateAsync({
         id: festival?.id,
         ...formData,
+        // PostgreSQL date columns accept NULL for an unset registration window, not "".
+        registration_open: formData.registration_open.trim() || null,
+        registration_close: formData.registration_close.trim() || null,
         festival_year: festivalYear,
       });
       setSaved(true);

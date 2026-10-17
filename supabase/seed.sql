@@ -1,0 +1,1 @@
+-- Schema-only clone: deliberately no source data or seed rows.

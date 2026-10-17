@@ -1,0 +1,295 @@
+[
+  {
+    "event_name": "Speech",
+    "event_name_ml": "പ്രസംഗം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Confidence & Presentation", "marks": 20 },
+      { "name": "Pronunciation", "marks": 15 },
+      { "name": "Language Quality", "marks": 15 },
+      { "name": "Clarity of Ideas", "marks": 20 },
+      { "name": "Creativity", "marks": 15 },
+      { "name": "Voice Modulation", "marks": 15 }
+    ]
+  },
+  {
+    "event_name": "Political Debate",
+    "event_name_ml": "രാഷ്ട്രീയ സംവാദം",
+    "total_marks": 100,
+    "criteria": [
+      { "name": "Communication Skill", "marks": 20 },
+      { "name": "Language", "marks": 20 },
+      { "name": "Body Language", "marks": 15 },
+      { "name": "Argument Quality", "marks": 20 },
+      { "name": "Confidence", "marks": 15 },
+      { "name": "Time Management", "marks": 10 }
+    ]
+  },
+  {
+    "event_name": "Literary Discussion",
+    "event_name_ml": "സാഹിത്യ ചർച്ച",
+    "total_marks": 100,
+    "criteria": [
+      { "name": "Reading Quality", "marks": 20 },
+      { "name": "Literary Knowledge", "marks": 25 },
+      { "name": "Participation", "marks": 20 },
+      { "name": "Analytical Ability", "marks": 20 },
+      { "name": "Communication", "marks": 15 }
+    ]
+  },
+  {
+    "event_name": "Reading Competition",
+    "event_name_ml": "വായനാ മത്സരം",
+    "total_marks": 100,
+    "time_limit": "3m",
+    "criteria": [
+      { "name": "Reading Flow", "marks": 20 },
+      { "name": "Pronunciation", "marks": 20 },
+      { "name": "Understanding", "marks": 20 },
+      { "name": "Voice Clarity", "marks": 20 },
+      { "name": "Expression", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "News Reading",
+    "event_name_ml": "വാർത്താ വായന",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "News Structuring", "marks": 25 },
+      { "name": "Reading Flow", "marks": 25 },
+      { "name": "Pronunciation & Language", "marks": 25 },
+      { "name": "News Priority Selection", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Story Telling",
+    "event_name_ml": "കഥ പറച്ചിൽ",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Memorization", "marks": 25 },
+      { "name": "Pronunciation", "marks": 25 },
+      { "name": "Presentation Style", "marks": 20 },
+      { "name": "Expression", "marks": 15 },
+      { "name": "Completeness", "marks": 15 }
+    ]
+  },
+  {
+    "event_name": "Mappilappattu",
+    "event_name_ml": "മാപ്പിളപ്പാട്ട്",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Voice", "marks": 20 },
+      { "name": "Lyrics", "marks": 20 },
+      { "name": "Traditional Style", "marks": 20 },
+      { "name": "Rhythm", "marks": 20 },
+      { "name": "Pitch Accuracy", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Madh Song",
+    "event_name_ml": "മദ്ഹ് ഗാനം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Lyrics", "marks": 25 },
+      { "name": "Pitch", "marks": 25 },
+      { "name": "Rhythm", "marks": 25 },
+      { "name": "Voice", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Bhakthi Ganam",
+    "event_name_ml": "ഭക്തിഗാനം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Lyrics", "marks": 25 },
+      { "name": "Pitch", "marks": 25 },
+      { "name": "Rhythm", "marks": 25 },
+      { "name": "Voice", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Group Song",
+    "event_name_ml": "സംഘഗാനം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Pitch", "marks": 30 },
+      { "name": "Song Rhythm", "marks": 20 },
+      { "name": "Daf / Instrument Rhythm", "marks": 20 },
+      { "name": "Team Coordination", "marks": 30 }
+    ]
+  },
+  {
+    "event_name": "Mala Pattu",
+    "event_name_ml": "മാലപ്പാട്ട്",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Voice", "marks": 25 },
+      { "name": "Pitch", "marks": 25 },
+      { "name": "Rhythm", "marks": 25 },
+      { "name": "Team Coordination", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Moulood Recitation",
+    "event_name_ml": "മൗലൂദ് പാരായണം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Presentation", "marks": 20 },
+      { "name": "Pitch", "marks": 20 },
+      { "name": "Coordination", "marks": 20 },
+      { "name": "Rhythm", "marks": 20 },
+      { "name": "Pronunciation", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Qaseeda Recitation",
+    "event_name_ml": "ഖസീദ പാരായണം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Pronunciation", "marks": 20 },
+      { "name": "Presentation", "marks": 20 },
+      { "name": "Pitch", "marks": 20 },
+      { "name": "Coordination", "marks": 20 },
+      { "name": "Rhythm", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Hamd Urdu",
+    "event_name_ml": "ഹംദ് ഉറുദു",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Lyrics", "marks": 25 },
+      { "name": "Pitch", "marks": 25 },
+      { "name": "Rhythm", "marks": 25 },
+      { "name": "Voice", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Nasheed",
+    "event_name_ml": "നഷീദ്",
+    "total_marks": 100,
+    "time_limit": "7m",
+    "criteria": [
+      { "name": "Team Coordination", "marks": 30 },
+      { "name": "Pronunciation", "marks": 20 },
+      { "name": "Presentation Beauty", "marks": 30 },
+      { "name": "Rhythm", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Qawwali",
+    "event_name_ml": "ഖവാലി",
+    "total_marks": 100,
+    "time_limit": "10m",
+    "criteria": [
+      { "name": "Clarity", "marks": 20 },
+      { "name": "Presentation Beauty", "marks": 30 },
+      { "name": "Team Coordination", "marks": 30 },
+      { "name": "Rhythm & Song", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Daf Mutt",
+    "event_name_ml": "ദഫ് മുട്ട്",
+    "total_marks": 100,
+    "time_limit": "10m",
+    "criteria": [
+      { "name": "Baith / Madh", "marks": 25 },
+      { "name": "Rhythm Variation", "marks": 25 },
+      { "name": "Instrument Performance", "marks": 25 },
+      { "name": "Presentation", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Aravana Mutt",
+    "event_name_ml": "അറവന മുട്ട്",
+    "total_marks": 100,
+    "time_limit": "10m",
+    "criteria": [
+      { "name": "Baith", "marks": 20 },
+      { "name": "Pitch", "marks": 20 },
+      { "name": "Expression", "marks": 20 },
+      { "name": "Instrument Skill", "marks": 20 },
+      { "name": "Presentation", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Poem Recitation / Arabic Poem",
+    "event_name_ml": "കവിതാ പാരായണം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Memorization", "marks": 25 },
+      { "name": "Pronunciation", "marks": 25 },
+      { "name": "Expression", "marks": 25 },
+      { "name": "Meaning Clarity", "marks": 25 }
+    ]
+  },
+  {
+    "event_name": "Revolutionary Song",
+    "event_name_ml": "വിപ്ലവ ഗാനം",
+    "total_marks": 100,
+    "time_limit": "5m",
+    "criteria": [
+      { "name": "Lyrics", "marks": 25 },
+      { "name": "Pitch", "marks": 25 },
+      { "name": "Coordination", "marks": 20 },
+      { "name": "Voice", "marks": 20 },
+      { "name": "Creativity", "marks": 10 }
+    ]
+  },
+  {
+    "event_name": "Quiz",
+    "event_name_ml": "ക്വിസ്",
+    "total_marks": 100,
+    "criteria": [
+      { "name": "General Knowledge / Current Affairs / History", "marks": 50 },
+      { "name": "Science / Mental Ability", "marks": 30 },
+      { "name": "Islam / Organizational Topics", "marks": 20 }
+    ]
+  },
+  {
+    "event_name": "Language Game",
+    "event_name_ml": "ഭാഷാ കളി",
+    "total_marks": 100,
+    "criteria": [
+      { "name": "Word chain", "marks": 50 },
+      { "name": "Sentence creation", "marks": 50 }
+    ]
+  },
+  {
+    "event_name": "DEFAULT_CREATIVE",
+    "is_default": true,
+    "total_marks": 100,
+    "criteria": [
+      { "name": "Creativity", "marks": 25 },
+      { "name": "Content Quality", "marks": 25 },
+      { "name": "Technical Quality", "marks": 20 },
+      { "name": "Presentation", "marks": 15 },
+      { "name": "Originality", "marks": 15 }
+    ]
+  },
+  {
+    "event_name": "DEFAULT_PERFORMANCE",
+    "is_default": true,
+    "total_marks": 100,
+    "criteria": [
+      { "name": "Presentation", "marks": 25 },
+      { "name": "Skill Quality", "marks": 25 },
+      { "name": "Accuracy", "marks": 20 },
+      { "name": "Creativity", "marks": 15 },
+      { "name": "Confidence", "marks": 15 }
+    ]
+  }
+]

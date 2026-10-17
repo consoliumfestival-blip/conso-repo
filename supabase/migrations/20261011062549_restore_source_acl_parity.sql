@@ -1,0 +1,96 @@
+-- Task 1: restore the live source project's public-schema ACL baseline on the clone.
+-- Generated from normalized, read-only SOURCE/TARGET catalog comparison on 2026-10-11.
+-- Only target-only direct grants are revoked; source-equivalent grants/defaults are preserved.
+
+REVOKE EXECUTE ON FUNCTION public._assert_import_access(uuid, uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public._assert_organisation_hierarchy_access(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._assert_superadmin_access() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._create_default_tenant_agent_prompt() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._provisioning_get_op(text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._provisioning_get_org(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._provisioning_link_profile(uuid, uuid, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._provisioning_upsert_op(text, text, text, uuid, uuid, uuid, uuid, text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._revoke_tenant_leaderboard_prompt() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._sync_prompt_after_festival_context_change() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._sync_prompt_after_tenant_name_change() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._sync_tenant_leaderboard_agent_prompt_context(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public._tenant_leaderboard_agent_prompt(uuid, uuid, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.archive_child_organisation(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.bulk_create_schedules(uuid, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.calculate_festival_points(uuid, text, integer, integer, boolean, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.consume_username_login_attempt(text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.delete_child_organisation(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.delete_festival_category_safely(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.disable_tenant_access(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.enable_tenant_access(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_general_import_chunk(uuid, uuid, text, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_hs_import_chunk(uuid, uuid, text, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_hss_import_chunk(uuid, uuid, text, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_junior_import_chunk(uuid, uuid, uuid, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_lp_import_chunk(uuid, uuid, text, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_schedule_import_chunk(uuid, uuid, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_senior_import_chunk(uuid, uuid, uuid, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.execute_upper_primary_import_chunk(uuid, uuid, uuid, jsonb) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.finalise_child_organisation_provisioning(uuid, uuid, text, text, text, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.finalise_team_leader_provisioning(uuid, uuid, text, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.finalise_tenant_provisioning(uuid, uuid, text, text, text, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.finalise_tenant_provisioning(uuid, uuid, text, text, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.generate_judge_token(uuid, uuid, uuid, uuid, boolean) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_judge_registrations(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_judge_submission_summary(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_my_access_status() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_my_login_profile() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_next_festival_chest_number(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_schedule_readiness(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_schedule_registrations(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_stage_management_context() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_stage_management_registrations_scoped(uuid, uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_stage_management_registrations(uuid, uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_stage_management_schedules(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_stage_management_venues(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_announcements() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_assignments_for_admin(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_context_details() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_context() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_participant_account(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_participants() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_published_results() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_schedule() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_team_leader_standings() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.get_tenant_leaderboard_agent_prompt(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.is_team_leader() FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.lookup_email_by_username(text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.record_provisioning_event(text, text, text, uuid, uuid, uuid, uuid, text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.regenerate_festival_chest_numbers_internal(uuid, uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.regenerate_festival_chest_numbers(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.reject_festival_template_change() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.resolve_festival_template(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.resolve_item_categories(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.resolve_login_email(text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.resolve_participant_category(uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.resolve_reset_target(uuid, text, uuid) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.restore_child_organisation(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.revoke_tenant_access(uuid) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.safe_delete_schedule(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.safe_delete_venue(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.safe_unassign_registration(uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.setup_child_organisation(uuid, uuid, text, text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.setup_tenant_records(uuid, uuid, text, text) FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.snapshot_festival_template_from_tenant() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.stage_assert_admin_access() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.stage_update_code_letter(uuid, uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.stage_update_registration(uuid, uuid, text) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.stage_update_schedule_lock(uuid, boolean) FROM "anon";
+REVOKE EXECUTE ON FUNCTION public.validate_festival_category_row() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.validate_festival_team_mapping() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.validate_item_categories_for_template() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.validate_participant_category() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.validate_registration_category_compatibility() FROM "anon", "authenticated";
+REVOKE EXECUTE ON FUNCTION public.validate_team_leader_assignment() FROM "anon", "authenticated";
+
+REVOKE INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLE public.festival_categories FROM anon;
+REVOKE INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLE public.mark_entries FROM anon;
+REVOKE INSERT, SELECT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN
+  ON TABLE public.username_login_rate_limits FROM anon, authenticated;

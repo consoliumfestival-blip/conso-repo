@@ -1,0 +1,171 @@
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #ffffff;
+    --card: #ffffff;
+    --card-foreground: #ffffff;
+    --popover: #ffffff;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #ffffff;
+    --secondary: #ffffff;
+    --secondary-foreground: #ffffff;
+    --muted: #ffffff;
+    --muted-foreground: #ffffff;
+    --accent: #ffffff;
+    --accent-foreground: #ffffff;
+    --destructive: #ffffff;
+    --destructive-foreground: 210 40% 98%;
+    --border: #ffffff;
+    --input: #ffffff;
+    --ring: #ffffff;
+    --radius: 0.45rem;
+    --chart-1: #ffffff;
+    --chart-2: #ffffff;
+    --chart-3: #ffffff;
+    --chart-4: #ffffff;
+    --chart-5: #ffffff;
+    --sidebar-background: 187 77% 11%;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ffffff;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #ffffff;
+    --sidebar-ring: #ffffff;
+    --sidebar: #ffffff;
+  }
+
+  .dark {
+    --background: #ffffff;
+    --foreground: #ffffff;
+    --card: #ffffff;
+    --card-foreground: #ffffff;
+    --popover: #ffffff;
+    --popover-foreground: #ffffff;
+    --primary: #ffffff;
+    --primary-foreground: #ffffff;
+    --secondary: #ffffff;
+    --secondary-foreground: #ffffff;
+    --muted: #ffffff;
+    --muted-foreground: #ffffff;
+    --accent: #ffffff;
+    --accent-foreground: #ffffff;
+    --destructive: #ffffff;
+    --destructive-foreground: 210 40% 98%;
+    --border: #ffffff;
+    --input: #ffffff;
+    --ring: #ffffff;
+    --chart-1: #ffffff;
+    --chart-2: #ffffff;
+    --chart-3: #ffffff;
+    --chart-4: #ffffff;
+    --chart-5: #ffffff;
+    --sidebar-background: 187 77% 8%;
+    --sidebar-foreground: #ffffff;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #ffffff;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #ffffff;
+    --sidebar-ring: #ffffff;
+    --sidebar: #ffffff;
+  }
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter Variable', sans-serif;
+  }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+*, ::before, ::after {
+  box-sizing: border-box;
+  border-width: 0;
+  border-style: solid;
+}
+
+html, body, #root, #__next {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom Scrollbars for Web */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.32);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 118, 110, 0.62);
+}
+
+/* Hide scrollbar utility for both Webkit (Safari, Chrome) and standards (Firefox, IE) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+/* Refined Dashboard Soft-Glass Theme */
+.welcome-card, .metric-card, .action-card {
+  background: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(100, 116, 139, 0.25) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+.panel-card {
+  background: rgba(255, 255, 255, 0.97) !important;
+  border: 1px solid rgba(100, 116, 139, 0.25) !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+/* Only interactive quick-action cards get hover effects */
+.action-card:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.025) !important;
+  border-color: rgba(71, 85, 105, 0.34) !important;
+}
+
+/* Remove hover shadow for non-interactive statistic or data panels */
+.metric-card:hover, .welcome-card:hover, .panel-card:hover {
+  transform: none !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
+}
+
+/* Fallback for browsers without backdrop-filter support */
+@supports not (backdrop-filter: blur(6px)) {
+  .welcome-card, .metric-card, .action-card {
+    background: rgba(255, 255, 255, 0.97) !important;
+  }
+}
+@supports not (-webkit-backdrop-filter: blur(6px)) {
+  .welcome-card, .metric-card, .action-card {
+    background: rgba(255, 255, 255, 0.97) !important;
+  }
+}

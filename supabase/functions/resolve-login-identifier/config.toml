@@ -1,0 +1,6 @@
+# resolve-login-identifier must be reachable BEFORE authentication (login),
+# so JWT verification is disabled for this function only. It accepts
+# username + password and only ever returns credentials for a valid pair,
+# so it is a login endpoint, not a lookup oracle.
+[functions.resolve-login-identifier]
+verify_jwt = false

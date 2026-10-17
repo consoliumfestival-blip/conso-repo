@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "build:web": "expo export --platform web",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -63,7 +64,7 @@
     "radix-ui": "^1.6.7",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-konva": "19.0.0",
+    "react-konva": "19.0.10",
     "react-native": "0.81.5",
     "react-native-css-interop": "^0.2.6",
     "react-native-gesture-handler": "~2.28.0",

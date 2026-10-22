@@ -26,15 +26,15 @@ const normalizeError = (error: unknown): AuthResult<never>['error'] => {
 export class SupabaseAuthProvider implements AuthProvider {
   async resolveUsernameLogin(
     username: string,
-    password: string
+    password: string,
+    loginType?: 'team_leader',
   ): Promise<AuthResult<{ user: { id: string }; session: { access_token: string; refresh_token: string } }>> {
-    // Username login is resolved by the trusted edge function: the synthetic
-    // email is looked up server-side and verified server-side, and only a
-    // valid credential pair yields session tokens. This avoids anonymous SQL
-    // enumeration of synthetic login emails.
+    // Username login is resolved and verified by the trusted edge function;
+    // only a valid credential pair yields session tokens. Internal Auth email
+    // addresses never reach the client.
     try {
       const result = await supabase.functions.invoke('resolve-login-identifier', {
-        body: { username, password },
+        body: { username, password, ...(loginType ? { login_type: loginType } : {}) },
       });
       if (result.error) throw result.error;
       const data = result.data as UsernameLoginFunctionResponse | null;

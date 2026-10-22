@@ -1,4 +1,5 @@
 import { databaseProvider } from '../../providers/database';
+import type { CompetitionPublication } from '../../types/scoring';
 
 export const judgeRepository = {
   async listJudges<T>(tenantId: string) {
@@ -61,7 +62,7 @@ export const judgeRepository = {
   async listResults<T>(scheduleId: string) {
     return databaseProvider.listResults<T>(scheduleId);
   },
-  async publishResults(payloads: Record<string, unknown>[]) {
+  async publishResults(payloads: CompetitionPublication) {
     return databaseProvider.publishResults(payloads);
   },
   async getJudgeSubmissionSummary<T>(scheduleId: string) {

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfInput } from '../../../components/ui/SsfInput';
 import { useOrganisations } from '../../../core/hooks/useOrganisations';
-import { ArrowLeft, Plus, Building2, User, Archive, ExternalLink, RefreshCw } from 'lucide-react-native';
+import { ArrowLeft, Plus, Building2, User, Archive, ExternalLink, RefreshCw, RotateCcw, Trash2 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { FEATURE_FLAGS } from '../../../core/config/features';
@@ -15,6 +15,9 @@ export default function SubOrganisationsManager() {
   
   const { 
     childOrganisations: orgs, 
+    archivedChildOrganisations: archivedOrgs,
+    archivedChildOrganisationsError,
+    refetchArchivedChildOrganisations,
     childOrganisationsError,
     refetchChildOrganisations,
     isLoadingChildren: loading, 
@@ -22,9 +25,16 @@ export default function SubOrganisationsManager() {
     isCreating, 
     archiveOrganisation,
     isArchiving,
+    restoreOrganisation,
+    isRestoring,
+    deleteArchivedOrganisation,
+    isDeletingArchived,
+    isLoadingArchivedChildren,
     resetCredential,
     isResettingCredential
   } = useOrganisations();
+  const [showArchived, setShowArchived] = useState(false);
+  const listedOrgs = showArchived ? archivedOrgs : orgs;
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -74,10 +84,44 @@ export default function SubOrganisationsManager() {
     if (Platform.OS === 'web') {
       if (window.confirm(msg)) doArchive();
     } else {
-      Alert.alert('Archive Sub-Org', msg, [
+      Alert.alert('Archive Team', msg, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Archive', style: 'destructive', onPress: doArchive },
       ]);
+    }
+  };
+
+  const handleRestoreOrg = async (org: any) => {
+    const message = `Reactivate “${org.name}”? It will be visible in the active organisation list again.`;
+    const proceed = Platform.OS === 'web'
+      ? window.confirm(message)
+      : await new Promise<boolean>((resolve) => Alert.alert('Reactivate team', message, [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Reactivate', onPress: () => resolve(true) },
+        ]));
+    if (!proceed) return;
+    try {
+      await restoreOrganisation(org.id);
+    } catch (err: any) {
+      if (Platform.OS === 'web') window.alert(`Reactivation failed: ${err.message}`);
+      else Alert.alert('Error', err.message);
+    }
+  };
+
+  const handleDeleteArchivedOrg = async (org: any) => {
+    const message = `Permanently delete “${org.name}”? This cannot be undone. The operation will be blocked if the organisation has child organisations or linked records.`;
+    const proceed = Platform.OS === 'web'
+      ? window.confirm(message)
+      : await new Promise<boolean>((resolve) => Alert.alert('Permanently delete', message, [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Delete permanently', style: 'destructive', onPress: () => resolve(true) },
+        ]));
+    if (!proceed) return;
+    try {
+      await deleteArchivedOrganisation(org.id);
+    } catch (err: any) {
+      if (Platform.OS === 'web') window.alert(`Delete failed: ${err.message}`);
+      else Alert.alert('Delete failed', err.message);
     }
   };
 
@@ -119,7 +163,7 @@ export default function SubOrganisationsManager() {
 
   const handleCreate = async () => {
     if (!newOrgName.trim()) {
-      setErrorMsg('Please enter the organisation name.');
+      setErrorMsg('Please enter the team name.');
       return;
     }
     
@@ -150,12 +194,12 @@ export default function SubOrganisationsManager() {
 
       const tempPass = result?.temporary_password;
       const loginId = result?.login_identifier || result?.admin_email;
-      const displayMsg = `Unit created and linked!\n\nLogin Identifier: ${loginId}\nUsername: ${result?.username || normalizedUsername}\nTemporary password: ${tempPass}`;
+      const displayMsg = `Team created and linked!\n\nLogin Identifier: ${loginId}\nUsername: ${result?.username || normalizedUsername}\nTemporary password: ${tempPass}`;
 
       if (Platform.OS === 'web') {
         window.alert(displayMsg);
       } else {
-        Alert.alert('Unit created', `${displayMsg}\n\nThis password is shown once and is not stored.`, [
+        Alert.alert('Team created', `${displayMsg}\n\nThis password is shown once and is not stored.`, [
           { text: 'Copy credentials', onPress: () => Clipboard.setString(`Login Identifier: ${loginId}\nTemporary password: ${tempPass}`) },
           { text: 'Done' },
         ]);
@@ -178,7 +222,7 @@ export default function SubOrganisationsManager() {
                 </TouchableOpacity>
                 <View>
                   <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Hierarchy Management</Text>
-                  <Text style={{ color: ui.colors.text, fontFamily: 'Poppins_900Black', fontSize: 22, lineHeight: 26 }}>Sub-Organisations</Text>
+                  <Text style={{ color: ui.colors.text, fontFamily: 'Poppins_900Black', fontSize: 22, lineHeight: 26 }}>Teams</Text>
                 </View>
               </View>
               {FEATURE_FLAGS.ENABLE_ONBOARDING ? (
@@ -196,38 +240,47 @@ export default function SubOrganisationsManager() {
             </View>
           </View>
 
+          <View style={{ paddingHorizontal: 20, flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+            <TouchableOpacity onPress={() => setShowArchived(false)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: !showArchived ? '#0F766E' : ui.colors.border, backgroundColor: !showArchived ? ui.colors.successSoft : ui.colors.surface }}>
+              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: !showArchived ? '#0F766E' : ui.colors.textMuted }}>Active ({orgs.length})</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowArchived(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived ? '#B45309' : ui.colors.border, backgroundColor: showArchived ? '#FFFBEB' : ui.colors.surface }}>
+              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: showArchived ? '#B45309' : ui.colors.textMuted }}>Archived ({archivedOrgs.length})</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={{ paddingHorizontal: 20 }}>
-            {loading ? (
+            {(showArchived ? isLoadingArchivedChildren : loading) ? (
               <SsfTableSkeleton rows={6} columns={3} compact />
-            ) : childOrganisationsError ? (
+            ) : (showArchived ? archivedChildOrganisationsError : childOrganisationsError) ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.8 }}>
                 <Building2 size={48} color="#DC2626" />
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: ui.colors.destructive, marginTop: 16, textAlign: 'center' }}>
-                  Unable to load sub-organisations. Check your connection and try again.
+                <Text style={{ fontFamily: 'Poppins_400Regular', color: '#DC2626', marginTop: 16, textAlign: 'center' }}>
+                  Unable to load teams. Check your connection and try again.
                 </Text>
                 <TouchableOpacity
-                  onPress={() => refetchChildOrganisations()}
+                  onPress={() => showArchived ? refetchArchivedChildOrganisations() : refetchChildOrganisations()}
                   style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0F766E' }}
                 >
                   <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.surface }}>Retry</Text>
                 </TouchableOpacity>
               </View>
-            ) : orgs.length === 0 ? (
+            ) : listedOrgs.length === 0 ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.5 }}>
                 <Building2 size={48} color={ui.colors.textMuted} />
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: ui.colors.textMuted, marginTop: 16 }}>No sub-organisations found.</Text>
+                <Text style={{ fontFamily: 'Poppins_400Regular', color: ui.colors.textMuted, marginTop: 16 }}>{showArchived ? 'No archived teams.' : 'No teams found.'}</Text>
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ minWidth: 800, flex: 1, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 14, overflow: 'hidden' }}>
                   <View style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
-                    <Text style={{ flex: 1.6, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Organisation</Text>
+                    <Text style={{ flex: 1.6, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Team</Text>
                     <Text style={{ flex: 1.5, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Login Username</Text>
                     <Text style={{ width: 100, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Type</Text>
                     <Text style={{ width: 160, textAlign: 'right', fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Actions</Text>
                   </View>
 
-                  {orgs.map((org: any) => (
+                  {listedOrgs.map((org: any) => (
                     <View key={org.id} style={{ minHeight: 64, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: ui.colors.surface }}>
                       <View style={{ flex: 1.6, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
@@ -245,7 +298,7 @@ export default function SubOrganisationsManager() {
                         </View>
                       </View>
                       <View style={{ width: 160, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-                        {FEATURE_FLAGS.ENABLE_ONBOARDING && (
+                        {!showArchived && FEATURE_FLAGS.ENABLE_ONBOARDING && (
                           <TouchableOpacity
                             onPress={() => handleResetPassword(org)}
                             accessibilityLabel={`Reset Password for ${org.name}`}
@@ -255,21 +308,27 @@ export default function SubOrganisationsManager() {
                             <RefreshCw size={15} color="#DC2626" />
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity
+                        {!showArchived && <TouchableOpacity
                           onPress={() => router.push(`/unit-profile/${org.id}`)}
                           accessibilityLabel={`Open ${org.name}`}
                           style={{ width: 34, height: 34, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
                         >
                           <ExternalLink size={15} color="#2563EB" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
+                        </TouchableOpacity>}
+                        {!showArchived && <TouchableOpacity
                           onPress={() => handleArchiveOrg(org)}
                           accessibilityLabel={`Archive ${org.name}`}
                           disabled={isArchiving}
                           style={{ width: 34, height: 34, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A' }}
                         >
                           <Archive size={15} color="#B45309" />
-                        </TouchableOpacity>
+                        </TouchableOpacity>}
+                        {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' }}>
+                          <RotateCcw size={15} color="#047857" />
+                        </TouchableOpacity>}
+                        {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#FECACA' }}>
+                          <Trash2 size={15} color="#DC2626" />
+                        </TouchableOpacity>}
                       </View>
                     </View>
                   ))}
@@ -283,14 +342,14 @@ export default function SubOrganisationsManager() {
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: ui.colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
-            <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Sub-Organisation</Text>
+            <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Team</Text>
             
             <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 13, marginBottom: 16 }}>
-              Enter the name of the new organisation and an admin username. A secure admin account and credentials are generated by the server and shown once after linking completes.
+              Enter the team name and an admin username. A secure admin account and credentials are generated by the server and shown once after linking completes.
             </Text>
 
             <SsfInput 
-              label="Organisation Name (e.g. Unit Makkaraparamba)" 
+              label="Team Name (e.g. Makkaraparamba)"
               value={newOrgName} 
               onChangeText={setNewOrgName} 
               style={{ marginBottom: 16 }}

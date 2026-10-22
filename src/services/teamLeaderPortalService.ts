@@ -65,6 +65,22 @@ export interface TeamLeaderAnnouncement {
   created_at: string;
 }
 
+export interface TeamLeaderProgramOption {
+  item_id: string;
+  item_code: string | null;
+  item_name_en: string | null;
+  item_name_ml: string | null;
+  category_codes: string[] | null;
+  gender: string | null;
+  participation_type: string | null;
+  group_min_members: number | null;
+  group_max_members: number | null;
+  entry_kind: 'participant' | 'general_team';
+  is_assigned: boolean;
+  is_eligible: boolean;
+  team_entry_count: number;
+}
+
 async function readRpc<T>(name: string): Promise<T[]> {
   const { data, error } = await supabase.rpc(name);
   if (error) throw error;
@@ -105,8 +121,60 @@ export const teamLeaderPortalService = {
     return data ?? { portal_primary_color: null, portal_accent_color: null };
   },
   getParticipants: () => readRpc<TeamLeaderParticipant>('get_team_leader_participants'),
+  getProgramsForParticipant: async (participantId: string) => {
+    const { data, error } = await supabase.rpc('get_team_leader_programs', {
+      p_participant_id: participantId,
+    });
+    if (error) throw error;
+    return (data ?? []) as TeamLeaderProgramOption[];
+  },
+  assignProgram: async (participantId: string, itemId: string) => {
+    const { data, error } = await supabase.rpc('team_leader_assign_program', {
+      p_participant_id: participantId,
+      p_item_id: itemId,
+    });
+    if (error) throw error;
+    return data as { registration_id: string; status: string };
+  },
+  createGeneralEntry: async (itemId: string, participantIds: string[]) => {
+    const { data, error } = await supabase.rpc('team_leader_create_general_entry', {
+      p_item_id: itemId,
+      p_participant_ids: participantIds,
+    });
+    if (error) throw error;
+    return data as { registration_id: string; entry_chest_number: string; member_count: number };
+  },
   getSchedule: () => readRpc<TeamLeaderScheduleRow>('get_team_leader_schedule'),
   getPublishedResults: () => readRpc<TeamLeaderPublishedResult>('get_team_leader_published_results'),
   getStandings: () => readRpc<TeamLeaderStanding>('get_team_leader_standings'),
   getAnnouncements: () => readRpc<TeamLeaderAnnouncement>('get_team_leader_announcements'),
+  resetPassword: async (userId: string, festivalId: string) => {
+    const { data, error } = await supabase.functions.invoke('provision-team-leader', {
+      body: { action: 'reset_password', user_id: userId, festival_id: festivalId },
+    });
+    if (error) throw error;
+    if (!data?.success || typeof data?.password !== 'string') {
+      throw new Error(data?.message || 'Password reset did not complete.');
+    }
+    return data as { success: true; password: string; username: string };
+  },
+
+  selfUpdateCredentials: async (
+    newUsernameOrLegacyUserId: string | null,
+    newPasswordOrUsername: string,
+    legacyPassword?: string,
+  ) => {
+    // Keep the previous three-argument call shape working for older route copies.
+    const newUsername = legacyPassword === undefined ? newUsernameOrLegacyUserId : newPasswordOrUsername;
+    const newPassword = legacyPassword === undefined ? newPasswordOrUsername : legacyPassword;
+    const { data, error } = await supabase.functions.invoke('provision-team-leader', {
+      body: {
+        action: 'self_update_credentials',
+        new_username: newUsername,
+        new_password: newPassword,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
 };

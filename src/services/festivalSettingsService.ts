@@ -1,4 +1,5 @@
 import { festivalRepository } from '../lib/repositories/festivalRepository';
+import type { CompetitionItemUpdate } from '../providers/database/DatabaseProvider';
 
 const notFoundCode = 'PGRST116';
 
@@ -54,6 +55,29 @@ export const festivalSettingsService = {
     const { data, error } = await festivalRepository.getItems<T>(festivalId);
     if (error) throw new Error(error.message);
     return data;
+  },
+
+  async getSelectableItems<T>(festivalId: string, tenantId: string): Promise<T[]> {
+    const { data, error } = await festivalRepository.getSelectableItems<T>(festivalId, tenantId);
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  async updateCompetitionItem(input: CompetitionItemUpdate): Promise<void> {
+    const { error } = await festivalRepository.updateCompetitionItem(input);
+    if (error) throw new Error(error.message);
+  },
+
+  async applyItemChanges(
+    festivalId: string,
+    activateCodes: string[],
+    deactivateCodes: string[],
+    itemRecords?: any[],
+  ): Promise<void> {
+    const { error } = await festivalRepository.applyItemChanges(
+      festivalId, activateCodes, deactivateCodes, itemRecords,
+    );
+    if (error) throw new Error(error.message);
   },
 
   async updateActiveItemCodes(

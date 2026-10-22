@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
+import { isNewerResult } from '../../../core/utils/currentResult';
 import {
   ActivityIndicator,
   Platform,
@@ -70,13 +71,13 @@ function aggregateIndividuals(results: any[]): IndividualRow[] {
     thirdPlaces: number; resultCount: number;
   }>();
 
-  // Dedup per participant+item (keep higher points) — same as admin page
+  // Dedup per participant+item by publication version, not award magnitude.
   const dedup = new Map<string, any>();
   results.forEach((r) => {
     if (r.is_group || !r.participant_id) return;
     const key = `${r.participant_id}-${r.item_id}`;
     const existing = dedup.get(key);
-    if (!existing || (r.points_awarded || 0) > (existing.points_awarded || 0)) {
+    if (!existing || isNewerResult(r, existing)) {
       dedup.set(key, r);
     }
   });

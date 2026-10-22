@@ -36,7 +36,8 @@ export function DirectMarkEntryModal({
   const [loading, setLoading] = useState(true);
   const [eventCriteria, setEventCriteria] = useState<any[]>([]);
   const [entryMode, setEntryMode] = useState<ScoringEntryMode>('criteria');
-  const [eventTotalMarks, setEventTotalMarks] = useState(100);
+  const [eventTotalMarks, setEventTotalMarks] = useState(NaN);
+  const [ruleError, setRuleError] = useState('');
   
   const [scores, setScores] = useState<Record<string, number>>({});
   
@@ -53,13 +54,14 @@ export function DirectMarkEntryModal({
 
   const loadCriteria = async () => {
     setLoading(true);
+    setEventTotalMarks(NaN); setRuleError('');
     try {
       const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenantId);
       setEventCriteria(formatCriteriaForUI(rules.criteria));
       setEntryMode(rules.entry_mode);
-      setEventTotalMarks(rules.entry_mode === 'total_only' ? 100 : rules.total_marks);
-    } catch (e) {
-      console.error(e);
+      setEventTotalMarks(rules.total_marks);
+    } catch (e: any) {
+      setRuleError(e.message || 'Unable to load scoring configuration.');
     } finally {
       setLoading(false);
     }
@@ -80,6 +82,9 @@ export function DirectMarkEntryModal({
   };
 
   const handleSubmit = () => {
+    if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0) {
+      Alert.alert('Scoring configuration required', 'Configure maximum marks for this competition first.'); return;
+    }
     const total = getTotal();
     onSave(total, eventTotalMarks);
     onClose();
@@ -105,6 +110,7 @@ export function DirectMarkEntryModal({
             </TouchableOpacity>
           </View>
           
+          {ruleError ? <Text className="p-3 text-red-700 font-poppins text-xs">{ruleError}</Text> : null}
           {loading ? (
             <View className="p-8 items-center"><Text>Loading rules...</Text></View>
           ) : (
@@ -119,11 +125,11 @@ export function DirectMarkEntryModal({
                       <TextInput
                         keyboardType="numeric"
                         value={scores.total !== undefined ? scores.total.toString() : ''}
-                        onChangeText={(val) => updateScore('total', Number(val), 100)}
+                        onChangeText={(val) => updateScore('total', Number(val), eventTotalMarks)}
                         style={{ width: 60, height: 40, textAlign: 'center', fontSize: 16, fontWeight: 'bold' }}
                       />
                       <View className="bg-slate-100 h-full px-2 justify-center border-l border-slate-200">
-                        <Text className="font-poppins text-xs text-slate-500">/ 100</Text>
+                        <Text className="font-poppins text-xs text-slate-500">/ {eventTotalMarks}</Text>
                       </View>
                     </View>
                   </View>

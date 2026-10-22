@@ -45,6 +45,7 @@ import { useAuthStore } from '../../core/store/authStore';
 import { usePageManagementStore } from '../../core/store/pageManagementStore';
 import { PageAccessControl } from '../../components/layout/PageAccessControl';
 import { useNotificationsInbox } from '../../core/hooks/useNotificationsInbox';
+import { FEATURE_FLAGS } from '../../core/config/features';
 
 type DashboardIcon = React.ComponentType<{
   color?: string;
@@ -424,9 +425,9 @@ export default function AdminDashboard() {
     { label: 'Dashboard', icon: Home, visible: true, active: true, onPress: () => router.push('/(admin)' as any) },
     { label: 'Participants', icon: Users, visible: pVisible, onPress: () => router.push('/(admin)/participants' as any) },
     { label: 'Schedules', icon: Calendar, visible: sVisible, onPress: () => router.push('/(admin)/schedule' as any) },
-    { label: 'Sub Organisations', icon: Building2, visible: oVisible, onPress: () => router.push('/(admin)/organisations' as any) },
+    { label: 'Teams', icon: Building2, visible: oVisible, onPress: () => router.push('/(admin)/organisations' as any) },
     { label: 'Festival Settings', icon: Settings, visible: setVisible, onPress: () => router.push('/(admin)/settings' as any) },
-    { label: 'Communication Center', icon: Megaphone, visible: cVisible, onPress: () => router.push('/(admin)/communication' as any) },
+    { label: 'Communication Center', icon: Megaphone, visible: cVisible && FEATURE_FLAGS.ENABLE_COMMUNICATION_CENTER, onPress: () => router.push('/(admin)/communication' as any) },
     { label: 'Judge Management', icon: UserCheck, visible: jVisible, onPress: () => router.push('/(admin)/judges' as any) },
     { label: 'Leaderboard Management', icon: Medal, visible: lVisible, onPress: () => router.push('/(admin)/settings/leaderboard' as any) },
     { label: 'Open Judge Portal', icon: Trophy, visible: true, onPress: () => router.push('/judge' as any) },
@@ -435,9 +436,9 @@ export default function AdminDashboard() {
   const actionItems: ActionCardProps[] = [
     { label: 'Manage Participants', icon: Users, visible: pVisible, onPress: () => router.push('/(admin)/participants' as any) },
     { label: 'Manage Schedules', icon: Calendar, visible: sVisible, onPress: () => router.push('/(admin)/schedule' as any) },
-    { label: 'Sub Organisations', icon: Building2, visible: oVisible, onPress: () => router.push('/(admin)/organisations' as any) },
+    { label: 'Teams', icon: Building2, visible: oVisible, onPress: () => router.push('/(admin)/organisations' as any) },
     { label: 'Festival Settings', icon: Settings, visible: setVisible, onPress: () => router.push('/(admin)/settings' as any) },
-    { label: 'Communication Center', icon: Megaphone, visible: cVisible, onPress: () => router.push('/(admin)/communication' as any) },
+    { label: 'Communication Center', icon: Megaphone, visible: cVisible && FEATURE_FLAGS.ENABLE_COMMUNICATION_CENTER, onPress: () => router.push('/(admin)/communication' as any) },
     { label: 'Judge Management', icon: UserCheck, visible: jVisible, onPress: () => router.push('/(admin)/judges' as any) },
     { label: 'Leaderboard Management', icon: BarChart3, visible: lVisible, onPress: () => router.push('/(admin)/settings/leaderboard' as any) },
   ];
@@ -727,7 +728,7 @@ export default function AdminDashboard() {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 <InsightChip label="Overview" active={insightView === 'overview'} onPress={() => setInsightView('overview')} />
                 <InsightChip label="Categories" active={insightView === 'categories'} onPress={() => setInsightView('categories')} />
-                <InsightChip label="Sub Organisations" active={insightView === 'organisations'} onPress={() => setInsightView('organisations')} />
+                <InsightChip label="Teams" active={insightView === 'organisations'} onPress={() => setInsightView('organisations')} />
               </View>
             </View>
 
@@ -797,7 +798,7 @@ export default function AdminDashboard() {
 
               {insightView !== 'categories' && (data?.unitGraph && data.unitGraph.length > 0 ? (
                 <Animated.View entering={FadeInUp.duration(460).delay(430).springify()} className="panel-card" style={[panelSurface, { flex: insightView === 'organisations' ? 1.45 : 1, minWidth: 340, minHeight: 222, padding: 16 }]}>
-                  <SectionHeader title="Participants by Sub Organisation" action="View Details" onAction={() => router.push('/(admin)/organisations' as any)} />
+                  <SectionHeader title="Participants by Team" action="View Details" onAction={() => router.push('/(admin)/organisations' as any)} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
                       <Svg width={148} height={148} viewBox="0 0 148 148">
@@ -855,7 +856,7 @@ export default function AdminDashboard() {
                   </View>
                 </Animated.View>
               ) : (
-                <EmptyAnalytics title="Participants by Sub Organisation" />
+                <EmptyAnalytics title="Participants by Team" />
               ))}
 
               <Animated.View entering={FadeInUp.duration(460).delay(500).springify()} className="panel-card" style={[panelSurface, { flex: 1, minWidth: 292, minHeight: 222, padding: 16 }]}>

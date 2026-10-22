@@ -320,7 +320,9 @@ export default function ImportUpperPrimaryDataset() {
   }));
   const mismatchCount = conflictsList.filter(c => c.isMismatch).length;
 
-  if (isCollegeFest) return <CollegeFestImportBlock />;
+  if (isCollegeFest || activeFestival?.chest_number_template === 'team') {
+    return <CollegeFestImportBlock teamTemplate={activeFestival?.chest_number_template === 'team'} />;
+  }
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
       <View className="flex-row items-center mb-6">
@@ -333,10 +335,10 @@ export default function ImportUpperPrimaryDataset() {
       <SsfCard className="mb-6 bg-blue-50 border border-blue-200">
         <Text className="font-poppins-bold text-blue-800 mb-2">Lower Primary Rules</Text>
         <Text className="font-poppins text-xs text-blue-700 leading-5">
-          â€¢ Auto-uppercase names. Prevents chest number duplication.{'\n'}
-          â€¢ Auto-detects Girls from girls-only events without overwriting existing data.{'\n'}
-          â€¢ Event Mapping: Converts event_name to UP-0XX item codes automatically.{'\n'}
-          â€¢ Header validation strictly flags mismatch between header and actual count.
+          • Auto-uppercase names. Prevents chest number duplication.{'\n'}
+          • Auto-detects Girls from girls-only events without overwriting existing data.{'\n'}
+          • Event Mapping: Converts event_name to UP-0XX item codes automatically.{'\n'}
+          • Header validation strictly flags mismatch between header and actual count.
         </Text>
       </SsfCard>
 
@@ -406,7 +408,7 @@ export default function ImportUpperPrimaryDataset() {
                    <Text className="font-poppins-bold text-orange-800">Unmapped Events (Skipped)</Text>
                  </View>
                  {Array.from(unmappedEvents).map(ev => (
-                   <Text key={ev} className="font-poppins text-xs text-orange-700">â€¢ {ev}</Text>
+                   <Text key={ev} className="font-poppins text-xs text-orange-700">• {ev}</Text>
                  ))}
                </View>
             )}
@@ -427,12 +429,12 @@ export default function ImportUpperPrimaryDataset() {
                 </View>
                 {internalValidation?.duplicateChests.length ? (
                   <Text className="font-poppins text-xs text-red-700 mb-1">
-                    â€¢ Duplicate Chest Numbers inside JSON: {internalValidation.duplicateChests.join(', ')}
+                    • Duplicate Chest Numbers inside JSON: {internalValidation.duplicateChests.join(', ')}
                   </Text>
                 ) : null}
                 {mismatchCount > 0 ? (
                   <Text className="font-poppins text-xs text-red-700">
-                    â€¢ Database Conflicts: {mismatchCount} chest numbers mismatch existing participants.
+                    • Database Conflicts: {mismatchCount} chest numbers mismatch existing participants.
                   </Text>
                 ) : null}
               </View>
@@ -507,7 +509,7 @@ export default function ImportUpperPrimaryDataset() {
                 <Text className="font-poppins-bold text-orange-800 text-xs mb-1">Missing Item Mappings:</Text>
                 {importReport.invalid_items.map((it: any, index: number) => (
                   <Text key={index} className="font-poppins text-xs text-orange-700">
-                    â€¢ Chest {it.chest_number}: Item {it.item_code}
+                    • Chest {it.chest_number}: Item {it.item_code}
                   </Text>
                 ))}
               </View>
@@ -518,7 +520,7 @@ export default function ImportUpperPrimaryDataset() {
                 <Text className="font-poppins-bold text-red-800 text-xs mb-1">Errors Blocked:</Text>
                 {importReport.errors.map((err: any, index: number) => (
                   <Text key={index} className="font-poppins text-xs text-red-700">
-                    â€¢ {typeof err === 'object' ? `Chest ${err.chest_number}: ${err.error} (DB: ${err.existing_name} vs JSON: ${err.import_name})` : err}
+                    • {typeof err === 'object' ? `Chest ${err.chest_number}: ${err.error} (DB: ${err.existing_name} vs JSON: ${err.import_name})` : err}
                   </Text>
                 ))}
               </View>

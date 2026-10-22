@@ -188,6 +188,7 @@ const Sidebar = ({
 };
 
 const MetricCard = ({
+  cardWidth,
   label,
   value,
   tone,
@@ -195,6 +196,7 @@ const MetricCard = ({
   sub,
   valueColor,
 }: {
+  cardWidth: number | `${number}%`;
   label: string;
   value: string;
   tone: string;
@@ -202,7 +204,7 @@ const MetricCard = ({
   sub?: string;
   valueColor?: string;
 }) => (
-  <View style={styles.metricCard}>
+  <View style={[styles.metricCard, { width: cardWidth, flexBasis: cardWidth }]}>
     <View style={styles.metricTop}>
       <View style={[styles.metricIcon, { backgroundColor: `${tone}14` }]}>{icon}</View>
       <Text style={styles.metricLabel}>{label}</Text>
@@ -241,8 +243,8 @@ export default function LeaderboardLayout() {
   const autoRefreshEnabled = settings?.auto_refresh_enabled ?? false;
   const autoRefreshInterval = settings?.auto_refresh_interval ?? 30;
 
-  const { data: leaderboardData = [] } = useAdminLeaderboard(tenant_id, festivalId);
-  const { results: festivalResults = [] } = useResultVisibility(tenant_id, festivalId);
+  const { data: leaderboardData = [] } = useAdminLeaderboard(festivalId ? tenant_id : null, festivalId);
+  const { results: festivalResults = [] } = useResultVisibility(festivalId ? tenant_id : null, festivalId);
 
   const rows = useMemo(() => {
     return leaderboardData.map((row) => ({
@@ -280,6 +282,15 @@ export default function LeaderboardLayout() {
   }, [activeItem]);
 
   const contentMaxWidth = isDesktop ? undefined : 980;
+  const metricCardWidth: number | `${number}%` = isMobile
+    ? 220
+    : width >= 1650
+      ? '18%'
+      : width >= 1380
+        ? '22%'
+        : width >= 1180
+          ? '30%'
+          : '47%';
 
   return (
     <View style={styles.page}>
@@ -328,9 +339,10 @@ export default function LeaderboardLayout() {
           <ScrollView
             horizontal={isMobile}
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[styles.metricsGrid, isMobile && styles.metricsGridMobile]}
+            contentContainerStyle={[styles.metricsGrid, isMobile ? styles.metricsGridMobile : styles.metricsGridWrap]}
           >
             <MetricCard
+              cardWidth={metricCardWidth}
               label="Units Included"
               value={formatNumber(rows.length)}
               sub="Unit ranking only"
@@ -338,6 +350,7 @@ export default function LeaderboardLayout() {
               icon={<ShieldCheck size={19} color={colors.cyan} />}
             />
             <MetricCard
+              cardWidth={metricCardWidth}
               label="Total Points Distributed"
               value={formatNumber(totalPoints)}
               sub="Published results"
@@ -345,6 +358,7 @@ export default function LeaderboardLayout() {
               icon={<Zap size={19} color={colors.teal} />}
             />
             <MetricCard
+              cardWidth={metricCardWidth}
               label="Publicly Published"
               value={formatNumber(publicItemsCount)}
               sub="Items on public page"
@@ -353,6 +367,7 @@ export default function LeaderboardLayout() {
               valueColor={ui.colors.danger}
             />
             <MetricCard
+              cardWidth={metricCardWidth}
               label="Leaderboard Status"
               value={isPublicVisible ? 'Active' : 'Paused'}
               sub="Public sync ready"
@@ -360,6 +375,7 @@ export default function LeaderboardLayout() {
               icon={<Radio size={19} color={colors.green} />}
             />
             <MetricCard
+              cardWidth={metricCardWidth}
               label="Auto Update Interval"
               value={autoRefreshInterval >= 60 ? `${autoRefreshInterval / 60} min` : `${autoRefreshInterval} sec`}
               sub={autoRefreshEnabled ? 'Automatic refresh' : 'Manual refresh'}
@@ -615,11 +631,15 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 18,
   },
+  metricsGridWrap: {
+    flexWrap: 'wrap',
+  },
   metricsGridMobile: {
     paddingRight: 20,
   },
   metricCard: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 0,
     minWidth: 180,
     backgroundColor: colors.card,
     borderRadius: 10,

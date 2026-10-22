@@ -1,726 +1,313 @@
-import { ui } from '@/constants/designSystem';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Pencil, Plus, RotateCcw, ShieldCheck, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Circle, Eye, ListChecks, Plus, Trash2 } from 'lucide-react-native';
+import { ui } from '@/constants/designSystem';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfInput } from '../../../components/ui/SsfInput';
+import { SsfSheet } from '../../../components/ui/SsfSheet';
 import { useFestival } from '../../../core/hooks/useFestival';
+import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
+import { useAuthStore } from '../../../core/store/authStore';
 import { supabase } from '../../../core/config/supabase';
+import { createRequestId } from '../../../core/utils/requestId';
 import {
-  FlexiblePointsConfig,
-  PointBracket,
-  PointsMode,
-  normalizePointsConfig,
-  validateFlexiblePointsConfig,
+  configurationNumber as numberValue, displayConfigurationNumber as numberText,
+  FlexiblePointsConfig, GradePoints, GradeBoostSection, normalizePointsConfig, serializePointsConfig,
+  setDefaultGradePoint, validateFlexiblePointsConfig,
 } from '../../../core/utils/flexiblePointsEngine';
 
-const modeOptions: { key: PointsMode; label: string; description: string }[] = [
-  { key: 'official', label: 'Official', description: 'Locked SSF defaults' },
-  { key: 'hybrid', label: 'Hybrid', description: 'Official base with festival overrides' },
-  { key: 'custom', label: 'Custom', description: 'Fully configurable rules' },
-];
-
-const numberValue = (value: string, fallback = 0) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-};
+const grades = ['A+', 'A', 'B', 'C'];
+const ranks = ['1st', '2nd', '3rd'];
+const emptyGrades = (): GradePoints => [NaN, NaN, NaN, NaN];
+const Numeric = ({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) => (
+  <SsfInput label={label} accessibilityLabel={label} keyboardType="numeric" value={numberText(value)}
+    onChangeText={value => onChange(numberValue(value))} className="flex-1 min-w-[65px] mb-2"
+    style={{ minHeight: 40, minWidth: 0, width: 0, paddingHorizontal: 10 }} />
+);
 
 export default function PointsSettings() {
   const router = useRouter();
-  const { useActiveFestival, usePointsConfig, useUpdatePoints } = useFestival();
-  const { data: festival } = useActiveFestival();
-  const { data: storedConfig, isLoading } = usePointsConfig(festival?.id);
-  const updatePoints = useUpdatePoints();
-  const [form, setForm] = useState<FlexiblePointsConfig>(() => normalizePointsConfig());
-  const [changeReason, setChangeReason] = useState('');
-  const [versions, setVersions] = useState<any[]>([]);
-
-  const fetchVersions = React.useCallback(async () => {
-    if (!festival?.id) return;
-    const { data } = await supabase
-      .from('points_config_versions')
-      .select('id, config_version, change_reason, created_at')
-      .eq('festival_id', festival.id)
-      .order('config_version', { ascending: false })
-      .limit(5);
-    setVersions(data ?? []);
-  }, [festival?.id]);
-
-  useEffect(() => {
-    if (storedConfig) setForm(normalizePointsConfig(storedConfig));
-  }, [storedConfig]);
-
-  useEffect(() => {
-    fetchVersions();
-  }, [fetchVersions]);
-
-  const errors = useMemo(() => validateFlexiblePointsConfig(form), [form]);
-  const isOfficial = form.mode === 'official';
-
-  const updateThreshold = (key: keyof FlexiblePointsConfig['thresholds'], value: string) => {
-    setForm((current) => ({
-      ...current,
-      thresholds: { ...current.thresholds, [key]: numberValue(value) },
-    }));
-  };
-
-  const updateRankPoint = (index: number, value: string) => {
-    setForm((current) => {
-      const rankPoints = [...current.rankPoints] as FlexiblePointsConfig['rankPoints'];
-      rankPoints[index] = numberValue(value);
-      return { ...current, rankPoints };
-    });
-  };
-
-  const updateBracketPoint = (bracketIndex: number, gradeIndex: number, value: string) => {
-    setForm((current) => {
-      const brackets = current.brackets.map((bracket, index) => {
-        if (index !== bracketIndex) return bracket;
-        const points = [...bracket.points] as PointBracket['points'];
-        points[gradeIndex] = numberValue(value);
-        return { ...bracket, points };
-      });
-      return { ...current, brackets };
-    });
-  };
-
-  const updateGroupBracketPoint = (bracketIndex: number, gradeIndex: number, value: string) => {
-    setForm((current) => {
-      const groupBrackets = current.groupBrackets.map((bracket, index) => {
-        if (index !== bracketIndex) return bracket;
-        const points = [...bracket.points] as PointBracket['points'];
-        points[gradeIndex] = numberValue(value);
-        return { ...bracket, points };
-      });
-      return { ...current, groupBrackets };
-    });
-  };
-
-  const updateBracketRange = (
-    bracketIndex: number,
-    field: 'min' | 'max',
-    value: string,
-  ) => {
-    setForm((current) => {
-      const brackets = current.brackets.map((bracket, index) => {
-        if (index !== bracketIndex) return bracket;
-        const nextValue = Math.max(1, Math.trunc(numberValue(value, 1)));
-        const updated = { ...bracket, [field]: nextValue };
-        return {
-          ...updated,
-          key: updated.max === updated.min
-            ? String(updated.min)
-            : `${updated.min}-${updated.max}`,
-          label: updated.max === updated.min
-            ? String(updated.min)
-            : `${updated.min}–${updated.max}`,
-        };
-      });
-      const groupBrackets = current.groupBrackets.map((bracket, index) =>
-        index === bracketIndex
-          ? {
-              ...bracket,
-              key: brackets[bracketIndex].key,
-              label: brackets[bracketIndex].label,
-              min: brackets[bracketIndex].min,
-              max: brackets[bracketIndex].max,
-            }
-          : bracket);
-      return { ...current, brackets, groupBrackets };
-    });
-  };
-
-  const addBracket = () => {
-    setForm((current) => {
-      const last = current.brackets[current.brackets.length - 1];
-      const min = (last?.max ?? last?.min ?? 0) + 1;
-      const max = min + 4;
-      const bracket: PointBracket = {
-        key: `${min}-${max}`,
-        label: `${min}–${max}`,
-        min,
-        max,
-        points: [0, 0, 0, 0],
-        enabled: true,
-      };
-      return {
-        ...current,
-        brackets: [...current.brackets, bracket],
-        groupBrackets: [
-          ...current.groupBrackets,
-          { ...bracket, points: [...bracket.points] as PointBracket['points'] },
-        ],
-      };
-    });
-  };
-
-  const removeBracket = (bracketIndex: number) => {
-    setForm((current) => {
-      if (current.brackets.length <= 1) return current;
-      return {
-        ...current,
-        brackets: current.brackets.filter((_, index) => index !== bracketIndex),
-        groupBrackets: current.groupBrackets.filter((_, index) => index !== bracketIndex),
-      };
-    });
-  };
-
-  const restoreOfficialDefaults = () => {
-    setForm((current) => ({
-      ...normalizePointsConfig(),
-      mode: current.mode,
-      version: current.version,
-    }));
-  };
-
-  const enableOfficialOverrides = () => {
-    setForm((current) => ({ ...current, mode: 'hybrid' }));
-  };
-
-  const handleSave = async () => {
-    if (errors.length > 0) {
-      Alert.alert('Validation Error', errors[0]);
-      return;
-    }
-
-    const nextVersion = form.version + 1;
-    try {
-      await updatePoints.mutateAsync({
-        id: (storedConfig as any)?.id,
-        festival_id: festival?.id,
-        rank_1_points: form.rankPoints[0],
-        rank_2_points: form.rankPoints[1],
-        rank_3_points: form.rankPoints[2],
-        points_mode: form.mode,
-        grade_thresholds: {
-          a_plus: form.thresholds.aPlus,
-          a: form.thresholds.a,
-          b: form.thresholds.b,
-          c: form.thresholds.c,
-        },
-        point_brackets: form.brackets,
-        group_point_brackets: form.separateGroupBrackets
-          ? form.groupBrackets
-          : form.brackets,
-        separate_group_brackets: form.separateGroupBrackets,
-        auto_bracket_selection: form.autoBracketSelection,
-        allow_bracket_override: form.allowBracketOverride,
-        less_than_3_teams_rule: form.rule12Enabled,
-        rule12_min_teams: form.rule12MinTeams,
-        rule12_behavior: form.rule12Behavior,
-        enable_grace_marks: form.enableGraceMarks,
-        config_version: nextVersion,
-        change_reason: changeReason.trim() || 'Points configuration updated',
-      });
-      setForm((current) => ({ ...current, version: nextVersion }));
-      setChangeReason('');
-      await fetchVersions();
-      Alert.alert('Success', `Points configuration version ${nextVersion} saved.`);
-    } catch (error: any) {
-      Alert.alert('Error', error?.message || 'Failed to update points configuration.');
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-ssf-bg items-center justify-center">
-        <ActivityIndicator color="#065F46" />
-      </View>
-    );
-  }
-
-  return (
-    <View className="flex-1 bg-ssf-bg">
-      <ScrollView className="flex-1 py-6 px-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Page Title — matches schedule page pattern */}
-        <View className="flex-row items-center justify-between mb-6">
-          <View className="flex-1 pr-3">
-            <Text className="text-3xl font-poppins-black text-ui-text">Points System</Text>
-            <Text className="text-sm font-poppins text-ui-text-muted mt-1">
-              One flexible rule set for results and leaderboards
-            </Text>
-          </View>
-          <View className="bg-ui-muted border border-ui-border rounded-xl px-3 py-2 items-center">
-            <Text className="font-poppins text-[9px] uppercase text-ui-text-muted">Version</Text>
-            <Text className="font-poppins-black text-lg text-ui-text">{form.version}</Text>
-          </View>
-        </View>
-        <SsfCard className="mb-5">
-          <Text className="font-poppins-black text-lg text-ssf-text">Configuration Mode</Text>
-          <Text className="font-poppins text-xs text-gray-500 mt-1 mb-4">
-            Keep official defaults or allow controlled festival-specific changes.
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {modeOptions.map((option) => {
-              const selected = form.mode === option.key;
-              return (
-                <TouchableOpacity
-                  key={option.key}
-                  onPress={() => setForm((current) => {
-                    if (option.key === 'official') {
-                      return {
-                        ...normalizePointsConfig(),
-                        mode: 'official',
-                        version: current.version,
-                      };
-                    }
-                    return { ...current, mode: option.key };
-                  })}
-                  className={`flex-1 min-w-[140px] rounded-xl border p-3 ${
-                    selected ? 'bg-ssf-primary border-ssf-primary' : 'bg-gray-50 border-gray-200'
-                  }`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                >
-                  <Text className={`font-poppins-bold ${selected ? 'text-white' : 'text-ssf-text'}`}>
-                    {option.label}
-                  </Text>
-                  <Text className={`font-poppins text-[10px] mt-1 ${selected ? 'text-white/70' : 'text-gray-500'}`}>
-                    {option.description}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {isOfficial && (
-            <View className="flex-row items-center bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-4">
-              <ShieldCheck size={18} color="#047857" />
-              <View className="flex-1 ml-2 pr-2">
-                <Text className="font-poppins-bold text-xs text-emerald-900">
-                  Official values are protected
-                </Text>
-                <Text className="font-poppins text-[10px] text-emerald-800 mt-0.5">
-                  Enable overrides to edit these values without changing the official template.
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={enableOfficialOverrides}
-                className="flex-row items-center bg-ssf-primary px-3 py-2 rounded-lg"
-                accessibilityRole="button"
-                accessibilityLabel="Enable editing with official values"
-              >
-                <Pencil size={13} color={ui.colors.surface} />
-                <Text className="font-poppins-bold text-[10px] text-white ml-1">
-                  Enable Editing
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </SsfCard>
-
-        <SsfCard className="mb-5">
-          <Text className="font-poppins-black text-lg text-ssf-text mb-4">Rank Points</Text>
-          <View className="flex-row gap-3">
-            {['1st', '2nd', '3rd'].map((label, index) => (
-              <SsfInput
-                key={label}
-                label={label}
-                value={String(form.rankPoints[index])}
-                onChangeText={(value) => updateRankPoint(index, value)}
-                editable={!isOfficial}
-                keyboardType="numeric"
-                className="flex-1"
-              />
-            ))}
-          </View>
-        </SsfCard>
-
-        <SsfCard className="mb-5">
-          <Text className="font-poppins-black text-lg text-ssf-text">Grade Thresholds</Text>
-          <Text className="font-poppins text-xs text-gray-500 mt-1 mb-4">
-            Minimum percentage required for each grade.
-          </Text>
-          <View className="flex-row flex-wrap gap-x-3">
-            {([
-              ['A+', 'aPlus'],
-              ['A', 'a'],
-              ['B', 'b'],
-              ['C', 'c'],
-            ] as const).map(([label, key]) => (
-              <SsfInput
-                key={key}
-                label={`${label} minimum`}
-                value={String(form.thresholds[key])}
-                onChangeText={(value) => updateThreshold(key, value)}
-                editable={!isOfficial}
-                keyboardType="numeric"
-                className="w-[47%] flex-grow"
-              />
-            ))}
-          </View>
-        </SsfCard>
-
-        <SsfCard className="mb-5">
-          <View className="flex-row items-start justify-between mb-4">
-            <View className="flex-1 pr-3">
-              <Text className="font-poppins-black text-lg text-ssf-text">
-                Participant Brackets
-              </Text>
-              <Text className="font-poppins text-xs text-gray-500 mt-1">
-                Grade points resolved from eligible participant/team count.
-              </Text>
-            </View>
-            {isOfficial ? (
-              <TouchableOpacity
-                onPress={enableOfficialOverrides}
-                className="flex-row items-center bg-ssf-primary px-3 py-2 rounded-lg"
-                accessibilityRole="button"
-                accessibilityLabel="Edit official grade point brackets"
-              >
-                <Pencil size={14} color={ui.colors.surface} />
-                <Text className="font-poppins-bold text-[10px] text-white ml-1">
-                  Edit Brackets
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={restoreOfficialDefaults}
-                className="flex-row items-center bg-gray-100 px-3 py-2 rounded-lg"
-                accessibilityRole="button"
-                accessibilityLabel="Restore official point defaults"
-              >
-                <RotateCcw size={14} color="#4B5563" />
-                <Text className="font-poppins-bold text-[10px] text-gray-600 ml-1">
-                  Restore
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="min-w-[620px] border border-emerald-100 rounded-xl overflow-hidden">
-              <View className="flex-row bg-emerald-100 px-2 py-3">
-                {['Range', 'A+', 'A', 'B', 'C', ''].map((heading, index) => (
-                  <Text
-                    key={heading}
-                    className={`font-poppins-bold text-xs text-emerald-900 text-center ${
-                      index === 0 ? 'w-40' : index === 5 ? 'w-12' : 'w-28'
-                    }`}
-                  >
-                    {heading}
-                  </Text>
-                ))}
-              </View>
-              {form.brackets.map((bracket, bracketIndex) => (
-                <View key={bracket.key} className="flex-row items-center px-2 py-2 border-t border-gray-100 bg-white">
-                  <View className="w-40 flex-row gap-x-1 px-1">
-                    <SsfInput
-                      value={String(bracket.min)}
-                      onChangeText={(value) => updateBracketRange(bracketIndex, 'min', value)}
-                      editable={!isOfficial}
-                      keyboardType="numeric"
-                      className="flex-1 mb-0"
-                      accessibilityLabel={`${bracket.label} bracket minimum`}
-                    />
-                    <SsfInput
-                      value={String(bracket.max ?? bracket.min)}
-                      onChangeText={(value) => updateBracketRange(bracketIndex, 'max', value)}
-                      editable={!isOfficial}
-                      keyboardType="numeric"
-                      className="flex-1 mb-0"
-                      accessibilityLabel={`${bracket.label} bracket maximum`}
-                    />
-                  </View>
-                  {bracket.points.map((point, gradeIndex) => (
-                    <View key={`${bracket.key}-${gradeIndex}`} className="w-28 px-2">
-                      <SsfInput
-                        value={String(point)}
-                        onChangeText={(value) => updateBracketPoint(bracketIndex, gradeIndex, value)}
-                        editable={!isOfficial}
-                        keyboardType="numeric"
-                        className="mb-0"
-                        accessibilityLabel={`${bracket.label} participant bracket, ${['A+', 'A', 'B', 'C'][gradeIndex]} points`}
-                      />
-                    </View>
-                  ))}
-                  <View className="w-12 items-center">
-                    {!isOfficial && (
-                      <TouchableOpacity
-                        onPress={() => removeBracket(bracketIndex)}
-                        disabled={form.brackets.length <= 1}
-                        className="p-2 rounded-lg bg-red-50"
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove ${bracket.label} bracket`}
-                      >
-                        <Trash2 size={14} color="#DC2626" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-          {!isOfficial && (
-            <TouchableOpacity
-              onPress={addBracket}
-              className="self-start flex-row items-center bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg mt-3"
-              accessibilityRole="button"
-              accessibilityLabel="Add participant bracket"
-            >
-              <Plus size={14} color="#047857" />
-              <Text className="font-poppins-bold text-[10px] text-emerald-700 ml-1">
-                Add bracket
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <View className="flex-row justify-between items-center mt-5 pt-4 border-t border-gray-100">
-            <View className="flex-1 pr-4">
-              <Text className="font-poppins-bold text-sm text-ssf-text">
-                Separate group-event brackets
-              </Text>
-              <Text className="font-poppins text-[10px] text-gray-500 mt-1">
-                Use a different grade-point table for team/group events.
-              </Text>
-            </View>
-            <Switch
-              value={form.separateGroupBrackets}
-              disabled={isOfficial}
-              onValueChange={(value) =>
-                setForm((current) => ({
-                  ...current,
-                  separateGroupBrackets: value,
-                  groupBrackets: value && current.groupBrackets.length === 0
-                    ? current.brackets.map((bracket) => ({
-                        ...bracket,
-                        points: [...bracket.points] as PointBracket['points'],
-                      }))
-                    : current.groupBrackets,
-                }))}
-              trackColor={{ false: '#9CA3AF', true: '#065F46' }}
-            />
-          </View>
-
-          {form.separateGroupBrackets && (
-            <View className="mt-4">
-              <Text className="font-poppins-bold text-sm text-ssf-text mb-3">
-                Group / Team Grade Points
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="min-w-[620px] border border-blue-100 rounded-xl overflow-hidden">
-                  <View className="flex-row bg-blue-100 px-2 py-3">
-                    {['Teams', 'A+', 'A', 'B', 'C'].map((heading, index) => (
-                      <Text
-                        key={heading}
-                        className={`font-poppins-bold text-xs text-blue-900 text-center ${
-                          index === 0 ? 'w-32' : 'w-28'
-                        }`}
-                      >
-                        {heading}
-                      </Text>
-                    ))}
-                  </View>
-                  {form.groupBrackets.map((bracket, bracketIndex) => (
-                    <View key={bracket.key} className="flex-row items-center px-2 py-2 border-t border-gray-100 bg-white">
-                      <Text className="w-32 font-poppins-bold text-sm text-gray-700 text-center">
-                        {bracket.label}
-                      </Text>
-                      {bracket.points.map((point, gradeIndex) => (
-                        <View key={`${bracket.key}-${gradeIndex}`} className="w-28 px-2">
-                          <SsfInput
-                            value={String(point)}
-                            onChangeText={(value) =>
-                              updateGroupBracketPoint(bracketIndex, gradeIndex, value)}
-                            keyboardType="numeric"
-                            className="mb-0"
-                            accessibilityLabel={`${bracket.label} team bracket, ${['A+', 'A', 'B', 'C'][gradeIndex]} points`}
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          )}
-
-          <View className="flex-row justify-between items-center mt-5 pt-4 border-t border-gray-100">
-            <View className="flex-1 pr-4">
-              <Text className="font-poppins-bold text-sm text-ssf-text">
-                Automatic bracket selection
-              </Text>
-              <Text className="font-poppins text-[10px] text-gray-500 mt-1">
-                Resolve the bracket from eligible registration count.
-              </Text>
-            </View>
-            <Switch
-              value={form.autoBracketSelection}
-              disabled={isOfficial}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, autoBracketSelection: value }))}
-              trackColor={{ false: '#9CA3AF', true: '#065F46' }}
-            />
-          </View>
-          <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-gray-100">
-            <View className="flex-1 pr-4">
-              <Text className="font-poppins-bold text-sm text-ssf-text">
-                Allow bracket override
-              </Text>
-              <Text className="font-poppins text-[10px] text-gray-500 mt-1">
-                Permit an admin to replace the automatically resolved bracket.
-              </Text>
-            </View>
-            <Switch
-              value={form.allowBracketOverride}
-              disabled={isOfficial}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, allowBracketOverride: value }))}
-              trackColor={{ false: '#9CA3AF', true: '#065F46' }}
-            />
-          </View>
-        </SsfCard>
-
-        <SsfCard className="mb-5">
-          <View className="flex-row justify-between items-center">
-            <View className="flex-1 pr-4">
-              <Text className="font-poppins-black text-lg text-ssf-text">Rule 12</Text>
-              <Text className="font-poppins text-xs text-gray-500 mt-1">
-                For events below the minimum team count, award grade points without rank points.
-              </Text>
-            </View>
-            <Switch
-              value={form.rule12Enabled}
-              disabled={isOfficial}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, rule12Enabled: value }))}
-              trackColor={{ false: '#9CA3AF', true: '#065F46' }}
-            />
-          </View>
-          {form.rule12Enabled && (
-            <View className="mt-4 pt-4 border-t border-gray-100">
-              <SsfInput
-                label="Minimum teams"
-                value={String(form.rule12MinTeams)}
-                onChangeText={(value) =>
-                  setForm((current) => ({
-                    ...current,
-                    rule12MinTeams: Math.max(1, Math.trunc(numberValue(value, 1))),
-                  }))}
-                editable={!isOfficial}
-                keyboardType="numeric"
-              />
-              <Text className="font-poppins-bold text-xs text-ssf-text mb-2">
-                When Rule 12 applies
-              </Text>
-              <View className="flex-row flex-wrap gap-2">
-                {([
-                  ['grade_only', 'Grade points only'],
-                  ['rank_and_grade', 'Rank + grade points'],
-                  ['no_points', 'No points'],
-                ] as const).map(([value, label]) => {
-                  const selected = form.rule12Behavior === value;
-                  return (
-                    <TouchableOpacity
-                      key={value}
-                      disabled={isOfficial}
-                      onPress={() =>
-                        setForm((current) => ({ ...current, rule12Behavior: value }))}
-                      className={`px-3 py-2 rounded-lg border ${
-                        selected
-                          ? 'bg-ssf-primary border-ssf-primary'
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <Text className={`font-poppins-bold text-[10px] ${
-                        selected ? 'text-white' : 'text-gray-600'
-                      }`}>
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-        </SsfCard>
-
-        <SsfCard className="mb-5">
-          <View className="flex-row justify-between items-center">
-            <View className="flex-1 pr-4">
-              <Text className="font-poppins-black text-lg text-ssf-text">Grace Marks</Text>
-              <Text className="font-poppins text-xs text-gray-500 mt-1">
-                Enable the ability to award grace marks to groups. The marks will be added to their final leaderboard points.
-              </Text>
-            </View>
-            <Switch
-              value={form.enableGraceMarks}
-              onValueChange={(value) =>
-                setForm((current) => ({ ...current, enableGraceMarks: value }))}
-              trackColor={{ false: '#9CA3AF', true: '#065F46' }}
-            />
-          </View>
-        </SsfCard>
-
-        {errors.length > 0 && (
-          <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-            {errors.map((error) => (
-              <Text key={error} className="font-poppins text-xs text-red-700 mb-1">
-                • {error}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        <SsfInput
-          label="Change reason"
-          placeholder="Why are these points rules changing?"
-          value={changeReason}
-          onChangeText={setChangeReason}
-        />
-
-        {versions.length > 0 && (
-          <SsfCard className="mb-5">
-            <Text className="font-poppins-black text-lg text-ssf-text">
-              Recent Versions
-            </Text>
-            <Text className="font-poppins text-xs text-gray-500 mt-1 mb-3">
-              Published results keep the exact configuration version used.
-            </Text>
-            {versions.map((version) => (
-              <View
-                key={version.id}
-                className="flex-row items-center justify-between py-2 border-t border-gray-100"
-              >
-                <View className="flex-1 pr-3">
-                  <Text className="font-poppins-bold text-sm text-ssf-text">
-                    Version {version.config_version}
-                  </Text>
-                  <Text className="font-poppins text-[10px] text-gray-500">
-                    {version.change_reason || 'Configuration updated'}
-                  </Text>
-                </View>
-                <Text className="font-poppins text-[10px] text-gray-400">
-                  {new Date(version.created_at).toLocaleDateString()}
-                </Text>
-              </View>
-            ))}
-          </SsfCard>
-        )}
-
-        <SsfButton
-          label="Save Points Configuration"
-          onPress={handleSave}
-          isLoading={updatePoints.isPending}
-          disabled={errors.length > 0}
-          className="w-full mb-3"
-        />
-        <SsfButton
-          label="Cancel"
-          variant="ghost"
-          onPress={() => router.back()}
-          className="w-full"
-        />
-      </ScrollView>
-    </View>
+  const { role, is_superadmin } = useAuthStore();
+  const { useActiveFestival, usePointsConfig, useUpdatePoints, useItems } = useFestival();
+  const { data: festival, isLoading: isFestivalLoading } = useActiveFestival();
+  const { data: record, isLoading, isFetching, error, refetch } = usePointsConfig(festival?.id);
+  const { data: items = [], isLoading: itemsLoading, error: itemsError } = useItems(festival?.id);
+  const isCollegeFest = festival?.festival_template === 'college_fest';
+  const { data: enabledCategories = [], isLoading: categoriesLoading, error: categoriesError } = useFestivalCategories(
+    isCollegeFest ? festival?.id : undefined,
+    true,
   );
+  const update = useUpdatePoints();
+  const [form, setForm] = useState<FlexiblePointsConfig>(() => normalizePointsConfig());
+  const [hydratedFestivalId, setHydratedFestivalId] = useState<string | null>(null);
+  const [reason, setReason] = useState('');
+  const [versions, setVersions] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [notice, setNotice] = useState('');
+  const [competitionPanel, setCompetitionPanel] = useState<{
+    mode: 'select' | 'preview' | 'both';
+    boost?: 'gradeBoostItemIds' | 'rankBoostItemIds';
+    sectionId?: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!festival?.id || isLoading || isFetching || error || hydratedFestivalId === festival.id) return;
+    setForm(normalizePointsConfig(record));
+    setHydratedFestivalId(festival.id);
+  }, [festival?.id, record, isLoading, isFetching, error, hydratedFestivalId]);
+  useEffect(() => {
+    if (!festival?.id) return;
+    let active = true;
+    supabase.from('points_config_versions').select('id,config_version,change_reason,created_at')
+      .eq('festival_id', festival.id).order('config_version', { ascending: false }).limit(5)
+      .then(({ data }) => { if (active) setVersions(data ?? []); });
+    return () => { active = false; };
+  }, [festival?.id, record?.config_version]);
+  const errors = useMemo(() => validateFlexiblePointsConfig(form), [form]);
+  const enabledCategoryCodes = useMemo(() => new Set(enabledCategories
+    .filter(category => category.code.toUpperCase() !== 'GN' || festival?.general_category_enabled === true)
+    .map(category => category.code.trim().toUpperCase())), [enabledCategories, festival?.general_category_enabled]);
+  const isEnabledCompetition = (item: any) => {
+    if (!Array.isArray(item.category_codes) || item.category_codes.length !== 1) return false;
+    return !isCollegeFest || enabledCategoryCodes.has(String(item.category_codes[0]).trim().toUpperCase());
+  };
+  const selectableItems = (items as any[]).filter(isEnabledCompetition);
+  const visibleItems = selectableItems.filter(item => [item.item_code, item.item_name_en, item.item_name_ml, ...(item.category_codes ?? [])]
+    .join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+  const allGradeBoostIds = form.gradeBoostSections.flatMap(section => section.itemIds);
+  const allRankBoostIds = form.rankBoostSections.flatMap(section => section.itemIds);
+  const bothBoostIds = [...new Set(allGradeBoostIds.filter(id => allRankBoostIds.includes(id)))];
+  const bothBoostItems = (items as any[]).filter(item => bothBoostIds.includes(item.id));
+  const patch = (changes: Partial<FlexiblePointsConfig>) => setForm(current => ({ ...current, ...changes }));
+  const defaultBracket = (group: boolean) => (group ? form.groupBrackets : form.brackets)
+    .filter(bracket => bracket.enabled)
+    .slice()
+    .sort((left, right) => left.min - right.min || left.key.localeCompare(right.key))[0] ?? null;
+  const renderDefaultGradePoints = (group: boolean) => {
+    const bracket = defaultBracket(group);
+    return <View className="mb-3">
+      <Text className="font-poppins-bold text-xs text-ui-text mb-2">
+        {group ? 'Default group grade points' : 'Default participant grade points'}
+      </Text>
+      <View className="flex-row flex-wrap gap-2">{grades.map((label, gradeIndex) =>
+        <Numeric key={label} label={label} value={bracket?.points[gradeIndex] ?? NaN}
+          onChange={value => setForm(current => setDefaultGradePoint(current, group, gradeIndex, value, createRequestId()))} />
+      )}</View>
+    </View>;
+  };
+  const addGradeSection = () => patch({ gradeBoostSections: [...form.gradeBoostSections,
+    { id: createRequestId(), itemIds: [], points: {}, groupPoints: {} }] });
+  const addRankSection = () => patch({ rankBoostSections: [...form.rankBoostSections,
+    { id: createRequestId(), itemIds: [], points: [NaN, NaN, NaN] }] });
+  const toggleSectionItem = (id: string, kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) => {
+    if (kind === 'gradeBoostItemIds') patch({ gradeBoostSections: form.gradeBoostSections.map(section => section.id !== sectionId ? section : {
+      ...section, itemIds: section.itemIds.includes(id) ? section.itemIds.filter(value => value !== id) : [...section.itemIds, id],
+    }) });
+    else patch({ rankBoostSections: form.rankBoostSections.map(section => section.id !== sectionId ? section : {
+      ...section, itemIds: section.itemIds.includes(id) ? section.itemIds.filter(value => value !== id) : [...section.itemIds, id],
+    }) });
+  };
+  const assignments = (kind: 'gradeBoostItemIds' | 'rankBoostItemIds') => kind === 'gradeBoostItemIds' ? form.gradeBoostSections : form.rankBoostSections;
+  const assignedInOtherSection = (id: string, kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) =>
+    assignments(kind).findIndex(section => section.id !== sectionId && section.itemIds.includes(id));
+  const panelSection = competitionPanel?.boost === 'gradeBoostItemIds'
+    ? form.gradeBoostSections.find(section => section.id === competitionPanel.sectionId)
+    : form.rankBoostSections.find(section => section.id === competitionPanel?.sectionId);
+  const panelSelectedIds = panelSection?.itemIds ?? [];
+  const panelItems = competitionPanel?.mode === 'both'
+    ? bothBoostItems
+    : competitionPanel?.mode === 'preview'
+      ? (items as any[]).filter(item => competitionPanel.boost === 'gradeBoostItemIds'
+        ? form.gradeBoostSections.find(section => section.id === competitionPanel.sectionId)?.itemIds.includes(item.id)
+        : form.rankBoostSections.find(section => section.id === competitionPanel.sectionId)?.itemIds.includes(item.id))
+      : visibleItems.slice().sort((left, right) =>
+        Number(panelSelectedIds.includes(right.id)) - Number(panelSelectedIds.includes(left.id)));
+  const competitionOptionsLoading = itemsLoading || (isCollegeFest && categoriesLoading);
+  const competitionOptionsError = itemsError || (isCollegeFest && categoriesError);
+  const panelTitle = competitionPanel?.mode === 'both'
+    ? 'Both Boosting Competitions'
+    : competitionPanel?.mode === 'preview'
+      ? 'Selected Competitions'
+      : 'Select Competitions';
+  const panelDescription = competitionPanel?.mode === 'both'
+    ? 'These competitions are selected in both Grade Boost and Rank Boost.'
+    : competitionPanel?.mode === 'preview'
+      ? `${panelSelectedIds.length} competitions selected for ${competitionPanel.boost === 'gradeBoostItemIds' ? 'Grade Boost' : 'Rank Boost'} · Section ${(assignments(competitionPanel.boost!).findIndex(section => section.id === competitionPanel.sectionId) + 1) || ''}.`
+      : 'Choose enabled, single-category competitions that receive this boost.';
+  const renderItems = (kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) => <View className="mt-3">
+    {competitionOptionsError ? <Text className="font-poppins text-xs text-red-700 mb-2">Could not load enabled competitions or categories. Reload before editing assignments.</Text> : <>
+      <View className="flex-row flex-wrap items-end gap-2">
+        <SsfButton size="sm" variant="outline" label="Select Competitions" icon={<ListChecks size={16} color={ui.colors.primary} />}
+          disabled={competitionOptionsLoading || !(kind === 'gradeBoostItemIds' ? form.gradeBoostEnabled : form.rankBoostEnabled)}
+          onPress={() => { setSearch(''); setCompetitionPanel({ mode: 'select', boost: kind, sectionId }); }} />
+        <View className="items-start">
+          <Text className="font-poppins-bold text-[10px] text-ui-text-muted mb-1">{assignments(kind).find(section => section.id === sectionId)?.itemIds.length ?? 0} selected</Text>
+          <SsfButton size="sm" variant="ghost" label="Selected Competitions" icon={<Eye size={15} color={ui.colors.primary} />}
+            onPress={() => setCompetitionPanel({ mode: 'preview', boost: kind, sectionId })} />
+        </View>
+      </View>
+      {competitionOptionsLoading && <ActivityIndicator className="self-start mt-2" />}
+    </>}
+  </View>;
+  const renderBoostValues = (section: GradeBoostSection, group: boolean) => {
+    const pointsMap = group ? section.groupPoints : section.points;
+    const bracket = defaultBracket(group);
+    if (!bracket) return <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <Text className="font-poppins-bold text-xs text-amber-900">
+        {group ? 'Group' : 'Participant'} Grade Boost points need default grade points first.
+      </Text>
+      <Text className="font-poppins text-xs text-amber-800 mt-1 mb-2">
+        Enter the default A+, A, B and C points in Baseline grade points first. Nothing is prefilled.
+      </Text>
+    </View>;
+    return <View key={bracket.key} className="mb-3">
+      <Text className="font-poppins-bold text-xs text-ui-text mb-2">Default {group ? 'group' : 'participant'} grade boost points</Text>
+      <View className="flex-row flex-wrap gap-2">{grades.map((label, gi) =>
+        <Numeric key={label} label={label} value={pointsMap[bracket.key]?.[gi] ?? NaN} onChange={value => {
+          const values = [...(pointsMap[bracket.key] ?? emptyGrades())] as GradePoints; values[gi] = value;
+          patch({ gradeBoostSections: form.gradeBoostSections.map(candidate => candidate.id !== section.id ? candidate : group
+            ? { ...candidate, groupPoints: { ...candidate.groupPoints, [bracket.key]: values } }
+            : { ...candidate, points: { ...candidate.points, [bracket.key]: values } }) });
+        }} />)}</View>
+    </View>;
+  };
+  const save = async () => {
+    setNotice('');
+    if (!festival || errors.length) return;
+    try {
+      const savedRecord = await update.mutateAsync({ ...serializePointsConfig(form), festival_id: festival.id, expected_version: form.version, change_reason: reason.trim() || null });
+      setForm(normalizePointsConfig(savedRecord));
+      setReason(''); setNotice('Points configuration saved. Published awards retain their recorded version.');
+    } catch (e) { Alert.alert('Could not save', e instanceof Error ? e.message : 'Please reload and try again.'); }
+  };
+  if (isFestivalLoading || isLoading || (!!festival?.id && hydratedFestivalId !== festival.id && !error))
+    return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
+  if (role !== 'admin' && !is_superadmin) return <View className="p-5"><Text>Administrator access is required.</Text></View>;
+  if (error) return <View className="p-5"><Text className="text-red-700">Could not load points configuration.</Text><SsfButton label="Retry" onPress={() => refetch()} /></View>;
+  return <ScrollView className="flex-1 bg-ssf-bg px-4 py-5" contentContainerStyle={{ paddingBottom: 36 }}>
+    <View className="mb-5"><Text className="font-poppins-black text-2xl text-ui-text">Points Configuration</Text>
+      <Text className="font-poppins text-xs text-ui-text-muted mt-1">Version {form.version || 'not configured'} · Baseline, grade boost, rank boost and grace fields</Text></View>
+    {!!notice && <Text accessibilityRole="alert" className="font-poppins text-green-800 mb-4">{notice}</Text>}
+    {!record && <Text className="font-poppins text-ui-text-muted mb-4">Enter the baseline rules to enable scoring. No scoring values are filled automatically.</Text>}
+    <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-3">Baseline points</Text>
+      <Text className="font-poppins-bold text-sm text-ui-text mb-2">Rank points</Text>
+      <View className="flex-row gap-3">{ranks.map((label, i) => <Numeric key={label} label={label} value={form.rankPoints[i]} onChange={value => {
+        const values = [...form.rankPoints] as typeof form.rankPoints; values[i] = value; patch({ rankPoints: values });
+      }} />)}</View>
+    </SsfCard>
+    <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-3">Grade percentages</Text>
+      <View className="flex-row flex-wrap gap-3">{(['aPlus', 'a', 'b', 'c'] as const).map((key, i) =>
+        <Numeric key={key} label={grades[i] + ' minimum %'} value={form.thresholds[key]} onChange={value => patch({ thresholds: { ...form.thresholds, [key]: value } })} />)}</View>
+    </SsfCard>
+    <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-1">Baseline grade points</Text>
+      <Text className="font-poppins text-xs text-ui-text-muted mb-3">The same default grade points apply regardless of member count.</Text>
+      {renderDefaultGradePoints(false)}
+      {form.separateGroupBrackets && renderDefaultGradePoints(true)}
+    </SsfCard>
+    <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-2"><Text className="font-poppins-bold text-lg text-ui-text">Grade boost</Text>
+      <Switch accessibilityLabel="Grade boost enabled" value={form.gradeBoostEnabled} disabled /></View>
+      <Text className="font-poppins text-xs text-ui-text-muted mb-3">Uses the default grade points for every member count.</Text>
+      {form.gradeBoostSections.map((section, index) => <View key={section.id} className="border border-ui-border rounded-xl p-3 mb-3">
+        <View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">Section {index + 1}</Text>
+          {section.itemIds.length === 0 && form.gradeBoostSections.length > 1 && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove Grade Boost Section ${index + 1}`}
+            onPress={() => patch({ gradeBoostSections: form.gradeBoostSections.filter(row => row.id !== section.id) })} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>}</View>
+        {renderBoostValues(section, false)}{form.separateGroupBrackets && renderBoostValues(section, true)}{renderItems('gradeBoostItemIds', section.id)}
+        {!!section.itemIds.length && <View className="mt-2">{(items as any[]).filter(item => section.itemIds.includes(item.id)).map(item =>
+          <View key={item.id} className="flex-row items-center justify-between py-2 border-b border-ui-border"><Text className="font-poppins text-xs text-ui-text flex-1">{item.item_name_en || item.item_name_ml}</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove ${item.item_name_en || item.item_name_ml} from Section ${index + 1}`} onPress={() => toggleSectionItem(item.id, 'gradeBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity></View>)}
+          {section.itemIds.filter(id => !(items as any[]).some(item => item.id === id)).map(id => <View key={id} className="flex-row items-center justify-between py-2 border-b border-ui-border">
+            <Text className="font-poppins text-xs text-ui-text-muted flex-1">Unavailable competition</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove unavailable competition from Section ${index + 1}`} onPress={() => toggleSectionItem(id, 'gradeBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>
+          </View>)}</View>}
+      </View>)}
+      <SsfButton size="sm" variant="outline" label="Add Grade Boost section" icon={<Plus size={15} color={ui.colors.primary} />} onPress={addGradeSection} />
+    </SsfCard>
+    <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-3"><Text className="font-poppins-bold text-lg text-ui-text">Rank boost</Text>
+      <Switch accessibilityLabel="Rank boost enabled" value={form.rankBoostEnabled} disabled /></View>
+      {form.rankBoostSections.map((section, index) => <View key={section.id} className="border border-ui-border rounded-xl p-3 mb-3">
+        <View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">Section {index + 1}</Text>
+          {section.itemIds.length === 0 && form.rankBoostSections.length > 1 && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove Rank Boost Section ${index + 1}`}
+            onPress={() => patch({ rankBoostSections: form.rankBoostSections.filter(row => row.id !== section.id) })} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>}</View>
+        <View className="flex-row gap-3">{ranks.map((label, i) => <Numeric key={label} label={label} value={section.points[i]} onChange={value => {
+          const values = [...section.points] as typeof section.points; values[i] = value;
+          patch({ rankBoostSections: form.rankBoostSections.map(row => row.id === section.id ? { ...row, points: values } : row) });
+        }} />)}</View>{renderItems('rankBoostItemIds', section.id)}
+        {!!section.itemIds.length && <View className="mt-2">{(items as any[]).filter(item => section.itemIds.includes(item.id)).map(item =>
+          <View key={item.id} className="flex-row items-center justify-between py-2 border-b border-ui-border"><Text className="font-poppins text-xs text-ui-text flex-1">{item.item_name_en || item.item_name_ml}</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove ${item.item_name_en || item.item_name_ml} from Section ${index + 1}`} onPress={() => toggleSectionItem(item.id, 'rankBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity></View>)}
+          {section.itemIds.filter(id => !(items as any[]).some(item => item.id === id)).map(id => <View key={id} className="flex-row items-center justify-between py-2 border-b border-ui-border">
+            <Text className="font-poppins text-xs text-ui-text-muted flex-1">Unavailable competition</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove unavailable competition from Section ${index + 1}`} onPress={() => toggleSectionItem(id, 'rankBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>
+          </View>)}</View>}
+      </View>)}
+      <SsfButton size="sm" variant="outline" label="Add Rank Boost section" icon={<Plus size={15} color={ui.colors.primary} />} onPress={addRankSection} />
+      <Text className="font-poppins text-xs text-ui-text-muted mt-3">Neither list: baseline. Both lists: boosted grade and rank components.</Text></SsfCard>
+    <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-2">Both Boosting</Text>
+      <Text className="font-poppins text-xs text-ui-text-muted mb-3">Competitions selected in both enabled lists receive both configured boost components. There is no separate switch or point value.</Text>
+      <Text className="font-poppins-bold text-xs text-ui-text mb-2">{bothBoostIds.length} competitions selected in both</Text>
+      <SsfButton size="sm" variant="outline" label="View Both Boosting Competitions" icon={<Eye size={15} color={ui.colors.primary} />}
+        onPress={() => setCompetitionPanel({ mode: 'both' })} />
+    </SsfCard>
+    <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-3"><Text className="font-poppins-bold text-lg text-ui-text">Minimum-team rule</Text>
+      <Switch value={form.rule12Enabled} onValueChange={value => patch({ rule12Enabled: value })} /></View>
+      <Numeric label="Minimum competing teams" value={form.rule12MinTeams} onChange={value => patch({ rule12MinTeams: value })} />
+      <View className="flex-row flex-wrap gap-2">{(['grade_only', 'rank_and_grade', 'no_points'] as const).map(value =>
+        <SsfButton key={value} size="sm" label={value.replace(/_/g, ' ')} variant={form.rule12Behavior === value ? 'primary' : 'outline'} onPress={() => patch({ rule12Behavior: value })} />)}</View>
+    </SsfCard>
+    <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-3"><Text className="font-poppins-bold text-lg text-ui-text">Grace Marks</Text>
+      <Switch value={form.enableGraceMarks} onValueChange={value => patch({ enableGraceMarks: value })} /></View>
+      {form.graceFields.map((field, i) => <View key={field.id} className="flex-row flex-wrap items-center gap-2 mb-2">
+        <SsfInput label="Field name" accessibilityLabel="Grace field name" value={field.name} className="flex-1 min-w-[140px] mb-2" style={{ minHeight: 40, minWidth: 0, width: 0 }}
+          onChangeText={name => patch({ graceFields: form.graceFields.map((f, j) => i === j ? { ...f, name } : f) })} />
+        <Numeric label="Maximum marks" value={field.maxMarks} onChange={maxMarks => patch({ graceFields: form.graceFields.map((f, j) => i === j ? { ...f, maxMarks } : f) })} />
+        <TouchableOpacity className="p-3" accessibilityRole="button" accessibilityLabel="Remove grace field" onPress={() => patch({ graceFields: form.graceFields.filter(f => f.id !== field.id) })}><Trash2 size={17} color={ui.colors.textMuted} /></TouchableOpacity>
+      </View>)}
+      {!form.graceFields.length && <Text className="font-poppins text-xs text-ui-text-muted mb-3">Add the fields needed for this festival.</Text>}
+      <SsfButton size="sm" variant="outline" label="Add field" icon={<Plus size={16} color={ui.colors.primary} />}
+        onPress={() => patch({ graceFields: [...form.graceFields, { id: createRequestId(), name: '', maxMarks: NaN }] })} />
+      <SsfButton size="sm" variant="ghost" label="Open Grace Marks entry" onPress={() => router.push('/(admin)/grace-marks' as any)} className="mt-3" />
+    </SsfCard>
+    {!!errors.length && <View className="mb-4">{errors.map(message => <Text key={message} className="font-poppins text-xs text-red-700 mb-1">{message}</Text>)}</View>}
+    <SsfInput label="Change reason" value={reason} onChangeText={setReason} style={{ minHeight: 40, minWidth: 0, width: 0 }} />
+    <View className="flex-row flex-wrap gap-3 mb-4"><SsfButton label="Save configuration" onPress={save} isLoading={update.isPending} disabled={!festival || !!errors.length || !!itemsError} />
+      <SsfButton label="Cancel" variant="ghost" onPress={() => router.back()} /></View>
+    {!!versions.length && <SsfCard><Text className="font-poppins-bold text-sm text-ui-text mb-2">Configuration history</Text>{versions.map(v =>
+      <Text key={v.id} className="font-poppins text-xs text-ui-text-muted py-1">Version {v.config_version} · {v.change_reason || new Date(v.created_at).toLocaleString()}</Text>)}</SsfCard>}
+    <SsfSheet visible={!!competitionPanel} onClose={() => setCompetitionPanel(null)} title={panelTitle} description={panelDescription}
+      footer={<SsfButton label={competitionPanel?.mode === 'select' ? 'Done' : 'Close'} onPress={() => setCompetitionPanel(null)} />}>
+      {competitionPanel?.mode === 'select' && <SsfInput label="Find competitions" value={search} onChangeText={setSearch}
+        placeholder="Name, code or category" autoCapitalize="none" style={{ minHeight: 40, minWidth: 0, width: 0 }} />}
+      {competitionOptionsLoading ? <ActivityIndicator className="py-5" /> : competitionOptionsError
+        ? <Text className="font-poppins text-sm text-red-700">Could not load enabled competitions or categories. Close and reload before editing assignments.</Text>
+        : <>
+          {competitionPanel?.mode === 'select' && <Text className="font-poppins-bold text-xs text-ui-text mb-2">{panelSelectedIds.length} competitions selected</Text>}
+          {panelItems.map((item: any) => {
+            const selected = panelSelectedIds.includes(item.id), valid = isEnabledCompetition(item);
+            const otherSectionIndex = competitionPanel?.mode === 'select' && competitionPanel.boost
+              ? assignedInOtherSection(item.id, competitionPanel.boost, competitionPanel.sectionId!) : -1;
+            const unavailableCategory = isCollegeFest && !enabledCategoryCodes.has(String(item.category_codes?.[0] ?? '').trim().toUpperCase());
+            const row = <>
+              {selected || competitionPanel?.mode !== 'select'
+                ? <CheckCircle2 size={18} color={ui.colors.primary} />
+                : <Circle size={18} color={ui.colors.textMuted} />}
+              <View className="flex-1">
+                <Text className="font-poppins text-sm text-ui-text">{item.item_name_en || item.item_name_ml}</Text>
+                <Text className="font-poppins text-xs text-ui-text-muted">{item.item_code} · {(item.category_codes ?? []).join(' / ')}{!valid ? ` · ${unavailableCategory ? 'category disabled' : 'category review required'}` : ''}{otherSectionIndex >= 0 ? ` · Already in Section ${otherSectionIndex + 1}` : ''}</Text>
+              </View>
+            </>;
+            return competitionPanel?.mode === 'select'
+              ? <TouchableOpacity key={item.id} disabled={(!valid && !selected) || otherSectionIndex >= 0} onPress={() => toggleSectionItem(item.id, competitionPanel.boost!, competitionPanel.sectionId!)}
+                accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: (!valid && !selected) || otherSectionIndex >= 0 }}
+                className="flex-row items-center gap-3 py-3 border-b border-ui-border">{row}</TouchableOpacity>
+              : <View key={item.id} className="flex-row items-center gap-3 py-3 border-b border-ui-border">{row}</View>;
+          })}
+          {!panelItems.length && <Text className="font-poppins text-sm text-ui-text-muted py-4">
+            {competitionPanel?.mode === 'select' ? 'No matching competitions.' : 'No competitions in this selection yet.'}
+          </Text>}
+          {competitionPanel?.mode === 'both' && bothBoostIds.length > bothBoostItems.length &&
+            <Text className="font-poppins text-xs text-ui-text-muted mt-3">{bothBoostIds.length - bothBoostItems.length} selected item(s) are unavailable in the current competition list.</Text>}
+        </>}
+    </SsfSheet>
+  </ScrollView>;
 }

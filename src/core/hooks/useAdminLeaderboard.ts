@@ -6,6 +6,8 @@ export const useAdminLeaderboard = (tenantId?: string | null, festivalId?: strin
   return useQuery({
     queryKey: LEADERBOARD_QUERY_KEYS.adminLeaderboard(tenantId, festivalId),
     queryFn: () => adminLeaderboardService.listAdminLeaderboard(tenantId, festivalId),
-    enabled: !!festivalId || !!tenantId,
+    // Wait for the active festival so we do not issue an unscoped request
+    // before its ID has been resolved.
+    enabled: !!festivalId,
   });
 };

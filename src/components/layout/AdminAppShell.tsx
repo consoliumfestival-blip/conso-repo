@@ -13,9 +13,11 @@ import {
 } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import {
+  BadgePlus,
   Bell,
   Building2,
   CalendarDays,
+  ClipboardList,
   ChevronDown,
   ChevronRight,
   Home,
@@ -38,6 +40,7 @@ import {
 
 import { useAuthStore } from "@/core/store/authStore";
 import { useFestival } from "@/core/hooks/useFestival";
+import { FEATURE_FLAGS } from "@/core/config/features";
 import { ui } from "@/constants/designSystem";
 import { JudgeApprovalToast } from "../ui/JudgeApprovalToast";
 import { useJudgeApprovalStore } from "@/core/store/judgeApprovalStore";
@@ -73,7 +76,13 @@ const navItems: NavItem[] = [
     label: "Participants",
     path: "/(admin)/participants",
     icon: Users,
-    match: (path) => path.includes("/participants"),
+    match: (path) => path === "/(admin)/participants" || path === "/participants",
+  },
+  {
+    label: "Programs",
+    path: "/(admin)/participants/programs",
+    icon: ClipboardList,
+    match: (path) => path.includes("/participants/programs"),
   },
   {
     label: "Schedules",
@@ -90,17 +99,19 @@ const navItems: NavItem[] = [
     match: (path) => path.includes("/stage-management"),
   },
   {
-    label: "Sub Organisations",
+    label: "Teams",
     path: "/(admin)/organisations",
     icon: Building2,
     match: (path) => path.includes("/organisations"),
   },
-  {
-    label: "Communication Center",
-    path: "/(admin)/communication",
-    icon: Megaphone,
-    match: (path) => path.includes("/communication"),
-  },
+  ...(FEATURE_FLAGS.ENABLE_COMMUNICATION_CENTER
+    ? [{
+        label: "Communication Center",
+        path: "/(admin)/communication",
+        icon: Megaphone,
+        match: (path: string) => path.includes("/communication"),
+      }]
+    : []),
   {
     label: "Judge Management",
     path: "/(admin)/judges",
@@ -170,7 +181,7 @@ const navItems: NavItem[] = [
   {
     label: "Grace Marks",
     path: "/(admin)/grace-marks",
-    icon: Trophy,
+    icon: BadgePlus,
     match: (path) => path.includes("/grace-marks"),
   },
   {
@@ -211,6 +222,7 @@ const navItems: NavItem[] = [
 ];
 
 function getPageTitle(pathname: string) {
+  if (pathname.includes('/participants/programs')) return 'Programs';
   if (pathname.includes("/participants/")) {
     if (pathname.endsWith("/add")) return "Add Participant";
     if (pathname.includes("chest-card")) return "Chest Cards";
@@ -823,6 +835,8 @@ const styles = StyleSheet.create({
   },
   desktopNavItemActive: {
     backgroundColor: ui.colors.primarySoft,
+    borderWidth: 1,
+    borderColor: "#B9E5DE",
   },
   desktopNavLabel: {
     color: "#334155",

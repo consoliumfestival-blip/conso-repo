@@ -13,6 +13,8 @@ import { useJudges } from '../../../../core/hooks/useJudges';
 import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useSchedule } from '../../../../core/hooks/useSchedule';
 import { calculateGrade } from '../../../../services/judgeService';
+import { useFestival } from '../../../../core/hooks/useFestival';
+import { normalizePointsConfig } from '../../../../core/utils/flexiblePointsEngine';
 import { useAuthStore } from '../../../../core/store/authStore';
 
 import { getScoringRulesForItem, formatCriteriaForUI } from '../../../../core/utils/scoringRules';
@@ -26,6 +28,11 @@ export default function MarkEntryPage() {
 
   const { schedules } = useSchedule();
   const schedule = schedules?.find((s: any) => s.id === scheduleId);
+  const { usePointsConfig } = useFestival();
+  const { data: pointsConfig } = usePointsConfig(schedule?.festival_id);
+  const gradingConfig = React.useMemo(() => normalizePointsConfig(pointsConfig), [pointsConfig]);
+  const [configuredMaximum, setConfiguredMaximum] = useState(NaN);
+  const [ruleError, setRuleError] = useState('');
 
   const {
     judges,
@@ -47,7 +54,10 @@ export default function MarkEntryPage() {
     ),
     [itemRegistrations],
   );
-  const { data: markEntries, refetch: refetchMarks } = useMarkEntries(scheduleId);
+  // Keep the marks and status panel on the same refresh cadence. The status
+  // counts below are derived from these same entries as the per-card Finalized
+  // indicators, rather than trusting a separately cached aggregate count.
+  const { data: markEntries } = useMarkEntries(scheduleId, 30000);
   const { data: judgeSummary } = useJudgeSubmissionSummary(scheduleId);
 
   // Local state: marks[registrationId][judgeId] = { criteria_scores, total_mark }
@@ -93,8 +103,12 @@ export default function MarkEntryPage() {
         const itemNameEn = schedule.items.item_name_en || '';
         const itemNameMl = schedule.items.item_name_ml || '';
         const itemType = schedule.items.item_type || 'stage';
-        const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenant_id || undefined);
-        setEventCriteria(formatCriteriaForUI(rules.criteria));
+        setConfiguredMaximum(NaN); setRuleError('');
+        try {
+          const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenant_id || undefined);
+          setEventCriteria(formatCriteriaForUI(rules.criteria));
+          setConfiguredMaximum(rules.total_marks);
+        } catch (error: any) { setEventCriteria([]); setRuleError(error.message || 'Configure scoring rules first.'); }
       }
     };
     fetchRules();
@@ -103,6 +117,8 @@ export default function MarkEntryPage() {
   const judge = judges.find((j: any) => j.id === selectedJudge);
 
   const getTotal = (regId: string, judgeId: string) => {
+    const recorded = (markEntries as any[])?.find(m => m.registration_id === regId && m.judge_id === judgeId);
+    if (recorded?.total_mark !== null && recorded?.total_mark !== undefined) return Number(recorded.total_mark);
     const scores = marks[regId]?.[judgeId] ?? {};
     return Object.values(scores).reduce((a, b) => a + b, 0);
   };
@@ -112,11 +128,13 @@ export default function MarkEntryPage() {
     (markEntries as any[])?.find(
       m => m.registration_id === regId && m.judge_id === judgeId
     );
+  const visibleRegistrationIds = new Set(registrations.map((registration: any) => registration.id));
 
   if (loadingRegs) return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 60 }} />;
 
   return (
     <View className="flex-1 bg-ssf-bg">
+      {!!ruleError && <Text className="p-3 text-red-700 font-poppins text-xs">{ruleError}</Text>}
       {/* Header */}
       <View className="border-b border-ui-border bg-white px-4 py-3">
         <View className="flex-row items-center mb-2">
@@ -132,12 +150,16 @@ export default function MarkEntryPage() {
         </Text>
 
         {/* Judge Status Panel */}
-        {judgeSummary && (judgeSummary as any[]).length > 0 && (
+        {Array.isArray(markEntries) && judgeSummary && (judgeSummary as any[]).length > 0 && (
           <View className="mt-3 rounded-lg border border-ui-border bg-ui-muted p-3 gap-y-1.5">
             <Text className="font-poppins-bold text-ssf-text text-xs mb-1">Judge Status</Text>
             {(judgeSummary as any[]).map((j: any, idx: number) => {
-              const total = Number(j.total_assigned) || 0;
-              const submitted = Number(j.submitted_count) || 0;
+              const total = visibleRegistrationIds.size;
+              const submitted = new Set((markEntries as any[])
+                .filter((entry: any) => entry.judge_id === j.judge_id
+                  && entry.is_final === true
+                  && visibleRegistrationIds.has(entry.registration_id))
+                .map((entry: any) => entry.registration_id)).size;
               const allDone = submitted >= total && total > 0;
               const partial = submitted > 0 && !allDone;
               return (
@@ -204,7 +226,8 @@ export default function MarkEntryPage() {
             (registrations as any[]).map((reg) => {
               const entry = getEntry(reg.id, selectedJudge);
               const total = getTotal(reg.id, selectedJudge);
-              const grade = calculateGrade(total, 100);
+              const maximum = Number(entry?.max_mark_snapshot ?? configuredMaximum);
+              const grade = calculateGrade(total, maximum, gradingConfig);
               const isSaving = saving === reg.id;
               const isFinalized = entry?.is_final === true;
 
@@ -240,7 +263,7 @@ export default function MarkEntryPage() {
                         grade === 'A' ? 'text-blue-700' :
                         grade === 'B' ? 'text-yellow-700' :
                         grade === 'C' ? 'text-orange-700' : 'text-gray-400'
-                      }`}>{total > 0 ? `${grade}` : '—'}</Text>
+                      }`}>{entry?.total_mark != null ? grade : '—'}</Text>
                     </View>
                   </View>
 
@@ -277,7 +300,7 @@ export default function MarkEntryPage() {
                   {/* Total */}
                   <View className="bg-gray-50 rounded-xl p-3 mb-3 flex-row justify-between">
                     <Text className="font-poppins-bold text-ssf-text">Total Mark</Text>
-                    <Text className="font-poppins-black text-ssf-primary text-lg">{total} / 100</Text>
+                    <Text className="font-poppins-black text-ssf-primary text-lg">{total} / {Number.isFinite(maximum) ? maximum : '—'}</Text>
                   </View>
 
                   {/* Status indicator */}

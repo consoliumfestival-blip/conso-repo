@@ -11,6 +11,8 @@ export type OrganisationOption = {
   id: string;
   name: string;
   org_type: string;
+  parent_id?: string | null;
+  tenant_id?: string | null;
 };
 
 export type PublicCandidateProfile = {
@@ -26,6 +28,8 @@ export type PublicCandidateProfile = {
   };
   participated_items: {
     registration_id: string;
+    entry_kind?: 'participant' | 'general_team';
+    entry_chest_number?: string | null;
     item_id: string | null;
     item_name: string;
     item_name_ml: string;
@@ -57,6 +61,21 @@ const throwIfError = (error: { message: string; code?: string; details?: string 
     databaseError.hint = error.hint;
     throw databaseError;
   }
+};
+
+const throwIfParticipantDeleteError = (
+  error: { message: string; code?: string; details?: string | null; hint?: string | null } | null,
+) => {
+  if (
+    error?.code === '23503' &&
+    error.message.includes('registrations_participant_id_fkey')
+  ) {
+    throw new Error(
+      'This participant has competition registrations and cannot be permanently deleted without removing competition history. Use “Terminate Participant” to retain registrations and results while excluding the participant from active/public views.',
+    );
+  }
+
+  throwIfError(error);
 };
 
 const resolveExistingPhotoKey = (participant: any): string | null => {
@@ -93,6 +112,14 @@ export const participantService = {
     const { data, error } = await participantRepository.getParticipantRegistrations<T>(participantId);
     throwIfError(error);
     return data;
+  },
+
+  async getParticipantGeneralResults<T>(participantId: string): Promise<T[]> {
+    const { data, error } = await supabase.rpc('get_participant_general_results', {
+      p_participant_id: participantId,
+    });
+    throwIfError(error);
+    return (data as T[]) ?? [];
   },
 
   async getRegistrationsByItem<T>(itemId: string, tenantId: string, festivalId?: string): Promise<T[]> {
@@ -137,7 +164,11 @@ export const participantService = {
     overwrite = false,
     festivalId?: string,
     secureStage = false,
-  ): Promise<{ smartPriorityApplied: boolean } | void> {
+  ): Promise<{ smartPriorityApplied: boolean; conflictsUnavoidable?: boolean } | void> {
+    if (secureStage) {
+      const result = await stageManagementService.drawCodeLetters(scheduleId, overwrite);
+      return { smartPriorityApplied: false, conflictsUnavoidable: result?.conflictsUnavoidable === true };
+    }
     // Code-letter generation must use the selected schedule scope. Item-only
     // reads are tenant-local and can omit registrations belonging to visible
     // child organisations shown on the schedule/check-in page.
@@ -172,7 +203,33 @@ export const participantService = {
     }
 
     // Determine how many new letters we need. We'll grab a larger pool in case of conflicts
-    const participantIds = unassignedRegs.map((r: any) => r.participant_id);
+    // General team registrations intentionally have no participant_id. Their
+    // overlapping-event conflicts must be checked against every roster member.
+    const generalRegistrationIds = unassignedRegs
+      .filter((r: any) => !r.participant_id)
+      .map((r: any) => r.id);
+    const memberIdsByRegistration = new Map<string, string[]>();
+    if (generalRegistrationIds.length > 0) {
+      const { data: members, error: membersError } = await supabase
+        .from('group_members')
+        .select('registration_id, participant_id')
+        .in('registration_id', generalRegistrationIds);
+      if (membersError) throw new Error(membersError.message);
+      for (const member of members ?? []) {
+        if (!member.participant_id) continue;
+        const ids = memberIdsByRegistration.get(member.registration_id) ?? [];
+        ids.push(member.participant_id);
+        memberIdsByRegistration.set(member.registration_id, ids);
+      }
+      for (const registrationId of generalRegistrationIds) {
+        if (!memberIdsByRegistration.get(registrationId)?.length) {
+          throw new Error('A General team entry has no roster; code letters cannot be assigned safely.');
+        }
+      }
+    }
+    const participantIds = [...new Set(unassignedRegs.flatMap((r: any) =>
+      r.participant_id ? [r.participant_id] : (memberIdsByRegistration.get(r.id) ?? [])
+    ))];
     const { data: conflictsMap, error: conflictErr } = await participantRepository.getParticipantConflicts(participantIds, scheduleId);
     if (conflictErr) throw new Error(conflictErr.message);
 
@@ -190,7 +247,13 @@ export const participantService = {
 
     const results = await Promise.all(
       unassignedRegs.map(async (reg: any) => {
-        const participantConflicts = conflictsMap?.[reg.participant_id] || new Set<string>();
+        const conflictIds = reg.participant_id
+          ? [reg.participant_id]
+          : (memberIdsByRegistration.get(reg.id) ?? []);
+        const participantConflicts = new Set<string>();
+        for (const conflictId of conflictIds) {
+          for (const letter of conflictsMap?.[conflictId] ?? []) participantConflicts.add(letter);
+        }
         
         let assignedLetter = null;
         
@@ -337,7 +400,7 @@ export const participantService = {
 
   async deleteParticipant(participantId: string): Promise<void> {
     const { error } = await participantRepository.deleteParticipant(participantId);
-    throwIfError(error);
+    throwIfParticipantDeleteError(error);
   },
 
   async terminateParticipant(participantId: string, reason: string): Promise<void> {
@@ -352,7 +415,7 @@ export const participantService = {
 
   async deleteParticipants(participantIds: string[]): Promise<void> {
     const { error } = await participantRepository.deleteParticipants(participantIds);
-    throwIfError(error);
+    throwIfParticipantDeleteError(error);
   },
 
   async approveParticipants(participantIds: string[]): Promise<void> {
@@ -405,6 +468,39 @@ export const participantService = {
     throwIfError(error);
     if (!data) throw new Error('Participant was not returned after create');
     return data;
+  },
+
+  async createParticipantWithChestNumber<T>(input: {
+    tenant_id: string;
+    festival_id: string;
+    organisation_id: string;
+    name: string;
+    category_code: string;
+    status: ParticipantStatus;
+    age: number | null;
+    class_std: string | null;
+    dob: string | null;
+    gender: 'boys' | 'girls';
+    public_profile_enabled: boolean;
+    show_organisation_public: boolean;
+  }): Promise<T> {
+    const { data, error } = await supabase.rpc('create_participant_with_chest_number', {
+      p_tenant_id: input.tenant_id,
+      p_festival_id: input.festival_id,
+      p_organisation_id: input.organisation_id,
+      p_name: input.name,
+      p_category_code: input.category_code,
+      p_status: input.status,
+      p_age: input.age,
+      p_class_std: input.class_std,
+      p_dob: input.dob,
+      p_gender: input.gender,
+      p_public_profile_enabled: input.public_profile_enabled,
+      p_show_organisation_public: input.show_organisation_public,
+    });
+    throwIfError(error);
+    if (!data) throw new Error('Participant was not returned after create');
+    return data as T;
   },
 
   async createParticipants<T>(payloads: Record<string, unknown>[]): Promise<T[]> {

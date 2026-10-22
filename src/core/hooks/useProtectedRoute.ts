@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { usePathname, useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 
 export function useProtectedRoute() {
   const router = useRouter();
   const segments = useSegments();
+  const pathname = usePathname();
   const { user, role, is_superadmin, initialized } = useAuthStore();
   const inTeamGroup = segments[0] === 'team';
   const inTeamLogin = inTeamGroup && segments[1] === 'login';
   const isTeamLeader = role === 'team_leader';
-  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup);
+  const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
+  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal);
 
   useEffect(() => {
     if (!initialized) return;
@@ -28,7 +30,7 @@ export function useProtectedRoute() {
       return;
     }
 
-    if (user && segments[0] === 'stage-management' && role !== 'admin' && !is_superadmin) {
+    if (user && pathname.startsWith('/stage-management') && !isStageVenuePortal && role !== 'admin' && !is_superadmin) {
       router.replace('/(public)');
       return;
     }
@@ -36,7 +38,7 @@ export function useProtectedRoute() {
     // Team Leaders have a dedicated namespace. Keep this check separate from
     // navigation visibility so a manually entered core URL is denied before
     // the protected screen can issue its own queries.
-    if (user && isTeamLeader && !inTeamGroup) {
+    if (user && isTeamLeader && !inTeamGroup && !isStageVenuePortal) {
       router.replace('/team/dashboard');
       return;
     }
@@ -47,6 +49,7 @@ export function useProtectedRoute() {
         !inPublicGroup && 
         !inAuthGroup && 
         !inTeamLogin &&
+        !isStageVenuePortal &&
         segments[0] !== 'candidate' && 
         segments[0] !== 'unit-profile' && 
         !inJudgeGroup && 
@@ -97,7 +100,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, inTeamGroup, inTeamLogin, isTeamLeader, router]);
+  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, router]);
 
   return mustBlockCoreRoute;
 }

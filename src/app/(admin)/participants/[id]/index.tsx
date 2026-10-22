@@ -1,6 +1,6 @@
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform, Switch, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform, Switch, useWindowDimensions, Image, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
@@ -15,7 +15,6 @@ import {
   Edit3,
   Trash2,
   AlertTriangle,
-  Plus,
   Eye,
   EyeOff,
   ExternalLink,
@@ -26,6 +25,7 @@ import {
   Globe2,
   ShieldCheck,
   Trophy,
+  Upload,
 } from 'lucide-react-native';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { CATEGORIES } from '../../../../constants/categories';
@@ -33,6 +33,7 @@ import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategor
 import { SsfSelectMenu } from '../../../../components/ui/SsfSelectMenu';
 import { SsfSheet } from '../../../../components/ui/SsfSheet';
 import { SsfProfileSkeleton } from '../../../../components/ui/SsfSkeleton';
+import { SsfDatePicker } from '../../../../components/ui/SsfDatePicker';
 
 function InfoTile({
   label,
@@ -119,6 +120,8 @@ export default function ParticipantDetails() {
     participant,
     isLoadingDetail,
     registrations: events,
+    generalTeamResults,
+    isLoadingGeneralTeamResults,
     updateStatus,
     updateParticipant,
     deleteParticipant,
@@ -127,32 +130,22 @@ export default function ParticipantDetails() {
     isTerminating,
     isRevokingTermination,
     isUpdatingParticipant,
-    registerParticipant,
-    isRegistering,
-    deleteRegistration,
-    isDeletingRegistration,
+    uploadProfilePhoto,
+    removeProfilePhoto,
+    isUploadingProfilePhoto,
+    isRemovingProfilePhoto,
   } = useParticipants(participantId);
 
-  const { useActiveFestival, useItems } = useFestival();
+  const { useActiveFestival } = useFestival();
   const { data: festival } = useActiveFestival();
-  const { data: allItems } = useItems(festival?.id);
   const isCollegeFest = festival?.festival_template === 'college_fest';
   const { data: collegeCategories = [], isLoading: categoriesLoading } =
     useFestivalCategories(isCollegeFest ? festival?.id : undefined, false);
 
   const [isEditing, setIsEditing] = useState(false);
-  const [isAddingEvent, setIsAddingEvent] = useState(false);
-  const [selectedItemCode, setSelectedItemCode] = useState<string>('');
-  const [addEventError, setAddEventError] = useState<string>('');
-  
-  // Custom dropdown state
-  const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
-  const [itemSearchText, setItemSearchText] = useState('');
 
   // Editable fields
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [dob, setDob] = useState('');
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [organisations, setOrganisations] = useState<any[]>([]);
@@ -160,16 +153,21 @@ export default function ParticipantDetails() {
   const [gender, setGender] = useState('');
   const [classStd, setClassStd] = useState('');
   const [educationType, setEducationType] = useState('');
-  const [membershipNo, setMembershipNo] = useState('');
-  const [profileBio, setProfileBio] = useState('');
-  const [profileSlug, setProfileSlug] = useState('');
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(true);
   const [showOrganisationPublic, setShowOrganisationPublic] = useState(true);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [removeExistingPhoto, setRemoveExistingPhoto] = useState(false);
   const [expandedProfileSection, setExpandedProfileSection] = useState<'competition' | 'contact' | 'verification' | null>(
     isDesktopProfile ? 'competition' : null,
   );
   const [publicSectionExpanded, setPublicSectionExpanded] = useState(false);
   const [eventsSectionExpanded, setEventsSectionExpanded] = useState(isDesktopProfile);
+  const festivalLevel = String(festival?.level || '').trim().toLowerCase();
+  const currentOrganisation = organisations.find((organisation) => organisation.tenant_id === validTenantId);
+  const availableOrganisations = festival?.chest_number_template === 'team' || festivalLevel === 'sector' || festivalLevel === 'division'
+    ? organisations.filter((organisation) => organisation.parent_id === currentOrganisation?.id)
+    : organisations;
 
   // Custom Action Modal State
   const [actionModal, setActionModal] = useState<{
@@ -195,18 +193,16 @@ export default function ParticipantDetails() {
   useEffect(() => {
     if (participant) {
       setName(participant.name || '');
-      setEmail(participant.email || '');
-      setPhone(participant.phone || '');
       setDob(participant.dob || '');
       setCategoryCode(participant.category_code || '');
       setGender(participant.gender || '');
       setClassStd(participant.class_std || '');
       setEducationType(participant.education_type || '');
-      setMembershipNo(participant.membership_no || '');
-      setProfileBio(participant.profile_bio || '');
-      setProfileSlug(participant.profile_slug || '');
       setPublicProfileEnabled(participant.public_profile_enabled !== false);
       setShowOrganisationPublic(participant.show_organisation_public !== false);
+      setPhotoPreviewUrl(participant.photo_url || null);
+      setPhotoFile(null);
+      setRemoveExistingPhoto(false);
       setSelectedOrgId(participant.organisation_id || '');
     }
   }, [participant]);
@@ -231,6 +227,32 @@ export default function ParticipantDetails() {
     }
   };
 
+  const chooseProfilePhoto = () => {
+    if (Platform.OS !== 'web') {
+      Alert.alert('Upload unavailable', 'Photo selection is currently supported on web.');
+      return;
+    }
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'image/png,image/jpeg,image/webp';
+    picker.onchange = () => {
+      const file = picker.files?.[0];
+      if (!file) return;
+      if (photoPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(photoPreviewUrl);
+      setPhotoFile(file);
+      setPhotoPreviewUrl(URL.createObjectURL(file));
+      setRemoveExistingPhoto(false);
+    };
+    picker.click();
+  };
+
+  const clearProfilePhoto = () => {
+    if (photoPreviewUrl?.startsWith('blob:')) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoPreviewUrl(null);
+    setPhotoFile(null);
+    setRemoveExistingPhoto(Boolean(participant?.photo_url));
+  };
+
   const handleSave = async () => {
     if (!name) return Alert.alert('Error', 'Name is required');
     if (!participantId) return;
@@ -243,12 +265,13 @@ export default function ParticipantDetails() {
     }
 
     try {
-      if (selectedOrgId && selectedOrgId !== participant.organisation_id) {
+      const changingTeam = Boolean(selectedOrgId && selectedOrgId !== participant.organisation_id);
+      if (changingTeam) {
         // Team has changed! We need to confirm and call RPC.
         const confirm = await new Promise((resolve) => {
           Alert.alert(
             "Change Team?",
-            "You are changing the team. All Solo items and their future points will be transferred to the new team. Group items will remain with the old team. Proceed?",
+            `You are changing the team. All Solo items and their future points will be transferred to the new team. Group items will remain with the old team.${festival?.chest_number_template === 'team' ? ' The participant will receive a new chest number from the destination team.' : ''} Proceed?`,
             [
               { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
               { text: "Yes, Change Team", style: "destructive", onPress: () => resolve(true) }
@@ -278,21 +301,30 @@ export default function ParticipantDetails() {
         id: participantId, 
         updates: {
           name, 
-          email: email || null, 
-          phone: phone || null, 
           dob: dob || null,
           category_code: categoryCode || null,
-          gender: gender || null,
           class_std: isCollegeFest ? null : classStd || null,
           education_type: isCollegeFest ? null : educationType || null,
-          membership_no: membershipNo || null,
-          profile_bio: profileBio || null,
-          profile_slug: profileSlug || null,
+          gender: festival?.gender_mode === 'boys_only' ? 'boys' : festival?.gender_mode === 'girls_only' ? 'girls' : gender,
           public_profile_enabled: publicProfileEnabled,
           show_organisation_public: showOrganisationPublic,
         }
       });
       setIsEditing(false);
+      try {
+        if (photoFile) {
+          const photoTenantId = changingTeam
+            ? availableOrganisations.find((organisation) => organisation.id === selectedOrgId)?.tenant_id
+            : participant.tenant_id;
+          if (!photoTenantId) throw new Error('Destination team tenant could not be resolved.');
+          await uploadProfilePhoto({ id: participantId, file: photoFile, tenantId: photoTenantId, festivalId: participant.festival_id });
+        } else if (removeExistingPhoto) {
+          await removeProfilePhoto(participantId);
+        }
+      } catch (photoError: any) {
+        Alert.alert('Details saved; photo update failed', photoError?.message || 'Retry the photo change from Edit profile.');
+        return;
+      }
       Alert.alert('Success', 'Participant updated.');
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -419,85 +451,6 @@ export default function ParticipantDetails() {
         } catch (error: any) {
           setTimeout(() => {
             setActionModal({ visible: true, type: 'alert', title: 'Error', message: error.message, action: null });
-          }, 300);
-        }
-      }
-    });
-  };
-
-  const handleAddEvent = async () => {
-    if (!selectedItemCode) return Alert.alert('Error', 'Please select an item');
-    if (!participant || !festival) return;
-
-    const selectedItem = allItems?.find((i: any) => i.item_code === selectedItemCode);
-    if (!selectedItem) return;
-
-    try {
-      setAddEventError('');
-      const { errors, warnings } = await registerParticipant({
-        participant,
-        item: selectedItem,
-        festivalConfig: festival
-      });
-
-      if (errors && errors.length > 0) {
-        const errorMsg = errors.map(e => `• ${e.message}`).join('\n');
-        setAddEventError(errorMsg);
-        Alert.alert('Registration Blocked', errorMsg);
-        return;
-      }
-
-      if (warnings && warnings.length > 0) {
-        const warningMsg = warnings.map(w => `• ${w.message}`).join('\n');
-        setAddEventError(warningMsg);
-        Alert.alert('Warning', warningMsg);
-      } else {
-        Alert.alert('Success', 'Participant registered successfully');
-      }
-
-      setIsAddingEvent(false);
-      setSelectedItemCode('');
-    } catch (error: any) {
-      setAddEventError(error.message);
-      Alert.alert('Error', error.message);
-    }
-  };
-
-  const handleRemoveEvent = async (event: any) => {
-    if (!event?.id || !participantId) return;
-    const itemName = event.items?.item_name_en || event.items?.item_code || 'this item';
-    const message = `Remove ${itemName} from this participant? The assignment can be added again later. If marks, results, or stage records already exist, the system will safely block the removal.`;
-
-    setActionModal({
-      visible: true,
-      type: 'confirm',
-      title: 'Remove Assignment',
-      message: message,
-      action: async () => {
-        try {
-          const result = await deleteRegistration({
-            registrationId: event.id,
-            itemId: event.item_id,
-            reason: 'Admin removed participant-item assignment during festival preparation.',
-          });
-          if (result?.status === 'blocked') {
-            const blockedMessage = result.message || 'This assignment has dependent competition data and was not removed.';
-            setTimeout(() => {
-              setActionModal({ visible: true, type: 'alert', title: 'Assignment Not Removed', message: blockedMessage, action: null });
-            }, 300);
-            return;
-          }
-          setTimeout(() => {
-            setActionModal({ visible: true, type: 'alert', title: 'Removed', message: 'The item assignment was safely removed.', action: null });
-          }, 300);
-        } catch (error: any) {
-          const messageText = String(error?.message || 'Unable to remove this assignment.');
-          const protectedRecord = /foreign key|violates|referenced|constraint/i.test(messageText);
-          const safeMessage = protectedRecord
-            ? 'This assignment already has competition records (such as marks, results, or stage data), so it was not removed. This protects the existing history.'
-            : messageText;
-          setTimeout(() => {
-            setActionModal({ visible: true, type: 'alert', title: 'Assignment Not Removed', message: safeMessage, action: null });
           }, 300);
         }
       }
@@ -685,9 +638,9 @@ export default function ParticipantDetails() {
             {isEditing ? (
               <View className="mt-3 border-t border-slate-100 pt-2.5">
                 <Text className="font-poppins text-ssf-text-muted mb-2 text-xs">Organisation (Team) *</Text>
-                {organisations.length > 0 ? (
+                {availableOrganisations.length > 0 ? (
                   <View className="flex-row flex-wrap gap-2">
-                    {organisations.map((org: any) => (
+                    {availableOrganisations.map((org: any) => (
                       <TouchableOpacity
                         key={org.id}
                         className={`px-3 py-1.5 rounded-lg border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
@@ -699,6 +652,8 @@ export default function ParticipantDetails() {
                       </TouchableOpacity>
                     ))}
                   </View>
+                ) : organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division') ? (
+                  <Text className="font-poppins text-xs italic text-amber-700">No subordinate organisations are available for this {festivalLevel}.</Text>
                 ) : (
                   <Text className="font-poppins text-xs italic text-red-500">Loading organisations...</Text>
                 )}
@@ -798,24 +753,16 @@ export default function ParticipantDetails() {
                   options={categoryOptions}
                 />
               </View>
-              <View className="flex-1" style={{ zIndex: 40 }}>
+              {(!festival?.gender_mode || festival.gender_mode === 'both') && <View className="flex-1" style={{ zIndex: 40 }}>
                 <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Gender (boys/girls)</Text>
-                <SsfSelectMenu
-                  value={gender}
-                  onValueChange={setGender}
-                  placeholder="-- Select --"
-                  accessibilityLabel="Select gender"
-                  options={[
-                    { label: '-- Select --', value: '' },
-                    { label: 'Boys', value: 'boys' },
-                    { label: 'Girls', value: 'girls' },
-                  ]}
-                />
-              </View>
+                <View className="flex-row gap-2">
+                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-slate-300 bg-white'}`}><Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
+                </View>
+              </View>}
             </View>
             <View>
               <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Date of Birth (YYYY-MM-DD)</Text>
-              <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={dob} onChangeText={setDob} />
+              <SsfDatePicker value={dob} onValueChange={setDob} placeholder="Pick a date" />
             </View>
             {!isCollegeFest && <View className="flex-row gap-x-3">
               <View className="flex-1">
@@ -827,43 +774,19 @@ export default function ParticipantDetails() {
                 <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={educationType} onChangeText={setEducationType} />
               </View>
             </View>}
-            <View>
-              <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Membership Number</Text>
-              <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={membershipNo} onChangeText={setMembershipNo} />
-            </View>
-            <View>
-              <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Email</Text>
-              <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={email} onChangeText={setEmail} keyboardType="email-address" />
-            </View>
-            <View>
-              <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Phone</Text>
-              <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-            </View>
             <View className="border-t border-gray-100 pt-4 gap-y-4">
               <View className="flex-row items-center gap-x-2">
                 <Eye size={18} color={ui.colors.info} />
                 <Text className="font-poppins-bold text-base text-ssf-text">Public Candidate Profile</Text>
               </View>
               <View>
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Public Slug</Text>
-                <TextInput
-                  className="border border-ssf-border rounded-xl p-3 font-poppins"
-                  value={profileSlug}
-                  onChangeText={setProfileSlug}
-                  placeholder="candidate-name"
-                  autoCapitalize="none"
-                />
-              </View>
-              <View>
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Public Bio</Text>
-                <TextInput
-                  className="border border-ssf-border rounded-xl p-3 font-poppins min-h-[96px]"
-                  value={profileBio}
-                  onChangeText={setProfileBio}
-                  multiline
-                  textAlignVertical="top"
-                  placeholder="Short public-safe candidate bio"
-                />
+                <Text className="text-sm font-poppins text-ssf-text-muted mb-2">Profile Photo</Text>
+                <View className="flex-row items-center gap-3">
+                  {photoPreviewUrl ? <Image source={{ uri: photoPreviewUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} /> : <View className="h-14 w-14 items-center justify-center rounded-full border border-ssf-border bg-slate-50"><Text className="font-poppins text-xl text-ssf-text-muted">?</Text></View>}
+                  <TouchableOpacity onPress={chooseProfilePhoto} className="min-h-10 flex-row items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3"><Upload size={15} color="#2563EB"/><Text className="font-poppins-bold text-xs text-blue-700">Select Photo</Text></TouchableOpacity>
+                  {!!photoPreviewUrl && <TouchableOpacity onPress={clearProfilePhoto} className="min-h-10 rounded-xl border border-red-100 bg-red-50 px-3"><Text className="font-poppins-bold text-xs text-red-700">Remove</Text></TouchableOpacity>}
+                  {(isUploadingProfilePhoto || isRemovingProfilePhoto) && <ActivityIndicator size="small" color={ui.colors.primary} />}
+                </View>
               </View>
               <View className="flex-row justify-between items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
                 <View className="flex-1 pr-3">
@@ -962,6 +885,39 @@ export default function ParticipantDetails() {
         <View
           className={isDesktopProfile ? 'flex-row items-start gap-2' : 'gap-y-3'}
         >
+      {(isLoadingGeneralTeamResults || generalTeamResults.length > 0) && (
+        <SsfCard className="mb-3 w-full p-3" style={{ borderRadius: 10 }}>
+          <View className="mb-3 flex-row items-center">
+            <View className="h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+              <Trophy size={17} color={ui.colors.success} />
+            </View>
+            <View className="ml-2.5">
+              <Text className="font-poppins-bold text-base">General Team Results</Text>
+              <Text className="font-poppins text-[10px] text-ssf-text-muted">
+                Team competition and placement only
+              </Text>
+            </View>
+          </View>
+          {isLoadingGeneralTeamResults ? (
+            <Text className="font-poppins text-xs text-ssf-text-muted">Loading team results…</Text>
+          ) : generalTeamResults.map((result: any) => (
+            <View key={result.registration_id} className="flex-row items-center border-b border-slate-100 py-2 last:border-b-0">
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-[13px]">{result.item_name_en || result.item_code || 'General competition'}</Text>
+                <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">
+                  {result.item_code || 'GN'} · Team entry {result.entry_chest_number || '—'}
+                </Text>
+              </View>
+              <View className="items-end">
+                <Text className="font-poppins-bold text-xs text-emerald-700">
+                  {result.rank ? `Rank ${result.rank}` : 'Not ranked'}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </SsfCard>
+      )}
+
           <View style={isDesktopProfile ? { flex: 1 } : undefined}>
       <SsfCard
         className="mb-0 w-full p-3"
@@ -1076,15 +1032,6 @@ export default function ParticipantDetails() {
                 : <ChevronRight size={17} color={ui.colors.textMuted} />}
             </View>
           </TouchableOpacity>
-          {!locked && !isBanned && (
-            <TouchableOpacity 
-              onPress={() => setIsAddingEvent(true)}
-              className="bg-ssf-primary px-3 py-2 rounded-xl flex-row items-center gap-x-1"
-            >
-              <Plus size={14} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-xs text-white">Add</Text>
-            </TouchableOpacity>
-          )}
         </View>
         {eventsSectionExpanded && (events.length === 0 ? (
            <View className="items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
@@ -1106,17 +1053,6 @@ export default function ParticipantDetails() {
                     <View className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
                       <Text className="font-poppins-bold text-[9px] text-blue-700">{ev.items.item_code}</Text>
                     </View>
-                  )}
-                  {!locked && !isBanned && (
-                    <TouchableOpacity
-                      onPress={() => handleRemoveEvent(ev)}
-                      disabled={isDeletingRegistration}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Remove ${ev.items?.item_name_en || ev.items?.item_code || 'item'} assignment`}
-                      className="ml-2 h-8 w-8 items-center justify-center rounded-lg border border-red-100 bg-red-50"
-                    >
-                      <Trash2 size={14} color="#DC2626" />
-                    </TouchableOpacity>
                   )}
                 </View>
              ))}
@@ -1160,112 +1096,6 @@ export default function ParticipantDetails() {
         </View>
       )}
       </View>
-
-      {/* Add Event Modal */}
-      {isAddingEvent && (
-        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 50, padding: 20 }}>
-          <View style={{ backgroundColor: ui.colors.surface, borderRadius: 16, width: '100%', maxWidth: 400, padding: 24 }}>
-            <Text className="font-poppins-bold text-lg mb-4 text-ssf-text">Register for Event</Text>
-            
-            {addEventError ? (
-              <View className="bg-red-50 p-3 rounded-lg mb-4 border border-red-100">
-                <Text className="font-poppins-bold text-xs text-red-700">Error:</Text>
-                <Text className="font-poppins text-sm text-red-600">{addEventError}</Text>
-              </View>
-            ) : null}
-
-            <View className="mb-4" style={{ position: 'relative', zIndex: 100 }}>
-              <Text className="font-poppins text-xs text-ssf-text-muted mb-2">Select Item</Text>
-              <View className="border border-ssf-border rounded-xl bg-ssf-surface overflow-hidden">
-                <TextInput
-                  placeholder="-- Choose an Item --"
-                  value={isItemDropdownOpen ? itemSearchText : (selectedItemCode ? (() => {
-                    const sel = allItems?.find((i: any) => i.item_code === selectedItemCode);
-                    return sel ? `[${sel.item_code}] ${sel.item_name_en}` : '';
-                  })() : '')}
-                  onChangeText={(text) => {
-                    setItemSearchText(text);
-                    if (!isItemDropdownOpen) setIsItemDropdownOpen(true);
-                  }}
-                  onFocus={() => {
-                    setIsItemDropdownOpen(true);
-                    setItemSearchText('');
-                  }}
-                  className="p-3 font-poppins text-ssf-text text-sm"
-                />
-              </View>
-              
-              {isItemDropdownOpen && (
-                <View className="absolute top-full left-0 right-0 mt-1 border border-ssf-border rounded-xl bg-white shadow-lg overflow-hidden" style={{ maxHeight: 250, zIndex: 999 }}>
-                  <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                    {allItems?.filter(i => {
-                      const codes = Array.isArray(i.category_codes) ? i.category_codes : (i.category_codes ? [i.category_codes] : []);
-                      const normalizedCodes = codes.map(code => String(code ?? '').trim().toUpperCase());
-                      
-                      const pCat = String(participant.category_code ?? '').trim().toUpperCase();
-                      const pCatShort = pCat === 'SENIOR' ? 'SR' : (pCat === 'JUNIOR' ? 'JR' : (pCat === 'CAMPUS' ? 'CA' : pCat));
-                      const pCatLong = pCat === 'SR' ? 'SENIOR' : (pCat === 'JR' ? 'JUNIOR' : (pCat === 'CA' ? 'CAMPUS' : pCat));
-
-                      const matchesCategory = normalizedCodes.includes(pCat) || normalizedCodes.includes(pCatShort) || normalizedCodes.includes(pCatLong) || normalizedCodes.includes('GN') || normalizedCodes.includes('GENERAL');
-                      const matchesGender = !i.gender || i.gender === 'both' || i.gender === participant.gender;
-                      
-                      if (!itemSearchText) return matchesCategory && matchesGender;
-                      
-                      const search = itemSearchText.toLowerCase();
-                      const name = (i.item_name_en || '').toLowerCase();
-                      const code = (i.item_code || '').toLowerCase();
-                      const cats = codes.join(' ').toLowerCase();
-                      const matchesSearch = name.includes(search) || code.includes(search) || cats.includes(search);
-                      
-                      return matchesCategory && matchesGender && matchesSearch;
-                    }).map(i => (
-                      <TouchableOpacity
-                        key={i.item_code}
-                        className="p-3 border-b border-gray-100 last:border-0"
-                        onPress={() => {
-                          setSelectedItemCode(i.item_code);
-                          setAddEventError('');
-                          setIsItemDropdownOpen(false);
-                          setItemSearchText('');
-                        }}
-                      >
-                        <Text className="font-poppins text-ssf-text">
-                          [{i.item_code}] {i.item_name_en} ({Array.isArray(i.category_codes) ? i.category_codes.join(',') : i.category_codes})
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                    {allItems?.filter(i => {
-                      const codes = Array.isArray(i.category_codes) ? i.category_codes : (i.category_codes ? [i.category_codes] : []);
-                      const normalizedCodes = codes.map(code => String(code ?? '').trim().toUpperCase());
-                      const pCat = String(participant.category_code ?? '').trim().toUpperCase();
-                      const pCatShort = pCat === 'SENIOR' ? 'SR' : (pCat === 'JUNIOR' ? 'JR' : (pCat === 'CAMPUS' ? 'CA' : pCat));
-                      const pCatLong = pCat === 'SR' ? 'SENIOR' : (pCat === 'JR' ? 'JUNIOR' : (pCat === 'CA' ? 'CAMPUS' : pCat));
-                      const matchesCategory = normalizedCodes.includes(pCat) || normalizedCodes.includes(pCatShort) || normalizedCodes.includes(pCatLong) || normalizedCodes.includes('GN') || normalizedCodes.includes('GENERAL');
-                      const matchesGender = !i.gender || i.gender === 'both' || i.gender === participant.gender;
-                      if (!itemSearchText) return matchesCategory && matchesGender;
-                      const search = itemSearchText.toLowerCase();
-                      const name = (i.item_name_en || '').toLowerCase();
-                      const code = (i.item_code || '').toLowerCase();
-                      const cats = codes.join(' ').toLowerCase();
-                      const matchesSearch = name.includes(search) || code.includes(search) || cats.includes(search);
-                      return matchesCategory && matchesGender && matchesSearch;
-                    }).length === 0 && (
-                      <View className="p-3">
-                        <Text className="font-poppins text-ssf-text-muted text-sm">No items found</Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            <View className="flex-row gap-x-3">
-              <SsfButton label="Cancel" variant="outline" className="flex-1" onPress={() => { setIsAddingEvent(false); setAddEventError(''); }} />
-              <SsfButton label={isRegistering ? "Wait..." : "Register"} className="flex-1" onPress={handleAddEvent} disabled={isRegistering || !selectedItemCode} />
-            </View>
-          </View>
-        </View>
-      )}
 
       {/* Action Modal */}
       {actionModal.visible && (

@@ -412,3 +412,23 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Login must be reachable before a user session exists. The handler validates
+# username/password server-side and applies its own database-backed rate limit.
+[functions.resolve-login-identifier]
+verify_jwt = false
+
+[functions.notification-cron]
+verify_jwt = true
+
+[functions.provision-admin]
+verify_jwt = true
+
+[functions.provision-team-leader]
+verify_jwt = true
+
+[functions.r2-presign]
+verify_jwt = true
+
+[functions.send-notification]
+verify_jwt = true

@@ -1,3 +1,5 @@
+import { findParticipantQrEntry } from '../../../../core/utils/checkInIdentity';
+import { GroupEntryRoster } from '../../../../components/stage/GroupEntryRoster';
 import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
@@ -8,6 +10,8 @@ import {
   Alert,
   Image,
   Platform,
+  TextInput,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../../components/ui/SsfCard';
@@ -40,6 +44,8 @@ export default function CheckIn() {
   const refetch = stage.registrationsQuery.refetch;
 
   const { role, is_superadmin } = useAuthStore();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -148,11 +154,7 @@ export default function CheckIn() {
       }
 
       const chest = parsed.chest || parsed.pid;
-      const reg = registrations?.find(
-        (r: any) =>
-          r.participants?.chest_number === parsed.chest ||
-          r.participants?.id === parsed.pid
-      );
+      const reg = findParticipantQrEntry(registrations ?? [], parsed);
       if (reg) {
         handleVerify(reg.id);
       } else {
@@ -289,6 +291,138 @@ export default function CheckIn() {
 
   return (
     <View className="flex-1 bg-ssf-bg">
+      {isMobile ? (
+      <ScrollView className="flex-1 px-3 py-3" keyboardShouldPersistTaps="handled">
+        <View className="mb-3 flex-row items-center gap-2">
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to Stage Management" onPress={goBackSafely} className="h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ui-border bg-white">
+            <ArrowLeft size={19} color="#0F172A" />
+          </TouchableOpacity>
+          <View className="min-w-0 flex-1">
+            <Text className="font-poppins-black text-sm text-ssf-text" numberOfLines={1}>{width < 360 ? 'Check-In' : 'Green Room Check-In'}</Text>
+            <Text className="font-poppins text-xs text-ssf-text-muted" numberOfLines={1}>{schedule.items?.item_name_en}</Text>
+          </View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => Alert.alert('Debug', `Total raw registrations fetched: ${registrations?.length || 0}`)} className="h-11 items-center justify-center rounded-lg border border-ui-border bg-white px-3">
+            <Text className="font-poppins-bold text-[10px] text-ui-text-muted">Debug</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isShuffleLocked && (
+          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <View className="flex-row items-start gap-2">
+              <Lock size={17} color="#B45309" />
+              <Text className="flex-1 font-poppins-bold text-xs leading-5 text-amber-800">Event is locked. Check-in is now read-only.</Text>
+            </View>
+            {(role === 'admin' || is_superadmin) && (
+              <TouchableOpacity accessibilityRole="button" onPress={handleUnlock} disabled={isUpdating} className={`mt-2 h-11 items-center justify-center rounded-lg bg-amber-600 px-4 ${isUpdating ? 'opacity-60' : ''}`}>
+                <Text className="font-poppins-bold text-xs text-white">{isUpdating ? 'Unlocking…' : 'Unlock event'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        <SsfCard className="mb-3 p-3">
+          <View className="mb-2 flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2"><Users size={17} color="#1B6B3A" /><Text className="font-poppins-bold text-sm text-ssf-text">Verified</Text></View>
+            <Text className="font-poppins-black text-lg text-ssf-primary">{verifiedCount}<Text className="text-xs text-ssf-text-muted"> / {totalCount}</Text></Text>
+          </View>
+          <View className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+            <View className="h-2 rounded-full bg-ssf-primary" style={{ width: totalCount > 0 ? `${(verifiedCount / totalCount) * 100}%` : '0%' }} />
+          </View>
+          {allVerified ? (
+            <View className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5">
+              <View className="flex-row items-center gap-2"><ShieldCheck size={17} color="#16A34A" /><Text className="flex-1 font-poppins-bold text-xs text-green-800">All participants verified</Text></View>
+              <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/code-letter` as any)} className="mt-2 h-11 flex-row items-center justify-center rounded-lg bg-ssf-primary px-3">
+                <Text className="font-poppins-bold text-xs text-white">Start Draw →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : totalCount > 0 ? (
+            <View className="mt-3 gap-2">
+              <Text className="font-poppins-bold text-xs text-amber-700">{totalCount - verifiedCount} participants remaining unverified.</Text>
+              {!isShuffleLocked ? (
+                <TouchableOpacity accessibilityRole="button" onPress={handleRejectAllUnverified} disabled={isUpdating} className={`h-11 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 ${isUpdating ? 'opacity-60' : ''}`}>
+                  <Text className="font-poppins-bold text-xs text-red-700">Reject unverified participants</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+        </SsfCard>
+
+        {!isShuffleLocked ? (
+          <TouchableOpacity accessibilityRole="button" onPress={startWebScanner} className="mb-3 h-11 flex-row items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-3">
+            <QrCode size={18} color="#0F766E" />
+            <Text className="font-poppins-bold text-xs text-emerald-700">Scan chest card QR</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <View className="mb-2 h-10 flex-row items-center rounded-lg border border-ssf-border bg-white px-3">
+          <Search size={16} color="#9CA3AF" />
+          <TextInput
+            accessibilityLabel="Search participants by name or chest number"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search name or chest number"
+            className="ml-2 h-full min-w-0 flex-1 font-poppins text-sm text-ssf-text"
+            returnKeyType="search"
+          />
+          {searchQuery ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearchQuery('')} className="h-9 w-9 items-center justify-center"><XCircle size={16} color="#94A3B8" /></TouchableOpacity> : null}
+        </View>
+
+        <View className="mb-2 flex-row items-center justify-between px-1">
+          <Text className="font-poppins-bold text-sm text-ssf-text">Participants</Text>
+          <Text className="font-poppins text-xs text-ssf-text-muted">{filteredRegs?.length || 0} shown</Text>
+        </View>
+
+        {!filteredRegs || filteredRegs.length === 0 ? (
+          <SsfCard className="mb-6 items-center py-8">
+            <Users size={28} color="#94A3B8" />
+            <Text className="mt-2 text-center font-poppins text-sm text-ssf-text-muted">No participants found.</Text>
+          </SsfCard>
+        ) : (
+          <View className="gap-y-2 pb-6">
+            {filteredRegs.map((reg: any) => {
+              const isRejected = reg.status === 'rejected';
+              const verified = !!reg.is_verified;
+              const badge = isRejected
+                ? 'border-red-200 bg-red-50 text-red-700'
+                : verified ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800';
+              return (
+                <SsfCard key={reg.id} className={`p-3 ${isRejected ? 'opacity-70' : ''}`}>
+                  <View className="flex-row items-start gap-3">
+                    <View className={`h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${isRejected ? 'border-red-300 bg-red-50' : verified ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50'}`}>
+                      <Text className={`font-poppins-black text-[10px] ${isRejected ? 'text-red-700' : verified ? 'text-emerald-700' : 'text-slate-600'}`}>{reg.participants?.chest_number || '?'}</Text>
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <Text numberOfLines={2} className={`font-poppins-bold text-sm ${isRejected ? 'text-slate-500 line-through' : 'text-ssf-text'}`}>{reg.participants?.name || 'Participant'}</Text>
+                      <Text numberOfLines={1} className="mt-0.5 font-poppins text-xs text-ssf-text-muted">{reg.participants?.category_code || '—'} · Chest {reg.participants?.chest_number || '—'}</Text>
+                        <GroupEntryRoster entry={reg} />
+                      {reg.participants?.organisations?.name ? <Text numberOfLines={1} className="mt-1 font-poppins text-[11px] text-blue-700">{reg.participants.organisations.name}</Text> : null}
+                    </View>
+                    <View className={`min-h-7 shrink-0 items-center justify-center rounded-full border px-2 ${badge.split(' ').slice(0, 2).join(' ')}`}>
+                      <Text className={`font-poppins-bold text-[9px] ${badge.split(' ')[2]}`}>{isRejected ? 'Rejected' : verified ? 'Verified' : 'Pending'}</Text>
+                    </View>
+                  </View>
+                  {!isShuffleLocked ? (
+                    isRejected ? (
+                      <TouchableOpacity accessibilityRole="button" onPress={() => handleRestore(reg.id)} disabled={isUpdating} className={`mt-3 h-11 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 ${isUpdating ? 'opacity-60' : ''}`}>
+                        <Text className="font-poppins-bold text-xs text-slate-700">Restore participant</Text>
+                      </TouchableOpacity>
+                    ) : verified ? (
+                      <TouchableOpacity accessibilityRole="button" onPress={() => handleUnverify(reg.id)} disabled={isUpdating} className={`mt-3 h-11 flex-row items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 ${isUpdating ? 'opacity-60' : ''}`}>
+                        <CheckCircle2 size={16} color="#16A34A" /><Text className="font-poppins-bold text-xs text-emerald-800">Undo verification</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity accessibilityRole="button" onPress={() => setVerifyModal({ reg, visible: true })} disabled={isUpdating} className={`mt-3 h-11 flex-row items-center justify-center gap-2 rounded-lg bg-ssf-primary ${isUpdating ? 'opacity-60' : ''}`}>
+                        <Camera size={16} color="#FFFFFF" /><Text className="font-poppins-bold text-xs text-white">{reg.entry_kind === 'general_team' ? 'Verify group' : 'Verify participant'}</Text>
+                      </TouchableOpacity>
+                    )
+                  ) : null}
+                </SsfCard>
+              );
+            })}
+          </View>
+        )}
+      </ScrollView>
+      ) : (
       <ScrollView className="flex-1 py-3 px-3">
         {/* Header */}
         <View className="flex-row items-center mb-3">
@@ -438,6 +572,7 @@ export default function CheckIn() {
                         <Text className="font-poppins text-xs text-ssf-text-muted">
                           {reg.participants?.category_code} · Chest {reg.participants?.chest_number}
                         </Text>
+                        <GroupEntryRoster entry={reg} />
                         {reg.participants?.organisations?.name ? (
                           <View className="flex-row items-center mt-0.5">
                             <View className="bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-full">
@@ -493,6 +628,7 @@ export default function CheckIn() {
           )}
         </SsfCard>
       </ScrollView>
+      )}
 
       {/* ───── QR Scanner Modal ───── */}
       {isScannerOpen && (
@@ -560,12 +696,12 @@ export default function CheckIn() {
             backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 20,
           }}
         >
-          <View style={{ backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 360, overflow: 'hidden' }}>
+          <ScrollView style={{ backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 360, overflow: 'hidden', maxHeight: '95%', flexGrow: 0 }}>
             {/* Green header */}
             <View style={{ backgroundColor: '#1B6B3A', padding: 16, alignItems: 'center' }}>
               <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 18 }}>Identity Verification</Text>
               <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 }}>
-                Confirm this is the right participant
+                {verifyModal.reg.entry_kind === 'general_team' ? 'Confirm this group entry' : 'Confirm this is the right participant'}
               </Text>
             </View>
 
@@ -577,7 +713,7 @@ export default function CheckIn() {
                 backgroundColor: '#F3F4F6', marginBottom: 16,
                 alignItems: 'center', justifyContent: 'center',
               }}>
-                {verifyModal.reg.participants?.photo_url ? (
+                {verifyModal.reg.entry_kind === 'general_team' ? <Users size={48} color="#1B6B3A" /> : verifyModal.reg.participants?.photo_url ? (
                   <Image
                     source={{ uri: verifyModal.reg.participants.photo_url }}
                     style={{ width: '100%', height: '100%' }}
@@ -606,11 +742,12 @@ export default function CheckIn() {
                   ? ` · 🏫 ${verifyModal.reg.participants.organisations.name}`
                   : ''}
               </Text>
+              <GroupEntryRoster entry={verifyModal.reg} />
 
               {/* Instruction */}
               <View style={{ backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, width: '100%', marginTop: 16, marginBottom: 20 }}>
                 <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
-                  ⚠️ Compare the photo above with the person standing in front of you before approving.
+                  {verifyModal.reg.entry_kind === 'general_team' ? 'Confirm the group chest number, program and team. One representative can check in this entry.' : '⚠️ Compare the photo above with the person standing in front of you before approving.'}
                 </Text>
               </View>
 
@@ -642,7 +779,7 @@ export default function CheckIn() {
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </ScrollView>
         </View>
       )}
     </View>

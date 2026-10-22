@@ -1,4 +1,4 @@
-import { supabase } from '../../../../core/config/supabase';
+import { supabase } from '../config/supabase';
 import { useQuery } from '@tanstack/react-query';
 
 export const useEntrySizes = (scheduleId: string | undefined, registrations: any[]) => {
@@ -6,25 +6,25 @@ export const useEntrySizes = (scheduleId: string | undefined, registrations: any
     queryKey: ['entrySizes', scheduleId, registrations?.length],
     queryFn: async () => {
       if (!scheduleId || !registrations || registrations.length === 0) return {};
-      
+
       const ids = registrations.map(r => r.id);
-      
+
       const { data: rawData, error: rawError } = await supabase
         .from('registrations')
         .select('id, raw_group_members')
         .in('id', ids);
-        
+
       if (rawError) throw rawError;
 
       const { data: gmData, error: gmError } = await supabase
         .from('group_members')
         .select('registration_id')
         .in('registration_id', ids);
-        
+
       if (gmError) throw gmError;
 
       const counts: Record<string, number> = {};
-      
+
       // Default size = 1 (individual or group leader)
       ids.forEach(id => { counts[id] = 1; });
 
@@ -36,9 +36,9 @@ export const useEntrySizes = (scheduleId: string | undefined, registrations: any
 
       if (rawData) {
         rawData.forEach((r: any) => {
-           if (r.raw_group_members && Array.isArray(r.raw_group_members) && r.raw_group_members.length > 0) {
-             counts[r.id] = r.raw_group_members.length;
-           }
+          if (r.raw_group_members && Array.isArray(r.raw_group_members) && r.raw_group_members.length > 0) {
+            counts[r.id] = r.raw_group_members.length;
+          }
         });
       }
 

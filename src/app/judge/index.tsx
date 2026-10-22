@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ShieldCheck, AlertCircle, ArrowRight, Camera, X } from 'lucide-react-native';
+import { ShieldCheck, AlertCircle, ArrowLeft, ArrowRight, Camera, X } from 'lucide-react-native';
 import { judgeTokenService } from '../../services/judgeTokenService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -278,6 +278,23 @@ export default function JudgePortalLanding() {
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(auth)/login' as any);
+  };
+
+  const renderBackButton = () => (
+    <TouchableOpacity
+      onPress={handleBack}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      style={{ alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#EFF6FF' }}
+    >
+      <ArrowLeft size={18} color="#2563EB" />
+      <Text className="font-poppins-medium text-sm text-[#2563EB]">Back</Text>
+    </TouchableOpacity>
+  );
+
   const renderFormContent = () => (
     <>
       {waitingForApproval ? (
@@ -440,7 +457,8 @@ export default function JudgePortalLanding() {
             
             {/* Left Column (Brand & Info) */}
             <View style={{ flex: 1, padding: 56, position: 'relative', borderRightWidth: 1, borderRightColor: '#F1F5F9' }}>
-              <Text style={{ fontFamily: 'Poppins_900Black', color: '#1D4ED8', fontSize: 20, letterSpacing: 1, marginBottom: 60 }}>ALVIORA</Text>
+              {renderBackButton()}
+              <Text style={{ fontFamily: 'Poppins_900Black', color: '#1D4ED8', fontSize: 20, letterSpacing: 1, marginTop: 20, marginBottom: 32 }}>ALVIORA</Text>
               
               <View style={{ marginTop: 20 }}>
                 <View style={{ width: 64, height: 64, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 32 }}>
@@ -479,12 +497,15 @@ export default function JudgePortalLanding() {
           <View style={{ flex: 1, width: '100%', backgroundColor: '#FFFFFF' }}>
             
             {/* Top Header Section */}
-            <View style={{ paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40, position: 'relative', overflow: 'hidden', alignItems: 'center' }}>
+            <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40, position: 'relative', overflow: 'hidden', alignItems: 'center' }}>
               {/* Abstract Decorative Pixels Mobile */}
               <View style={{ position: 'absolute', top: -20, left: -20, opacity: 0.4, pointerEvents: 'none' }}>
                 <View style={{ width: 100, height: 100, backgroundColor: '#EFF6FF', transform: [{ rotate: '45deg' }], position: 'absolute', top: 20, left: 20, borderRadius: 16 }} />
                 <View style={{ width: 60, height: 60, backgroundColor: '#DBEAFE', transform: [{ rotate: '45deg' }], position: 'absolute', top: 80, left: 10, borderRadius: 12 }} />
                 <View style={{ width: 40, height: 40, backgroundColor: '#BFDBFE', transform: [{ rotate: '45deg' }], position: 'absolute', top: 40, left: 100, borderRadius: 8 }} />
+              </View>
+              <View style={{ alignSelf: 'stretch', marginBottom: 28 }}>
+                {renderBackButton()}
               </View>
               
               <View style={{ width: 60, height: 60, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>

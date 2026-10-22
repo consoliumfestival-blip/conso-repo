@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Modal, TextInput, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SsfCard } from '../../../../components/ui/SsfCard';
 import { SsfButton } from '../../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../../core/hooks/useStageManagement';
 import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
-import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2 } from 'lucide-react-native';
+import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users } from 'lucide-react-native';
 import { useAuthStore } from '../../../../core/store/authStore';
+import { codeLetterTarget, codeLetterPreview } from '../../../../core/utils/codeLetters';
 
 export default function CodeLetterGeneration() {
   const { id } = useLocalSearchParams();
   const scheduleId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/stage-management');
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
 
   const stage = useStageManagement({ scheduleId });
   const schedules = stage.schedules;
@@ -25,7 +28,7 @@ export default function CodeLetterGeneration() {
 
   const activeRegistrations = React.useMemo(() => {
     return (registrations || [])
-      .filter((r: any) => r.status === 'approved' && r.is_verified === true)
+      .filter((r: any) => r.status !== 'rejected' && r.is_verified === true)
       .sort((a: any, b: any) => {
         if (a.code_letter && b.code_letter) return a.code_letter.localeCompare(b.code_letter);
         if (a.code_letter) return -1;
@@ -118,12 +121,14 @@ export default function CodeLetterGeneration() {
            scheduleId,
            itemId: schedule.item_id,
            festivalId: schedule.festival_id,
-           overwrite: hasExistingLetters,
+           overwrite: allHaveLetters,
            secureStage: true,
          });
         await stage.registrationsQuery.refetch();
         const isSmart = result && (result as any).smartPriorityApplied;
-        const msg = isSmart 
+        const msg = result?.conflictsUnavoidable
+          ? 'Code letters assigned. Some overlapping-event letter conflicts remain; review the order.'
+          : isSmart
           ? '✅ Code letters assigned successfully!\n(Smart conflict-safe priority applied)' 
           : '✅ Code letters assigned successfully!';
         
@@ -142,7 +147,7 @@ export default function CodeLetterGeneration() {
     };
 
     if (allHaveLetters) {
-      const msg = '⚠️ Code letters have already been assigned for ALL participants. Drawing again will shuffle and OVERWRITE existing code letters. Are you sure you want to proceed?';
+      const msg = 'Fixed manual letters will stay unchanged. Only the remaining letters will be redrawn. Continue?';
       if (Platform.OS === 'web') {
         if (window.confirm(msg)) {
           await action();
@@ -159,7 +164,7 @@ export default function CodeLetterGeneration() {
       }
     } else if (hasExistingLetters) {
       // Partial assignment case
-      const msg = 'Some participants already have code letters. Draw again to normalize all approved participants as A, B, C...?';
+      const msg = 'Existing assignments will stay unchanged. Draw only the remaining letters for verified participants?';
       if (Platform.OS === 'web') {
         if (window.confirm(msg)) {
           await action();
@@ -187,10 +192,9 @@ export default function CodeLetterGeneration() {
       return;
     }
 
-    // Check for duplicate in current event
-    const isDuplicate = activeRegistrations.some((r:any) => r.id !== editingReg.id && r.code_letter === letter);
-    if (isDuplicate) {
-      setEditError('This letter is already assigned in this event.');
+    const target = codeLetterTarget(activeRegistrations, editingReg.id, letter);
+    if (target && !editingReg.code_letter) {
+      setEditError('This entry has no letter to swap. Choose an unused letter.');
       return;
     }
 
@@ -202,7 +206,8 @@ export default function CodeLetterGeneration() {
     }
 
     try {
-      await stage.updateCodeLetter({ scheduleId, registrationId: editingReg.id, codeLetter: letter });
+      await stage.updateCodeLetter({ scheduleId, registrationId: editingReg.id, codeLetter: letter,
+        expectedLetter: editingReg.code_letter, expectedSwapId: target?.id ?? null });
       await stage.registrationsQuery.refetch();
       setEditingReg(null);
       setNewLetter('');
@@ -234,6 +239,109 @@ export default function CodeLetterGeneration() {
 
   return (
     <View className="flex-1 bg-ssf-bg">
+      {isMobile ? (
+      <ScrollView className="flex-1 px-3 py-3" keyboardShouldPersistTaps="handled">
+        <View className="mb-3 flex-row items-center gap-2">
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to Stage Management" onPress={goBack} className="h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-ui-border bg-white">
+            <ArrowLeft size={19} color="#0F172A" />
+          </TouchableOpacity>
+          <View className="min-w-0 flex-1">
+            <Text className="font-poppins-black text-base text-ssf-text">Code Letters</Text>
+            <Text numberOfLines={1} className="font-poppins text-xs text-ssf-text-muted">{schedule.items?.item_name_en}</Text>
+          </View>
+        </View>
+
+        {isShuffleLocked ? (
+          <View className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <View className="flex-row items-start gap-2">
+              <Lock size={17} color="#B45309" />
+              <Text className="flex-1 font-poppins-bold text-xs leading-5 text-amber-800">Code-letter shuffle is locked. Assignments are read-only.</Text>
+            </View>
+            {(role === 'admin' || is_superadmin) ? (
+              <TouchableOpacity accessibilityRole="button" onPress={handleUnlock} disabled={isLocking} className={`mt-2 h-11 items-center justify-center rounded-lg bg-amber-600 px-4 ${isLocking ? 'opacity-60' : ''}`}>
+                <Text className="font-poppins-bold text-xs text-white">{isLocking ? 'Unlocking…' : 'Unlock event'}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
+
+        <SsfCard className="mb-3 p-3">
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="font-poppins-bold text-sm text-ssf-text">Participants</Text>
+              <Text className="mt-0.5 font-poppins text-xs text-ssf-text-muted">Verified entries eligible for code letters</Text>
+            </View>
+            <View className="min-w-11 items-center rounded-lg bg-teal-50 px-2 py-1.5">
+              <Text className="font-poppins-black text-base text-ssf-primary">{activeRegistrations.length}</Text>
+            </View>
+          </View>
+
+          {!isShuffleLocked && activeRegistrations.length > 0 ? (
+            <View className="mt-3 flex-row gap-2">
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={handleGenerate}
+                disabled={isGeneratingCodeLetters}
+                className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-ssf-primary px-2 ${isGeneratingCodeLetters ? 'opacity-60' : ''}`}
+              >
+                <RefreshCw size={15} color="#FFFFFF" />
+                <Text className="font-poppins-bold text-[11px] text-white">{isGeneratingCodeLetters ? 'Drawing…' : 'Draw letters'}</Text>
+              </TouchableOpacity>
+              {activeRegistrations.every((r: any) => r.code_letter) ? (
+                <TouchableOpacity accessibilityRole="button" onPress={openLockModal} className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-2">
+                  <Lock size={15} color="#B91C1C" />
+                  <Text className="font-poppins-bold text-[11px] text-red-700">Lock letters</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+        </SsfCard>
+
+        {activeRegistrations.length === 0 ? (
+          <SsfCard className="mb-6 items-center py-8">
+            <Users size={28} color="#94A3B8" />
+            <Text className="mt-2 text-center font-poppins text-sm text-ssf-text-muted">No verified participants are available for this event.</Text>
+          </SsfCard>
+        ) : (
+          <View className="gap-y-2 pb-6">
+            {activeRegistrations.map((reg: any) => (
+              <SsfCard key={reg.id} className="p-3">
+                <View className="flex-row items-center gap-3">
+                  <View className="h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100">
+                    <Text className="font-poppins-black text-[10px] text-slate-700">{reg.participants?.chest_number || '—'}</Text>
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text numberOfLines={2} className="font-poppins-bold text-sm text-ssf-text">{reg.participants?.name || 'Participant'}</Text>
+                    <Text numberOfLines={1} className="mt-0.5 font-poppins text-xs text-ssf-text-muted">Chest {reg.participants?.chest_number || '—'}</Text>
+                  </View>
+                  <View className="h-11 min-w-11 items-center justify-center rounded-lg border border-teal-100 bg-teal-50 px-2">
+                    <Text className="font-poppins-black text-lg text-ssf-primary">{reg.code_letter || '—'}</Text>
+                  </View>
+                </View>
+                <View className="mt-2 flex-row items-center justify-between">
+                  {reg.code_letter_fixed ? (
+                    <View className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                      <Text className="font-poppins-bold text-[10px] text-slate-600">Fixed letter</Text>
+                    </View>
+                  ) : <View />}
+                  {!isShuffleLocked ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit code letter for ${reg.participants?.name || 'participant'}`}
+                      onPress={() => { setEditingReg(reg); setNewLetter(reg.code_letter || ''); setEditError(''); }}
+                      className="h-11 flex-row items-center justify-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3"
+                    >
+                      <Edit2 size={15} color="#2563EB" />
+                      <Text className="font-poppins-bold text-xs text-blue-700">Edit letter</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </SsfCard>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+      ) : (
       <ScrollView className="flex-1 py-3 px-3">
         <View className="flex-row items-center mb-6">
           <TouchableOpacity onPress={goBack} className="mr-3 p-2 bg-ssf-surface rounded-full">
@@ -311,9 +419,10 @@ export default function CodeLetterGeneration() {
                 >
                   <Text className="flex-[3] font-poppins text-sm text-ssf-text">{reg.participants?.name}</Text>
                   <Text className="flex-1 font-poppins-bold text-sm text-center text-ssf-text">{reg.participants?.chest_number}</Text>
-                  <Text className="flex-1 font-poppins-black text-lg text-center text-ssf-primary">
-                    {reg.code_letter || '-'}
-                  </Text>
+                  <View className="flex-1 items-center">
+                    <Text className="font-poppins-black text-lg text-ssf-primary">{reg.code_letter || '-'}</Text>
+                    {reg.code_letter_fixed ? <Text className="font-poppins text-[10px] text-ssf-text-muted">Fixed</Text> : null}
+                  </View>
                   {!isShuffleLocked && (
                     <TouchableOpacity 
                       className="w-10 items-center justify-center p-2 rounded-full bg-blue-50"
@@ -331,6 +440,7 @@ export default function CodeLetterGeneration() {
           )}
         </SsfCard>
       </ScrollView>
+      )}
 
       {/* ───── Lock Confirmation Modal ───── */}
       {showLockModal && (
@@ -382,17 +492,20 @@ export default function CodeLetterGeneration() {
       <Modal visible={!!editingReg} transparent animationType="fade">
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <Text className="font-poppins-bold text-xl mb-2">Edit Code Letter</Text>
+            <Text className="font-poppins-bold text-xl mb-2">{editingReg?.code_letter ? 'Edit Code Letter' : 'Assign Code Letter'}</Text>
             <Text className="font-poppins text-ssf-text-muted mb-4">{editingReg?.participants?.name}</Text>
             
             <TextInput
               value={newLetter}
+              editable={!stage.isUpdatingCodeLetter}
               onChangeText={setNewLetter}
               placeholder="Enter letter (A-Z)"
-              className="border border-ssf-border rounded-xl p-4 font-poppins-black text-2xl text-center uppercase mb-2"
+              className="h-10 border border-ssf-border rounded-xl px-3 font-poppins-black text-xl text-center uppercase mb-2"
               maxLength={1}
               autoCapitalize="characters"
             />
+            <Text className="font-poppins text-xs text-ssf-text-muted mb-2">{codeLetterPreview(editingReg?.code_letter ?? null, newLetter,
+              codeLetterTarget(activeRegistrations, editingReg?.id, newLetter)?.participants?.name)}</Text>
             
             {!!editError && (
               <View className="bg-red-50 p-3 rounded-lg flex-row items-start gap-x-2 mb-4">
@@ -405,11 +518,12 @@ export default function CodeLetterGeneration() {
               <SsfButton 
                 label="Cancel" 
                 variant="outline" 
+                disabled={stage.isUpdatingCodeLetter}
                 className="flex-1" 
                 onPress={() => { setEditingReg(null); setEditError(''); }} 
               />
               <SsfButton 
-                label={stage.isUpdatingCodeLetter ? 'Saving...' : 'Save'}
+                label={stage.isUpdatingCodeLetter ? 'Saving...' : codeLetterTarget(activeRegistrations, editingReg?.id, newLetter) ? 'Swap' : 'Assign'}
                 className="flex-1" 
                 onPress={validateAndSaveEdit} 
                 disabled={stage.isUpdatingCodeLetter}

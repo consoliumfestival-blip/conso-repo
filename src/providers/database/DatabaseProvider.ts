@@ -1,3 +1,5 @@
+import type { CompetitionPublication } from '../../types/scoring';
+
 export type QueryResult<T> = {
   data: T | null;
   error: { code?: string; message: string } | null;
@@ -8,6 +10,15 @@ export type ListResult<T> = {
   error: { code?: string; message: string } | null;
 };
 
+export type CompetitionItemUpdate = {
+  festivalId: string;
+  itemId: string;
+  itemNameMl: string;
+  categoryCodes: string[];
+  groupMemberCount: number | null;
+  expectedUpdatedAt: string | null;
+};
+
 export interface DatabaseProvider {
   getActiveFestival<T>(tenantId: string): Promise<QueryResult<T>>;
   getPointsConfig<T>(festivalId: string): Promise<QueryResult<T>>;
@@ -15,6 +26,14 @@ export interface DatabaseProvider {
   upsertFestival<T>(payload: Record<string, unknown>): Promise<QueryResult<T>>;
   getActiveItemCodes(festivalId: string): Promise<ListResult<{ item_code: string }>>;
   getItems<T>(festivalId: string): Promise<ListResult<T>>;
+  getSelectableItems<T>(festivalId: string, tenantId: string): Promise<ListResult<T>>;
+  updateCompetitionItem(input: CompetitionItemUpdate): Promise<QueryResult<void>>;
+  applyItemChanges(
+    festivalId: string,
+    activateCodes: string[],
+    deactivateCodes: string[],
+    itemRecords?: any[],
+  ): Promise<QueryResult<void>>;
   setActiveItemCodes(
     festivalId: string,
     tenantId: string,
@@ -114,7 +133,7 @@ export interface DatabaseProvider {
   
   // Results Methods
   listResults<T>(scheduleId: string): Promise<ListResult<T>>;
-  publishResults(payloads: Record<string, unknown>[]): Promise<QueryResult<void>>;
+  publishResults(input: CompetitionPublication): Promise<QueryResult<void>>;
   listAdminLeaderboard<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
   listPublicLeaderboard<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
   listPublicPublishedResults<T>(tenantId?: string | null, festivalId?: string | null, includeParticipantDetails?: boolean): Promise<ListResult<T>>;
@@ -147,7 +166,9 @@ export interface DatabaseProvider {
   getSuperAdminStats(): Promise<QueryResult<{ orgs: number; tenants: number }>>;
   listGlobalOrganisations<T>(): Promise<ListResult<T>>;
   createGlobalOrganisation<T>(payload: Record<string, unknown>): Promise<QueryResult<T>>;
-  deleteGlobalOrganisation(id: string): Promise<QueryResult<void>>;
+  archiveGlobalOrganisation(id: string): Promise<QueryResult<void>>;
+  restoreGlobalOrganisation(id: string): Promise<QueryResult<void>>;
+  permanentlyDeleteArchivedOrganisation(id: string): Promise<QueryResult<void>>;
   listTenantAccounts<T>(): Promise<ListResult<T>>;
   revokeTenantAccess(orgId: string): Promise<QueryResult<void>>;
   disableTenantAccess(orgId: string, reason?: string): Promise<QueryResult<void>>;

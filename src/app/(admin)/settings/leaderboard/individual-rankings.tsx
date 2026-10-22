@@ -1,5 +1,6 @@
 import { ui } from "@/constants/designSystem";
 import React, { useMemo, useState } from 'react';
+import { isNewerResult } from '../../../../core/utils/currentResult';
 import {
   Alert,
   ActivityIndicator,
@@ -146,8 +147,8 @@ export default function IndividualRankingsPage() {
       const key = `${r.participant_id || r.chest_number}-${r.item_id}`;
       const existing = dedupedResults.get(key);
       
-      // Result version validation: keep the one with higher points if duplicated
-      if (!existing || (r.points_awarded || 0) > (existing.points_awarded || 0)) {
+      // Keep the latest publication, including downward corrections.
+      if (!existing || isNewerResult(r, existing)) {
         dedupedResults.set(key, r);
       }
     });

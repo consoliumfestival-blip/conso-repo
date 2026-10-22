@@ -1,4 +1,5 @@
 import { databaseProvider } from '../../providers/database';
+import type { CompetitionItemUpdate } from '../../providers/database/DatabaseProvider';
 
 export const festivalRepository = {
   async getActiveFestival<T>(tenantId: string) {
@@ -23,6 +24,23 @@ export const festivalRepository = {
 
   getItems<T>(festivalId: string) {
     return databaseProvider.getItems<T>(festivalId);
+  },
+
+  getSelectableItems<T>(festivalId: string, tenantId: string) {
+    return databaseProvider.getSelectableItems<T>(festivalId, tenantId);
+  },
+
+  updateCompetitionItem(input: CompetitionItemUpdate) {
+    return databaseProvider.updateCompetitionItem(input);
+  },
+
+  applyItemChanges(
+    festivalId: string,
+    activateCodes: string[],
+    deactivateCodes: string[],
+    itemRecords?: any[],
+  ) {
+    return databaseProvider.applyItemChanges(festivalId, activateCodes, deactivateCodes, itemRecords);
   },
 
   async setActiveItemCodes(

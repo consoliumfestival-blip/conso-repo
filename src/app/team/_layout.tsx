@@ -7,12 +7,14 @@ export default function TeamLeaderLayout() {
     <TeamLeaderProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="login" />
+        <Stack.Screen name="first-login" />
         <Stack.Screen name="dashboard" />
         <Stack.Screen name="my-team" />
         <Stack.Screen name="schedule" />
         <Stack.Screen name="schedule/full" />
         <Stack.Screen name="results" />
         <Stack.Screen name="participants" />
+        <Stack.Screen name="programs" />
         <Stack.Screen name="announcements" />
         <Stack.Screen name="profile" />
       </Stack>

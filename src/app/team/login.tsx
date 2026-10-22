@@ -34,14 +34,23 @@ export default function TeamLeaderLogin() {
     }
     setLoading(true);
     try {
-      const result = await authService.login(username, password);
+      const result = await authService.loginTeamLeader(username, password);
       if (result.role !== 'team_leader') {
         await authService.logout().catch(() => undefined);
         setErrorMsg('This account does not have Team Leader access.');
         return;
       }
       setUser(result.user, result.tenant_id, result.role, result.is_superadmin);
-      router.replace('/team/dashboard');
+      if (
+        result.user?.app_metadata?.must_change_credentials
+        || result.user?.app_metadata?.must_change_password
+        || result.user?.user_metadata?.must_change_credentials
+        || result.user?.user_metadata?.must_change_password
+      ) {
+        router.replace('/team/first-login');
+      } else {
+        router.replace('/team/dashboard');
+      }
     } catch (error: any) {
       setErrorMsg(authService.friendlyError(error.message));
     } finally {

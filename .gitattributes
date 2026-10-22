@@ -1,0 +1,3 @@
+# Keep applied schema snapshot bytes exact for function definition parity.
+supabase/migrations/20261022122300_source_structure_sync.sql -text whitespace=cr-at-eol
+supabase/migrations/20261022123000_source_grant_parity.sql -text whitespace=cr-at-eol

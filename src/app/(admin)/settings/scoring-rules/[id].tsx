@@ -26,7 +26,7 @@ export default function EditScoringRule() {
   const [rule, setRule] = useState<any>({
     event_name: '',
     event_name_ml: '',
-    total_marks: '100',
+    total_marks: '',
     time_limit: '',
     guidelines: '',
     is_default: false,
@@ -49,7 +49,7 @@ export default function EditScoringRule() {
       if (data) {
         setRule({
           ...data,
-          total_marks: data.total_marks?.toString() || '100',
+          total_marks: data.total_marks?.toString() || '',
           entry_mode: data.entry_mode === 'total_only' ? 'total_only' : 'criteria',
         });
         setCriteria(data.scoring_criteria?.sort((a: any, b: any) => a.sort_order - b.sort_order) || []);
@@ -70,7 +70,10 @@ export default function EditScoringRule() {
 
     const isTotalOnly = rule.entry_mode === 'total_only';
     const marksTotal = criteria.reduce((sum, c) => sum + (parseInt(c.marks) || 0), 0);
-    const expectedTotal = isTotalOnly ? 100 : (parseInt(rule.total_marks) || 100);
+    const expectedTotal = Number(rule.total_marks);
+    if (!rule.total_marks?.toString().trim() || !Number.isFinite(expectedTotal) || expectedTotal <= 0) {
+      Alert.alert('Validation Error', 'Enter a valid maximum mark.'); return;
+    }
 
     if (!isTotalOnly && criteria.length === 0) {
       Alert.alert('Validation Error', 'Paperless Criteria mode requires at least one criterion.');
@@ -101,7 +104,7 @@ export default function EditScoringRule() {
       const payload = {
         event_name: rule.event_name.trim(),
         event_name_ml: rule.event_name_ml?.trim() || null,
-        total_marks: parseInt(rule.total_marks) || 100,
+        total_marks: expectedTotal,
         time_limit: rule.time_limit?.trim() || null,
         guidelines: rule.guidelines?.trim() || null,
         entry_mode: rule.entry_mode,
@@ -240,8 +243,8 @@ export default function EditScoringRule() {
                   value={rule.total_marks?.toString()}
                   onChangeText={(t) => setRule({ ...rule, total_marks: t })}
                   keyboardType="number-pad"
-                  editable={rule.entry_mode !== 'total_only'}
-                  placeholder="100"
+                  editable={true}
+                  placeholder="Maximum marks"
                 />
               </View>
               <View className="flex-1">
@@ -290,7 +293,7 @@ export default function EditScoringRule() {
                 <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">Enter every criterion in the app</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setRule({ ...rule, entry_mode: 'total_only', total_marks: '100' })}
+                onPress={() => setRule({ ...rule, entry_mode: 'total_only', total_marks: '' })}
                 className={`flex-1 rounded-lg border p-3 ${
                   rule.entry_mode === 'total_only'
                     ? 'bg-blue-50 border-blue-500'
@@ -298,7 +301,7 @@ export default function EditScoringRule() {
                 }`}
               >
                 <Text className="font-poppins-bold text-sm text-ui-text">Paper Total</Text>
-                <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">Enter one final total out of 100</Text>
+                <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">Enter one final total using the configured maximum</Text>
               </TouchableOpacity>
             </View>
             {rule.entry_mode === 'total_only' && (

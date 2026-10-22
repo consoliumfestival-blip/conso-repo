@@ -36,21 +36,23 @@ const getRequiredProfile = async (userId: string) => {
   return rpcProfile;
 };
 
-const resolveUserLogin = async (identifier: string, password: string) => {
-  const trimmed = identifier.trim();
+const resolveUserLogin = async (identifier: string, password: string, loginType?: 'team_leader') => {
+  const submittedIdentifier = loginType === 'team_leader' ? identifier : identifier.trim();
 
   // Email login: resolve directly against Supabase Auth.
-  if (trimmed.includes('@')) {
-    const { data, error } = await authProvider.signInWithPassword(trimmed.toLowerCase(), password);
+  if (!loginType && submittedIdentifier.includes('@')) {
+    const { data, error } = await authProvider.signInWithPassword(submittedIdentifier.toLowerCase(), password);
     if (error) throw new Error(error.message);
     if (!data?.user) throw new Error('Login failed. Please try again.');
     return data;
   }
 
-  // Username login (child unit admins): the login edge function resolves the
-  // synthetic email server-side, verifies the password, and returns session
-  // tokens. This avoids any client-side email enumeration surface.
-  const { data, error } = await authProvider.resolveUsernameLogin(trimmed.toLowerCase(), password);
+  // Username login: the Edge Function resolves the internal Auth email,
+  // verifies the password, and returns session tokens without exposing email.
+  const normalizedIdentifier = loginType === 'team_leader'
+    ? submittedIdentifier
+    : submittedIdentifier.toLowerCase();
+  const { data, error } = await authProvider.resolveUsernameLogin(normalizedIdentifier, password, loginType);
   if (error) throw new Error(error.message);
   if (!data) throw new Error('Login failed. Please try again.');
 
@@ -59,6 +61,20 @@ const resolveUserLogin = async (identifier: string, password: string) => {
     throw new Error('Login failed. Please try again.');
   }
   return { ...data, user: installedSession.user };
+};
+
+const buildLoginResult = async (resolved: { user?: any }): Promise<LoginResult> => {
+  const userId = resolved.user?.id;
+  if (!userId) throw new Error('Login failed. Please try again.');
+
+  const profile = await getRequiredProfile(userId);
+  await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false);
+  return {
+    user: resolved.user,
+    tenant_id: profile.tenant_id,
+    role: profile.role,
+    is_superadmin: profile.is_superadmin || false,
+  };
 };
 
 const assertTenantEnabled = async (tenantId: string | null | undefined, isSuperadmin?: boolean) => {
@@ -81,17 +97,12 @@ export const authService = {
 
   async login(identifier: string, password: string): Promise<LoginResult> {
     const resolved = await resolveUserLogin(identifier, password);
-    const userId = resolved.user?.id;
-    if (!userId) throw new Error('Login failed. Please try again.');
+    return buildLoginResult(resolved);
+  },
 
-    const profile = await getRequiredProfile(userId);
-    await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false);
-    return {
-      user: resolved.user,
-      tenant_id: profile.tenant_id,
-      role: profile.role,
-      is_superadmin: profile.is_superadmin || false,
-    };
+  async loginTeamLeader(username: string, password: string): Promise<LoginResult> {
+    const resolved = await resolveUserLogin(username, password, 'team_leader');
+    return buildLoginResult(resolved);
   },
 
   async logout(): Promise<void> {

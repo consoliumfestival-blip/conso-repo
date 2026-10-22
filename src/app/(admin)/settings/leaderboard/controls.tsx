@@ -1,9 +1,8 @@
 import { ui } from "@/constants/designSystem";
-import * as DocumentPicker from 'expo-document-picker';
-import { storageService } from '@/services/storage/storageService';
-import { useActiveFestival } from '@/core/hooks/useFestival';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -60,11 +59,17 @@ export default function LeaderboardControlsPage() {
 
   // Load active festival ID
   const { useActiveFestival } = useFestival();
-  const { data: activeFestival } = useActiveFestival();
+  const activeFestivalQuery = useActiveFestival();
+  const { data: activeFestival } = activeFestivalQuery;
   const festivalId = activeFestival?.id;
 
   // Load database settings
-  const { data: settings } = useGetLeaderboardSettings(festivalId);
+  const settingsQuery = useGetLeaderboardSettings(festivalId);
+  const { data: settings } = settingsQuery;
+  const canEditSettings = Boolean(
+    tenant_id && festivalId && !activeFestivalQuery.isLoading && !activeFestivalQuery.isError &&
+    !settingsQuery.isLoading && !settingsQuery.isError,
+  );
   const updateSettingsMutation = useUpdateLeaderboardSettings(tenant_id ?? '', festivalId ?? '');
 
   // Local settings states (Applied on clicking "Apply Settings")
@@ -86,11 +91,12 @@ export default function LeaderboardControlsPage() {
   const [rankingMode, setRankingMode] = useState<string>('ALL');
   const [itemLimit, setItemLimit] = useState<string>('');
 
-  const { data: publicPreview, isFetching: isPreviewFetching } = useLeaderboardPreview(
+  const { data: publicPreview, isFetching: isPreviewFetching, isError: isPreviewError } = useLeaderboardPreview(
     tenant_id, 
     festivalId, 
     rankingMode, 
-    itemLimit && !isNaN(parseInt(itemLimit, 10)) ? parseInt(itemLimit, 10) : null
+    itemLimit && !isNaN(parseInt(itemLimit, 10)) ? parseInt(itemLimit, 10) : null,
+    Boolean(tenant_id && festivalId && settingsQuery.isSuccess),
   );
 
   const publicLeaderboardUrl = tenant_id && typeof window !== 'undefined'
@@ -156,8 +162,8 @@ export default function LeaderboardControlsPage() {
   });
 
   const handleApplySettings = async () => {
-    if (!tenant_id || !festivalId) {
-      alert('Active festival or tenant not found.');
+    if (!canEditSettings) {
+      alert('Leaderboard settings are not ready. Check the active festival and settings connection, then retry.');
       return;
     }
     try {
@@ -169,8 +175,8 @@ export default function LeaderboardControlsPage() {
   };
 
   const persistSetting = async (payload: Partial<LeaderboardSettings>) => {
-    if (!tenant_id || !festivalId) {
-      alert('Active festival or tenant not found.');
+    if (!canEditSettings) {
+      alert('Leaderboard settings are not ready. Check the active festival and settings connection, then retry.');
       return false;
     }
     try {
@@ -182,7 +188,7 @@ export default function LeaderboardControlsPage() {
     }
   };
 
-  const { data = [], isRefetching, refetch } = useAdminLeaderboard(tenant_id, festivalId);
+  const { data = [], isRefetching, refetch } = useAdminLeaderboard(festivalId ? tenant_id : null, festivalId);
 
   const latestUpdate = data.reduce<string | null>((latest, row) => {
     if (!row.latest_published_at) return latest;
@@ -192,13 +198,44 @@ export default function LeaderboardControlsPage() {
 
   return (
     <>
-      <View style={styles.workbench}>
-        <View style={styles.controlPanel}>
+      <View style={[styles.workbench, isDesktop ? styles.workbenchDesktop : styles.workbenchStacked]}>
+        <View style={[styles.controlPanel, isDesktop ? styles.settingsPanelDesktop : styles.panelStacked]}>
           <Text style={styles.controlTitle}>Leaderboard Control</Text>
           <Text style={styles.controlSub}>Manage live ranking publication behavior.</Text>
 
-          <View style={styles.controlList}>
-            <View style={styles.controlRow}>
+          {!canEditSettings && (
+            <View style={styles.loadNotice}>
+              {activeFestivalQuery.isLoading || settingsQuery.isLoading ? (
+                <ActivityIndicator size="small" color={colors.teal} />
+              ) : null}
+              <Text style={styles.loadNoticeText}>
+            {activeFestivalQuery.isError
+                  ? 'Could not load the active festival. Retry before changing settings.'
+                  : settingsQuery.isError
+                    ? 'Could not load saved settings. Editing is paused to avoid overwriting them with defaults.'
+                    : activeFestivalQuery.isLoading || settingsQuery.isLoading
+                      ? 'Loading festival and saved leaderboard settings…'
+                      : !tenant_id
+                        ? 'A tenant is required to manage leaderboard settings.'
+                        : 'No active festival is available. Select or activate a festival before editing.'}
+              </Text>
+              {(activeFestivalQuery.isError || settingsQuery.isError) && (
+                <TouchableOpacity
+                  onPress={() => activeFestivalQuery.isError ? activeFestivalQuery.refetch() : settingsQuery.refetch()}
+                  style={styles.retryAction}
+                >
+                  <Text style={styles.retryActionText}>Retry</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <View
+            pointerEvents={canEditSettings ? 'auto' : 'none'}
+            style={!canEditSettings ? styles.settingsDisabled : undefined}
+          >
+          <View style={[styles.controlList, isDesktop && styles.controlListDesktop]}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Public Visibility</Text>
                 <Text style={styles.controlHint}>Show leaderboard to the public</Text>
@@ -217,7 +254,7 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Individual Rankings</Text>
                 <Text style={styles.controlHint}>Show individual rankings on the public leaderboard</Text>
@@ -236,7 +273,7 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={[styles.controlRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={[styles.controlRow, styles.controlRowFull, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <Text style={styles.controlLabel}>Tenant Public Leaderboard Link</Text>
               <Text style={styles.controlHint}>Use this link so the public board always opens this tenant&apos;s festival and never another tenant&apos;s data.</Text>
               <View style={styles.publicLinkRow}>
@@ -255,7 +292,7 @@ export default function LeaderboardControlsPage() {
               </View>
             </View>
 
-            <View style={[styles.controlRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <View style={{ marginBottom: 8 }}>
                 <Text style={styles.controlLabel}>Public Festival Name</Text>
                 <Text style={styles.controlHint}>Name shown on the public leaderboard (leave empty to use the active festival name)</Text>
@@ -277,8 +314,8 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={[styles.controlRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
-              <View style={{ marginBottom: 8 }}>
+            <View style={[styles.controlRow, styles.controlRowFull, { flexDirection: 'column', alignItems: 'stretch' }, isDesktop && styles.rankingRulesDesktop]}>
+              <View style={isDesktop && styles.rankingRulesHeader}>
                 <Text style={styles.controlLabel}>Unit Ranking Publish Logic</Text>
                 <Text style={styles.controlHint}>Limit how many published items are included in the unit ranking</Text>
               </View>
@@ -295,7 +332,7 @@ export default function LeaderboardControlsPage() {
                     setItemLimit(prevLimit);
                   }
                 }}
-                style={[styles.dropdown, rankingMode === 'ALL' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
+                style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'ALL' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
               >
                 <Text style={styles.dropdownValue}>All Completed Items</Text>
               </TouchableOpacity>
@@ -312,7 +349,7 @@ export default function LeaderboardControlsPage() {
                     setItemLimit(prevLimit);
                   }
                 }}
-                style={[styles.dropdown, rankingMode === 'LIMITED' && itemLimit === '5' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
+                style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'LIMITED' && itemLimit === '5' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
               >
                 <Text style={styles.dropdownValue}>First 5 Completed Items</Text>
               </TouchableOpacity>
@@ -329,7 +366,7 @@ export default function LeaderboardControlsPage() {
                     setItemLimit(prevLimit);
                   }
                 }}
-                style={[styles.dropdown, rankingMode === 'LIMITED' && itemLimit === '10' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
+                style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'LIMITED' && itemLimit === '10' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
               >
                 <Text style={styles.dropdownValue}>First 10 Completed Items</Text>
               </TouchableOpacity>
@@ -346,7 +383,7 @@ export default function LeaderboardControlsPage() {
                     setItemLimit(prevLimit);
                   }
                 }}
-                style={[styles.dropdown, rankingMode === 'LIMITED' && itemLimit === '15' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
+                style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'LIMITED' && itemLimit === '15' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
               >
                 <Text style={styles.dropdownValue}>First 15 Completed Items</Text>
               </TouchableOpacity>
@@ -363,12 +400,12 @@ export default function LeaderboardControlsPage() {
                     setItemLimit(prevLimit);
                   }
                 }}
-                style={[styles.dropdown, rankingMode === 'LIMITED' && itemLimit === '20' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
+                style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'LIMITED' && itemLimit === '20' && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}
               >
                 <Text style={styles.dropdownValue}>First 20 Completed Items</Text>
               </TouchableOpacity>
 
-              <View style={[styles.dropdown, rankingMode === 'LIMITED' && !['5','10','15','20'].includes(itemLimit) && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}>
+              <View style={[styles.dropdown, isDesktop && styles.rankingOptionDesktop, rankingMode === 'LIMITED' && !['5','10','15','20'].includes(itemLimit) && { borderColor: colors.teal, backgroundColor: ui.colors.infoSoft }]}>
                 <Text style={[styles.dropdownValue, { flex: 1 }]}>Custom Number</Text>
                 <TextInput
                   style={[styles.textInput, { height: 32, paddingVertical: 0, width: 80, textAlign: 'center' }]}
@@ -389,7 +426,7 @@ export default function LeaderboardControlsPage() {
               </View>
             </View>
 
-            <View style={[styles.controlRow, { flexDirection: 'column', alignItems: 'stretch' }]}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf, { flexDirection: 'column', alignItems: 'stretch' }]}>
               <View style={{ marginBottom: 8 }}>
                 <Text style={styles.controlLabel}>Official Team Point Status</Text>
                 <Text style={styles.controlHint}>Banner text to show above public leaderboard (leave empty to hide)</Text>
@@ -409,7 +446,7 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Auto Refresh</Text>
                 <Text style={styles.controlHint}>Refresh rankings automatically</Text>
@@ -434,7 +471,7 @@ export default function LeaderboardControlsPage() {
                   const nextInterval = autoRefreshInterval === 60 ? 300 : autoRefreshInterval === 300 ? 900 : 60;
                   setAutoRefreshInterval(nextInterval);
                 }}
-                style={styles.dropdown}
+                style={[styles.dropdown, isDesktop && styles.controlRowHalf]}
               >
                 <View>
                   <Text style={styles.controlHint}>Refresh interval</Text>
@@ -446,7 +483,7 @@ export default function LeaderboardControlsPage() {
               </TouchableOpacity>
             )}
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Freeze Leaderboard</Text>
                 <Text style={styles.controlHint}>Freeze rankings to pause movement</Text>
@@ -469,7 +506,7 @@ export default function LeaderboardControlsPage() {
               onPress={() => {
                 setPreviewVisibility(previewVisibility === 'draft' ? 'public' : 'draft');
               }}
-              style={styles.dropdown}
+              style={[styles.dropdown, isDesktop && styles.controlRowHalf]}
             >
               <View>
                 <Text style={styles.controlHint}>Preview Mode</Text>
@@ -478,7 +515,7 @@ export default function LeaderboardControlsPage() {
               <ChevronDown size={18} color={colors.muted} />
             </TouchableOpacity>
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Show Timestamps</Text>
                 <Text style={styles.controlHint}>Display latest update time</Text>
@@ -497,7 +534,7 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Grade Summary</Text>
                 <Text style={styles.controlHint}>Display overall grades count</Text>
@@ -516,7 +553,7 @@ export default function LeaderboardControlsPage() {
               />
             </View>
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Poster Generation</Text>
                 <Text style={styles.controlHint}>Allow poster downloads for units</Text>
@@ -541,7 +578,7 @@ export default function LeaderboardControlsPage() {
                   const nextCount = posterTopCount === 3 ? 5 : posterTopCount === 5 ? 10 : 3;
                   setPosterTopCount(nextCount);
                 }}
-                style={styles.dropdown}
+                style={[styles.dropdown, isDesktop && styles.controlRowHalf]}
               >
                 <View>
                   <Text style={styles.controlHint}>Poster Top Rank Limit</Text>
@@ -551,7 +588,7 @@ export default function LeaderboardControlsPage() {
               </TouchableOpacity>
             )}
 
-            <View style={styles.controlRow}>
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.controlLabel}>Certificate Generation</Text>
                 <Text style={styles.controlHint}>Allow winners certificates</Text>
@@ -576,7 +613,7 @@ export default function LeaderboardControlsPage() {
             <TouchableOpacity 
               onPress={handleApplySettings} 
               style={[styles.primaryAction, updateSettingsMutation.isPending && { opacity: 0.7 }]}
-              disabled={updateSettingsMutation.isPending}
+              disabled={updateSettingsMutation.isPending || !canEditSettings}
             >
               <Rocket size={17} color={ui.colors.surface} />
               <Text style={styles.primaryActionText}>
@@ -585,7 +622,11 @@ export default function LeaderboardControlsPage() {
             </TouchableOpacity>
 
             <Text style={[styles.blockTitle, { marginTop: 12 }]}>Manual Actions</Text>
-            <TouchableOpacity onPress={() => refetch()} style={styles.outlineAction}>
+            <TouchableOpacity
+              onPress={() => refetch()}
+              style={styles.outlineAction}
+              disabled={isRefetching || !festivalId || !tenant_id}
+            >
               <RefreshCw size={17} color={colors.teal} />
               <Text style={styles.outlineActionText}>
                 {isRefetching ? 'Recalculating...' : 'Recalculate Rankings'}
@@ -609,8 +650,9 @@ export default function LeaderboardControlsPage() {
               </View>
             </View>
           </View>
+          </View>
 
-        <View style={[styles.controlPanel, { flex: 1, minWidth: 300 }]}>
+        <View style={[styles.controlPanel, isDesktop ? styles.previewPanelDesktop : styles.panelStacked]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={styles.controlTitle}>Live Points Preview</Text>
             {isPreviewFetching && <RefreshCw size={16} color={colors.teal} />}
@@ -619,8 +661,10 @@ export default function LeaderboardControlsPage() {
             Current {rankingMode === 'LIMITED' ? `(Limited to ${itemLimit || '0'} items)` : '(All Items)'} standings.
           </Text>
 
-          <View style={styles.previewContainer}>
-            {publicPreview?.map((row: any, i: number) => (
+          <ScrollView style={[styles.previewContainer, isDesktop && styles.previewContainerDesktop]} contentContainerStyle={styles.previewContent}>
+            {isPreviewError ? (
+              <Text style={styles.previewEmpty}>Preview could not be loaded. Check the leaderboard API access and retry.</Text>
+            ) : publicPreview?.map((row: any, i: number) => (
               <View key={row.organisation_id} style={styles.previewRow}>
                 <View style={styles.previewRank}>
                   <Text style={styles.previewRankText}>#{i + 1}</Text>
@@ -631,12 +675,12 @@ export default function LeaderboardControlsPage() {
                 <Text style={styles.previewPoints}>{row.total_points} pts</Text>
               </View>
             ))}
-            {(!publicPreview || publicPreview.length === 0) && (
-              <Text style={{ textAlign: 'center', marginTop: 20, color: colors.muted, fontFamily: 'Poppins_400Regular', fontSize: 13 }}>
+            {!isPreviewError && !isPreviewFetching && (!publicPreview || publicPreview.length === 0) && (
+              <Text style={styles.previewEmpty}>
                 No public items match this logic.
               </Text>
             )}
-          </View>
+          </ScrollView>
         </View>
       </View>
 
@@ -655,23 +699,41 @@ export default function LeaderboardControlsPage() {
 
 const styles = StyleSheet.create({
   workbench: {
-    flexDirection: 'row',
-    gap: 18,
+    gap: 14,
     alignItems: 'flex-start',
     width: '100%',
   },
+  workbenchDesktop: {
+    flexDirection: 'row',
+  },
+  workbenchStacked: {
+    flexDirection: 'column',
+  },
   controlPanel: {
     width: '100%',
-    maxWidth: 600,
     backgroundColor: colors.card,
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 20,
+    padding: 16,
     shadowColor: ui.shadow.shadowColor,
     shadowOpacity: 0.06,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  settingsPanelDesktop: {
+    width: 'auto',
+    flex: 1.35,
+    minWidth: 0,
+  },
+  previewPanelDesktop: {
+    width: 'auto',
+    flex: 0.8,
+    minWidth: 290,
+    maxWidth: 470,
+  },
+  panelStacked: {
+    width: '100%',
   },
   controlTitle: {
     color: colors.text,
@@ -688,6 +750,12 @@ const styles = StyleSheet.create({
   controlList: {
     marginBottom: 12,
   },
+  controlListDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
   controlRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -695,6 +763,76 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: ui.colors.border,
+  },
+  controlRowHalf: {
+    width: '48%',
+    minWidth: 250,
+    flexGrow: 1,
+    borderWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 11,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+    backgroundColor: ui.colors.surface,
+  },
+  controlRowFull: {
+    width: '100%',
+  },
+  rankingRulesDesktop: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 11,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 11,
+    backgroundColor: ui.colors.surface,
+  },
+  rankingRulesHeader: {
+    width: '100%',
+    marginBottom: 2,
+  },
+  rankingOptionDesktop: {
+    width: '31%',
+    flexGrow: 1,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  settingsDisabled: {
+    opacity: 0.55,
+  },
+  loadNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    marginBottom: 12,
+    padding: 11,
+    borderRadius: 11,
+    borderWidth: 1,
+    borderColor: ui.colors.info,
+    backgroundColor: ui.colors.infoSoft,
+  },
+  loadNoticeText: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: 'Poppins_500Medium',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  retryAction: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderRadius: 9,
+    backgroundColor: ui.colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  retryActionText: {
+    color: colors.teal,
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
   },
   controlLabel: {
     color: colors.text,
@@ -840,6 +978,59 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
+  },
+  previewContainer: {
+    maxHeight: 360,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: ui.colors.background,
+  },
+  previewContainerDesktop: {
+    maxHeight: 560,
+  },
+  previewContent: {
+    padding: 8,
+  },
+  previewRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  previewRank: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.soft,
+  },
+  previewRankText: {
+    color: colors.teal,
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 12,
+  },
+  previewOrgName: {
+    color: colors.text,
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+  },
+  previewPoints: {
+    color: colors.teal,
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 13,
+  },
+  previewEmpty: {
+    textAlign: 'center',
+    padding: 22,
+    color: colors.muted,
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
   },
   infoStrip: {
     marginTop: 20,

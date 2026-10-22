@@ -9,6 +9,12 @@ import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { useAuthStore } from '../../../core/store/authStore';
 
+const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
+  registrations.filter((registration: any) =>
+    registration.item_id === schedule.item_id
+    && registration.festival_id === schedule.festival_id
+  );
+
 function ScheduleWorkflowBadges({ registrations = [] }: { registrations?: any[] }) {
   const activeRegs = registrations.filter((r: any) => r.status !== 'rejected');
   const verifiedRegs = activeRegs.filter((r: any) => r.is_verified);
@@ -81,6 +87,16 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   const [selectedVenue, setSelectedVenue] = React.useState(venueIdOverride || 'All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
   const [copiedVenueId, setCopiedVenueId] = React.useState<string | null>(null);
+  const [copiedPinVenueId, setCopiedPinVenueId] = React.useState<string | null>(null);
+
+  const openStagePortal = (venueId: string) => {
+    const path = `/stage-management/venue/${venueId}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(path, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    router.push(path as any);
+  };
 
   const copyStageLink = async (venueId: string) => {
     const path = `/stage-management/venue/${venueId}`;
@@ -97,6 +113,21 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       setTimeout(() => setCopiedVenueId((current) => current === venueId ? null : current), 1800);
     } catch (error: any) {
       Alert.alert('Copy failed', error.message || 'Unable to copy the stage link.');
+    }
+  };
+
+  const copyStagePin = async (venueId: string, pin?: string) => {
+    if (!pin) {
+      Alert.alert('PIN unavailable', 'Refresh Stage Management after applying the stage portal migration.');
+      return;
+    }
+    try {
+      if (Platform.OS !== 'web' || !navigator?.clipboard?.writeText) throw new Error('Clipboard is unavailable on this device.');
+      await navigator.clipboard.writeText(pin);
+      setCopiedPinVenueId(venueId);
+      setTimeout(() => setCopiedPinVenueId((current) => current === venueId ? null : current), 1800);
+    } catch (error: any) {
+      Alert.alert('Copy failed', error.message || 'Unable to copy the stage PIN.');
     }
   };
 
@@ -155,7 +186,8 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       // 4. Status/Workflow Filter
       let matchesStatus = true;
       if (selectedStatus !== 'All') {
-        const scheduleRegs = allRegistrations.filter((r: any) => r.schedule_id === schedule.id && r.status !== 'rejected');
+        const scheduleRegs = getRegistrationsForSchedule(allRegistrations, schedule)
+          .filter((registration: any) => registration.status !== 'rejected');
         const verifiedRegs = scheduleRegs.filter((r: any) => r.is_verified);
         
         const checkinDone = scheduleRegs.length > 0 && scheduleRegs.every((r: any) => r.is_verified);
@@ -252,17 +284,17 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   if (!venueIdOverride) {
     return (
       <ScrollView
-        className="flex-1 bg-ssf-bg py-6 px-4"
+        className={`flex-1 bg-ssf-bg ${isMobile ? 'px-3 py-3' : 'px-4 py-6'}`}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <View className="flex-row justify-between items-center mb-6">
-          <View>
-            <Text className="text-3xl font-poppins-black text-ssf-text">Stage Management</Text>
+        <View className={`flex-row justify-between items-center ${isMobile ? 'mb-4' : 'mb-6'}`}>
+          <View className={isMobile ? 'flex-1 mr-3' : ''}>
+            <Text className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ssf-text`}>Stage Management</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">
               {venues.length} stages available
             </Text>
           </View>
-          <TouchableOpacity onPress={onRefresh} disabled={refreshing} className="p-2 bg-white border border-ssf-border rounded-xl">
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stages" onPress={onRefresh} disabled={refreshing} className={`${isMobile ? 'h-11 w-11' : 'p-2'} items-center justify-center bg-white border border-ssf-border rounded-xl`}>
             <RefreshCw size={18} color="#475569" />
           </TouchableOpacity>
         </View>
@@ -273,6 +305,65 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
             <Text className="font-poppins-bold text-ssf-text mt-3">No stages available</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">Create venues from Schedule Management first.</Text>
           </SsfCard>
+        ) : isMobile ? (
+          <View className="gap-y-3 pb-5">
+            {venues.map((venue: any) => {
+              const stageSchedules = schedules.filter((schedule: any) =>
+                schedule.venue_id === venue.id || schedule.venues?.id === venue.id
+              );
+              const copied = copiedVenueId === venue.id;
+              const copiedPin = copiedPinVenueId === venue.id;
+
+              return (
+                <SsfCard key={venue.id} className="p-3">
+                  <View className="flex-row items-start gap-3">
+                    <View className="h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
+                      <MapPin size={18} color="#047857" />
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{venue.name}</Text>
+                      <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Independent check-in and code-letter workspace</Text>
+                      <View className="mt-2 self-start rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                        <Text className="font-poppins-bold text-[10px] text-slate-600">{stageSchedules.length} events</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View className="mt-3 flex-row items-center justify-between rounded-lg border border-amber-200 bg-amber-50 pl-3">
+                    <Text className="font-poppins-bold text-xs text-amber-900">PIN {venue.pin || '—'}</Text>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Copy PIN for ${venue.name}`}
+                      onPress={() => copyStagePin(venue.id, venue.pin)}
+                      className={`h-11 min-w-11 items-center justify-center rounded-r-lg px-3 ${copiedPin ? 'bg-emerald-50' : 'bg-white/60'}`}
+                    >
+                      {copiedPin ? <Check size={16} color="#047857" /> : <Copy size={16} color="#92400E" />}
+                    </TouchableOpacity>
+                  </View>
+
+                  <View className="mt-3 flex-row gap-2">
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      onPress={() => openStagePortal(venue.id)}
+                      className="h-11 flex-1 flex-row items-center justify-center rounded-lg bg-teal-700 px-2"
+                    >
+                      <ExternalLink size={15} color="#FFFFFF" />
+                      <Text className="ml-1.5 font-poppins-bold text-xs text-white">Open Stage</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Copy stage link for ${venue.name}`}
+                      onPress={() => copyStageLink(venue.id)}
+                      className={`h-11 flex-1 flex-row items-center justify-center rounded-lg border px-2 ${copied ? 'border-emerald-200 bg-emerald-50' : 'border-ui-border bg-white'}`}
+                    >
+                      {copied ? <Check size={15} color="#047857" /> : <Copy size={15} color="#475569" />}
+                      <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-emerald-700' : 'text-slate-700'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </SsfCard>
+              );
+            })}
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
             <View className="flex-1 bg-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 820 }}>
@@ -280,7 +371,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 <Text style={{ flex: 1.2 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Stage</Text>
                 <Text style={{ flex: 1.8 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workspace</Text>
                 <Text style={{ width: 120 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Events</Text>
-                <Text style={{ width: 245 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
+                <Text style={{ width: 385 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Stage link & PIN</Text>
               </View>
               {venues.map((venue: any) => {
                 const stageSchedules = schedules.filter((schedule: any) =>
@@ -303,9 +394,18 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                         <Text className="font-poppins-bold text-[9px] text-slate-600">{stageSchedules.length} events</Text>
                       </View>
                     </View>
-                    <View style={{ width: 245 }} className="flex-row justify-end gap-x-2">
+                    <View style={{ width: 385 }} className="flex-row items-center justify-end gap-x-2">
                       <TouchableOpacity
-                        onPress={() => router.push(`/stage-management/venue/${venue.id}` as any)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Copy PIN for ${venue.name}`}
+                        onPress={() => copyStagePin(venue.id, venue.pin)}
+                        className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${copiedPinVenueId === venue.id ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}
+                      >
+                        <Text className="font-poppins-bold text-[10px] text-amber-800 mr-1.5">PIN {venue.pin || '—'}</Text>
+                        {copiedPinVenueId === venue.id ? <Check size={13} color="#047857" /> : <Copy size={13} color="#92400E" />}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => openStagePortal(venue.id)}
                         className="h-8 px-3 rounded-lg bg-teal-700 flex-row items-center justify-center"
                       >
                         <ExternalLink size={13} color="#FFFFFF" />
@@ -714,7 +814,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 </View>
               </View>
               <View style={{ flex: 1.3 }} className="pr-3">
-                <ScheduleWorkflowBadges registrations={allRegistrations.filter((r: any) => r.schedule_id === schedule.id)} />
+                <ScheduleWorkflowBadges registrations={getRegistrationsForSchedule(allRegistrations, schedule)} />
               </View>
               <View style={{ width: 190 }} className="flex-row justify-end gap-x-2">
                 <TouchableOpacity
@@ -785,7 +885,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               </View>
 
               <ScheduleWorkflowBadges 
-                registrations={allRegistrations.filter((r: any) => r.schedule_id === schedule.id)}
+                registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
               />
 
               {/* Action buttons — 2×2 grid on mobile */}
@@ -794,14 +894,14 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   <SsfButton 
                     label="Check-In" 
                     variant="outline" 
-                    size="sm"
+                    size="md"
                     className="flex-1"
                     onPress={() => router.push(`/stage-management/${schedule.id}/checkin` as any)}
                   />
                   <SsfButton 
                     label="Code Letters" 
                     variant="outline" 
-                    size="sm"
+                    size="md"
                     className="flex-1"
                     onPress={() => router.push(`/stage-management/${schedule.id}/code-letter` as any)}
                   />

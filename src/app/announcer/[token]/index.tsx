@@ -111,7 +111,7 @@ export default function AnnouncerPortal() {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Announcer Portal</Text>
-            <Text style={styles.subtitle}>{festivalData?.custom_name || 'Festival'} � Live Results</Text>
+            <Text style={styles.subtitle}>{festivalData?.custom_name || 'Festival'} · Live Results</Text>
           </View>
           <TouchableOpacity 
             style={[styles.refreshBtn, loading && styles.disabledBtn]} 

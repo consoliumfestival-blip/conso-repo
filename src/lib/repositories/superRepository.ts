@@ -13,8 +13,16 @@ export const superRepository = {
     return databaseProvider.createGlobalOrganisation<T>(payload);
   },
 
-  deleteGlobalOrganisation(id: string) {
-    return databaseProvider.deleteGlobalOrganisation(id);
+  archiveGlobalOrganisation(id: string) {
+    return databaseProvider.archiveGlobalOrganisation(id);
+  },
+
+  restoreGlobalOrganisation(id: string) {
+    return databaseProvider.restoreGlobalOrganisation(id);
+  },
+
+  permanentlyDeleteArchivedOrganisation(id: string) {
+    return databaseProvider.permanentlyDeleteArchivedOrganisation(id);
   },
 
   listTenantAccounts<T>() {

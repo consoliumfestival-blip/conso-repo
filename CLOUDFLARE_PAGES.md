@@ -30,8 +30,10 @@ the browser bundle, so these values are public to every visitor:
 - `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (preferred) or
   `EXPO_PUBLIC_SUPABASE_ANON_KEY` (compatibility fallback)
 - `EXPO_PUBLIC_ENABLE_ONBOARDING` (optional; default `false`)
+- `EXPO_PUBLIC_ENABLE_COMMUNICATION_CENTER` (optional; default `false`)
 - `EXPO_PUBLIC_CUSTOM_RENDERER_ENABLED` (optional; default `false`)
-- `EXPO_PUBLIC_STORAGE_PROVIDER` (optional; default `supabase`)
+- `EXPO_PUBLIC_STORAGE_PROVIDER` (default `r2`, matching the source; target R2
+  credentials must be configured before uploads work)
 - `EXPO_PUBLIC_SUPABASE_STORAGE_BUCKET` (only if using a non-default bucket)
 - `EXPO_PUBLIC_R2_BUCKET` and `EXPO_PUBLIC_R2_PUB_DOMAIN` (only when the
   frontend uses public R2 assets)
@@ -39,6 +41,9 @@ the browser bundle, so these values are public to every visitor:
 Never add a Supabase service-role key, Supabase secret key, database password,
 R2 secret/access key, or Supabase CLI access token to Pages frontend variables.
 Those are server-side credentials and do not belong in this static frontend.
+The user's latest target local ENV enables onboarding (`true`) and leaves
+Communication Center disabled (`false`). Use the intended values in Pages too;
+changing an ignored local ENV does not change hosted Pages build settings.
 If `EXPO_PUBLIC_GEMINI_API_KEY` is enabled, it is also visible in the browser;
 use a restricted key or move privileged calls behind a server-side endpoint.
 

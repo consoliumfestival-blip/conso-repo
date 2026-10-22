@@ -2,18 +2,16 @@
 // @ts-nocheck
 // resolve-login-identifier: secure username-based login resolution.
 //
-// Why this exists:
-//   Child organisation admins log in with a username (e.g. makkaraparamba_admin)
-//   whose Auth email is synthetic: {username}_{4-hex}@sahi.local. Exposing a
-//   resolver that returns that email to anonymous SQL callers enabled account
-//   enumeration (R4). This edge performs the resolution and the password
-//   verification SERVER-SIDE:
+// Organisation admins use the legacy synthetic-email resolver. Team Leaders
+// resolve their exact profile username to a stable internal Auth email via a
+// separate service-role-only RPC. Both modes keep email resolution and
+// password verification server-side:
 //
-//     username + password  ->  edge  ->  resolve_login_email (service role)
+//     username + password  ->  edge  ->  private email resolver (service role)
 //                                    ->  Auth signInWithPassword
 //                                    ->  session tokens returned to the client
 //
-//   The synthetic email never leaves the server, unknown usernames and wrong
+//   The internal email never leaves the server, unknown usernames and wrong
 //   passwords return the identical generic error, and per-IP/per-username
 //   database-backed rate limiting is applied across Edge workers.
 //
@@ -24,7 +22,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-const VERSION = 'login-v1';
+const VERSION = 'login-v2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,10 +60,13 @@ serve(async (req) => {
     return json(400, { error: 'INVALID_JSON', message: 'Invalid request body.' });
   }
 
-  const username = typeof body?.username === 'string' ? body.username.trim().toLowerCase() : '';
+  const teamLeaderLogin = body?.login_type === 'team_leader';
+  const username = typeof body?.username === 'string'
+    ? (teamLeaderLogin ? body.username : body.username.trim().toLowerCase())
+    : '';
   const password = typeof body?.password === 'string' ? body.password : '';
 
-  if (!/^[a-z0-9_]{3,40}$/.test(username) || password.length < 6 || password.length > 128) {
+  if (!teamLeaderLogin && (!/^[a-z0-9_]{3,40}$/.test(username) || password.length < 6 || password.length > 128)) {
     // Identical generic failure for malformed input and bad credentials.
     return json(401, { error: 'INVALID_CREDENTIALS', message: 'Invalid username or password.' });
   }
@@ -99,7 +100,10 @@ serve(async (req) => {
 
   // Server-side email resolution. Unknown usernames and resolution failures
   // produce the identical generic error as a wrong password.
-  const { data: email, error: resolveError } = await admin.rpc('resolve_login_email', { p_username: username });
+  const { data: email, error: resolveError } = await admin.rpc(
+    teamLeaderLogin ? 'resolve_team_leader_login_email' : 'resolve_login_email',
+    { p_username: username },
+  );
 
   // Unknown and known usernames both execute an Auth password check, reducing
   // the timing distinction. The dummy address is deterministic but never

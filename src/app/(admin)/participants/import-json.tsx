@@ -1,21 +1,22 @@
 import { ui } from '@/constants/designSystem';
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useGoBack } from '../../../core/hooks/useGoBack';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { CollegeFestImportBlock } from '../../../components/ui/CollegeFestImportBlock';
-import { ArrowLeft, CheckCircle, AlertCircle, Play, Database, FileText, Upload } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, AlertCircle, Play, Database, FileText } from 'lucide-react-native';
 import { useAuthStore } from '../../../core/store/authStore';
 import { databaseProvider as db } from '../../../providers/database';
 import { jsonImportService, JuniorParticipant, ImportValidationResult } from '../../../services/jsonImportService';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Sharing from 'expo-sharing';
 import { useFestival } from '../../../core/hooks/useFestival';
 
-
 export default function ImportJuniorDataset() {
+  const router = useRouter();
   const goBack = useGoBack('/(admin)/participants');
   const { tenant_id: authTenantId } = useAuthStore();
   const tenantId = authTenantId || '';
@@ -25,9 +26,9 @@ export default function ImportJuniorDataset() {
   const festivalId = activeFestival?.id;
   const isCollegeFest = activeFestival?.festival_template === 'college_fest';
 
-  const [dataset, setDataset] = useState<JuniorParticipant[]>([]);
   const [datasetRaw, setDatasetRaw] = useState<any>(null);
-  const [sourceFileName, setSourceFileName] = useState('');
+  const [dataset, setDataset] = useState<JuniorParticipant[]>([]);
+  const validationRevision = useRef(0);
   const [internalValidation, setInternalValidation] = useState<ImportValidationResult | null>(null);
   const [dbConflicts, setDbConflicts] = useState<Map<string, {name: string, isMismatch: boolean}>>(new Map());
   const [isReady, setIsReady] = useState(false);
@@ -36,76 +37,73 @@ export default function ImportJuniorDataset() {
   const [progress, setProgress] = useState(0);
   const [importReport, setImportReport] = useState<any>(null);
 
-  const processFileContent = (text: string, filename: string) => {
-    try {
-      const parsed = jsonImportService.parseMarkdownWrappedJson(text);
-      const participants: JuniorParticipant[] = Array.isArray(parsed)
-        ? parsed
-        : (parsed?.participants || []);
-      if (!Array.isArray(participants) || participants.length === 0) {
-        throw new Error('The selected JSON must contain a non-empty participants array.');
-      }
-
-      const normalized = participants.map((p: any) => ({
-        ...p,
-        name: jsonImportService.normalizeParticipantName(p.name),
-        chest_number: p.chest_number || p.chest_no,
-        items: p.items || [],
-      }));
-
-      setDatasetRaw(parsed);
-      setSourceFileName(filename);
-      setDataset(normalized);
-      setIsReady(false);
-      setDbConflicts(new Map());
-      const internalRes = jsonImportService.validateInternalDataset(normalized);
-      setInternalValidation(internalRes);
-      if (internalRes.isValid) checkDbConflicts(normalized);
-    } catch (error: any) {
-      setDatasetRaw(null);
-      setSourceFileName('');
-      setDataset([]);
-      setIsReady(false);
-      setInternalValidation(null);
-      Alert.alert('Invalid participant JSON', error?.message || 'Could not read the selected file.');
-    }
-  };
-
-  const handleFileUpload = (event: any) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (result) => {
-      const text = result.target?.result;
-      if (typeof text === 'string') processFileContent(text, file.name || 'participants.json');
-    };
-    reader.onerror = () => Alert.alert('File read failed', 'Please select a valid JSON file.');
-    reader.readAsText(file);
-    event.target.value = '';
-  };
-
-  const pickDatasetFile = async () => {
+  const handleChooseFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
+        type: ['application/json', 'text/plain'],
         copyToCacheDirectory: true,
       });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
-      const text = await FileSystem.readAsStringAsync(asset.uri);
-      processFileContent(text, asset.name || 'participants.json');
+      if (result.canceled) return;
+      validationRevision.current += 1;
+      setIsReady(false);
+      setDatasetRaw(null);
+      setDataset([]);
+      setInternalValidation(null);
+      setDbConflicts(new Map());
+      setImportReport(null);
+      const file = result.assets[0];
+      const text = Platform.OS === 'web' && file.file
+        ? await file.file.text()
+        : await FileSystem.readAsStringAsync(file.uri);
+      const parsed = jsonImportService.parseMarkdownWrappedJson(text);
+      const participants = Array.isArray(parsed) ? parsed : parsed?.participants;
+      if (!Array.isArray(participants) || participants.length === 0) {
+        throw new Error('Choose a JSON file containing a non-empty participant array.');
+      }
+      setDatasetRaw(parsed);
     } catch (error: any) {
-      Alert.alert('File read failed', error?.message || 'Please select a valid JSON file.');
+      Alert.alert('Unable to load JSON', error?.message || 'Could not read the selected file.');
     }
   };
 
-  const checkDbConflicts = async (data: JuniorParticipant[]) => {
+  useEffect(() => {
+    const revision = ++validationRevision.current;
+    setIsReady(false);
+    if (!festivalId || !datasetRaw) return;
+
+    // Process dataset defensively against Metro bundler exports
+    let raw = datasetRaw;
+    if (raw && raw.default) raw = raw.default;
+
+    const participants: JuniorParticipant[] = Array.isArray(raw)
+      ? raw
+      : (raw.participants || []);
+
+    // Normalize names internally
+    const normalized = participants.map((p: any) => ({
+      ...p,
+      name: jsonImportService.normalizeParticipantName(p.name),
+      chest_number: p.chest_number || p.chest_no,
+      items: p.items || []
+    }));
+
+    setDataset(normalized);
+    const internalRes = jsonImportService.validateInternalDataset(normalized);
+    setInternalValidation(internalRes);
+
+    if (internalRes.isValid) {
+      checkDbConflicts(normalized, revision);
+    }
+    return () => { validationRevision.current += 1; };
+  }, [festivalId, datasetRaw]);
+
+  const checkDbConflicts = async (data: JuniorParticipant[], revision: number) => {
     try {
-      if (!festivalId) return;
       const chestNumbers = data.map(d => d.chest_number || d.chest_no).filter(Boolean) as string[];
       if (chestNumbers.length === 0) return;
 
       const { data: existing, error } = await db.validateChestNumbers(festivalId, chestNumbers);
+      if (revision !== validationRevision.current) return;
       if (error) throw error;
 
       const conflicts = new Map<string, {name: string, isMismatch: boolean}>();
@@ -145,7 +143,7 @@ export default function ImportJuniorDataset() {
       const { data: session, error: sessionErr } = await db.createImportSession({
         tenant_id: tenantId,
         festival_id: festivalId,
-        filename: sourceFileName || 'participants.json',
+        filename: 'importjn.json',
         status: 'processing'
       });
       if (sessionErr) throw sessionErr;
@@ -255,7 +253,9 @@ export default function ImportJuniorDataset() {
     }
   };
 
-  if (isCollegeFest) return <CollegeFestImportBlock />;
+  if (isCollegeFest || activeFestival?.chest_number_template === 'team') {
+    return <CollegeFestImportBlock teamTemplate={activeFestival?.chest_number_template === 'team'} />;
+  }
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
       <View className="flex-row items-center mb-6">
@@ -265,43 +265,22 @@ export default function ImportJuniorDataset() {
         <Text className="text-3xl font-poppins-black text-ssf-text">Junior Dataset Import</Text>
       </View>
 
+      <SsfCard className="mb-6">
+        <Text className="font-poppins-bold text-base text-ssf-text mb-2">Upload participant JSON</Text>
+        <Text className="font-poppins text-sm text-ssf-muted mb-3">
+          Select your festival's JSON file to validate and preview before importing.
+        </Text>
+        <SsfButton label="Choose JSON file" onPress={handleChooseFile} disabled={isProcessing} />
+      </SsfCard>
+
       <SsfCard className="mb-6 bg-yellow-50 border border-yellow-200">
         <Text className="font-poppins-bold text-yellow-800 mb-2">Production Safety Rules</Text>
         <Text className="font-poppins text-xs text-yellow-700 leading-5">
-          â€¢ All names are normalized to FULL CAPITALS.{'\n'}
-          â€¢ Chest number conflicts block import if names mismatch.{'\n'}
-          â€¢ Valid items are imported; invalid items are skipped without dropping the participant.{'\n'}
-          â€¢ A storage snapshot backup is created before execution.
+          • All names are normalized to FULL CAPITALS.{'\n'}
+          • Chest number conflicts block import if names mismatch.{'\n'}
+          • Valid items are imported; invalid items are skipped without dropping the participant.{'\n'}
+          • A storage snapshot backup is created before execution.
         </Text>
-      </SsfCard>
-
-      <SsfCard className="mb-6 border border-ssf-border">
-        <Text className="font-poppins-bold text-ssf-text mb-2">
-          {dataset.length ? 'Selected Junior Dataset' : 'Upload Junior Dataset'}
-        </Text>
-        <Text className="font-poppins text-xs text-ssf-text-muted mb-4">
-          {dataset.length
-            ? `${sourceFileName} — choose another JSON file to replace this preview.`
-            : 'Select this college’s JSON file. Expected format: an array of participants or an object with a participants array.'}
-        </Text>
-        {Platform.OS === 'web' ? (
-          <input
-            type="file"
-            accept=".json,application/json"
-            onChange={handleFileUpload}
-            style={{
-              fontFamily: 'Poppins_600SemiBold',
-              backgroundColor: '#1B6B3A',
-              color: ui.colors.surface,
-              padding: '10px 20px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          />
-        ) : (
-          <SsfButton label="Choose JSON file" onPress={pickDatasetFile} icon={<Upload size={16} color="white" />} />
-        )}
       </SsfCard>
 
       <View className="flex-row gap-4 mb-6">
@@ -327,7 +306,7 @@ export default function ImportJuniorDataset() {
             <Text className="font-poppins-bold text-red-700">Internal JSON Duplication Detected</Text>
           </View>
           {internalValidation.errors.map((e, i) => (
-            <Text key={i} className="font-poppins text-xs text-red-600 mb-1">â€¢ {e}</Text>
+            <Text key={i} className="font-poppins text-xs text-red-600 mb-1">• {e}</Text>
           ))}
         </SsfCard>
       )}

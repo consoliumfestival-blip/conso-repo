@@ -71,9 +71,11 @@ export class RegistrationValidator {
   // Rule 12: < 3 teams → grade points only
   static checkMinTeamsRule(
     registrationCount: number,
-    item: Item
+    item: Item,
+    minimumTeams: number,
   ): { gradeOnly: boolean; message: string | null } {
-    if (registrationCount < 3) {
+    if (!Number.isInteger(minimumTeams) || minimumTeams < 1) throw new Error('A configured minimum team count is required.');
+    if (registrationCount < minimumTeams) {
       return {
         gradeOnly: true,
         message: `${registrationCount} entries മാത്രം. 1st/2nd points ഇല്ല. Grade points മാത്രം (Rule 12)`

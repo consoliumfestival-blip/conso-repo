@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { judgeService } from '../../services/judgeService';
 import { useFestival } from './useFestival';
 import { supabase } from '@/core/config/supabase';
+import type { CompetitionPublication } from '../../types/scoring';
 
 export const useJudges = () => {
   const queryClient = useQueryClient();
@@ -49,6 +50,8 @@ export const useJudges = () => {
       judgeService.assignJudgesToSchedule(scheduleId, judgeIds),
     onSuccess: (_, { scheduleId }) => {
       queryClient.invalidateQueries({ queryKey: ['scheduleJudges', scheduleId] });
+      queryClient.invalidateQueries({ queryKey: ['judgeSubmissionSummary', scheduleId] });
+      queryClient.invalidateQueries({ queryKey: ['markEntries', scheduleId] });
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
     },
   });
@@ -86,10 +89,11 @@ export const useJudges = () => {
   });
 
   // ── Mark entries for a schedule ───────────────────────────────────────────────
-  const useMarkEntries = (scheduleId: string | undefined) => useQuery({
+  const useMarkEntries = (scheduleId: string | undefined, refetchInterval?: number) => useQuery({
     queryKey: ['markEntries', scheduleId],
     queryFn: () => judgeService.listMarkEntries<any>(scheduleId!),
     enabled: !!scheduleId,
+    ...(refetchInterval ? { refetchInterval } : {}),
   });
 
   // ── Save (draft) mark entry ───────────────────────────────────────────────────
@@ -143,7 +147,7 @@ export const useJudges = () => {
   });
 
   const publishResults = useMutation({
-    mutationFn: (payloads: Record<string, unknown>[]) => judgeService.publishResults(payloads),
+    mutationFn: (input: CompetitionPublication) => judgeService.publishResults(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       queryClient.invalidateQueries({ queryKey: ['scheduleReadiness'] });
@@ -151,6 +155,8 @@ export const useJudges = () => {
       queryClient.invalidateQueries({ queryKey: ['festival-results'] });
       queryClient.invalidateQueries({ queryKey: ['public-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['public-published-results'] });
+      queryClient.invalidateQueries({ predicate: query => Array.isArray(query.queryKey)
+        && ['leaderboard-preview', 'admin-leaderboard', 'team-standings', 'team-leader-standings', 'unitProfile', 'publicSchedule'].includes(String(query.queryKey[0])) });
     },
   });
 
@@ -174,22 +180,17 @@ export const useJudges = () => {
   // Admin manual mark override
       // Admin manual mark override
     const adminUpsertMark = useMutation({
-      mutationFn: async ({ scheduleId, judgeId, registrationId, criteriaScores, totalMark, maxMark, criteriaSnapshot, status }: { scheduleId: string, judgeId: string, registrationId: string, criteriaScores: any, totalMark: number, maxMark: number, criteriaSnapshot: any, status: string }) => {
-        const { data: schedule } = await supabase.from('schedules').select('tenant_id').eq('id', scheduleId).single();
-        const { data, error } = await supabase.from('mark_entries').upsert({
-          schedule_id: scheduleId,
-          judge_id: judgeId,
-          registration_id: registrationId,
-          tenant_id: schedule?.tenant_id,
-          criteria_scores: criteriaScores,
-          total_mark: totalMark,
-          max_mark_snapshot: maxMark,
-          criteria_snapshot: criteriaSnapshot,
-          entry_mode_snapshot: Object.keys(criteriaScores || {}).length > 0 ? 'criteria' : 'total_only',
-          is_draft: status === 'draft',
-          is_final: status === 'final',
-          submitted_at: status === 'final' ? new Date().toISOString() : null,
-        }, { onConflict: 'schedule_id,judge_id,registration_id' }).select().single();
+      mutationFn: async ({ scheduleId, judgeId, registrationId, criteriaScores, totalMark, maxMark, criteriaSnapshot, status }: { scheduleId: string, judgeId: string, registrationId: string, criteriaScores: any, totalMark: number, maxMark: number, criteriaSnapshot: any, status: 'final' }) => {
+        const { data, error } = await supabase.rpc('admin_upsert_mark', {
+          p_schedule_id: scheduleId,
+          p_judge_id: judgeId,
+          p_registration_id: registrationId,
+          p_criteria_scores: criteriaScores,
+          p_total_mark: totalMark,
+          p_max_mark: maxMark,
+          p_criteria_snapshot: criteriaSnapshot,
+          p_status: status,
+        });
         if (error) throw error;
         return data;
       },

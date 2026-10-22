@@ -19,8 +19,26 @@ export const organisationService = {
     return data || [];
   },
 
+  async getArchivedChildOrganisations(parentId: string) {
+    const { data, error } = await organisationRepository.getChildOrganisations(parentId, true);
+    throwIfError(error);
+    return data || [];
+  },
+
   async archiveChildOrganisation(orgId: string) {
     const { data, error } = await organisationRepository.archiveChildOrganisation(orgId);
+    throwIfError(error, data && !data.success ? data.error : undefined);
+    return data;
+  },
+
+  async restoreChildOrganisation(orgId: string) {
+    const { data, error } = await organisationRepository.restoreChildOrganisation(orgId);
+    throwIfError(error, data && !data.success ? data.error : undefined);
+    return data;
+  },
+
+  async deleteArchivedOrganisation(orgId: string) {
+    const { data, error } = await organisationRepository.deleteArchivedOrganisation(orgId);
     throwIfError(error, data && !data.success ? data.error : undefined);
     return data;
   },

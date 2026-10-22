@@ -12,6 +12,7 @@ import {
 import { usePathname, useRouter } from "expo-router";
 import {
   CalendarDays,
+  ClipboardList,
   Home,
   LogOut,
   Menu,
@@ -74,6 +75,12 @@ const navItems: NavItem[] = [
     match: (path) => path.includes("/team/participants"),
   },
   {
+    label: "Programs",
+    path: "/team/programs",
+    icon: ClipboardList,
+    match: (path) => path.includes("/team/programs"),
+  },
+  {
     label: "Announcements",
     path: "/team/announcements",
     icon: MessageSquare,
@@ -97,9 +104,20 @@ export function TeamLeaderAppShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { width } = useWindowDimensions();
   const { context } = useTeamLeaderContext();
+
+  React.useEffect(() => {
+    const mustUpdateCredentials = user?.app_metadata?.must_change_credentials
+      || user?.app_metadata?.must_change_password
+      || user?.user_metadata?.must_change_credentials
+      || user?.user_metadata?.must_change_password;
+    if (mustUpdateCredentials && pathname !== "/team/first-login") {
+      router.replace("/team/first-login");
+    }
+  }, [user, pathname, router]);
   const teamPrimary = context?.portal_primary_color || "#0F766E";
   const teamAccent = context?.portal_accent_color || "#14B8A6";
   const teamInitial = (context?.team_name || "T")

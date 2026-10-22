@@ -1,10 +1,12 @@
 import { judgeRepository } from '../lib/repositories/judgeRepository';
+import type { CompetitionPublication } from '../types/scoring';
+import type { GradeThresholds } from '../core/utils/flexiblePointsEngine';
 
 import { calculateGrade as getGrade } from '../core/utils/pointCalculator';
 
 // Grade calculation proxy to pointCalculator for backward compatibility
-export const calculateGrade = (totalMark: number, maxMark: number): string => {
-  return getGrade(totalMark, maxMark) || '-';
+export const calculateGrade = (totalMark: number, maxMark: number, config?: { thresholds: GradeThresholds } | null): string => {
+  return config ? getGrade(totalMark, maxMark, config) || '-' : '-';
 };
 
 export const judgeService = {
@@ -136,7 +138,7 @@ export const judgeService = {
     return data ?? [];
   },
 
-  async publishResults(payloads: Record<string, unknown>[]) {
+  async publishResults(payloads: CompetitionPublication) {
     const { error } = await judgeRepository.publishResults(payloads);
     if (error) throw new Error(error.message);
   },

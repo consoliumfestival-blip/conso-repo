@@ -20,6 +20,17 @@ export const useOrganisations = () => {
     enabled: !!parentId,
   });
 
+  const archivedChildOrganisationsQuery = useQuery({
+    queryKey: ['archivedChildOrganisations', parentId],
+    queryFn: () => organisationService.getArchivedChildOrganisations(parentId!),
+    enabled: !!parentId,
+  });
+
+  const invalidateOrganisationLists = () => {
+    queryClient.invalidateQueries({ queryKey: ['childOrganisations', parentId] });
+    queryClient.invalidateQueries({ queryKey: ['archivedChildOrganisations', parentId] });
+  };
+
   const createOrganisationMutation = useMutation({
     mutationFn: ({ orgName, orgType, username, idempotencyKey }: { orgName: string; orgType?: string; username: string; idempotencyKey?: string }) => {
       if (!parentId) throw new Error('Parent ID not found');
@@ -40,7 +51,18 @@ export const useOrganisations = () => {
         current.filter((organisation) => organisation.id !== orgId)
       );
       queryClient.invalidateQueries({ queryKey: ['childOrganisations', parentId], refetchType: 'active' });
+      invalidateOrganisationLists();
     },
+  });
+
+  const restoreOrganisationMutation = useMutation({
+    mutationFn: (orgId: string) => organisationService.restoreChildOrganisation(orgId),
+    onSuccess: invalidateOrganisationLists,
+  });
+
+  const deleteArchivedOrganisationMutation = useMutation({
+    mutationFn: (orgId: string) => organisationService.deleteArchivedOrganisation(orgId),
+    onSuccess: invalidateOrganisationLists,
   });
 
   const resetCredentialMutation = useMutation({
@@ -51,13 +73,21 @@ export const useOrganisations = () => {
     myOrganisation: myOrganisationQuery.data,
     isLoadingMyOrg: myOrganisationQuery.isLoading,
     childOrganisations: childOrganisationsQuery.data || [],
+    archivedChildOrganisations: archivedChildOrganisationsQuery.data || [],
+    archivedChildOrganisationsError: archivedChildOrganisationsQuery.error,
+    refetchArchivedChildOrganisations: archivedChildOrganisationsQuery.refetch,
     childOrganisationsError: childOrganisationsQuery.error,
     refetchChildOrganisations: childOrganisationsQuery.refetch,
     isLoadingChildren: childOrganisationsQuery.isLoading || myOrganisationQuery.isLoading,
+    isLoadingArchivedChildren: archivedChildOrganisationsQuery.isLoading,
     createOrganisation: createOrganisationMutation.mutateAsync,
     isCreating: createOrganisationMutation.isPending,
     archiveOrganisation: archiveOrganisationMutation.mutateAsync,
     isArchiving: archiveOrganisationMutation.isPending,
+    restoreOrganisation: restoreOrganisationMutation.mutateAsync,
+    isRestoring: restoreOrganisationMutation.isPending,
+    deleteArchivedOrganisation: deleteArchivedOrganisationMutation.mutateAsync,
+    isDeletingArchived: deleteArchivedOrganisationMutation.isPending,
     resetCredential: resetCredentialMutation.mutateAsync,
     isResettingCredential: resetCredentialMutation.isPending,
   };

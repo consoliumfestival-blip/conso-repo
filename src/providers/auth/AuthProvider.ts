@@ -10,7 +10,7 @@ export type AuthProfile = {
 };
 
 export interface AuthProvider {
-  resolveUsernameLogin(username: string, password: string): Promise<AuthResult<{
+  resolveUsernameLogin(username: string, password: string, loginType?: 'team_leader'): Promise<AuthResult<{
     user: { id: string };
     session: { access_token: string; refresh_token: string };
   }>>;

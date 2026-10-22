@@ -1,3 +1,5 @@
+import { useQuery } from '@tanstack/react-query';
+import { generalEntryService } from '../../../services/generalEntryService';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
@@ -65,6 +67,9 @@ type ChestTemplate = {
 };
 
 type ChestCardParticipant = {
+  profile_slug?: string | null;
+  entry_kind?: 'participant' | 'general_team';
+  item_code?: string;
   id: string;
   chest_number?: string | null;
   category_code?: string | null;
@@ -316,8 +321,11 @@ const ChestCard = ({
 }) => {
   const chestNumber = participant.chest_number || '---';
   const categoryCode = participant.category_code || 'GN';
-  const participantName = formatParticipantName(participant.name);
+  const participantName = participant.entry_kind === 'general_team'
+    ? participant.name || 'General competition'
+    : formatParticipantName(participant.name);
   const participantUnit = participant.organisations?.name || 'Unit Name';
+  const isPlainGroup = participant.entry_kind === 'general_team' && !template.backgroundUri;
   const qrSize = 300; // Fixed size to prevent re-fetching on print scale change
   const qrUrl = createQrUrl(chestNumber, participant.profile_slug || participant.id, categoryCode, qrSize, template.fields.qr.color, template.fields.qr.backgroundColor);
 
@@ -355,12 +363,12 @@ const ChestCard = ({
             height: '100%',
             backgroundColor: '#F8FAFC',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: isPlainGroup ? 'flex-start' : 'center',
             padding: 18,
           }}
         >
           <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.textMuted, fontSize: 12, textAlign: 'center' }}>
-            Upload an A6 PNG/JPG background template
+            {isPlainGroup ? 'GENERAL GROUP' : 'Upload an A6 PNG/JPG background template'}
           </Text>
         </View>
       )}
@@ -377,7 +385,7 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_700Bold',
-            color: template.fields.chest.color || '#EAB308',
+            color: isPlainGroup ? ui.colors.primary : template.fields.chest.color || '#EAB308',
             fontSize: (template.fields.chest.fontSize ?? 38) * scale,
             lineHeight: (template.fields.chest.height - 2) * scale,
             textAlign: 'center',
@@ -400,12 +408,15 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_300Light',
-            color: template.fields.name.color || ui.colors.surface,
-            fontSize: (template.fields.name.fontSize ?? 16) * scale,
-            lineHeight: (template.fields.name.height - 2) * scale,
+            color: isPlainGroup ? ui.colors.text : template.fields.name.color || ui.colors.surface,
+            fontSize: (participant.entry_kind === 'general_team'
+              ? Math.min(template.fields.name.fontSize ?? 16, template.fields.name.height / 2)
+              : template.fields.name.fontSize ?? 16) * scale,
+            lineHeight: (participant.entry_kind === 'general_team'
+              ? template.fields.name.height / 2 : template.fields.name.height - 2) * scale,
             textAlign: 'center',
           }}
-          numberOfLines={1}
+          numberOfLines={participant.entry_kind === 'general_team' ? 2 : 1}
         >
           {participantName}
         </Text>
@@ -423,7 +434,7 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_300Light',
-            color: template.fields.unit.color || ui.colors.surface,
+            color: isPlainGroup ? ui.colors.textMuted : template.fields.unit.color || ui.colors.surface,
             fontSize: (template.fields.unit.fontSize ?? 12) * scale,
             lineHeight: (template.fields.unit.height - 2) * scale,
             textAlign: 'center',
@@ -434,6 +445,7 @@ const ChestCard = ({
         </Text>
       </FieldBox>
 
+      {participant.entry_kind !== 'general_team' && (
       <FieldBox
         field={template.fields.qr}
         selected={editable && selectedField === 'qr'}
@@ -472,7 +484,7 @@ const ChestCard = ({
             resizeMode="contain" 
           />
         </View>
-      </FieldBox>
+      </FieldBox>)}
     </View>
   );
 };
@@ -499,6 +511,8 @@ export default function ChestCardsPage() {
 
   const [templates, setTemplates] = useState<ChestTemplate[]>(() => readTemplates());
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => readTemplates().find(t => t.active)?.id ?? 'default-a6');
+  const [cardMode, setCardMode] = useState<'participants' | 'groups'>('participants');
+  const [selectedProgram, setSelectedProgram] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedTeam, setSelectedTeam] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -513,39 +527,56 @@ export default function ChestCardsPage() {
   useEffect(() => saveIdMap(LOCK_STORAGE_KEY, lockedIds), [lockedIds]);
   useEffect(() => saveIdMap(PRINT_STORAGE_KEY, printedIds), [printedIds]);
 
+  const groupQuery = useQuery({
+    queryKey: ['general-team-entries', activeFestival?.id],
+    queryFn: () => generalEntryService.list(activeFestival!.id),
+    enabled: cardMode === 'groups' && !!activeFestival?.id,
+  });
+  const cardRows = useMemo<ChestCardParticipant[]>(() => cardMode === 'groups'
+    ? (groupQuery.data ?? []).map(entry => ({
+        id: `general:${entry.id}`, entry_kind: 'general_team' as const,
+        chest_number: entry.entry_chest_number, category_code: 'GN',
+        name: `${entry.item?.item_code || ''} · ${entry.item?.item_name_en || 'General competition'}`,
+        item_code: entry.item?.item_code || '', organisation_id: entry.organisation_id,
+        organisations: entry.organisation,
+      }))
+    : participants as ChestCardParticipant[], [cardMode, groupQuery.data, participants]);
+  const programs = useMemo(() => Array.from(new Set(cardRows.map(row => row.item_code).filter(Boolean))) as string[], [cardRows]);
   const activeTemplate = templates.find(t => t.id === selectedTemplateId) ?? templates[0] ?? defaultTemplate();
-  const sampleParticipant = (participants as ChestCardParticipant[]).find(p => p.chest_number) ?? {
+  const sampleParticipant: ChestCardParticipant = cardRows.find(p => p.chest_number) ?? (cardMode === 'groups' ? {
+    id: 'sample-group', entry_kind: 'general_team', chest_number: '—', category_code: 'GN', name: 'General competition',
+  } : {
     id: 'sample',
     chest_number: 'HS-404',
     category_code: 'HS',
-  };
+  });
 
   const teams = useMemo(() => [
     'ALL',
-    ...Array.from(new Set((participants as ChestCardParticipant[])
+    ...Array.from(new Set(cardRows
       .map(p => p.organisations?.name)
       .filter(Boolean))) as string[],
-  ], [participants]);
+  ], [cardRows]);
 
   const categories = useMemo(() => [
     'ALL',
-    ...Array.from(new Set((participants as ChestCardParticipant[])
+    ...Array.from(new Set(cardRows
       .map(p => p.category_code)
       .filter(Boolean))) as string[],
-  ], [participants]);
+  ], [cardRows]);
 
   const filtered = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return (participants as ChestCardParticipant[]).filter((p) => {
+    return cardRows.filter((p) => {
       const categoryMatch = selectedCategory === 'ALL' || p.category_code === selectedCategory;
       const teamMatch = selectedTeam === 'ALL' || p.organisations?.name === selectedTeam;
       const searchMatch = !query ||
         p.chest_number?.toLowerCase().includes(query) ||
         p.name?.toLowerCase().includes(query) ||
         p.organisations?.name?.toLowerCase().includes(query);
-      return categoryMatch && teamMatch && searchMatch;
+      return categoryMatch && teamMatch && searchMatch && (selectedProgram === 'ALL' || p.item_code === selectedProgram);
     });
-  }, [participants, searchQuery, selectedCategory, selectedTeam]);
+  }, [cardRows, searchQuery, selectedCategory, selectedTeam, selectedProgram]);
 
   const printItems = useMemo(() => {
     const selected = filtered.filter(p => selectedIds[p.id]);
@@ -724,7 +755,7 @@ export default function ChestCardsPage() {
     Alert.alert('Ready', 'Selected cards are clear for regeneration using the existing chest-number workflow.');
   };
 
-  if (isLoadingList) return <ActivityIndicator color={ui.colors.success} style={{ marginTop: 40 }} />;
+  if (cardMode === 'groups' ? groupQuery.isLoading : isLoadingList) return <ActivityIndicator color={ui.colors.success} style={{ marginTop: 40 }} />;
 
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
@@ -1115,7 +1146,7 @@ export default function ChestCardsPage() {
             <TextInput
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search chest number, participant or organisation"
+              placeholder={cardMode === 'groups' ? 'Search group chest, program or team' : 'Search chest number, participant or organisation'}
               placeholderTextColor={ui.colors.textMuted}
               style={{ flex: 1, height: 44, paddingHorizontal: 10, fontFamily: 'Poppins_400Regular', outlineStyle: 'none' as any }}
             />
@@ -1166,6 +1197,11 @@ export default function ChestCardsPage() {
 
           <View className="flex-row justify-between items-center mt-3 flex-wrap gap-y-3">
             <View className="flex-row items-center flex-wrap gap-2 flex-1 mr-3 z-50">
+              <SsfSelectMenu value={cardMode} compact
+                options={[{ label: 'Student cards', value: 'participants' }, { label: 'Group cards', value: 'groups' }]}
+                onValueChange={value => { setCardMode(value as 'participants' | 'groups'); setSelectedIds({}); setSelectedCategory('ALL'); setSelectedTeam('ALL'); setSelectedProgram('ALL'); }} />
+              {cardMode === 'groups' && <SsfSelectMenu value={selectedProgram} onValueChange={setSelectedProgram} compact
+                options={[{ label: 'Program: All', value: 'ALL' }, ...programs.map(code => ({ label: code, value: code }))]} />}
               <SsfSelectMenu
                 value={selectedCategory}
                 options={categories.map(c => ({ label: c === 'ALL' ? 'Category: All' : c, value: c }))}
@@ -1225,6 +1261,8 @@ export default function ChestCardsPage() {
           </View>
         </View>
 
+        {cardMode === 'groups' && groupQuery.error && <Text className="mb-3 font-poppins text-sm text-red-700">{groupQuery.error.message}</Text>}
+        {cardMode === 'groups' && !groupQuery.error && !filtered.length && <Text className="mb-3 font-poppins text-sm text-ssf-text-muted">No General group entries match these filters.</Text>}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
           {filtered.map((p: ChestCardParticipant) => {
             const selected = selectedIds[p.id] === true;

@@ -23,8 +23,24 @@ export function useSuperAdmin() {
     },
   });
 
-  const useDeleteGlobalOrganisation = () => useMutation({
-    mutationFn: (id: string) => superService.deleteGlobalOrganisation(id),
+  const useArchiveGlobalOrganisation = () => useMutation({
+    mutationFn: (id: string) => superService.archiveGlobalOrganisation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['superadmin', 'organisations'] });
+      queryClient.invalidateQueries({ queryKey: ['superadmin', 'stats'] });
+    },
+  });
+
+  const useRestoreGlobalOrganisation = () => useMutation({
+    mutationFn: (id: string) => superService.restoreGlobalOrganisation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['superadmin', 'organisations'] });
+      queryClient.invalidateQueries({ queryKey: ['superadmin', 'stats'] });
+    },
+  });
+
+  const usePermanentlyDeleteArchivedOrganisation = () => useMutation({
+    mutationFn: (id: string) => superService.permanentlyDeleteArchivedOrganisation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'organisations'] });
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'stats'] });
@@ -81,7 +97,9 @@ export function useSuperAdmin() {
     useStats,
     useGlobalOrganisations,
     useCreateGlobalOrganisation,
-    useDeleteGlobalOrganisation,
+    useArchiveGlobalOrganisation,
+    useRestoreGlobalOrganisation,
+    usePermanentlyDeleteArchivedOrganisation,
     useTenantAccounts,
     useRevokeTenantAccess,
     useDisableTenantAccess,

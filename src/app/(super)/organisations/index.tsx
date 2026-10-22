@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
+  Archive,
+  RotateCcw,
   Layers,
   ChevronRight,
   Building2,
@@ -54,6 +56,7 @@ interface Org {
   org_type: OrgType;
   parent_id: string | null;
   created_at?: string;
+  archived_at?: string | null;
 }
 
 // ─── Org Type Config ─────────────────────────────────────────────────
@@ -312,44 +315,74 @@ function AddOrgModal({
 export default function OrganisationsManager() {
   const router = useRouter();
   
-  const { useGlobalOrganisations, useDeleteGlobalOrganisation } = useSuperAdmin();
+  const { useGlobalOrganisations, useArchiveGlobalOrganisation, useRestoreGlobalOrganisation, usePermanentlyDeleteArchivedOrganisation } = useSuperAdmin();
   const { data: orgsData, isLoading: loading, refetch } = useGlobalOrganisations<Org>();
-  const deleteMutation = useDeleteGlobalOrganisation();
+  const archiveMutation = useArchiveGlobalOrganisation();
+  const restoreMutation = useRestoreGlobalOrganisation();
+  const deleteMutation = usePermanentlyDeleteArchivedOrganisation();
   
   const orgs = (orgsData || []).map((o) => ({ ...o, org_type: (String(o.org_type ?? '').trim().toLowerCase() || 'unit') as OrgType }));
+  const activeOrgs = orgs.filter((org) => !org.archived_at);
+  const archivedOrgs = orgs.filter((org) => !!org.archived_at);
 
   const [showModal, setShowModal] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [activeFilter, setActiveFilter] = useState<OrgType | 'all'>('all');
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchOrgs = () => refetch();
 
-  useEffect(() => {
-    fetchOrgs();
-  }, [fetchOrgs]);
+  const confirmAction = async (title: string, message: string, destructive = false) => {
+    if (Platform.OS === 'web') return window.confirm(`${title}\n\n${message}`);
+    return await new Promise<boolean>((resolve) => Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: destructive ? 'Delete permanently' : 'Continue', style: destructive ? 'destructive' : 'default', onPress: () => resolve(true) },
+    ]));
+  };
 
-  const handleDelete = async (org: Org) => {
-    const confirm = Platform.OS === 'web'
-      ? window.confirm(`Delete "${org.name}"? This cannot be undone.`)
-      : await new Promise<boolean>((res) =>
-          Alert.alert('Delete Organisation', `Delete "${org.name}"? This cannot be undone.`, [
-            { text: 'Cancel', style: 'cancel', onPress: () => res(false) },
-            { text: 'Delete', style: 'destructive', onPress: () => res(true) },
-          ])
-        );
-    if (!confirm) return;
-
+  const handleArchive = async (org: Org) => {
+    if (!(await confirmAction('Archive organisation', `Archive “${org.name}”? It will be hidden from active lists. Existing history will be preserved.`))) return;
     try {
       setDeleting(org.id);
-      await deleteMutation.mutateAsync(org.id);
+      await archiveMutation.mutateAsync(org.id);
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      if (Platform.OS === 'web') window.alert(`Archive failed: ${error.message}`);
+      else Alert.alert('Archive failed', error.message);
     } finally {
       setDeleting(null);
     }
   };
 
-  const filtered = activeFilter === 'all' ? orgs : orgs.filter((o) => o.org_type === activeFilter);
+  const handleRestore = async (org: Org) => {
+    if (!(await confirmAction('Reactivate organisation', `Reactivate “${org.name}”? It will return to active lists.`))) return;
+    try {
+      setDeleting(org.id);
+      await restoreMutation.mutateAsync(org.id);
+    } catch (error: any) {
+      if (Platform.OS === 'web') window.alert(`Reactivation failed: ${error.message}`);
+      else Alert.alert('Reactivation failed', error.message);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleDelete = async (org: Org) => {
+    if (!org.archived_at) return;
+    if (!(await confirmAction('Permanently delete organisation', `Permanently delete “${org.name}”? This cannot be undone. Deletion will be blocked if this organisation still has children or linked records.`, true))) return;
+
+    try {
+      setDeleting(org.id);
+      await deleteMutation.mutateAsync(org.id);
+    } catch (error: any) {
+      if (Platform.OS === 'web') window.alert(`Delete failed: ${error.message}`);
+      else Alert.alert('Delete failed', error.message);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const visibleOrgs = showArchived ? archivedOrgs : activeOrgs;
+  const filtered = activeFilter === 'all' ? visibleOrgs : visibleOrgs.filter((o) => o.org_type === activeFilter);
 
   // Build parent name map for display
   const parentMap = Object.fromEntries(orgs.map((o) => [o.id, o.name]));
@@ -455,6 +488,18 @@ export default function OrganisationsManager() {
         </View>
       </Animated.View>
 
+      {/* ── Active / archived view ── */}
+      <View style={{ flexDirection: 'row', paddingHorizontal: 20, paddingTop: 12, gap: 8 }}>
+        {[
+          { archived: false, label: `Active (${activeOrgs.length})` },
+          { archived: true, label: `Archived (${archivedOrgs.length})` },
+        ].map((tab) => (
+          <TouchableOpacity key={tab.label} onPress={() => setShowArchived(tab.archived)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived === tab.archived ? (tab.archived ? C.purple : C.accent) : C.border, backgroundColor: showArchived === tab.archived ? (tab.archived ? C.purpleBg : C.accentBg) : 'transparent' }}>
+            <Text style={{ color: showArchived === tab.archived ? (tab.archived ? C.purple : C.accent) : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{tab.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {/* ── Filter tabs ── */}
       <View
         style={{
@@ -523,7 +568,7 @@ export default function OrganisationsManager() {
               No organisations found
             </Text>
             <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 13, textAlign: 'center' }}>
-              Tap the "Add" button to create your first organisational unit.
+              {showArchived ? 'Archived organisations will appear here.' : 'Tap the "Add" button to create your first organisational unit.'}
             </Text>
           </Animated.View>
         ) : (
@@ -591,24 +636,20 @@ export default function OrganisationsManager() {
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    onPress={() => handleDelete(org)}
-                    disabled={isDeleting}
-                    style={{
-                      padding: 8,
-                      backgroundColor: C.dangerBg,
-                      borderRadius: 10,
-                      borderWidth: 1,
-                      borderColor: 'rgba(239,68,68,0.2)',
-                      opacity: isDeleting ? 0.5 : 1,
-                    }}
-                  >
-                    {isDeleting ? (
-                      <ActivityIndicator size="small" color={C.danger} />
-                    ) : (
-                      <Trash2 size={16} color={C.danger} />
-                    )}
-                  </TouchableOpacity>
+                  {showArchived ? (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity onPress={() => handleRestore(org)} disabled={isDeleting} accessibilityLabel={`Reactivate ${org.name}`} style={{ padding: 8, backgroundColor: C.greenBg, borderRadius: 10, borderWidth: 1, borderColor: C.green + '55', opacity: isDeleting ? 0.5 : 1 }}>
+                        {isDeleting ? <ActivityIndicator size="small" color={C.green} /> : <RotateCcw size={16} color={C.green} />}
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleDelete(org)} disabled={isDeleting} accessibilityLabel={`Permanently delete ${org.name}`} style={{ padding: 8, backgroundColor: C.dangerBg, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', opacity: isDeleting ? 0.5 : 1 }}>
+                        {isDeleting ? <ActivityIndicator size="small" color={C.danger} /> : <Trash2 size={16} color={C.danger} />}
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <TouchableOpacity onPress={() => handleArchive(org)} disabled={isDeleting} accessibilityLabel={`Archive ${org.name}`} style={{ padding: 8, backgroundColor: C.accentBg, borderRadius: 10, borderWidth: 1, borderColor: C.accent + '55', opacity: isDeleting ? 0.5 : 1 }}>
+                      {isDeleting ? <ActivityIndicator size="small" color={C.accent} /> : <Archive size={16} color={C.accent} />}
+                    </TouchableOpacity>
+                  )}
                 </View>
               </Animated.View>
             );
@@ -621,7 +662,7 @@ export default function OrganisationsManager() {
         visible={showModal}
         onClose={() => setShowModal(false)}
         onAdded={fetchOrgs}
-        parentOrgs={orgs}
+        parentOrgs={activeOrgs}
       />
     </View>
   );

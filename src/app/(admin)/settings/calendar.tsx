@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, Text, ScrollView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { useFestival } from '../../../core/hooks/useFestival';
@@ -22,6 +22,8 @@ export default function FestivalCalendarSettings() {
     registration_open: '',
     registration_close: '',
     chest_number_category_range: 100 as 100 | 1000,
+    chest_number_template: 'category' as 'category' | 'team',
+    gender_mode: 'both' as 'boys_only' | 'girls_only' | 'both',
   });
 
   const [saved, setSaved] = useState(false);
@@ -36,6 +38,8 @@ export default function FestivalCalendarSettings() {
         registration_open: festival.registration_open ? festival.registration_open.split('T')[0] : '',
         registration_close: festival.registration_close ? festival.registration_close.split('T')[0] : '',
         chest_number_category_range: festival.chest_number_category_range ?? 100,
+        chest_number_template: festival.chest_number_template ?? 'category',
+        gender_mode: festival.gender_mode ?? 'both',
       });
     }
   }, [festival]);
@@ -57,6 +61,23 @@ export default function FestivalCalendarSettings() {
     if (!Number.isInteger(festivalYear) || festivalYear < 1900 || festivalYear > 2200) {
       setError('Start Date must contain a valid festival year.');
       return;
+    }
+
+    const numberingChanged = festival && (
+      (festival.chest_number_template ?? 'category') !== formData.chest_number_template ||
+      (festival.chest_number_category_range ?? 100) !== formData.chest_number_category_range
+    );
+    if (numberingChanged) {
+      const message = 'Saving will renumber every existing participant using the selected template and range. If any participant cannot be numbered, nothing will be saved. Continue?';
+      const confirmed = Platform.OS === 'web'
+        ? window.confirm(message)
+        : await new Promise<boolean>((resolve) => {
+            Alert.alert('Change chest numbering', message, [
+              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+              { text: 'Continue', onPress: () => resolve(true) },
+            ], { cancelable: true, onDismiss: () => resolve(false) });
+          });
+      if (!confirmed) return;
     }
 
     try {
@@ -159,6 +180,32 @@ export default function FestivalCalendarSettings() {
         </CardContent>
       </Card>
 
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Festival Gender</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Text className="mb-3 text-xs font-poppins text-ui-text-muted">
+            This setting applies to the entire festival and all its categories.
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {([
+              { value: 'boys_only', label: 'Boys Only' },
+              { value: 'girls_only', label: 'Girls Only' },
+              { value: 'both', label: 'Both' },
+            ] as const).map((option) => (
+              <Button
+                key={option.value}
+                variant={formData.gender_mode === option.value ? 'default' : 'outline'}
+                onPress={() => setFormData({ ...formData, gender_mode: option.value })}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </View>
+        </CardContent>
+      </Card>
+
       {/* Registration Card */}
       <Card className="mb-6">
         <CardHeader>
@@ -210,8 +257,19 @@ export default function FestivalCalendarSettings() {
           <CardTitle>Chest Number Range</CardTitle>
         </CardHeader>
         <CardContent>
+          <View className="mb-4">
+            <Label>Numbering template</Label>
+            <select
+              value={formData.chest_number_template}
+              onChange={(event) => setFormData({ ...formData, chest_number_template: event.target.value as 'category' | 'team' })}
+              className="flex h-10 w-full rounded-lg border border-ui-border bg-white px-3 py-2 text-sm font-poppins text-ui-text"
+            >
+              <option value="category">By category (current template)</option>
+              <option value="team">By team (sub-organisation)</option>
+            </select>
+          </View>
           <View>
-            <Label>Participants per category</Label>
+            <Label>Participants per {formData.chest_number_template === 'team' ? 'team' : 'category'}</Label>
             <select
               value={String(formData.chest_number_category_range)}
               onChange={(event) => setFormData({ ...formData, chest_number_category_range: Number(event.target.value) as 100 | 1000 })}
@@ -220,7 +278,7 @@ export default function FestivalCalendarSettings() {
               <option value="100">Under 100 (default): 100–199, 200–299…</option>
               <option value="1000">Under 1000: 1000–1999, 2000–2999…</option>
             </select>
-            <Text className="text-xs font-poppins text-ui-text-muted mt-2">Changing this setting affects future generation. Use Chest Numbers → Regenerate All to replace existing numbers.</Text>
+            <Text className="text-xs font-poppins text-ui-text-muted mt-2">Each {formData.chest_number_template === 'team' ? 'team' : 'category'} receives its own range. Saving a new template or range automatically renumbers existing participants. If any participant cannot fit, the entire save is rejected.</Text>
           </View>
         </CardContent>
       </Card>

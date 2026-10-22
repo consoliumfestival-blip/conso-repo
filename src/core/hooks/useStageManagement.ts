@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { stageManagementService } from '../../services/stageManagementService';
 import { useAuthStore } from '../store/authStore';
+import { useCodeLetterUpdates } from './useCodeLetterUpdates';
+import { invalidateCodeLetters } from '../utils/invalidateCodeLetters';
 
 const mapSchedule = (row: any) => ({
   ...row,
@@ -43,6 +45,8 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
   });
 
   const context = contextQuery.data;
+  useCodeLetterUpdates(context?.festival_id ? `festival:${context.festival_id}` : null,
+    () => invalidateCodeLetters(queryClient, { festivalId: context?.festival_id }));
   const schedulesQuery = useQuery({
     queryKey: ['stage-management-schedules', context?.tenant_id, context?.festival_id],
     queryFn: async () => (context ? (await stageManagementService.getSchedules(context.festival_id)).map(mapSchedule) : []),
@@ -84,10 +88,10 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
   });
 
   const updateCodeLetterMutation = useMutation({
-    mutationFn: (input: { scheduleId: string; registrationId: string; codeLetter: string }) =>
-      stageManagementService.updateCodeLetter(input.scheduleId, input.registrationId, input.codeLetter),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['stage-management-registrations'] });
+    mutationFn: (input: { scheduleId: string; registrationId: string; codeLetter: string; expectedLetter: string | null; expectedSwapId: string | null }) =>
+      stageManagementService.updateCodeLetter(input.scheduleId, input.registrationId, input.codeLetter, input.expectedLetter, input.expectedSwapId),
+    onSuccess: (_data, input) => {
+      return invalidateCodeLetters(queryClient, { scheduleId: input.scheduleId, festivalId: context?.festival_id });
     },
   });
 

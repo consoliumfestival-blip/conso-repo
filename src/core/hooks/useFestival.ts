@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { festivalSettingsService } from '../../services/festivalSettingsService';
+import type { CompetitionItemUpdate } from '../../providers/database/DatabaseProvider';
 import { useAuthStore } from '../store/authStore';
 import type { FestivalTemplate } from '../festival/templatePolicy';
 
@@ -15,8 +16,10 @@ type FestivalCalendarRecord = {
   registration_close?: string | null;
   is_active: boolean;
   festival_template: FestivalTemplate;
+  gender_mode?: 'boys_only' | 'girls_only' | 'both';
   general_category_enabled?: boolean;
   chest_number_category_range?: 100 | 1000;
+  chest_number_template?: 'category' | 'team';
 };
 
 type PointsConfigRecord = {
@@ -34,7 +37,7 @@ type PointsConfigRecord = {
   grp_a_points: number;
   grp_b_points: number;
   grp_c_points: number;
-  less_than_3_teams_rule: boolean;
+  less_than_3_teams_rule: boolean | null;
   points_mode?: 'official' | 'hybrid' | 'custom';
   grade_thresholds?: {
     a_plus: number;
@@ -47,10 +50,19 @@ type PointsConfigRecord = {
   separate_group_brackets?: boolean;
   auto_bracket_selection?: boolean;
   allow_bracket_override?: boolean;
-  rule12_min_teams?: number;
-  rule12_behavior?: 'grade_only' | 'rank_and_grade' | 'no_points';
+  rule12_min_teams?: number | null;
+  rule12_behavior?: 'grade_only' | 'rank_and_grade' | 'no_points' | null;
   config_version?: number;
   change_reason?: string | null;
+  enable_grace_marks?: boolean;
+  grade_boost_points?: Record<string, number[]>;
+  group_grade_boost_points?: Record<string, number[]>;
+  rank_boost_points?: number[];
+  grade_boost_item_ids?: string[];
+  rank_boost_item_ids?: string[];
+  grade_boost_sections?: { id: string; item_ids: string[]; points: Record<string, number[]>; group_points: Record<string, number[]> }[];
+  rank_boost_sections?: { id: string; item_ids: string[]; points: number[] }[];
+  grace_fields?: { id: string; name: string; max_marks: number }[];
 };
 
 export const useFestival = () => {
@@ -101,7 +113,13 @@ export const useFestival = () => {
         if (!tenant_id) throw new Error('Tenant is required to update festival configuration');
         return festivalSettingsService.updateFestival<FestivalCalendarRecord>(tenant_id, payload);
       },
-      onSuccess: () => {
+      onSuccess: (festival) => {
+        const previous = queryClient.getQueryData<FestivalCalendarRecord | null>(['active-festival', tenant_id]);
+        if (!previous || previous.chest_number_template !== festival.chest_number_template ||
+            previous.chest_number_category_range !== festival.chest_number_category_range) {
+          queryClient.invalidateQueries({ queryKey: ['participants'] });
+          queryClient.invalidateQueries({ queryKey: ['participant'] });
+        }
         queryClient.invalidateQueries({ queryKey: ['active-festival', tenant_id] });
       },
     });
@@ -131,6 +149,40 @@ export const useFestival = () => {
     });
   };
 
+  const useSelectableItems = (festivalId: string | undefined) => useQuery({
+    queryKey: ['selectable-items', festivalId, tenant_id],
+    queryFn: () => festivalSettingsService.getSelectableItems<any>(festivalId!, tenant_id!),
+    enabled: !!festivalId && !!tenant_id,
+  });
+
+  const useUpdateCompetitionItem = (festivalId: string | undefined) => useMutation({
+    mutationFn: async (input: Omit<CompetitionItemUpdate, 'festivalId'>) => {
+      if (!festivalId || !tenant_id) throw new Error('Select a festival before editing competitions.');
+      await festivalSettingsService.updateCompetitionItem({ ...input, festivalId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-items', festivalId] });
+      queryClient.invalidateQueries({ queryKey: ['items', festivalId] });
+      queryClient.invalidateQueries({ queryKey: ['selectable-items', festivalId] });
+    },
+  });
+
+  const useApplyItemChanges = (festivalId: string | undefined) => useMutation({
+    mutationFn: async ({ activateCodes, deactivateCodes, itemRecords }: {
+      activateCodes: string[];
+      deactivateCodes: string[];
+      itemRecords?: any[];
+    }) => {
+      if (!festivalId || !tenant_id) throw new Error('Select a festival before changing programs.');
+      await festivalSettingsService.applyItemChanges(festivalId, activateCodes, deactivateCodes, itemRecords);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-items', festivalId] });
+      queryClient.invalidateQueries({ queryKey: ['items', festivalId] });
+      queryClient.invalidateQueries({ queryKey: ['selectable-items', festivalId] });
+    },
+  });
+
   // 7. Mutation: Sync Active Items
   const useUpdateActiveItems = (festivalId: string | undefined) => {
     return useMutation({
@@ -140,6 +192,7 @@ export const useFestival = () => {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ['active-items', festivalId] });
+        queryClient.invalidateQueries({ queryKey: ['items', festivalId] });
       },
     });
   };
@@ -151,6 +204,9 @@ export const useFestival = () => {
     useUpdateFestival,
     useActiveItems,
     useItems,
+    useSelectableItems,
+    useUpdateCompetitionItem,
+    useApplyItemChanges,
     useUpdateActiveItems,
   };
 };

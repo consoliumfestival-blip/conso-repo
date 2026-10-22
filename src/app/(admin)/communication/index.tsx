@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Megaphone, Bell, Clock, AlertTriangle, Send, History } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { supabase } from '../../../core/config/supabase';
+import { FEATURE_FLAGS } from '../../../core/config/features';
 import { useAuthStore } from '../../../core/store/authStore';
 import { PageHeader } from '../../../components/ui/PageHeader';
 
@@ -25,8 +26,12 @@ export default function CommunicationCenter() {
   const [isSending, setIsSending] = useState(false);
 
   useEffect(() => {
-    fetchStats();
+    if (FEATURE_FLAGS.ENABLE_COMMUNICATION_CENTER) fetchStats();
   }, []);
+
+  if (!FEATURE_FLAGS.ENABLE_COMMUNICATION_CENTER) {
+    return <Redirect href="/(admin)" />;
+  }
 
   const fetchStats = async () => {
     try {

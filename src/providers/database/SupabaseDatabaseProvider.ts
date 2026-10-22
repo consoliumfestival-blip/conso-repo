@@ -1,5 +1,6 @@
 import { supabase } from '../../core/config/supabase';
-import { DatabaseProvider, ListResult, QueryResult } from './DatabaseProvider';
+import { CompetitionItemUpdate, DatabaseProvider, ListResult, QueryResult } from './DatabaseProvider';
+import { CompetitionPublication, competitionArguments } from '../../types/scoring';
 
 const normalizeError = (error: any): QueryResult<never>['error'] => {
   if (!error) return null;
@@ -35,10 +36,12 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
 
   async upsertPointsConfig<T>(payload: Record<string, unknown>): Promise<QueryResult<T>> {
     const { data, error } = await supabase
-      .from('points_config')
-      .upsert(payload, { onConflict: 'tenant_id,festival_id' })
-      .select()
-      .single();
+      .rpc('save_scoring_configuration', {
+        p_festival_id: payload.festival_id,
+        p_expected_version: payload.expected_version,
+        p_config: payload,
+        p_reason: payload.change_reason,
+      });
 
     return { data: (data as T) ?? null, error: normalizeError(error) };
   }
@@ -76,6 +79,42 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: (data as T[]) ?? [], error: normalizeError(error) };
   }
 
+  async getSelectableItems<T>(festivalId: string, tenantId: string): Promise<ListResult<T>> {
+    const { data, error } = await supabase
+      .from('items')
+      .select('*')
+      .eq('festival_id', festivalId)
+      .eq('tenant_id', tenantId);
+    return { data: (data as T[]) ?? [], error: normalizeError(error) };
+  }
+
+  async updateCompetitionItem(input: CompetitionItemUpdate): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('update_competition_item', {
+      p_festival_id: input.festivalId,
+      p_item_id: input.itemId,
+      p_item_name_ml: input.itemNameMl,
+      p_category_codes: input.categoryCodes,
+      p_group_member_count: input.groupMemberCount,
+      p_expected_updated_at: input.expectedUpdatedAt,
+    });
+    return { data: undefined, error: normalizeError(error) };
+  }
+
+  async applyItemChanges(
+    festivalId: string,
+    activateCodes: string[],
+    deactivateCodes: string[],
+    itemRecords: any[] = [],
+  ): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('apply_competition_item_changes', {
+      p_festival_id: festivalId,
+      p_activate_codes: activateCodes,
+      p_deactivate_codes: deactivateCodes,
+      p_records: itemRecords,
+    });
+    return { data: undefined, error: normalizeError(error) };
+  }
+
   async setActiveItemCodes(
     festivalId: string,
     tenantId: string,
@@ -86,74 +125,14 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       participation_type: string;
       category_codes: string[];
       duration_minutes?: number;
+      group_min_members?: number;
+      group_max_members?: number;
     }[],
   ): Promise<QueryResult<void>> {
-    // 1. Fetch existing items
-    const { data: existingItems, error: fetchErr } = await supabase
-      .from('items')
-      .select('id, item_code')
-      .eq('festival_id', festivalId);
-
-    if (fetchErr) {
-      return { data: null, error: normalizeError(fetchErr) };
-    }
-
-    const existingCodes = new Set((existingItems || []).map((i) => i.item_code));
-
-    // 2. Identify items to insert (new codes)
-    const codesToInsert = itemCodes.filter((code) => !existingCodes.has(code));
-    
-    // 3. Update existing items sequentially to avoid sparse upsert issues
-    const updatePromises = (existingItems || []).map(async (item) => {
-      const isSelected = itemCodes.includes(item.item_code);
-      const record = itemRecords?.find((r) => r.item_code === item.item_code);
-      
-      const updates: any = {
-        is_active: isSelected,
-      };
-
-      if (record) {
-        updates.item_name_ml = record.item_name_ml;
-        updates.item_name_en = record.item_name_ml;
-        updates.participation_type = record.participation_type;
-        updates.category_codes = record.category_codes;
-      }
-
-      return supabase.from('items').update(updates).eq('id', item.id);
+    const { error } = await supabase.rpc('save_competition_items', {
+      p_festival_id: festivalId, p_codes: itemCodes, p_records: itemRecords ?? [],
     });
-
-    if (updatePromises.length > 0) {
-      const results = await Promise.all(updatePromises);
-      const firstError = results.find(r => r.error)?.error;
-      if (firstError) {
-        return { data: null, error: normalizeError(firstError) };
-      }
-    }
-
-    // 4. Insert new items
-    if (codesToInsert.length > 0) {
-      const insertData = codesToInsert.map((code) => {
-        const record = itemRecords?.find((r) => r.item_code === code);
-        return {
-          festival_id: festivalId,
-          tenant_id: tenantId,
-          item_code: code,
-          is_active: true,
-          item_name_ml: record?.item_name_ml ?? code,
-          item_name_en: record?.item_name_ml ?? code,
-          participation_type: record?.participation_type ?? 'individual',
-          category_codes: record?.category_codes ?? [],
-          duration_minutes: record?.duration_minutes ?? null,
-        };
-      });
-
-      const { error: insertErr } = await supabase.from('items').insert(insertData);
-      if (insertErr) {
-        return { data: null, error: normalizeError(insertErr) };
-      }
-    }
-
-    return { data: undefined, error: null };
+    return { data: undefined, error: normalizeError(error) };
   }
 
   async listParticipants<T>(): Promise<ListResult<T>> {
@@ -930,8 +909,26 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: (data as T) ?? null, error: normalizeError(error) };
   }
 
-  async deleteGlobalOrganisation(id: string): Promise<QueryResult<void>> {
-    const { error } = await supabase.from('organisations').delete().eq('id', id);
+  async archiveGlobalOrganisation(id: string): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('archive_child_organisation', {
+      p_org_id: id,
+      p_reason: 'Archived from global organisation management',
+    });
+    return { data: undefined, error: normalizeError(error) };
+  }
+
+  async restoreGlobalOrganisation(id: string): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('restore_child_organisation', {
+      p_org_id: id,
+      p_reason: 'Restored from global organisation management',
+    });
+    return { data: undefined, error: normalizeError(error) };
+  }
+
+  async permanentlyDeleteArchivedOrganisation(id: string): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('delete_archived_organisation', {
+      p_org_id: id,
+    });
     return { data: undefined, error: normalizeError(error) };
   }
 
@@ -1264,7 +1261,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       p_total_mark: payload.totalMark,
       p_status: payload.status,
       p_entry_mode: payload.entryMode ?? 'criteria',
-      p_max_mark: payload.maxMark ?? 100,
+      p_max_mark: payload.maxMark ?? null,
       p_criteria_snapshot: payload.criteriaSnapshot ?? [],
     });
 
@@ -1301,25 +1298,10 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: (legacy.data as T[]) ?? [], error: normalizeError(legacy.error) };
   }
 
-  async publishResults(payloads: Record<string, unknown>[]): Promise<QueryResult<void>> {
-    if (payloads.length === 0) return { data: undefined, error: null };
-    
-    // Upsert using (registration_id, item_id) to uniquely identify each result.
-    // This prevents accidental duplicate rows while correctly handling:
-    // - Multiple participants in the same group item (each has their own registration_id)
-    // - Re-publishing an item (updates the existing row instead of creating a duplicate)
-    let { error } = await supabase
-      .from('results')
-      .upsert(payloads, { onConflict: 'registration_id,item_id' });
-    // Keep older local environments usable until migration 143 is applied;
-    // production/new databases retain schedule_id for exact scope.
-    if (error && (error as any).code === '42703') {
-      const legacyPayloads = payloads.map(({ schedule_id: _scheduleId, ...payload }) => payload);
-      ({ error } = await supabase
-        .from('results')
-        .upsert(legacyPayloads, { onConflict: 'registration_id,item_id' }));
-    }
-      
+  async publishResults(input: CompetitionPublication): Promise<QueryResult<void>> {
+    const { error } = await supabase.rpc('publish_competition_results', {
+      ...competitionArguments(input), p_request_id: input.requestId,
+    });
     return { data: undefined, error: normalizeError(error) };
   }
 

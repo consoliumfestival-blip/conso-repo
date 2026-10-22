@@ -19,6 +19,25 @@ export interface ItemRule {
   entry_mode: ScoringEntryMode;
 }
 
+// Keep the same 100-mark fallback available even when a project has not seeded
+// the global DEFAULT_* rows yet. These are runtime fallbacks only; explicit
+// tenant/global rules returned by the database still take precedence.
+const FALLBACK_PERFORMANCE_RULE: ItemRule = {
+  event_name: 'DEFAULT_PERFORMANCE',
+  total_marks: 100,
+  is_default: true,
+  entry_mode: 'total_only',
+  criteria: [],
+};
+
+const FALLBACK_CREATIVE_RULE: ItemRule = {
+  event_name: 'DEFAULT_CREATIVE',
+  total_marks: 100,
+  is_default: true,
+  entry_mode: 'total_only',
+  criteria: [],
+};
+
 export const getScoringRulesForItem = async (
   itemNameEn: string, 
   itemNameMl?: string, 
@@ -27,7 +46,8 @@ export const getScoringRulesForItem = async (
 ): Promise<ItemRule> => {
   
   // Fetch rules from database
-  const { data: dbRules } = await scoringRuleRepository.listRules<any>(tenantId);
+  const { data: dbRules, error } = await scoringRuleRepository.listRules<any>(tenantId);
+  if (error) throw new Error(error.message);
   const rulesList = (dbRules || []) as any[];
 
   // Convert DB criteria back to the ScoringCriterion format
@@ -35,7 +55,7 @@ export const getScoringRulesForItem = async (
     id: rule.id,
     event_name: rule.event_name,
     event_name_ml: rule.event_name_ml,
-    total_marks: rule.entry_mode === 'total_only' ? 100 : (Number(rule.total_marks) || 100),
+    total_marks: Number(rule.total_marks),
     time_limit: rule.time_limit,
     guidelines: rule.guidelines,
     is_default: rule.is_default,
@@ -48,14 +68,25 @@ export const getScoringRulesForItem = async (
   const GENERIC_PERFORMANCE_RULE = rulesList.find(r => r.event_name === 'DEFAULT_PERFORMANCE');
   const GENERIC_CREATIVE_RULE = rulesList.find(r => r.event_name === 'DEFAULT_CREATIVE');
 
-  const defaultPerformance = GENERIC_PERFORMANCE_RULE ? formatDbRule(GENERIC_PERFORMANCE_RULE) : {
-    event_name: 'DEFAULT_PERFORMANCE', total_marks: 100, entry_mode: 'criteria' as const, criteria: [{name: 'Presentation', marks: 100}]
-  };
-  const defaultCreative = GENERIC_CREATIVE_RULE ? formatDbRule(GENERIC_CREATIVE_RULE) : {
-    event_name: 'DEFAULT_CREATIVE', total_marks: 100, entry_mode: 'criteria' as const, criteria: [{name: 'Creativity', marks: 100}]
+  const configuredRule = (rule: any): ItemRule => {
+    if (!rule) throw new Error('Configure a scoring rule and maximum marks for this item first.');
+    const formatted = formatDbRule(rule);
+    if (!Number.isFinite(formatted.total_marks) || formatted.total_marks <= 0) throw new Error('The scoring rule needs a valid maximum mark.');
+    return formatted;
   };
 
-  if (!itemNameEn && !itemNameMl) return defaultPerformance;
+  const defaultRuleForItem = (): ItemRule => {
+    const databaseRule = itemType === 'offstage' ? GENERIC_CREATIVE_RULE : GENERIC_PERFORMANCE_RULE;
+    if (databaseRule) {
+      const configuredDefault = configuredRule(databaseRule);
+      return { ...configuredDefault, total_marks: 100, entry_mode: 'total_only', criteria: [] };
+    }
+
+    const fallback = itemType === 'offstage' ? FALLBACK_CREATIVE_RULE : FALLBACK_PERFORMANCE_RULE;
+    return { ...fallback };
+  };
+
+  if (!itemNameEn && !itemNameMl) return defaultRuleForItem();
 
   const normalizedSearchEn = (itemNameEn || '').toLowerCase().trim();
   const normalizedSearchMl = (itemNameMl || '').toLowerCase().trim();
@@ -87,14 +118,10 @@ export const getScoringRulesForItem = async (
   }
 
   if (matchedRule) {
-    return formatDbRule(matchedRule);
+    return configuredRule(matchedRule);
   }
 
-  if (itemType === 'offstage') {
-    return defaultCreative;
-  }
-  
-  return defaultPerformance;
+  return defaultRuleForItem();
 };
 
 export const getCriterionKey = (name: string) =>

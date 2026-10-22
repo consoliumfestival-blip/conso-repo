@@ -25,8 +25,18 @@ export const superService = {
     return data;
   },
 
-  async deleteGlobalOrganisation(id: string) {
-    const { error } = await superRepository.deleteGlobalOrganisation(id);
+  async archiveGlobalOrganisation(id: string) {
+    const { error } = await superRepository.archiveGlobalOrganisation(id);
+    throwIfError(error);
+  },
+
+  async restoreGlobalOrganisation(id: string) {
+    const { error } = await superRepository.restoreGlobalOrganisation(id);
+    throwIfError(error);
+  },
+
+  async permanentlyDeleteArchivedOrganisation(id: string) {
+    const { error } = await superRepository.permanentlyDeleteArchivedOrganisation(id);
     throwIfError(error);
   },
 

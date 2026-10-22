@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { participantService, ParticipantStatus } from '../../services/participantService';
 import { stageManagementService } from '../../services/stageManagementService';
 import { useAuthStore } from '../store/authStore';
+import { useCodeLetterUpdates } from './useCodeLetterUpdates';
+import { invalidateCodeLetters } from '../utils/invalidateCodeLetters';
 
 export const usePublicCandidateProfile = (slug?: string | null) =>
   useQuery({
@@ -31,6 +33,12 @@ export const useParticipants = (participantId?: string) => {
     enabled: !!participantId,
   });
 
+  const generalTeamResultsQuery = useQuery({
+    queryKey: ['participantGeneralTeamResults', participantId],
+    queryFn: () => participantService.getParticipantGeneralResults<any>(participantId!),
+    enabled: !!participantId,
+  });
+
   const useItemRegistrations = (itemId: string | undefined) => {
     const { tenant_id } = useAuthStore();
     return useQuery({
@@ -43,7 +51,9 @@ export const useParticipants = (participantId?: string) => {
   // Operational screens must resolve registration scope from the selected
   // schedule. Item-only reads remain available for participant management,
   // but are not used by check-in, code letters, marks, or results.
-  const useScheduleRegistrations = (scheduleId: string | undefined) => useQuery({
+  const useScheduleRegistrations = (scheduleId: string | undefined) => {
+    useCodeLetterUpdates(scheduleId ? `schedule:${scheduleId}` : null, () => invalidateCodeLetters(queryClient, { scheduleId }));
+    return useQuery({
     queryKey: ['scheduleRegistrations', scheduleId],
     queryFn: async () => {
       const rows = await stageManagementService.getRegistrations({ scheduleId: scheduleId! });
@@ -65,9 +75,12 @@ export const useParticipants = (participantId?: string) => {
       }));
     },
     enabled: !!scheduleId,
-  });
+    });
+  };
 
   const useFestivalRegistrations = (festivalId: string | undefined) => {
+    useCodeLetterUpdates(festivalId ? `festival:${festivalId}` : null,
+      () => invalidateCodeLetters(queryClient, { festivalId }));
     return useQuery({
       queryKey: ['festivalRegistrations', festivalId],
       queryFn: () => participantService.listRegistrationsByFestival<any>(festivalId!),
@@ -94,26 +107,24 @@ export const useParticipants = (participantId?: string) => {
       return participantService.generateCodeLetters(scheduleId, itemId, tenantId!, overwrite, festivalId, secureStage);
     },
     onSuccess: (data, variables) => {
-      const tenantId = useAuthStore.getState().tenant_id;
-      queryClient.invalidateQueries({ queryKey: ['itemRegistrations', variables.itemId, tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['scheduleRegistrations', variables.scheduleId] });
+      return invalidateCodeLetters(queryClient, { scheduleId: variables.scheduleId, festivalId: variables.festivalId });
     },
   });
 
   const updateCodeLetterMutation = useMutation({
-    mutationFn: ({ registrationId, codeLetter, itemId, scheduleId, secureStage }: { registrationId: string; codeLetter: string; itemId: string; scheduleId?: string; secureStage?: boolean }) => {
+    mutationFn: ({ registrationId, codeLetter, itemId, scheduleId, secureStage, expectedLetter, expectedSwapId }: { registrationId: string; codeLetter: string; itemId: string; scheduleId?: string; secureStage?: boolean; expectedLetter: string | null; expectedSwapId: string | null }) => {
       return (async () => {
          const repository = (await import('../../lib/repositories/participantRepository')).participantRepository;
-         const { error } = secureStage && scheduleId
-           ? await repository.stageUpdateCodeLetter(scheduleId, registrationId, codeLetter)
-           : await repository.updateCodeLetter(registrationId, codeLetter);
+         if (secureStage && scheduleId) {
+           await stageManagementService.updateCodeLetter(scheduleId, registrationId, codeLetter, expectedLetter, expectedSwapId);
+           return;
+         }
+         const { error } = await repository.updateCodeLetter(registrationId, codeLetter);
          if (error) throw error;
       })();
     },
     onSuccess: (data, variables) => {
-      const tenantId = useAuthStore.getState().tenant_id;
-      queryClient.invalidateQueries({ queryKey: ['itemRegistrations', variables.itemId, tenantId] });
-      if (variables.scheduleId) queryClient.invalidateQueries({ queryKey: ['scheduleRegistrations', variables.scheduleId] });
+      return invalidateCodeLetters(queryClient, { scheduleId: variables.scheduleId });
     },
   });
 
@@ -264,6 +275,8 @@ export const useParticipants = (participantId?: string) => {
     
     registrations: registrationsQuery.data || [],
     isLoadingRegistrations: registrationsQuery.isLoading,
+    generalTeamResults: generalTeamResultsQuery.data || [],
+    isLoadingGeneralTeamResults: generalTeamResultsQuery.isLoading,
     
     updateStatus: updateStatusMutation.mutateAsync,
     isUpdatingStatus: updateStatusMutation.isPending,

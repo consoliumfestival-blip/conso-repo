@@ -291,8 +291,10 @@ export default function PublicCandidateProfileScreen() {
                       <Text style={styles.itemName} numberOfLines={2}>
                         {item.item_name_ml || item.item_name}
                       </Text>
-                      <Text style={styles.itemMeta} numberOfLines={1}>
-                        {(item.category_codes || []).join(' / ') || 'General'} · {item.participation_type}
+                      <Text style={styles.itemMeta}>
+                        {item.entry_kind === 'general_team'
+                          ? `General group · Chest ${item.entry_chest_number || '—'} · Team points only`
+                          : `${(item.category_codes || []).join(' / ') || 'General'} · ${item.participation_type}`}
                       </Text>
                     </View>
                   </View>

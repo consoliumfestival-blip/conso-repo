@@ -58,7 +58,8 @@ export default function ScoringRulesList() {
         }
         const entryMode = rule.entry_mode === 'total_only' ? 'total_only' : 'criteria';
         const importedCriteria = Array.isArray(rule.criteria) ? rule.criteria : [];
-        const totalMarks = entryMode === 'total_only' ? 100 : (parseInt(rule.total_marks) || 100);
+        const totalMarks = Number(rule.total_marks);
+        if (!Number.isFinite(totalMarks) || totalMarks <= 0) throw new Error('Every rule needs a valid maximum mark.');
 
         if (entryMode === 'criteria') {
           const criteriaTotal = importedCriteria.reduce(

@@ -4,10 +4,10 @@ import { View, Text, ScrollView, TextInput, Alert, TouchableOpacity, Platform, S
 import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
-import { participantService } from '../../../services/participantService';
+import { participantService, type OrganisationOption } from '../../../services/participantService';
 import { useAuthStore } from '../../../core/store/authStore';
 import { getCategory, validateParticipant, calculateAge, getCutoffDate, DEFAULT_FESTIVAL_YEAR, checkClassAgeConsistency, getCategoryDOBRange, type CategoryCode } from '../../../core/utils/participantValidation';
-import { Eye } from 'lucide-react-native';
+import { Building2, CalendarDays, Eye, Globe2, Trophy, Upload, UserRound, UserRoundPlus } from 'lucide-react-native';
 import { SsfDatePicker } from '../../../components/ui/SsfDatePicker';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
@@ -66,6 +66,14 @@ export default function AddParticipant() {
   const { data: activeFestival, isLoading: isFestivalLoading } = useActiveFestival();
   const validTenantId = tenant_id;
   const festivalId = activeFestival?.id;
+  const festivalGenderMode = activeFestival?.gender_mode ?? 'both';
+  const isGenderFixedByFestival = festivalGenderMode !== 'both';
+  const [selectedGender, setSelectedGender] = useState<'boys' | 'girls'>('boys');
+  const gender: 'boys' | 'girls' = festivalGenderMode === 'boys_only'
+    ? 'boys'
+    : festivalGenderMode === 'girls_only'
+      ? 'girls'
+      : selectedGender;
   const festivalYear = activeFestival?.festival_year ?? DEFAULT_FESTIVAL_YEAR;
   const isCollegeFest = activeFestival?.festival_template === 'college_fest';
   const { data: collegeCategories = [], isLoading: categoriesLoading, error: categoriesError } =
@@ -80,16 +88,13 @@ export default function AddParticipant() {
   const [educationType, setEducationType] = useState(''); // campus type
   const [manualCategory, setManualCategory] = useState<'JUNIOR' | 'SENIOR' | ''>(''); // explicit J/S pick
   const [collegeCategory, setCollegeCategory] = useState('');
-  const [phone, setPhone] = useState('');
-  const [manualChestNumber, setManualChestNumber] = useState('');
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
-  const [organisations, setOrganisations] = useState<any[]>([]);
+  const [organisations, setOrganisations] = useState<OrganisationOption[]>([]);
+  const [isOrganisationsLoading, setIsOrganisationsLoading] = useState(false);
+  const [organisationsLoadError, setOrganisationsLoadError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [orgType, setOrgType] = useState<string>('unit');
 
   // Unified Candidate Profile settings state
-  const [gender, setGender] = useState<'boys' | 'girls' | ''>('');
-  const [profileBio, setProfileBio] = useState('');
   const [publicProfileEnabled, setPublicProfileEnabled] = useState(true);
   const [showOrganisationPublic, setShowOrganisationPublic] = useState(true);
   const [photoFile, setPhotoFile] = useState<any>(null);
@@ -101,6 +106,18 @@ export default function AddParticipant() {
   const [ageClassWarning, setAgeClassWarning] = useState('');
   const dobInputRef = useRef<any>(null);
   const categoryFestivalRef = useRef<string | undefined>(festivalId);
+
+  const festivalLevel = String(activeFestival?.level || '').trim().toLowerCase();
+  const currentOrganisation = organisations.find((organisation) => organisation.tenant_id === validTenantId);
+  const availableOrganisations = (activeFestival?.chest_number_template === 'team' || festivalLevel === 'sector' || festivalLevel === 'division')
+    ? organisations.filter((organisation) => organisation.parent_id === currentOrganisation?.id)
+    : organisations;
+
+  useEffect(() => {
+    if (selectedOrgId && !availableOrganisations.some((organisation) => organisation.id === selectedOrgId)) {
+      setSelectedOrgId('');
+    }
+  }, [selectedOrgId, availableOrganisations]);
 
   useEffect(() => {
     if (categoryFestivalRef.current !== festivalId) {
@@ -138,15 +155,31 @@ export default function AddParticipant() {
 
   // Fetch org type for org label and available hierarchies
   useEffect(() => {
-    if (validTenantId) {
-      participantService.getTenantOrgType(validTenantId).then((type) => {
-        setOrgType(type || 'unit');
+    if (!validTenantId) {
+      setOrganisations([]);
+      setIsOrganisationsLoading(false);
+      setOrganisationsLoadError('');
+      return;
+    }
+
+    let cancelled = false;
+    setOrganisations([]);
+    setIsOrganisationsLoading(true);
+    setOrganisationsLoadError('');
+    participantService.listOrganisations(validTenantId)
+      .then((data) => {
+        if (!cancelled) setOrganisations(data);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setOrganisations([]);
+        setOrganisationsLoadError(error instanceof Error ? error.message : 'Could not load organisations.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsOrganisationsLoading(false);
       });
 
-      participantService.listOrganisations(validTenantId).then((data) => {
-        setOrganisations(data);
-      });
-    }
+    return () => { cancelled = true; };
   }, [validTenantId]);
 
   // Auto-resolve category whenever inputs change
@@ -235,11 +268,6 @@ export default function AddParticipant() {
       return;
     }
 
-    if (!gender) {
-      Alert.alert('Error', 'Gender is required.');
-      return;
-    }
-
     // Validate and get category
     let category: string;
     try {
@@ -275,11 +303,7 @@ export default function AddParticipant() {
 
     setLoading(true);
 
-    // Generate or use manual chest number
-    let chest_number = manualChestNumber.trim();
-    if (!chest_number) {
-      chest_number = await participantService.generateChestNumber(category, festivalId);
-    }
+    let chest_number = '';
 
     // Calculate age for storage
     const ageNum = dob ? calculateAge(dob, festivalYear) : null;
@@ -290,43 +314,24 @@ export default function AddParticipant() {
     let saveError: Error | null = null;
     let photoUploadError: Error | null = null;
     try {
-      // The unique index is the final authority. Two admins can generate the
-      // same number concurrently, so retry an automatically generated number
-      // when the insert loses that race.
-      let newParticipant: any;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          newParticipant = await participantService.createParticipant<any>({
-            tenant_id: targetTenantId,
-            festival_id: festivalId,
-            organisation_id: selectedOrgId,
-            name: name.trim(),
-            category_code: category,
-            phone: phone || null,
-            chest_number,
-            status: 'approved',
-            age: ageNum,
-            class_std: isCollegeFest ? null : classStd || null,
-            dob: dob || null,
-            gender,
-            profile_bio: profileBio || null,
-            public_profile_enabled: publicProfileEnabled,
-            show_organisation_public: showOrganisationPublic,
-          });
-          break;
-        } catch (error: any) {
-          const isDuplicateChest = error?.code === '23505'
-            && String(error?.message || '').includes('unique_active_chest_number');
-          if (!isDuplicateChest || manualChestNumber.trim() || attempt === 2) throw error;
-          // Do not call the generator again here: if RLS hides the existing
-          // row, it can return the same candidate repeatedly. Advance the
-          // candidate that the database just rejected instead.
-          const match = chest_number.match(/^(.*-)(\d+)$/);
-          chest_number = match
-            ? `${match[1]}${(Number(match[2]) + 1).toString().padStart(match[2].length, '0')}`
-            : await participantService.generateChestNumber(category, festivalId);
-        }
+      if (!targetTenantId) {
+        throw new Error('Unable to determine the participant tenant. Please reselect the organisation.');
       }
+      const newParticipant = await participantService.createParticipantWithChestNumber<any>({
+        tenant_id: targetTenantId,
+        festival_id: festivalId,
+        organisation_id: selectedOrgId,
+        name: name.trim(),
+        category_code: category,
+        status: 'approved',
+        age: ageNum,
+        class_std: isCollegeFest ? null : classStd || null,
+        dob: dob || null,
+        gender,
+        public_profile_enabled: publicProfileEnabled,
+        show_organisation_public: showOrganisationPublic,
+      });
+      chest_number = String(newParticipant.chest_number || '');
 
       if (photoFile && newParticipant?.id) {
         try {
@@ -372,85 +377,96 @@ export default function AddParticipant() {
   // ─── UI ─────────────────────────────────────────────────────────────────────
 
   return (
-    <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
-      <Text className="text-2xl font-poppins-black text-ssf-text mb-6">Add Participant</Text>
-
-      <SsfCard className="gap-y-5">
-
-        {/* Name */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-1">Full Name *</Text>
-          <TextInput
-            className="border border-ssf-border rounded-xl p-3 font-poppins text-ssf-text"
-            placeholder="E.g. Mohammed Ali"
-            value={name}
-            onChangeText={setName}
-            placeholderTextColor={ui.colors.textSubtle}
-          />
-        </View>
-
-        {/* Manual Chest Number */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-1">Chest Number (Optional)</Text>
-          <TextInput
-            className="border border-ssf-border rounded-xl p-3 font-poppins text-ssf-text"
-            placeholder="Leave empty to auto-generate"
-            value={manualChestNumber}
-            onChangeText={setManualChestNumber}
-            placeholderTextColor={ui.colors.textSubtle}
-          />
-        </View>
-
-        {/* Date of Birth */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-1">Date of Birth {isCollegeFest ? '(Optional)' : '*'}</Text>
-          {Platform.OS === 'web' ? (
-            <SsfDatePicker
-              value={dob || ''}
-              onValueChange={(val: string) => setDob(val)}
-              style={{ width: '100%', height: 48 }}
-            />
-          ) : (
-            <TextInput
-              className="border border-ssf-border rounded-xl p-3 font-poppins text-ssf-text"
-              placeholder="YYYY-MM-DD"
-              value={dob}
-              onChangeText={(text) => setDob(formatDOBInput(text))}
-              keyboardType="number-pad"
-              placeholderTextColor={ui.colors.textSubtle}
-              maxLength={10}
-            />
-          )}
-          {dob && dob.length > 0 && (
-            <Text className="font-poppins text-xs text-ssf-text-muted mt-1">
-              Age as of 31 May {festivalYear}: <Text className="font-poppins-bold text-ssf-primary">
-                {(() => { try { return calculateAge(dob, festivalYear); } catch { return '?'; } })()}
-              </Text>
-            </Text>
-          )}
-        </View>
-
-        {/* Gender Selector */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-2">Gender *</Text>
-          <View className="flex-row gap-x-3">
-            {(['boys', 'girls'] as const).map(g => (
-              <TouchableOpacity
-                key={g}
-                className={`flex-1 py-3 rounded-xl border-2 items-center justify-center ${gender === g ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
-                onPress={() => setGender(g)}
-              >
-                <Text className={`font-poppins-bold text-base capitalize ${gender === g ? 'text-white' : 'text-ssf-text'}`}>
-                  {g}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <ScrollView className="flex-1 bg-ssf-bg px-4 py-5 md:px-8 md:py-7" contentContainerStyle={{ paddingBottom: 32 }}>
+      <View className="mx-auto w-full max-w-7xl">
+        <View className="mb-4 flex-row items-center gap-3 px-1 md:mb-5">
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
+            <UserRoundPlus size={24} color="#0F766E" />
+          </View>
+          <View>
+            <Text className="font-poppins-black text-2xl text-ssf-text">Add Participant</Text>
+            <Text className="font-poppins text-xs text-ssf-text-muted">Enter participant details and configure profile settings.</Text>
           </View>
         </View>
 
+      <SsfCard className="gap-y-3 rounded-2xl border-slate-200 p-3 md:gap-y-4 md:p-5">
+        <View className="flex-col gap-3 md:flex-row">
+          {/* Name */}
+          <View className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 md:flex-[1.5] md:p-4">
+            <View className="mb-2 flex-row items-center gap-2">
+              <UserRound size={16} color="#334155" />
+              <Text className="font-poppins-bold text-sm text-ssf-text">Full Name <Text className="text-red-600">*</Text></Text>
+            </View>
+            <TextInput
+              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-poppins text-sm text-ssf-text"
+              placeholder="E.g. Mohammed Ali"
+              value={name}
+              onChangeText={setName}
+              placeholderTextColor={ui.colors.textSubtle}
+            />
+          </View>
+
+          {/* Date of Birth */}
+          <View className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4">
+            <View className="mb-2 flex-row items-center gap-2">
+              <CalendarDays size={16} color="#334155" />
+              <Text className="font-poppins-bold text-sm text-ssf-text">Date of Birth <Text className="font-poppins text-ssf-text-muted">{isCollegeFest ? '(Optional)' : '*'}</Text></Text>
+            </View>
+            {Platform.OS === 'web' ? (
+              <SsfDatePicker
+                value={dob || ''}
+                onValueChange={(val: string) => setDob(val)}
+                style={{ width: '100%', height: 44 }}
+              />
+            ) : (
+              <TextInput
+                className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-poppins text-sm text-ssf-text"
+                placeholder="YYYY-MM-DD"
+                value={dob}
+                onChangeText={(text) => setDob(formatDOBInput(text))}
+                keyboardType="number-pad"
+                placeholderTextColor={ui.colors.textSubtle}
+                maxLength={10}
+              />
+            )}
+            {dob && dob.length > 0 && (
+              <Text className="mt-1 font-poppins text-xs text-ssf-text-muted">
+                Age as of 31 May {festivalYear}: <Text className="font-poppins-bold text-ssf-primary">
+                  {(() => { try { return calculateAge(dob, festivalYear); } catch { return '?'; } })()}
+                </Text>
+              </Text>
+            )}
+          </View>
+        </View>
+
+        <View className="flex-col gap-3 md:flex-row md:items-start">
+          <SsfCard className="gap-y-3 rounded-xl border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
+            <View className="flex-row items-center gap-2">
+              <Trophy size={17} color="#334155" />
+              <Text className="font-poppins-bold text-sm text-ssf-text">Category <Text className="text-red-600">*</Text></Text>
+            </View>
+
+            {!isGenderFixedByFestival && (
+              <View>
+                <Text className="mb-2 font-poppins-bold text-xs text-ssf-text-muted">Gender <Text className="text-red-600">*</Text></Text>
+                <View className="flex-row gap-2">
+                  {(['boys', 'girls'] as const).map((option) => (
+                    <TouchableOpacity
+                      key={option}
+                      className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-slate-300 bg-white'}`}
+                      onPress={() => setSelectedGender(option)}
+                    >
+                      <Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-white' : 'text-ssf-text'}`}>
+                        {option}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
         {isCollegeFest && (
           <View>
-            <Text className="font-poppins text-ssf-text-muted mb-2">Category *</Text>
             {categoriesLoading ? <ActivityIndicator color="#1B6B3A" /> : categoriesError ? (
               <Text className="font-poppins text-sm text-red-600">Unable to load College Fest categories.</Text>
             ) : participantCollegeCategories.length === 0 ? (
@@ -590,25 +606,26 @@ export default function AddParticipant() {
           ) : null}
         </View>}
 
-        {/* Phone */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-1">Phone Number (Optional)</Text>
-          <TextInput
-            className="border border-ssf-border rounded-xl p-3 font-poppins text-ssf-text"
-            placeholder="E.g. 9876543210"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            placeholderTextColor={ui.colors.textSubtle}
-          />
-        </View>
+          </SsfCard>
 
         {/* Organisation Selector */}
-        <View>
-          <Text className="font-poppins text-ssf-text-muted mb-2">Organisation (Unit/Sector/Division) *</Text>
-          {organisations.length > 0 ? (
+          <SsfCard className="gap-y-3 rounded-xl border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
+          <View className="flex-row items-center gap-2">
+            <Building2 size={17} color="#334155" />
+            <Text className="font-poppins-bold text-sm text-ssf-text">Organisation (Unit/Sector/Division) <Text className="text-red-600">*</Text></Text>
+          </View>
+          {isFestivalLoading || isOrganisationsLoading ? (
+            <View className="flex-row items-center gap-2 py-2">
+              <ActivityIndicator size="small" color={ui.colors.primary} />
+              <Text className="font-poppins text-xs text-ssf-text-muted">Loading festival and eligible organisations…</Text>
+            </View>
+          ) : organisationsLoadError ? (
+            <Text className="font-poppins text-xs text-red-500">Could not load organisations: {organisationsLoadError}</Text>
+          ) : !activeFestival ? (
+            <Text className="font-poppins text-xs text-ssf-text-muted">Activate a festival before selecting an organisation.</Text>
+          ) : availableOrganisations.length > 0 ? (
             <View className="flex-row flex-wrap gap-2">
-              {organisations.map((org: any) => (
+              {availableOrganisations.map((org) => (
                 <TouchableOpacity
                   key={org.id}
                   className={`px-3 py-2 rounded-xl border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
@@ -622,16 +639,22 @@ export default function AddParticipant() {
             </View>
           ) : (
             <Text className="font-poppins text-xs italic text-red-500">
-              No organisations found. Please set up the hierarchy first.
+              {organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division')
+                ? `No subordinate organisations found for this ${festivalLevel}.`
+                : 'No organisations found. Please set up the hierarchy first.'}
             </Text>
           )}
+          </SsfCard>
         </View>
 
         {/* Candidate Profile Section */}
-        <View className="border-t border-gray-100 pt-4 gap-y-4">
-          <View className="flex-row items-center gap-x-2">
+        <View className="gap-y-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3 md:gap-y-4 md:p-4">
+          <View className="flex-row items-start gap-x-2">
             <Eye size={18} color={ui.colors.info} />
-            <Text className="font-poppins-bold text-base text-ssf-text">Public Candidate Profile</Text>
+            <View className="flex-1">
+              <Text className="font-poppins-bold text-base text-ssf-text">Public Candidate Profile</Text>
+              <Text className="font-poppins text-xs text-ssf-text-muted">Manage how this participant is shown in public profile.</Text>
+            </View>
           </View>
           
           {/* Photo upload */}
@@ -658,33 +681,23 @@ export default function AddParticipant() {
                 </View>
                 <TouchableOpacity
                   onPress={handlePhotoSelect}
-                  className="px-3 py-2 rounded-xl border border-blue-100 bg-blue-50"
+                  className="min-h-10 flex-row items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2"
                 >
+                  <Upload size={15} color="#2563EB" />
                   <Text className="font-poppins-bold text-xs text-blue-700">Select Photo</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* Bio */}
-          <View>
-            <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Public Bio</Text>
-            <TextInput
-              className="border border-ssf-border rounded-xl p-3 font-poppins text-ssf-text min-h-[96px]"
-              value={profileBio}
-              onChangeText={setProfileBio}
-              multiline
-              textAlignVertical="top"
-              placeholder="Short public-safe candidate bio..."
-              placeholderTextColor={ui.colors.textSubtle}
-            />
-          </View>
-
           {/* Visibility Toggle */}
           <View className="flex-row justify-between items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <View className="flex-1 pr-3">
-              <Text className="font-poppins-bold text-sm text-ssf-text">Public profile enabled</Text>
-              <Text className="font-poppins text-xs text-ssf-text-muted">Allow this candidate profile to be opened publicly.</Text>
+            <View className="flex-1 flex-row items-center gap-3 pr-3">
+              <Globe2 size={18} color="#2563EB" />
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-sm text-ssf-text">Public profile enabled</Text>
+                <Text className="font-poppins text-xs text-ssf-text-muted">Allow this candidate profile to be opened publicly.</Text>
+              </View>
             </View>
             <Switch
               value={publicProfileEnabled}
@@ -696,9 +709,12 @@ export default function AddParticipant() {
 
           {/* Organisation Visibility Toggle */}
           <View className="flex-row justify-between items-center bg-green-50 border border-green-100 rounded-xl p-3">
-            <View className="flex-1 pr-3">
-              <Text className="font-poppins-bold text-sm text-ssf-text">Show organisation publicly</Text>
-              <Text className="font-poppins text-xs text-ssf-text-muted">Display organisation name on the public profile.</Text>
+            <View className="flex-1 flex-row items-center gap-3 pr-3">
+              <Building2 size={18} color="#059669" />
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-sm text-ssf-text">Show organisation publicly</Text>
+                <Text className="font-poppins text-xs text-ssf-text-muted">Display organisation name on the public profile.</Text>
+              </View>
             </View>
             <Switch
               value={showOrganisationPublic}
@@ -713,9 +729,10 @@ export default function AddParticipant() {
           label={loading ? 'Saving...' : 'Save Participant'}
           onPress={handleSave}
           disabled={loading || !!ageClassWarning || (isCollegeFest && (categoriesLoading || !!categoriesError || collegeCategories.length === 0))}
-          className="mt-2"
+          className="mt-1 w-full"
         />
       </SsfCard>
+      </View>
     </ScrollView>
   );
 }

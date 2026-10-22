@@ -9,7 +9,7 @@ import {
   Platform,
   Clipboard,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
@@ -52,6 +52,7 @@ interface Assignment {
   leader_code: string | null;
   leader_name: string;
   created_at: string;
+  password_state?: 'pending_change' | 'ready_to_reset' | 'unavailable';
 }
 
 interface Profile {
@@ -79,6 +80,8 @@ type TeamLeaderManagementCache = {
 };
 
 const teamLeaderManagementCache = new Map<string, TeamLeaderManagementCache>();
+const temporaryPasswordsByUser = new Map<string, string>();
+const temporaryPasswordKey = (tenantId: string, festivalId: string, userId: string) => `${tenantId}:${festivalId}:${userId}`;
 
 export default function TeamLeaderPortalAdmin() {
   const router = useRouter();
@@ -104,7 +107,7 @@ export default function TeamLeaderPortalAdmin() {
 
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [creatingAccount, setCreatingAccount] = useState(false);
-  const [tempCredentials, setTempCredentials] = useState<{ username: string | null, email?: string, password: string } | null>(null);
+  const [tempCredentials, setTempCredentials] = useState<{ user_id: string, username: string | null, email?: string, password: string } | null>(null);
   const [resetCredentials, setResetCredentials] = useState<{ assignmentId: string, username: string | null, email?: string, password: string } | null>(null);
   const [resettingAssignmentId, setResettingAssignmentId] = useState<string | null>(null);
   const [copiedCredential, setCopiedCredential] = useState<string | null>(null);
@@ -266,7 +269,13 @@ export default function TeamLeaderPortalAdmin() {
           leader_code: a.leader_code || null,
           leader_name: a.leader_name || 'Unknown',
           created_at: a.created_at,
+          password_state: a.password_state,
         };
+      });
+      formatted.forEach((assignment) => {
+        if (assignment.password_state === 'ready_to_reset' || assignment.password_state === 'unavailable') {
+          temporaryPasswordsByUser.delete(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id));
+        }
       });
 
       setAssignments(formatted);
@@ -285,11 +294,23 @@ export default function TeamLeaderPortalAdmin() {
     }
   }, [activeFestival?.id, tenantId]);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (activeFestival?.id && tenantId) {
-      loadData();
+      void loadData(true);
     }
-  }, [activeFestival?.id, tenantId, loadData]);
+  }, [activeFestival?.id, tenantId, loadData]));
+
+  useEffect(() => {
+    if (tempCredentials && assignments.some((row) => row.user_id === tempCredentials.user_id && row.password_state !== 'pending_change')) {
+      setTempCredentials(null);
+    }
+    if (resetCredentials) {
+      const resetAssignment = assignments.find((row) => row.id === resetCredentials.assignmentId);
+      if (resetAssignment && resetAssignment.password_state !== 'pending_change') {
+        setResetCredentials(null);
+      }
+    }
+  }, [assignments, resetCredentials, tempCredentials]);
 
   const checkParticipantProfile = useCallback(async (participant: Participant) => {
     setCheckingProfile(true);
@@ -341,8 +362,15 @@ export default function TeamLeaderPortalAdmin() {
         const errorMsg = (error as any)?.context?.message || error.message;
         throw new Error(errorMsg || 'Failed to create Team Leader account.');
       }
+      if (typeof data?.user_id !== 'string' || typeof data?.password !== 'string') {
+        throw new Error('The account was created, but its one-time password could not be returned.');
+      }
+      if (tenantId && activeFestival?.id) {
+        temporaryPasswordsByUser.set(temporaryPasswordKey(tenantId, activeFestival.id, data.user_id), data.password);
+      }
 
       setTempCredentials({
+        user_id: data.user_id,
         username: data?.username ?? null,
         password: data?.password,
       });
@@ -394,12 +422,19 @@ export default function TeamLeaderPortalAdmin() {
               setResetCredentials(null);
               if (!activeFestival?.id) throw new Error('No active festival is selected.');
               const credentials = await teamLeaderPortalService.resetPassword(assignment.user_id, activeFestival.id);
+              if (tenantId) {
+                temporaryPasswordsByUser.set(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id), credentials.password);
+              }
 
               setResetCredentials({
                 assignmentId: assignment.id,
                 username: credentials.username || assignment.leader_code,
                 password: credentials.password,
               });
+
+              setAssignments((current) => current.map((row) => row.id === assignment.id
+                ? { ...row, password_state: 'pending_change' }
+                : row));
 
               Alert.alert(
                 'Password Reset Complete',
@@ -855,16 +890,46 @@ export default function TeamLeaderPortalAdmin() {
                         >
                           <Text className="text-xs text-muted-foreground">{copiedCredential === `Username_${assignment.id}` ? 'Copied' : 'Copy username'}</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleResetPassword(assignment)}
-                          className={`px-2 py-1 rounded border border-border ml-1 ${resettingAssignmentId === assignment.id ? 'opacity-50' : ''}`}
-                          disabled={resettingAssignmentId === assignment.id}
-                          accessibilityLabel={`Reset password for ${assignment.leader_name}`}
-                        >
-                          <Text className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                            {resettingAssignmentId === assignment.id ? 'Resetting...' : 'Reset password'}
-                          </Text>
-                        </TouchableOpacity>
+                        {assignment.password_state === 'ready_to_reset' ? (
+                          <TouchableOpacity
+                            onPress={() => handleResetPassword(assignment)}
+                            className={`px-2 py-1 rounded border border-border ml-1 ${resettingAssignmentId === assignment.id ? 'opacity-50' : ''}`}
+                            disabled={resettingAssignmentId === assignment.id}
+                            accessibilityLabel={`Reset password for ${assignment.leader_name}`}
+                          >
+                            <Text className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                              {resettingAssignmentId === assignment.id ? 'Resetting...' : 'Reset password'}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : assignment.password_state !== 'unavailable' ? (
+                          <TouchableOpacity
+                            onPress={() => {
+                              const password = tenantId && activeFestival?.id
+                                ? temporaryPasswordsByUser.get(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id))
+                                : undefined;
+                              const availablePassword = password
+                                || (resetCredentials?.assignmentId === assignment.id
+                                  ? resetCredentials.password
+                                  : tempCredentials?.user_id === assignment.user_id
+                                    ? tempCredentials.password
+                                    : null);
+                              if (availablePassword) {
+                                void copyCredential(availablePassword, `Password_${assignment.id}`);
+                              } else {
+                                Alert.alert(
+                                  'Password unavailable',
+                                  'For security, the temporary password is only available immediately after account creation or reset. It is not stored for later retrieval.',
+                                );
+                              }
+                            }}
+                            className="px-2 py-1 rounded border border-border ml-1"
+                            accessibilityLabel={`Copy password for ${assignment.leader_name}`}
+                          >
+                            <Text className="text-xs text-muted-foreground">
+                              {copiedCredential === `Password_${assignment.id}` ? 'Copied' : 'Copy password'}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : null}
                       </View>
                     )}
                     {resetCredentials?.assignmentId === assignment.id && (

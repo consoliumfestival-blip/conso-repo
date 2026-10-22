@@ -1,6 +1,6 @@
 # Existing clone update: verified progress
 
-Observed: 2026-10-22. Application schema parity and target Edge Function deployment are verified. Hosted website validation remains separate.
+Observed: 2026-10-22. Application schema parity, target Edge Function deployment, GitHub promotion and hosted target smoke checks are verified. The Cloudflare Pages check is still reporting `Building` even though the updated bundle is live.
 
 ## Scope and boundaries
 
@@ -9,7 +9,14 @@ Observed: 2026-10-22. Application schema parity and target Edge Function deploym
 - Source Supabase: `szhwkngspodujiqzblab`. All database requests during this update used `/database/query/read-only`.
 - Target Supabase: `negkevoetuvuqqlecdno`. Two reviewed, transactionally checked migrations have been applied and recorded in target migration history.
 - No tenant/business rows, users, uploaded objects or points-configuration records are to be copied or seeded. Existing target records are not to be deleted.
-- GitHub promotion to `consoliumfestival-blip/conso-repo/main` is part of the user's requested update. The published revision must be verified against the remote; source Git state is preserved.
+- GitHub promotion to `consoliumfestival-blip/conso-repo/main` is part of the user's requested update. Code promotion `8c36cc367eb6369a82c850f9e24e2bca5be80b6e` was pushed and matched the remote `main`; source Git state is preserved.
+
+## GitHub and hosted target verification
+
+- Target commit `8c36cc367eb6369a82c850f9e24e2bca5be80b6e` is present on GitHub `main`; the target worktree was clean after that push.
+- User-provided site `https://conso-repo.pages.dev/` returned HTTP 200 with title `Alviora-2k26`. Its served Expo bundle returned HTTP 200 and contained the target Supabase project reference, no source project reference, and route markers for general entries, Team Leader first login and Team Leader programs.
+- GitHub's Cloudflare Pages check for that commit remained `in_progress` / `Building` when last read, despite the updated bundle being served. This check status still needs to settle or be reviewed in Cloudflare.
+- Target Supabase Auth `site_url` was `http://localhost:3000`. After verifying the user-provided hosted domain, only target `site_url` was changed to `https://conso-repo.pages.dev` and re-read successfully. The extra redirect list remained empty. Source Auth settings were not changed. The app has no `redirectTo`, `emailRedirectTo`, or OAuth redirect call in `src`.
 
 ## Verified local code work
 
@@ -83,7 +90,7 @@ Enum definitions and replica identity settings also match. `scripts/verify-clone
 - Updated only target `provision-team-leader` and `resolve-login-identifier`. Fresh target downloads confirm all six deployed entrypoints match the current local source after normalizing line endings/BOM.
 - All six target functions are ACTIVE. Five retain JWT verification. The pre-login resolver retains `verify_jwt=false`, matching the checked-in login contract and allowing authentication with publishable keys. Source deployment metadata has `true`; it was not changed. Explicit target settings are now in `supabase/config.toml`.
 - Target resolver GET smoke: HTTP 405 with `X-Resolve-Login-Version: login-v2`, proving the deployed handler is reachable without creating records.
-- Compared Auth boolean/numeric settings, site URL, redirects and custom-SMTP presence: no differences in the inspected fields. No secret values or provider credentials were copied. Both projects currently declare `http://localhost:3000` and no additional redirects; target hosting URLs still need deployment-specific review.
+- Compared Auth boolean/numeric settings, site URL, redirects and custom-SMTP presence. Other inspected fields matched; neither project has extra redirect URLs. Based on the user-provided production URL, only target Auth `site_url` now uses `https://conso-repo.pages.dev`; source remains `http://localhost:3000`. No secret values or provider credentials were copied.
 - Both projects have zero Supabase Storage buckets and zero Storage policies. No buckets or uploaded objects were copied/created.
 - Target notification cron remains active on `*/3 * * * *`, points to the target function and uses Vault. Source's older non-Vault command was not copied.
 - Target `pg_net` is 0.20.4 versus source 0.20.0. The newer target patch was retained; no platform extension downgrade was attempted. Other inspected extension versions match.
@@ -97,11 +104,13 @@ Enum definitions and replica identity settings also match. `scripts/verify-clone
 - Scanned 11 exported text assets: source project reference absent; target project reference present; no exact matches to the checked private environment credential values.
 - Target TypeScript check: **109 diagnostics** after the drag-handle typing correction. A compiler-host comparison against backed-up pre-update target files found 122 baseline diagnostics, 14 resolved diagnostic signatures and one added diagnostic (`touchAction`), subsequently corrected. The final run confirms no `ChestTeamOrderRow.tsx` diagnostic. Typecheck is **not clean**.
 - Existing target super-admin login and `get_my_login_profile` RPC: **passed**, with expected admin/super-admin role and NULL tenant. Signed out only the newly opened validation session. No new account was created.
+- Hosted target smoke: **passed** for the page and served JavaScript bundle (HTTP 200). The bundle contains the target project reference and selected new feature route markers, with no source project reference. This does not prove authenticated tenant workflows.
+- Target Auth `site_url`: **passed** read-after-write verification for `https://conso-repo.pages.dev`; additional redirects remained empty.
 - Full tenant/participant/judge/result publishing E2E has not been run because it would require business fixtures prohibited by the user's no-new-data boundary.
 
 ## Remaining work
 
-1. Verify the published target GitHub revision and hosted target URL/configuration. The target live URL was requested rather than guessed.
+1. Recheck Cloudflare Pages check `119837626391` for the promoted target commit; it was still `Building` after the updated bundle became live.
 2. Configure and test target R2 when the user supplies target credentials; no source objects are to be copied.
 3. Retain the explicit TypeScript/E2E limitations above. Do not describe build/catalog checks as proof of all tenant workflows.
 

@@ -27,7 +27,7 @@ export default function TeamLeaderFirstLogin() {
   const currentUsername = user?.user_metadata?.username || user?.user_metadata?.team_leader_code || '';
   const requiresUsernameChange = user?.app_metadata?.must_change_credentials === true
     || user?.user_metadata?.must_change_credentials === true;
-  const [newUsername, setNewUsername] = useState(currentUsername);
+  const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,14 @@ export default function TeamLeaderFirstLogin() {
 
   const handleUpdate = async () => {
     setErrorMsg('');
+    if (requiresUsernameChange && !newUsername.trim()) {
+      setErrorMsg('Choose a personal username to continue.');
+      return;
+    }
+    if (requiresUsernameChange && newUsername === currentUsername) {
+      setErrorMsg('Choose a username different from your temporary username.');
+      return;
+    }
     setLoading(true);
     try {
       let targetUserId = user?.id;
@@ -144,7 +152,7 @@ export default function TeamLeaderFirstLogin() {
                 />
               </View>
               <Text style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
-                Choose a username you can remember.
+                Choose a username different from your temporary username ({currentUsername}).
               </Text>
             </View> : (
               <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>

@@ -174,7 +174,22 @@ export const teamLeaderPortalService = {
         new_password: newPassword,
       },
     });
-    if (error) throw error;
+    if (error) {
+      const response = (error as any).context;
+      let payload: any;
+      if (response && typeof response.json === 'function') {
+        try {
+          payload = await response.json();
+        } catch {
+          // Keep the standard invoke error when the response has no JSON body.
+        }
+      }
+      throw new Error(
+        typeof payload?.message === 'string' && payload.message
+          ? payload.message
+          : error.message || 'Could not update Team Leader credentials.'
+      );
+    }
     return data;
   },
 };

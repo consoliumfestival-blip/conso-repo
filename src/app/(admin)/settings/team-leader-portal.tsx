@@ -119,27 +119,36 @@ export default function TeamLeaderPortalAdmin() {
     try {
       if (Platform.OS === 'web') {
         let copied = false;
-        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-          try {
-            await navigator.clipboard.writeText(value);
-            copied = true;
-          } catch {
-            // Fall back for browsers/contexts that expose but deny Clipboard API.
-          }
-        }
-        if (!copied && typeof document !== 'undefined') {
+        // Keep the legacy copy attempt synchronous with the click. Some browsers
+        // deny Clipboard API writes in embedded contexts after an async boundary.
+        if (typeof document !== 'undefined' && document.body) {
           const field = document.createElement('textarea');
           field.value = value;
           field.setAttribute('readonly', '');
           field.style.position = 'fixed';
+          field.style.left = '-9999px';
+          field.style.top = '0';
           field.style.opacity = '0';
           document.body.appendChild(field);
           try {
             field.focus();
             field.select();
+            field.setSelectionRange(0, field.value.length);
             copied = document.execCommand('copy');
+          } catch {
+            // Continue to the Clipboard API if the legacy browser command throws.
           } finally {
             document.body.removeChild(field);
+          }
+        }
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          if (!copied) {
+            try {
+              await navigator.clipboard.writeText(value);
+              copied = true;
+            } catch {
+              // Surface a clear error below when both clipboard methods fail.
+            }
           }
         }
         if (!copied) throw new Error('Browser clipboard is unavailable.');
@@ -150,7 +159,12 @@ export default function TeamLeaderPortalAdmin() {
       setTimeout(() => setCopiedCredential(null), 1800);
     } catch (error) {
       console.error(`Failed to copy ${label}:`, error);
-      Alert.alert('Copy failed', 'Clipboard is unavailable on this device.');
+      const message = 'Clipboard access was blocked. Allow clipboard access for this site, then try again.';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.alert(`Copy failed\n\n${message}`);
+      } else {
+        Alert.alert('Copy failed', message);
+      }
     }
   };
 
@@ -916,10 +930,12 @@ export default function TeamLeaderPortalAdmin() {
                               if (availablePassword) {
                                 void copyCredential(availablePassword, `Password_${assignment.id}`);
                               } else {
-                                Alert.alert(
-                                  'Password unavailable',
-                                  'For security, the temporary password is only available immediately after account creation or reset. It is not stored for later retrieval.',
-                                );
+                                const message = 'The one-time password is no longer available in this session. Passwords are not stored or retrievable later; a new password can only be issued through the authorized reset flow.';
+                                if (Platform.OS === 'web' && typeof window !== 'undefined') {
+                                  window.alert(`Password unavailable\n\n${message}`);
+                                } else {
+                                  Alert.alert('Password unavailable', message);
+                                }
                               }
                             }}
                             className="px-2 py-1 rounded border border-border ml-1"

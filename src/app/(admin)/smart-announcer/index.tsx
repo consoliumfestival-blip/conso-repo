@@ -62,7 +62,7 @@ export default function SmartAnnouncerPage() {
           grade, 
           points_awarded, 
           items!inner(item_name_ml, category_codes), 
-          registrations!inner(code_letter, participants(name), organisations(name))
+          registrations!inner(code_letter, participants:participants!registrations_participant_id_fkey(name), leader:participants!registrations_group_leader_participant_id_fkey(name), organisations(name))
         `)
         .eq('item_id', itemId)
         .order('rank', { ascending: true, nullsFirst: false })
@@ -386,7 +386,7 @@ export default function SmartAnnouncerPage() {
                       <Text style={{ fontWeight: '700', fontSize: 16, color: '#1e293b', marginBottom: 4 }}>
                         {Array.isArray(r.registrations?.participants) 
                           ? r.registrations.participants.map((p: any) => p.name).join(', ') 
-                          : r.registrations?.participants?.name || 'Unknown'}
+                          : r.registrations?.participants?.name || r.registrations?.leader?.name || r.registrations?.organisations?.name || 'Unknown'}
                       </Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                         <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '500' }}>

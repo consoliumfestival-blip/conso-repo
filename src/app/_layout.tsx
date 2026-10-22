@@ -6,7 +6,6 @@ import {
 import { Slot, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import "@fontsource-variable/inter";
 import "../global.css";
 import { ActivityIndicator, Platform, View } from "react-native";
 
@@ -15,6 +14,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   useFonts,
   Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
   Poppins_700Bold,
   Poppins_900Black,
 } from "@expo-google-fonts/poppins";
@@ -67,6 +68,8 @@ export default function RootLayout() {
 
   const [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
     Poppins_700Bold,
     Poppins_900Black,
     Montserrat_300Light,

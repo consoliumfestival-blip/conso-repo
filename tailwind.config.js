@@ -143,7 +143,7 @@ module.exports = {
         "poppins-bold": ["Poppins_700Bold"],
         "poppins-black": ["Poppins_900Black"],
         cooper: ["CooperBlack"],
-        sans: ["InterVariable", "Inter", "sans-serif"],
+        sans: ["Inter Variable", "Inter", "sans-serif"],
       },
       borderRadius: {
         lg: "0.45rem",

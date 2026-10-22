@@ -168,6 +168,18 @@ export default function TeamLeaderPortalAdmin() {
     }
   };
 
+  const getAvailablePassword = (assignment: Assignment) => {
+    const inMemoryPassword = tenantId && activeFestival?.id
+      ? temporaryPasswordsByUser.get(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id))
+      : undefined;
+    return inMemoryPassword
+      || (resetCredentials?.assignmentId === assignment.id
+        ? resetCredentials.password
+        : tempCredentials?.user_id === assignment.user_id
+          ? tempCredentials.password
+          : null);
+  };
+
   const loadData = useCallback(async (forceRefresh = false) => {
     if (!activeFestival?.id || !tenantId) {
       setLoading(false);
@@ -421,14 +433,14 @@ export default function TeamLeaderPortalAdmin() {
     }
   };
 
-  const handleResetPassword = async (assignment: Assignment) => {
+  const handleResetPassword = async (assignment: Assignment, reissue = false) => {
     Alert.alert(
-      'Reset Team Leader Password',
+      reissue ? 'Reissue Team Leader Password' : 'Reset Team Leader Password',
       `Generate a new six-digit temporary password for ${assignment.team_name}? The username will stay the same. The current password will stop working, and the leader must change the new password after signing in.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset Password',
+          text: reissue ? 'Reissue password' : 'Reset Password',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -451,11 +463,11 @@ export default function TeamLeaderPortalAdmin() {
                 : row));
 
               Alert.alert(
-                'Password Reset Complete',
+                reissue ? 'Temporary Password Reissued' : 'Password Reset Complete',
                 `A new temporary password was generated for ${assignment.team_name}. It is shown on that team's assignment card, where you can copy it. The leader must change it after signing in.`
               );
             } catch (error: any) {
-              Alert.alert('Password reset failed', error?.message || 'Please try again.');
+              Alert.alert(reissue ? 'Password reissue failed' : 'Password reset failed', error?.message || 'Please try again.');
             } finally {
               setResettingAssignmentId(null);
             }
@@ -915,34 +927,25 @@ export default function TeamLeaderPortalAdmin() {
                               {resettingAssignmentId === assignment.id ? 'Resetting...' : 'Reset password'}
                             </Text>
                           </TouchableOpacity>
-                        ) : assignment.password_state !== 'unavailable' ? (
+                        ) : assignment.password_state === 'pending_change' && getAvailablePassword(assignment) ? (
                           <TouchableOpacity
-                            onPress={() => {
-                              const password = tenantId && activeFestival?.id
-                                ? temporaryPasswordsByUser.get(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id))
-                                : undefined;
-                              const availablePassword = password
-                                || (resetCredentials?.assignmentId === assignment.id
-                                  ? resetCredentials.password
-                                  : tempCredentials?.user_id === assignment.user_id
-                                    ? tempCredentials.password
-                                    : null);
-                              if (availablePassword) {
-                                void copyCredential(availablePassword, `Password_${assignment.id}`);
-                              } else {
-                                const message = 'The one-time password is no longer available in this session. Passwords are not stored or retrievable later; a new password can only be issued through the authorized reset flow.';
-                                if (Platform.OS === 'web' && typeof window !== 'undefined') {
-                                  window.alert(`Password unavailable\n\n${message}`);
-                                } else {
-                                  Alert.alert('Password unavailable', message);
-                                }
-                              }
-                            }}
+                            onPress={() => void copyCredential(getAvailablePassword(assignment), `Password_${assignment.id}`)}
                             className="px-2 py-1 rounded border border-border ml-1"
                             accessibilityLabel={`Copy password for ${assignment.leader_name}`}
                           >
                             <Text className="text-xs text-muted-foreground">
                               {copiedCredential === `Password_${assignment.id}` ? 'Copied' : 'Copy password'}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : assignment.password_state === 'pending_change' ? (
+                          <TouchableOpacity
+                            onPress={() => handleResetPassword(assignment, true)}
+                            className={`px-2 py-1 rounded border border-border ml-1 ${resettingAssignmentId === assignment.id ? 'opacity-50' : ''}`}
+                            disabled={resettingAssignmentId === assignment.id}
+                            accessibilityLabel={`Reissue temporary password for ${assignment.leader_name}`}
+                          >
+                            <Text className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                              {resettingAssignmentId === assignment.id ? 'Issuing...' : 'Reissue password'}
                             </Text>
                           </TouchableOpacity>
                         ) : null}

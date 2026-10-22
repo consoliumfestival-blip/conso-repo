@@ -15,6 +15,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
+import { matchesCompetitionCategory } from '@/core/utils/groupParticipation';
 
 const teal = '#0F766E';
 const muted = '#64748B';
@@ -98,7 +99,7 @@ export default function TeamProgramsScreen() {
   );
   const generalEligibleParticipants = activeGeneralProgram
     ? participants.filter((person) =>
-        !['GN', 'GENERAL'].includes(String(person.category_code || '').trim().toUpperCase())
+        (activeGeneralProgram.category_codes ?? []).some(code => matchesCompetitionCategory(person.category_code || '', code))
         && (!activeGeneralProgram.gender || activeGeneralProgram.gender.toLowerCase() === 'both'
           || activeGeneralProgram.gender.toLowerCase() === String(person.gender || '').toLowerCase())
         && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`.toLowerCase().includes(generalMemberSearch.trim().toLowerCase()),
@@ -152,9 +153,9 @@ export default function TeamProgramsScreen() {
       });
       setActiveGeneralProgram(null);
       setSelectedGeneralParticipantIds([]);
-      setNotice({ kind: 'success', text: `General team entry ${created.entry_chest_number} created with ${created.member_count} students.` });
+      setNotice({ kind: 'success', text: `Group entry created with ${created.member_count} students; leader chest ${created.entry_chest_number}.` });
     } catch (error: any) {
-      setGeneralSelectionError(error?.message || 'Could not create this General team entry. Please try again.');
+      setGeneralSelectionError(error?.message || 'Could not create this group entry. Please try again.');
     } finally {
       setSavingItemId(null);
     }
@@ -304,7 +305,7 @@ export default function TeamProgramsScreen() {
         <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: '#FFFFFF' }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#0F172A', fontSize: 17, fontWeight: '800' }}>Choose General team members</Text>
+              <Text style={{ color: '#0F172A', fontSize: 17, fontWeight: '800' }}>Choose group members</Text>
               <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
                 {activeGeneralProgram?.item_name_en || activeGeneralProgram?.item_name_ml || activeGeneralProgram?.item_code}
                 {' · Select '}{activeGeneralProgram?.group_min_members ?? 1}
@@ -337,7 +338,7 @@ export default function TeamProgramsScreen() {
               {generalSelectionError || `${selectedGeneralParticipantIds.length} selected · ${activeGeneralProgram?.group_min_members ?? 1} required minimum${Number(activeGeneralProgram?.group_max_members) > 0 ? ` · ${activeGeneralProgram?.group_max_members} maximum` : ''}`}
             </Text>
             <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: teal, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
-              {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>Create General team entry</Text>}
+              {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color="#FFFFFF" /> : <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>Create group entry</Text>}
             </Pressable>
           </View>
         </View>
@@ -355,11 +356,11 @@ export default function TeamProgramsScreen() {
         <View style={{ padding: isDesktop ? 22 : 16, borderRadius: 16, backgroundColor: '#F0FDFA', borderWidth: 1, borderColor: '#BFE8E3', borderLeftWidth: 4, borderLeftColor: context?.portal_primary_color || teal }}>
           <Text style={{ color: context?.portal_primary_color || teal, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' }}>Program enrollment</Text>
           <Text style={{ color: '#0F172A', fontSize: isDesktop ? 23 : 20, fontWeight: '800', marginTop: 4 }}>Add programs to your team</Text>
-          <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>Assign individual programs or create a General team entry for your students.</Text>
+          <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>Assign individual programs or create group entries for your students.</Text>
         </View>
 
         <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 8, padding: 4, borderRadius: 11, backgroundColor: '#E2E8F0', alignSelf: 'flex-start' }}>
-          {([{ key: 'participant', label: 'Individual' }, { key: 'general_team', label: 'General team' }] as const).map((tab) => {
+          {([{ key: 'participant', label: 'Individual' }, { key: 'general_team', label: 'Group' }] as const).map((tab) => {
             const selected = programKind === tab.key;
             return <Pressable key={tab.key} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setKind(tab.key)} style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? '#FFFFFF' : 'transparent', borderWidth: selected ? 1 : 0, borderColor: selected ? border : 'transparent' }}><Text style={{ color: selected ? teal : muted, fontSize: 12, fontWeight: '800' }}>{tab.label}</Text></Pressable>;
           })}
@@ -388,7 +389,7 @@ export default function TeamProgramsScreen() {
             <View style={{ flex: 1, minWidth: 0, padding: isDesktop ? 18 : 12, borderRadius: 14, borderWidth: 1, borderColor: border, backgroundColor: '#FFFFFF', gap: 12 }}>
               <View style={{ flexDirection: isDesktop ? 'row' : 'column', alignItems: isDesktop ? 'center' : 'stretch', justifyContent: 'space-between', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#0F172A', fontSize: 15, fontWeight: '800' }}>{programKind === 'general_team' ? 'General team programs' : selectedParticipant?.name || 'Select a student'}</Text>
+                  <Text style={{ color: '#0F172A', fontSize: 15, fontWeight: '800' }}>{programKind === 'general_team' ? 'Group programs' : selectedParticipant?.name || 'Select a student'}</Text>
                   <Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{programKind === 'general_team' ? 'Create an entry by selecting eligible students from your team.' : `${selectedParticipant?.category_code || 'Student'}${selectedParticipant?.chest_number ? ` · Chest ${selectedParticipant.chest_number}` : ''}`}</Text>
                 </View>
                 <View style={{ minHeight: 40, width: isDesktop ? 260 : '100%', borderWidth: 1, borderColor: border, borderRadius: 9, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 7 }}>

@@ -36,12 +36,8 @@ export default function TeamLeaderFirstLogin() {
 
   const handleUpdate = async () => {
     setErrorMsg('');
-    if (requiresUsernameChange && !newUsername.trim()) {
-      setErrorMsg('Choose a personal username to continue.');
-      return;
-    }
-    if (requiresUsernameChange && newUsername === currentUsername) {
-      setErrorMsg('Choose a username different from your temporary username.');
+    if (requiresUsernameChange && !newUsername.trim() && !currentUsername) {
+      setErrorMsg('Enter a username to continue.');
       return;
     }
     setLoading(true);
@@ -57,9 +53,9 @@ export default function TeamLeaderFirstLogin() {
       }
 
       // 1. Securely update credentials via service-role / edge
-      const usernameToUse = requiresUsernameChange ? newUsername : currentUsername;
+      const usernameToUse = requiresUsernameChange ? (newUsername.trim() || currentUsername) : currentUsername;
       await teamLeaderPortalService.selfUpdateCredentials(
-        requiresUsernameChange ? newUsername : null,
+        requiresUsernameChange ? usernameToUse : null,
         newPassword,
       );
 
@@ -152,7 +148,9 @@ export default function TeamLeaderFirstLogin() {
                 />
               </View>
               <Text style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
-                Choose a username different from your temporary username ({currentUsername}).
+                {currentUsername
+                  ? `Leave blank to keep ${currentUsername}, or enter a new username.`
+                  : 'Enter the username you want to use.'}
               </Text>
             </View> : (
               <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>

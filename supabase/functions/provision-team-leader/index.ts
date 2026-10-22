@@ -167,7 +167,7 @@ serve(async (req) => {
 
     // Self-update handler for team leaders on first login
     if (body?.action === 'self_update_credentials') {
-      const newUsername = typeof body?.new_username === 'string' ? body.new_username : '';
+      const newUsername = typeof body?.new_username === 'string' ? body.new_username.trim() : '';
       const newPassword = typeof body?.new_password === 'string' ? body.new_password : '';
 
       // Verify caller profile
@@ -189,14 +189,15 @@ serve(async (req) => {
         return json(403, { error: 'CREDENTIAL_CHANGE_NOT_REQUIRED', message: 'Credential setup is not required for this account.' });
       }
 
-      if (mustChangeUsername && (!newUsername || newUsername === callerProf.team_leader_code)) {
-        return json(400, { error: 'USERNAME_CHANGE_REQUIRED', message: 'Choose a username different from the temporary username.' });
+      if (mustChangeUsername && !newUsername) {
+        return json(400, { error: 'USERNAME_REQUIRED', message: 'Enter a username to continue.' });
       }
 
       const updatedUsername = mustChangeUsername ? newUsername : (callerProf.team_leader_code || '');
+      const usernameChanged = mustChangeUsername && updatedUsername !== callerProf.team_leader_code;
 
       // Update the profile first; the unique index arbitrates concurrent name choices.
-      if (mustChangeUsername) {
+      if (usernameChanged) {
         const { error: profileUpdateError } = await admin
           .from('profiles')
           .update({ team_leader_code: updatedUsername })
@@ -227,7 +228,7 @@ serve(async (req) => {
         },
       });
       if (authUpdateError) {
-        if (mustChangeUsername) {
+        if (usernameChanged) {
           const { error: rollbackError } = await admin
             .from('profiles')
             .update({ team_leader_code: callerProf.team_leader_code })

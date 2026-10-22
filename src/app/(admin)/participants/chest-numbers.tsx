@@ -27,7 +27,7 @@ export default function ChestNumberGeneration() {
 function TeamChestNumbers({ festivalId }: { festivalId: string }) {
   const goBack = useGoBack('/(admin)/participants');
   const { query, save, lock, regenerate } = useChestNumberOrder(festivalId);
-  const [draft, setDraft] = useState<{ base: ChestOrderState; ids: string[] } | null>(null);
+  const [draft, setDraft] = useState<{ base: ChestOrderState; ids: string[]; categoryCodes: string[]; enabled: boolean } | null>(null);
   const [notice, setNotice] = useState('');
   const [dialog, setDialog] = useState<'lock' | 'unlock' | 'regenerate' | null>(null);
   const [code, setCode] = useState('');
@@ -35,23 +35,43 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
   const [drag, setDrag] = useState<{ id: string; dy: number; target: number } | null>(null);
   const layouts = useRef(new Map<string, { y: number; height: number }>());
   const origin = useRef<{ id: string; center: number } | null>(null);
+  const categoryLayouts = useRef(new Map<string, { y: number; height: number }>());
+  const categoryOrigin = useRef<{ id: string; center: number } | null>(null);
+  const [categoryDrag, setCategoryDrag] = useState<{ id: string; dy: number; target: number } | null>(null);
   const busy = save.isPending || lock.isPending || regenerate.isPending;
   const state = draft?.base ?? query.data;
   const locked = !!query.data?.locked;
   const ids = draft?.ids ?? state?.teams.map(team => team.id) ?? [];
+  const categoryCodes = draft?.categoryCodes ?? state?.categories.map(category => category.code) ?? [];
+  const categoryEnabled = draft?.enabled ?? state?.category_order_enabled ?? false;
   const stale = !!draft && !!query.data && (draft.base.revision !== query.data.revision ||
-    draft.base.range !== query.data.range || draft.base.teams.map(team => team.id).join() !== query.data.teams.map(team => team.id).join());
+    draft.base.range !== query.data.range || draft.base.teams.map(team => team.id).join() !== query.data.teams.map(team => team.id).join() ||
+    draft.base.categories.map(category => category.code).join() !== query.data.categories.map(category => category.code).join());
+
+  const updateDraft = (nextIds: string[], nextCategories: string[], nextEnabled: boolean) => {
+    if (!state) return;
+    const base = draft?.base ?? state;
+    const changed = nextIds.join() !== base.teams.map(team => team.id).join() ||
+      nextCategories.join() !== base.categories.map(category => category.code).join() || nextEnabled !== base.category_order_enabled;
+    setDraft(changed ? { base, ids: nextIds, categoryCodes: nextCategories, enabled: nextEnabled } : null);
+    setNotice('');
+  };
 
   const move = (from: number, to: number) => {
-    if (!state || busy || locked || from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return;
+    if (!state || busy || locked || stale || from === to || from < 0 || to < 0 || from >= ids.length || to >= ids.length) return;
     const next = [...ids];
     next.splice(to, 0, next.splice(from, 1)[0]);
-    setDraft(next.every((id, index) => id === state.teams[index]?.id) ? null : { base: state, ids: next });
-    setNotice('');
+    updateDraft(next, categoryCodes, categoryEnabled);
+  };
+  const moveCategory = (from: number, to: number) => {
+    if (!state || busy || locked || stale || from === to || from < 0 || to < 0 || from >= categoryCodes.length || to >= categoryCodes.length) return;
+    const next = [...categoryCodes];
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    updateDraft(ids, next, categoryEnabled);
   };
   const handleDrag = (id: string, dy: number, phase: 'start' | 'move' | 'end' | 'cancel') => {
     if (phase === 'cancel') { origin.current = null; setDrag(null); return; }
-    if (locked || busy) { origin.current = null; setDrag(null); return; }
+    if (locked || busy || stale) { origin.current = null; setDrag(null); return; }
     if (phase === 'start') {
       const layout = layouts.current.get(id);
       if (!layout) return;
@@ -69,6 +89,26 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
     });
     if (phase === 'end') { move(ids.indexOf(id), target); origin.current = null; setDrag(null); }
     else setDrag({ id, dy, target });
+  };
+  const handleCategoryDrag = (id: string, dy: number, phase: 'start' | 'move' | 'end' | 'cancel') => {
+    if (phase === 'cancel' || locked || busy || stale) { categoryOrigin.current = null; setCategoryDrag(null); return; }
+    if (phase === 'start') {
+      const layout = categoryLayouts.current.get(id);
+      if (!layout) return;
+      categoryOrigin.current = { id, center: layout.y + layout.height / 2 };
+    }
+    if (categoryOrigin.current?.id !== id) return;
+    const center = categoryOrigin.current.center + dy;
+    let target = categoryCodes.indexOf(id);
+    let distance = Infinity;
+    categoryCodes.forEach((key, index) => {
+      const layout = categoryLayouts.current.get(key);
+      if (!layout) return;
+      const delta = Math.abs(center - (layout.y + layout.height / 2));
+      if (delta < distance) { distance = delta; target = index; }
+    });
+    if (phase === 'end') { moveCategory(categoryCodes.indexOf(id), target); categoryOrigin.current = null; setCategoryDrag(null); }
+    else setCategoryDrag({ id, dy, target });
   };
   const openDialog = (next: 'lock' | 'unlock' | 'regenerate') => { setDialogError(''); setCode(''); setDialog(next); };
   const confirm = async () => {
@@ -88,7 +128,7 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
   };
 
   return (
-    <ScrollView scrollEnabled={!drag} className="flex-1 bg-ssf-bg" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <ScrollView scrollEnabled={!drag && !categoryDrag} className="flex-1 bg-ssf-bg" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View className="flex-row items-center mb-5 gap-3">
         <TouchableOpacity accessibilityLabel="Back to participants" onPress={goBack} className="p-2 bg-white rounded-full border border-ssf-border"><ArrowLeft size={20} color={ui.colors.text} /></TouchableOpacity>
         <Text className="text-2xl font-poppins-black text-ssf-text flex-1">Chest Numbers</Text>
@@ -107,8 +147,8 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
             {locked ? <Button variant="outline" disabled={busy} onPress={() => openDialog('unlock')}>Unlock</Button> : (
               <>
                 {!!draft && <Button disabled={busy || stale} loading={save.isPending} onPress={async () => {
-                  try { await save.mutateAsync({ state: draft.base, teamIds: draft.ids }); setDraft(null); setNotice('Team order and chest numbers saved.'); }
-                  catch (error: any) { setNotice(error.message || 'Unable to save team order.'); }
+                  try { await save.mutateAsync({ state: draft.base, teamIds: draft.ids, categoryCodes: draft.categoryCodes, enabled: draft.enabled }); setDraft(null); setNotice('Order and chest numbers saved.'); }
+                  catch (error: any) { setNotice(error.message || 'Unable to save chest-number order.'); }
                 }}>Save order</Button>}
                 {!!draft && <Button variant="ghost" disabled={busy} onPress={() => { setDraft(null); setNotice(''); void query.refetch(); }}>Discard changes</Button>}
                 <Button variant="outline" disabled={busy || !!draft || !ids.length} onPress={() => openDialog('lock')}>Final Lock</Button>
@@ -131,13 +171,31 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
                 onLayout={(key, y, height) => { layouts.current.set(key, { y, height }); }} />;
             })}
           </View>}
+          {state.category_order_available && <><View className="mt-3 mb-3 flex-row flex-wrap items-center gap-2">
+            <View className="flex-1 min-w-0">
+              <Text className="font-poppins-bold text-ssf-text">Category order within each team</Text>
+              <Text className="font-poppins text-xs text-ssf-text-muted">One shared order for every team. OFF keeps the existing team-wise numbering.</Text>
+            </View>
+            <Button variant="outline" disabled={locked || busy || stale} onPress={() => updateDraft(ids, categoryCodes, !categoryEnabled)}>
+              {categoryEnabled ? 'ON · Turn off' : 'OFF · Turn on'}
+            </Button>
+          </View>
+          {categoryCodes.length === 0 ? <SsfCard><Text className="font-poppins text-ssf-text-muted">No categories available.</Text></SsfCard> :
+            categoryCodes.map((code, index) => {
+              const category = state.categories.find(item => item.code === code)!;
+              return <ChestTeamOrderRow key={code} team={{ id: code, name: category.name, total: category.total, numeric: 0, slot_number: null }}
+                category index={index} count={categoryCodes.length} range={state.range} slot={0}
+                disabled={locked || busy || stale} dragging={categoryDrag?.id === code} offset={categoryDrag?.id === code ? categoryDrag.dy : 0}
+                dropTarget={!!categoryDrag && categoryDrag.target === index} onMove={moveCategory} onDrag={handleCategoryDrag}
+                onLayout={(key, y, height) => { categoryLayouts.current.set(key, { y, height }); }} />;
+            })}</>}
         </>
       ) : null}
       <Modal visible={dialog !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setDialog(null); }}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/40 items-center justify-center p-4">
           <View accessibilityViewIsModal className="bg-white rounded-2xl p-5 w-full max-w-md">
             <Text className="font-poppins-bold text-lg text-ssf-text">{dialog === 'unlock' ? 'Unlock chest numbers' : dialog === 'lock' ? 'Final lock chest numbers?' : 'Regenerate all chest numbers?'}</Text>
-            <Text className="font-poppins text-sm text-ssf-text-muted mt-2 mb-4">{dialog === 'unlock' ? 'Enter the tenant ID as the unlock code. Existing numbers will stay as they are.' : dialog === 'lock' ? 'This prevents team reordering, regeneration and changes to the numbering template or range until unlocked.' : 'This reassigns all participant numbers using the saved team order.'}</Text>
+            <Text className="font-poppins text-sm text-ssf-text-muted mt-2 mb-4">{dialog === 'unlock' ? 'Enter the tenant ID as the unlock code. Existing numbers will stay as they are.' : dialog === 'lock' ? `This prevents team/category reordering and regeneration until unlocked.${categoryEnabled ? ' Adding participants or changing their category/team will also require unlocking.' : ''}` : 'This reassigns all participant numbers using the saved team and category order.'}</Text>
             {dialog === 'unlock' && <TextInput accessibilityLabel="Unlock code (Tenant ID)" placeholder="Unlock code (Tenant ID)" secureTextEntry
               value={code} onChangeText={setCode} autoCapitalize="none" autoCorrect={false} editable={!busy}
               onSubmitEditing={() => { if (code.trim()) void confirm(); }}

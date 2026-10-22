@@ -7,6 +7,7 @@ import type { ChestTeam } from '../../services/chestNumberService';
 
 type Props = {
   team: ChestTeam; index: number; count: number; range: number; slot: number;
+  category?: boolean;
   disabled: boolean; dragging: boolean; dropTarget: boolean; offset: number;
   onLayout: (id: string, y: number, height: number) => void;
   onDrag: (id: string, dy: number, phase: 'start' | 'move' | 'end' | 'cancel') => void;
@@ -25,7 +26,7 @@ export function ChestTeamOrderRow(props: Props) {
     onPanResponderTerminate: () => latest.current.onDrag(latest.current.team.id, 0, 'cancel'),
     onPanResponderTerminationRequest: () => false,
   }), []);
-  const { team, index, count, range, slot, disabled, dragging, dropTarget, offset, onLayout, onMove } = props;
+  const { team, index, count, range, slot, category, disabled, dragging, dropTarget, offset, onLayout, onMove } = props;
   const dragHandleStyle: ViewStyle & Pick<React.CSSProperties, 'touchAction'> = {
     width: 36, minHeight: 44, alignItems: 'center', justifyContent: 'center',
     opacity: disabled ? 0.3 : 1,
@@ -42,8 +43,8 @@ export function ChestTeamOrderRow(props: Props) {
           </View>
           <View className="flex-1 min-w-0">
             <Text className="font-poppins-bold text-ssf-text">{index + 1}. {team.name}</Text>
-            <Text className="font-poppins text-xs text-ssf-text-muted">{team.total} participants · {team.numeric}/{team.total} numbered</Text>
-            <Text className="font-poppins-semibold text-xs text-ssf-primary mt-1">{slot * range}–{(slot + 1) * range - 1}</Text>
+            <Text className="font-poppins text-xs text-ssf-text-muted">{category ? `${team.total} participants` : `${team.total} participants · ${team.numeric}/${team.total} numbered`}</Text>
+            {!category && <Text className="font-poppins-semibold text-xs text-ssf-primary mt-1">{slot * range}–{(slot + 1) * range - 1}</Text>}
           </View>
           <View className="flex-row gap-1">
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Move ${team.name} up`}

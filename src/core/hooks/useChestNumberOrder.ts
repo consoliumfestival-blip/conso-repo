@@ -18,7 +18,8 @@ export function useChestNumberOrder(festivalId: string) {
   };
   const refreshState = () => { void cache.invalidateQueries({ queryKey: key }); };
   const save = useMutation({
-    mutationFn: ({ state, teamIds }: { state: ChestOrderState; teamIds: string[] }) => chestNumberService.save(state, teamIds),
+    mutationFn: ({ state, teamIds, categoryCodes, enabled }: { state: ChestOrderState; teamIds: string[]; categoryCodes: string[]; enabled: boolean }) =>
+      chestNumberService.saveWithCategories(state, teamIds, categoryCodes, enabled),
     onSuccess: state => { cache.setQueryData(key, state); refreshNumbers(); },
     onError: refreshState,
   });

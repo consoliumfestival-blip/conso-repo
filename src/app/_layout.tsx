@@ -66,16 +66,20 @@ export default function RootLayout() {
   const checkSession = useAuthStore((state) => state.checkSession);
   const initialized = useAuthStore((state) => state.initialized);
 
-  const [fontsLoaded, fontError] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    Poppins_900Black,
-    Montserrat_300Light,
-    Montserrat_700Bold,
-    CooperBlack: require("../../fonts/CooperBlack-Std.otf"),
-  });
+  const [fontsLoaded, fontError] = useFonts(
+    Platform.OS === "web"
+      ? {}
+      : {
+          Poppins_400Regular,
+          Poppins_500Medium,
+          Poppins_600SemiBold,
+          Poppins_700Bold,
+          Poppins_900Black,
+          Montserrat_300Light,
+          Montserrat_700Bold,
+          CooperBlack: require("../../fonts/CooperBlack-Std.otf"),
+        },
+  );
 
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {});

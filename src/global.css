@@ -24,6 +24,70 @@
   unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
 }
 
+@font-face {
+  font-family: 'Poppins_400Regular';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/poppins-400-regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Poppins_500Medium';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/poppins-500-medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Poppins_600SemiBold';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/poppins-600-semibold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Poppins_700Bold';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/poppins-700-bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Poppins_900Black';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('/fonts/poppins-900-black.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Montserrat_300Light';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('/fonts/montserrat-300-light.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Montserrat_700Bold';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/montserrat-700-bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'CooperBlack';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/cooper-black-std.otf') format('opentype');
+}
+
 *, ::before, ::after {
   box-sizing: border-box;
   border-width: 0;

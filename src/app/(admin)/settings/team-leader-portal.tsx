@@ -434,47 +434,55 @@ export default function TeamLeaderPortalAdmin() {
   };
 
   const handleResetPassword = async (assignment: Assignment, reissue = false) => {
-    Alert.alert(
-      reissue ? 'Reissue Team Leader Password' : 'Reset Team Leader Password',
-      `Generate a new six-digit temporary password for ${assignment.team_name}? The username will stay the same. The current password will stop working, and the leader must change the new password after signing in.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: reissue ? 'Reissue password' : 'Reset Password',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setResettingAssignmentId(assignment.id);
-              setResetCredentials(null);
-              if (!activeFestival?.id) throw new Error('No active festival is selected.');
-              const credentials = await teamLeaderPortalService.resetPassword(assignment.user_id, activeFestival.id);
-              if (tenantId) {
-                temporaryPasswordsByUser.set(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id), credentials.password);
-              }
+    const title = reissue ? 'Reissue Team Leader Password' : 'Reset Team Leader Password';
+    const message = `Generate a new six-digit temporary password for ${assignment.team_name}? The username will stay the same. The current password will stop working, and the leader must change the new password after signing in.`;
+    const notify = (notificationTitle: string, notificationMessage: string) => {
+      if (Platform.OS === 'web') {
+        window.alert(`${notificationTitle}\n\n${notificationMessage}`);
+      } else {
+        Alert.alert(notificationTitle, notificationMessage);
+      }
+    };
+    const reset = async () => {
+      try {
+        setResettingAssignmentId(assignment.id);
+        setResetCredentials(null);
+        if (!activeFestival?.id) throw new Error('No active festival is selected.');
+        const credentials = await teamLeaderPortalService.resetPassword(assignment.user_id, activeFestival.id);
+        if (tenantId) {
+          temporaryPasswordsByUser.set(temporaryPasswordKey(tenantId, activeFestival.id, assignment.user_id), credentials.password);
+        }
 
-              setResetCredentials({
-                assignmentId: assignment.id,
-                username: credentials.username || assignment.leader_code,
-                password: credentials.password,
-              });
+        setResetCredentials({
+          assignmentId: assignment.id,
+          username: credentials.username || assignment.leader_code,
+          password: credentials.password,
+        });
 
-              setAssignments((current) => current.map((row) => row.id === assignment.id
-                ? { ...row, password_state: 'pending_change' }
-                : row));
+        setAssignments((current) => current.map((row) => row.id === assignment.id
+          ? { ...row, password_state: 'pending_change' }
+          : row));
 
-              Alert.alert(
-                reissue ? 'Temporary Password Reissued' : 'Password Reset Complete',
-                `A new temporary password was generated for ${assignment.team_name}. It is shown on that team's assignment card, where you can copy it. The leader must change it after signing in.`
-              );
-            } catch (error: any) {
-              Alert.alert(reissue ? 'Password reissue failed' : 'Password reset failed', error?.message || 'Please try again.');
-            } finally {
-              setResettingAssignmentId(null);
-            }
-          },
-        },
-      ]
-    );
+        notify(
+          reissue ? 'Temporary Password Reissued' : 'Password Reset Complete',
+          `A new temporary password was generated for ${assignment.team_name}. It is shown on that team's assignment card, where you can copy it. The leader must change it after signing in.`
+        );
+      } catch (error: any) {
+        notify(reissue ? 'Password reissue failed' : 'Password reset failed', error?.message || 'Please try again.');
+      } finally {
+        setResettingAssignmentId(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) await reset();
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: reissue ? 'Reissue password' : 'Reset Password', style: 'destructive', onPress: reset },
+    ]);
   };
 
   const handleParticipantSelect = useCallback((participant: Participant) => {

@@ -1,10 +1,9 @@
 import { TeamPortalIdentity } from '@/components/team/TeamPortalIdentity';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound, CheckCircle2 } from 'lucide-react-native';
+import { Eye, EyeOff, LockKeyhole, Moon, ShieldCheck, Sun, UserRound, CheckCircle2 } from 'lucide-react-native';
 import { useAuthStore } from '@/core/store/authStore';
 import { supabase } from '@/core/config/supabase';
 import { Button } from '@/components/team/TeamButton';
@@ -12,13 +11,17 @@ import { Label } from '@/components/team/TeamLabel';
 import { Card } from '@/components/team/TeamCard';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { authService } from '@/services/authService';
+import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 
 export default function TeamLeaderFirstLogin() {
+  const ui = useTeamUi();
+  const { mode, toggleMode } = useTeamTheme();
   const user = useAuthStore((state) => state.user);
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const ThemeIcon = mode === 'dark' ? Sun : Moon;
 
   const currentUsername = user?.user_metadata?.username || user?.user_metadata?.team_leader_code || '';
   const requiresUsernameChange = user?.app_metadata?.must_change_credentials === true
@@ -85,6 +88,12 @@ export default function TeamLeaderFirstLogin() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 440, padding: isDesktop ? 32 : 24 }}>
+          <View style={{ alignItems: 'flex-end', marginBottom: 6 }}>
+            <TouchableOpacity onPress={toggleMode} accessibilityRole="button" accessibilityLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ minWidth: 44, minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center' }}>
+              <ThemeIcon size={18} color={ui.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
           <TeamPortalIdentity />
           {/* Header */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
@@ -105,7 +114,6 @@ export default function TeamLeaderFirstLogin() {
               fontSize: 20,
               fontWeight: '700',
               color: ui.colors.text,
-              fontFamily: 'Poppins_700Bold',
               textAlign: 'center',
             }}>
               {requiresUsernameChange ? 'Set Up Your Private Credentials' : 'Change Your Password'}

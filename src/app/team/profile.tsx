@@ -1,4 +1,4 @@
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -14,6 +14,7 @@ import { Label } from '@/components/team/TeamLabel';
 import { Separator } from '@/components/team/TeamSeparator';
 
 export default function ProfileScreen() {
+  const ui = useTeamUi();
   const { context } = useTeamLeaderContext();
   const { user, logout } = useAuthStore();
   const router = useRouter();

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,15 +10,16 @@ import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
 import { matchesCompetitionCategory } from '@/core/utils/groupParticipation';
 
-const orange = ui.colors.primary;
-const muted = ui.colors.textMuted;
-const border = ui.colors.border;
 
 function categoryLabel(codes: string[] | null) {
   return Array.isArray(codes) && codes.length ? codes.join(', ') : 'All categories';
 }
 
 export default function TeamProgramsScreen() {
+  const ui = useTeamUi();
+  const orange = ui.colors.primary;
+  const muted = ui.colors.textMuted;
+  const border = ui.colors.border;
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1120;
   const isPhone = width < 600;

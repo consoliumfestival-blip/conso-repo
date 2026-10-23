@@ -1,4 +1,4 @@
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 
 export default function ParticipantsScreen() {
+  const ui = useTeamUi();
   const router = useRouter();
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const [participants, setParticipants] = useState<TeamLeaderParticipant[]>([]);

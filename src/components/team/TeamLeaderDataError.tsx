@@ -1,10 +1,11 @@
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React from 'react';
 import { Text, View } from 'react-native';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Button } from '@/components/team/TeamButton';
 
 export function TeamLeaderDataError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const ui = useTeamUi();
   return (
     <Card>
       <CardContent style={{ padding: 24, alignItems: 'center', gap: 10 }}>

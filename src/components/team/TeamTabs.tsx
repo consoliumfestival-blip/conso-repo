@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { ScrollView, TouchableOpacity, View } from 'react-native';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
 
 const TabsContext = createContext({ value: '', onValueChange: (_value: string) => {} });
@@ -14,6 +14,7 @@ export function TabsList({ children }: { children: React.ReactNode }) {
 }
 
 export function TabsTrigger({ value, children }: { value: string; children: React.ReactNode }) {
+  const ui = useTeamUi();
   const tabs = useContext(TabsContext);
   const active = tabs.value === value;
   return <TouchableOpacity onPress={() => tabs.onValueChange(value)} accessibilityRole="tab" accessibilityState={{ selected: active }}

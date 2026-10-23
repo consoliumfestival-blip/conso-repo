@@ -1,11 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
 
 type Variant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
 
 export function Badge({ variant = 'default', children, className }: { variant?: Variant; children: React.ReactNode; className?: string }) {
+  const ui = useTeamUi();
   const colors = variant === 'destructive' ? [ui.colors.dangerSoft, ui.colors.danger]
     : variant === 'success' ? [ui.colors.successSoft, ui.colors.success]
       : variant === 'warning' ? [ui.colors.warningSoft, ui.colors.warning]

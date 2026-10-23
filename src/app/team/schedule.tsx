@@ -1,4 +1,4 @@
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -16,6 +16,7 @@ import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function ScheduleScreen() {
+  const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +49,9 @@ export default function ScheduleScreen() {
   }
   if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
 
-  const filtered = filter === 'all' ? schedule : schedule.filter((s) => s.event_status === filter);
+  const filtered = filter === 'all' ? schedule : schedule.filter((s) => filter === 'ongoing'
+    ? s.event_status === 'ongoing' || s.event_status === 'in_progress'
+    : s.event_status === filter);
   const exportMyTeamSchedule = async () => {
     if (!context || !filtered.length) return;
     try {
@@ -114,8 +117,8 @@ export default function ScheduleScreen() {
                             {event.participant_count} participant{event.participant_count !== 1 ? 's' : ''} · {event.checked_in_count} checked in
                           </Text>
                         </View>
-                        <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' ? 'info' : 'outline'}>
-                          {event.event_status || 'scheduled'}
+                        <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' || event.event_status === 'in_progress' ? 'info' : 'outline'}>
+                          {event.event_status === 'in_progress' ? 'In progress' : event.event_status || 'scheduled'}
                         </Badge>
                       </View>
                     </CardContent>

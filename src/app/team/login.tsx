@@ -1,17 +1,19 @@
 import { TeamPortalIdentity } from '@/components/team/TeamPortalIdentity';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react-native';
+import { Eye, EyeOff, LockKeyhole, Moon, Sun, UserRound } from 'lucide-react-native';
 import { useAuthStore } from '@/core/store/authStore';
 import { authService } from '@/services/authService';
 import { Button } from '@/components/team/TeamButton';
 import { Label } from '@/components/team/TeamLabel';
 import { Card } from '@/components/team/TeamCard';
+import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 
 export default function TeamLeaderLogin() {
+  const ui = useTeamUi();
+  const { mode, toggleMode } = useTeamTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +23,7 @@ export default function TeamLeaderLogin() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
+  const ThemeIcon = mode === 'dark' ? Sun : Moon;
 
   const handleLogin = async () => {
     setErrorMsg('');
@@ -65,6 +68,12 @@ export default function TeamLeaderLogin() {
           padding: 16,
         }}
       >
+        <View style={{ width: '100%', maxWidth: 400, alignItems: 'flex-end', marginBottom: 8 }}>
+          <TouchableOpacity onPress={toggleMode} accessibilityRole="button" accessibilityLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{ minWidth: 44, minHeight: 44, borderRadius: 22, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center' }}>
+            <ThemeIcon size={18} color={ui.colors.textMuted} />
+          </TouchableOpacity>
+        </View>
         <Card style={{ width: '100%', maxWidth: 400, borderRadius: isDesktop ? 16 : 28, padding: isDesktop ? 32 : 22 }}>
           <TeamPortalIdentity />
           {/* Header */}
@@ -84,7 +93,6 @@ export default function TeamLeaderLogin() {
               fontSize: 20,
               fontWeight: '700',
               color: ui.colors.text,
-              fontFamily: 'Poppins_700Bold',
             }}>
               Team Leader Portal
             </Text>

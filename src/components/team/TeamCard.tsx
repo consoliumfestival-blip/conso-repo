@@ -1,25 +1,30 @@
 import React from 'react';
-import { View, ViewProps, TextProps, useWindowDimensions } from 'react-native';
-import { TEAM_DESKTOP_MIN_WIDTH, teamUi as ui } from '@/constants/teamLeaderTheme';
+import { Platform, View, ViewProps, TextProps } from 'react-native';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
 
 export const Card = React.forwardRef<React.ElementRef<typeof View>, ViewProps>(
   ({ style, ...props }, ref) => {
-    const { width } = useWindowDimensions();
+    const ui = useTeamUi();
+    const glassStyle = Platform.OS === 'web' ? {
+      backdropFilter: 'blur(4px)',
+      WebkitBackdropFilter: 'blur(4px)',
+    } as any : {};
     return <View
       ref={ref}
       {...props}
-      style={[{
-        backgroundColor: ui.colors.surface,
-        borderRadius: width < TEAM_DESKTOP_MIN_WIDTH ? 24 : ui.radius.xl,
+      style={[style, {
+        ...glassStyle,
+        backgroundColor: ui.colors.surfaceGlass,
+        borderRadius: ui.radius.card,
         borderWidth: 1,
         borderColor: ui.colors.border,
         shadowColor: ui.colors.text,
-        shadowOpacity: 0.025,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.035,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 3 },
         elevation: 1,
-      }, style]}
+      }]}
     />;
   },
 );
@@ -33,9 +38,10 @@ export const CardContent = React.forwardRef<React.ElementRef<typeof View>, ViewP
 );
 
 export const CardTitle = React.forwardRef<React.ElementRef<typeof TeamText>, TextProps>(
-  ({ style, ...props }, ref) => (
-    <TeamText ref={ref} {...props} style={[{ color: ui.colors.text, fontSize: 16, fontWeight: '700' }, style]} />
-  ),
+  ({ style, ...props }, ref) => {
+    const ui = useTeamUi();
+    return <TeamText ref={ref} {...props} style={[{ color: ui.colors.text, fontSize: 16, fontWeight: '700' }, style]} />;
+  },
 );
 
 Card.displayName = 'TeamCard';

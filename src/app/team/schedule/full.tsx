@@ -1,4 +1,4 @@
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 
 export default function FullScheduleScreen() {
+  const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,8 +81,8 @@ export default function FullScheduleScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' ? 'info' : 'outline'}>
-                      {event.event_status || 'scheduled'}
+                    <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' || event.event_status === 'in_progress' ? 'info' : 'outline'}>
+                      {event.event_status === 'in_progress' ? 'In progress' : event.event_status || 'scheduled'}
                     </Badge>
                   </View>
                 </CardContent>

@@ -1,0 +1,26 @@
+{
+  "id": "/team/",
+  "name": "Alviora Team Portal",
+  "short_name": "Alviora Team",
+  "description": "Team Leader portal for Alviora festival teams.",
+  "start_url": "/team/login",
+  "scope": "/team/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F5F6",
+  "theme_color": "#1D1B19",
+  "icons": [
+    {
+      "src": "/team-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/team-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

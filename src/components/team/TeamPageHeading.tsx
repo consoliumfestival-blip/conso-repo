@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
 
 export function TeamPageHeading({ title, subtitle, teamName, actions }: {
@@ -9,6 +9,7 @@ export function TeamPageHeading({ title, subtitle, teamName, actions }: {
   teamName?: string | null;
   actions?: React.ReactNode;
 }) {
+  const ui = useTeamUi();
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
       <View style={{ flex: 1, minWidth: 180 }}>

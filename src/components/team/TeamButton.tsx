@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
-import { teamUi as ui } from '@/constants/teamLeaderTheme';
+import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
 
 type Variant = 'default' | 'outline' | 'secondary' | 'ghost' | 'link' | 'destructive';
@@ -19,6 +19,7 @@ interface TeamButtonProps {
 
 export const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>, TeamButtonProps>(
   ({ variant = 'default', size = 'default', children, onPress, disabled, loading, style, className }, ref) => {
+    const ui = useTeamUi();
     const primary = variant === 'default';
     const destructive = variant === 'destructive';
     const buttonStyle: ViewStyle = {

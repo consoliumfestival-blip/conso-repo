@@ -85,6 +85,8 @@ export const useSchedule = () => {
 
     schedules: schedulesQuery.data || [],
     isLoadingSchedules: schedulesQuery.isLoading,
+    isErrorSchedules: schedulesQuery.isError,
+    refetchSchedules: schedulesQuery.refetch,
     createSchedule: createScheduleMutation.mutateAsync,
     isCreatingSchedule: createScheduleMutation.isPending,
     createSchedules: createSchedulesMutation.mutateAsync,

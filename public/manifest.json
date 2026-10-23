@@ -1,7 +1,9 @@
 {
   "name": "Alviora-2k26",
   "short_name": "Alviora-2k26",
-  "start_url": "/",
+  "id": "/",
+  "start_url": "/?installedPortal=main",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0F766E",

@@ -20,7 +20,7 @@ export default function CreateSchedule() {
   const { width } = useWindowDimensions();
   const isCompactLayout = width < 640;
   
-  const { venues, schedules, createSchedule, isCreatingSchedule } = useSchedule();
+  const { venues, schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, createSchedule, isCreatingSchedule } = useSchedule();
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival } = useActiveFestival();
   const { data: items, isLoading: isLoadingItems } = useItems(festival?.id);
@@ -48,6 +48,14 @@ export default function CreateSchedule() {
   // Custom dropdown state
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
   const [itemSearchText, setItemSearchText] = useState('');
+
+  const scheduledItemIds = useMemo(() => new Set(
+    schedules.filter((schedule: any) => schedule.festival_id === festival?.id).map((schedule: any) => schedule.item_id),
+  ), [festival?.id, schedules]);
+  const availableItems = useMemo(
+    () => (items ?? []).filter((item: any) => !scheduledItemIds.has(item.id)),
+    [items, scheduledItemIds],
+  );
 
   const checkForConflicts = () => {
     if (!venueId || !startDate || !startTimeStr || !endDate || !endTimeStr) return null;
@@ -85,6 +93,9 @@ export default function CreateSchedule() {
     if (startDateTime >= endDateTime) {
       return showAlert('Error', 'End time must be after start time');
     }
+    if (!festival?.id || isLoadingSchedules) {
+      return showAlert('Please wait', 'Schedule data is still loading. Try again in a moment.');
+    }
 
     const conflicts = checkForConflicts();
     if (conflicts) {
@@ -99,6 +110,12 @@ export default function CreateSchedule() {
     }
 
     try {
+      const latestSchedules = await refetchSchedules();
+      if (latestSchedules.error) throw latestSchedules.error;
+      if ((latestSchedules.data ?? []).some((schedule: any) =>
+        schedule.festival_id === festival.id && schedule.item_id === itemId)) {
+        return showAlert('Already scheduled', 'This competition is already scheduled for this festival. Delete its existing schedule before creating another.');
+      }
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.localStorage.setItem('ssf_last_schedule_date', startDate);
       }
@@ -112,6 +129,10 @@ export default function CreateSchedule() {
       });
       goBack();
     } catch (error: any) {
+      if ((error?.code === '23505' || String(error?.message ?? '').includes('duplicate key value'))
+        && String(error?.message ?? '').includes('schedules_one_item_per_festival_uidx')) {
+        return showAlert('Already scheduled', 'This competition is already scheduled for this festival. Delete its existing schedule before creating another.');
+      }
       showAlert('Error', error.message);
     }
   };
@@ -132,17 +153,30 @@ export default function CreateSchedule() {
       <SsfCard className="gap-y-4">
         <View style={{ position: 'relative', zIndex: 100 }}>
           <Text className="font-poppins text-ssf-text-muted mb-2">Select Item *</Text>
-          <SsfSelectMenu
-            value={itemId}
-            onValueChange={setItemId}
-            placeholder="-- Choose an Item --"
-            searchable={true}
-            searchPlaceholder="Search by name, code or category..."
-            options={items ? items.map((i: any) => ({
-              label: `[${i.item_code}] ${i.item_name_en} (${Array.isArray(i.category_codes) ? i.category_codes.join(',') : i.category_codes})`,
-              value: i.id
-            })) : []}
-          />
+          {isLoadingSchedules ? (
+            <Text className="font-poppins text-xs text-ssf-text-muted">Loading existing schedules…</Text>
+          ) : isErrorSchedules ? (
+            <Text className="font-poppins text-xs text-red-700">Could not load schedules. Reload before selecting a competition.</Text>
+          ) : (
+            <SsfSelectMenu
+              value={itemId}
+              onValueChange={setItemId}
+              placeholder="-- Choose an Item --"
+              searchable={true}
+              searchPlaceholder="Search by name or code..."
+              keyboardShouldPersistTaps="always"
+              options={availableItems.map((i: any) => ({
+                label: `[${i.item_code}] ${i.item_name_en} (${Array.isArray(i.category_codes) ? i.category_codes.join(',') : i.category_codes})`,
+                searchText: `[${i.item_code}] ${i.item_name_en ?? ''} ${i.item_name_ml ?? ''}`,
+                value: i.id
+              }))}
+            />
+          )}
+          {!isLoadingSchedules && !!items?.length && availableItems.length === 0 && (
+            <Text className="font-poppins text-xs text-ssf-text-muted mt-2">
+              Every active competition already has a schedule. Delete a schedule before creating it again.
+            </Text>
+          )}
         </View>
 
         <View style={{ zIndex: 90 }}>
@@ -218,9 +252,9 @@ export default function CreateSchedule() {
         )}
 
         <SsfButton 
-          label={isCreatingSchedule ? 'Saving...' : 'Create Schedule'} 
+          label={isCreatingSchedule ? 'Saving...' : 'Create Schedule'}
           onPress={handleSave} 
-          disabled={isCreatingSchedule || !!(conflicts && Platform.OS !== 'web')}
+          disabled={isCreatingSchedule || isLoadingSchedules || isErrorSchedules || !!(conflicts && Platform.OS !== 'web')}
           className="mt-4"
         />
       </SsfCard>

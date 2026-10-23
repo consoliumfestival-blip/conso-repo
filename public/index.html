@@ -28,16 +28,55 @@
         var isTeamRoute = function () {
           return location.pathname === '/team' || location.pathname.indexOf('/team/') === 0;
         };
+        var isTeamManagementRoute = function () {
+          return location.pathname === '/team-leaders';
+        };
+        var isStandalonePwa = function () {
+          return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+            || navigator.standalone === true;
+        };
+        var standaloneMode = isStandalonePwa();
+        var requestedPortalMode = new URLSearchParams(location.search).get('installedPortal');
+        var validPortalModes = ['main', 'team-management', 'team-leader'];
+        if (standaloneMode) {
+          try {
+            if (validPortalModes.indexOf(requestedPortalMode) >= 0) {
+              sessionStorage.setItem('ssf_installed_portal_mode', requestedPortalMode);
+            }
+            window.__installedPortalMode = validPortalModes.indexOf(requestedPortalMode) >= 0
+              ? requestedPortalMode
+              : sessionStorage.getItem('ssf_installed_portal_mode');
+          } catch (_) {
+            window.__installedPortalMode = validPortalModes.indexOf(requestedPortalMode) >= 0
+              ? requestedPortalMode
+              : null;
+          }
+        }
         var manifestLink = document.createElement('link');
         manifestLink.rel = 'manifest';
-        manifestLink.href = isTeamRoute() ? '/team-manifest.json' : '/manifest.json';
+        manifestLink.href = isTeamRoute()
+          ? '/team-manifest.json'
+          : isTeamManagementRoute() ? '/team-management-manifest.json' : '/manifest.json';
         document.head.appendChild(manifestLink);
 
         window.addEventListener('beforeinstallprompt', function (event) {
-          if (!isTeamRoute()) return;
+          if (isTeamRoute()) {
+            event.preventDefault();
+            window.__teamPortalInstallEvent = event;
+            window.dispatchEvent(new Event('teamportalinstallavailable'));
+            return;
+          }
+          if (isTeamManagementRoute()) {
+            event.preventDefault();
+            window.__teamManagementInstallEvent = event;
+            window.dispatchEvent(new Event('teammanagementinstallavailable'));
+            return;
+          }
+          if (location.pathname === '/judge' || location.pathname.indexOf('/judge/') === 0
+            || location.pathname.indexOf('/announcer/') === 0) return;
           event.preventDefault();
-          window.__teamPortalInstallEvent = event;
-          window.dispatchEvent(new Event('teamportalinstallavailable'));
+          window.__mainPortalInstallEvent = event;
+          window.dispatchEvent(new Event('mainportalinstallavailable'));
         });
 
         if (!isTeamRoute()) return;

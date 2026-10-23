@@ -3,7 +3,7 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, Search, UserRound, X } from 'lucide-react-native';
+import { Check, CheckCircle2, ChevronDown, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
@@ -28,15 +28,18 @@ export default function TeamProgramsScreen() {
   const [participants, setParticipants] = useState<TeamLeaderParticipant[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [participantError, setParticipantError] = useState<string | null>(null);
-  const [selectedParticipantId, setSelectedParticipantId] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [participantSearch, setParticipantSearch] = useState('');
   const [programSearch, setProgramSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [genderFilter, setGenderFilter] = useState('All genders');
   const [filterPicker, setFilterPicker] = useState<'category' | 'gender' | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [programKind, setProgramKind] = useState<'participant' | 'general_team'>('participant');
+  const [activeIndividualProgram, setActiveIndividualProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [pendingCompletionProgram, setPendingCompletionProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [completionError, setCompletionError] = useState('');
+  const [selectedIndividualParticipantIds, setSelectedIndividualParticipantIds] = useState<string[]>([]);
+  const [individualSelectionError, setIndividualSelectionError] = useState('');
+  const [individualMemberSearch, setIndividualMemberSearch] = useState('');
   const [activeGeneralProgram, setActiveGeneralProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [selectedGeneralParticipantIds, setSelectedGeneralParticipantIds] = useState<string[]>([]);
   const [generalSelectionError, setGeneralSelectionError] = useState('');
@@ -70,18 +73,10 @@ export default function TeamProgramsScreen() {
     return () => { cancelled = true; };
   }, [context, contextLoading]);
 
-  useEffect(() => {
-    if (!selectedParticipantId && participants.length) setSelectedParticipantId(participants[0].id);
-    if (selectedParticipantId && !participants.some((person) => person.id === selectedParticipantId)) {
-      setSelectedParticipantId(participants[0]?.id ?? null);
-    }
-  }, [participants, selectedParticipantId]);
-
-  const selectedParticipant = participants.find((person) => person.id === selectedParticipantId) ?? null;
   const programsQuery = useQuery({
-    queryKey: ['team-leader-programs', context?.festival_id, selectedParticipantId],
-    enabled: !!context && !!selectedParticipantId,
-    queryFn: () => teamLeaderPortalService.getProgramsForParticipant(selectedParticipantId!),
+    queryKey: ['team-leader-programs', context?.festival_id],
+    enabled: !!context,
+    queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
 
   const visiblePrograms = useMemo(() => (programsQuery.data ?? []).filter((program) =>
@@ -102,10 +97,13 @@ export default function TeamProgramsScreen() {
     .filter((program) => program.entry_kind === programKind && program.gender && program.gender.toLowerCase() !== 'both')
     .map((program) => program.gender!))).sort()];
 
-  const visibleParticipants = participants.filter((person) =>
-    `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`
-      .toLowerCase().includes(participantSearch.trim().toLowerCase()),
-  );
+  const individualEligibleIds = new Set(activeIndividualProgram?.eligible_participant_ids ?? []);
+  const individualAssignedIds = new Set(activeIndividualProgram?.assigned_participant_ids ?? []);
+  const individualEligibleParticipants = activeIndividualProgram
+    ? participants.filter((person) => individualEligibleIds.has(person.id)
+      && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`
+        .toLowerCase().includes(individualMemberSearch.trim().toLowerCase()))
+    : [];
   const generalEligibleParticipants = activeGeneralProgram
     ? participants.filter((person) =>
         (activeGeneralProgram.category_codes ?? []).some(code => matchesCompetitionCategory(person.category_code || '', code))
@@ -115,11 +113,19 @@ export default function TeamProgramsScreen() {
       )
     : [];
 
-  const selectParticipant = (person: TeamLeaderParticipant) => {
-    setSelectedParticipantId(person.id);
-    setProgramSearch('');
+  const openIndividualPicker = (program: TeamLeaderProgramOption) => {
+    setActiveIndividualProgram(program);
+    setSelectedIndividualParticipantIds([]);
+    setIndividualSelectionError('');
+    setIndividualMemberSearch('');
     setNotice(null);
-    setPickerOpen(false);
+  };
+
+  const toggleIndividualParticipant = (participantId: string) => {
+    setIndividualSelectionError('');
+    setSelectedIndividualParticipantIds((current) => current.includes(participantId)
+      ? current.filter((id) => id !== participantId)
+      : [...current, participantId]);
   };
 
   const openGeneralPicker = (program: TeamLeaderProgramOption) => {
@@ -178,72 +184,60 @@ export default function TeamProgramsScreen() {
     setNotice(null);
   };
 
-  const assignProgram = async (program: TeamLeaderProgramOption) => {
-    if (!selectedParticipant || savingItemId || program.is_assigned || !program.is_eligible || program.entry_kind !== 'participant') return;
+  const assignSelectedProgram = async () => {
+    if (!activeIndividualProgram || savingItemId || !selectedIndividualParticipantIds.length) return;
+    const program = activeIndividualProgram;
     setSavingItemId(program.item_id);
+    setIndividualSelectionError('');
     setNotice(null);
     try {
-      await teamLeaderPortalService.assignProgram(selectedParticipant.id, program.item_id);
+      const result = await teamLeaderPortalService.assignProgramParticipants(selectedIndividualParticipantIds, program.item_id);
       await queryClient.invalidateQueries({
-        queryKey: ['team-leader-programs', context?.festival_id, selectedParticipant.id],
+        queryKey: ['team-leader-programs', context?.festival_id],
       });
-      setNotice({ kind: 'success', text: `${selectedParticipant.name} was added to ${program.item_name_en || program.item_name_ml || program.item_code || 'the program'}.` });
+      setActiveIndividualProgram(null);
+      setSelectedIndividualParticipantIds([]);
+      setNotice({ kind: 'success', text: `${result.assigned_count} participant(s) added to ${program.item_name_en || program.item_name_ml || program.item_code || 'the program'}.` });
     } catch (error: any) {
-      setNotice({ kind: 'error', text: error?.message || 'Could not assign this program. Please try again.' });
+      setIndividualSelectionError(error?.message || 'Could not assign the selected participants. Please refresh and try again.');
     } finally {
       setSavingItemId(null);
     }
   };
 
-  const personButton = (person: TeamLeaderParticipant) => {
-    const selected = person.id === selectedParticipantId;
-    return (
-      <Pressable
-        key={person.id}
-        accessibilityRole="button"
-        accessibilityState={{ selected }}
-        onPress={() => selectParticipant(person)}
-        style={{
-          minHeight: 56,
-          paddingHorizontal: 12,
-          paddingVertical: 9,
-          borderRadius: 10,
-          borderWidth: 1,
-          borderColor: selected ? ui.colors.borderStrong : border,
-          backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surface,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 10,
-        }}
-      >
-        <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surfaceMuted }}>
-          <UserRound size={17} color={selected ? orange : muted} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name || 'Participant'}</Text>
-          <Text numberOfLines={1} style={{ color: muted, fontSize: 11, marginTop: 2 }}>
-            {[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ') || 'Student'}
-          </Text>
-        </View>
-        {selected ? <Check size={17} color={orange} /> : null}
-      </Pressable>
-    );
+  const confirmProgramCompletion = async () => {
+    if (!pendingCompletionProgram || savingItemId) return;
+    const program = pendingCompletionProgram;
+    setSavingItemId(program.item_id);
+    setCompletionError('');
+    try {
+      const result = await teamLeaderPortalService.markProgramCompleted(program.item_id);
+      await queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] });
+      setPendingCompletionProgram(null);
+      setActiveIndividualProgram(null);
+      setNotice({ kind: 'success', text: `${program.item_name_en || program.item_name_ml || program.item_code || 'Program'} marked complete for ${result.participant_count} participants.` });
+    } catch (error: any) {
+      setCompletionError(error?.message || 'Could not mark this program completed. Please refresh and try again.');
+    } finally {
+      setSavingItemId(null);
+    }
   };
 
   const programCard = (program: TeamLeaderProgramOption, cardWidth: `${number}%`) => {
     const isGeneral = program.entry_kind === 'general_team';
-    const assigned = isGeneral ? program.team_entry_count > 0 : program.is_assigned;
+    const completed = !isGeneral && program.is_completed === true;
+    const assigned = isGeneral ? program.team_entry_count > 0 : program.is_assigned && !program.is_eligible;
     const busy = savingItemId === program.item_id;
     const name = program.item_name_en || program.item_name_ml || program.item_code || 'Program';
     const groupRange = `${program.group_min_members ?? 1}${Number(program.group_max_members) > 0 ? `–${program.group_max_members}` : '+'} students`;
     const detail = isGeneral
       ? `${program.item_code ? `${program.item_code} · ` : ''}${groupRange}${program.team_entry_count ? ` · ${program.team_entry_count} team ${program.team_entry_count === 1 ? 'entry' : 'entries'}` : ''}`
-      : [program.item_code, categoryLabel(program.category_codes), program.gender && program.gender.toLowerCase() !== 'both' ? program.gender : null].filter(Boolean).join(' · ');
+      : [program.item_code, categoryLabel(program.category_codes), program.gender && program.gender.toLowerCase() !== 'both' ? program.gender : null, program.assigned_participant_ids?.length ? `${program.assigned_participant_ids.length} assigned` : null].filter(Boolean).join(' · ');
     return (
       <View key={program.item_id} style={{
         width: cardWidth,
-        minHeight: isPhone ? undefined : 218,
-        padding: isPhone ? 12 : 14,
+        minHeight: 218,
+        padding: 14,
         borderWidth: 1,
         borderColor: assigned ? ui.colors.borderStrong : border,
         borderRadius: isPhone ? 20 : 12,
@@ -256,13 +250,13 @@ export default function TeamProgramsScreen() {
         justifyContent: 'space-between',
       }}>
         <View>
-          <View style={{ minHeight: isPhone ? 54 : 76, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+          <View style={{ minHeight: 76, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700', lineHeight: 20 }}>{name}</Text>
               <Text numberOfLines={1} style={{ color: muted, fontSize: 11, marginTop: 5 }}>{categoryLabel(program.category_codes)}</Text>
             </View>
-            <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: assigned ? ui.colors.primarySoft : ui.colors.surfaceMuted }}>
-              <Text style={{ color: assigned ? ui.colors.success : ui.colors.textMuted, fontSize: 10, fontWeight: '700' }}>{assigned ? 'Added' : 'Open'}</Text>
+            <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: completed ? ui.colors.successSoft : assigned ? ui.colors.primarySoft : ui.colors.surfaceMuted }}>
+              <Text style={{ color: completed || assigned ? ui.colors.success : ui.colors.textMuted, fontSize: 10, fontWeight: '700' }}>{completed ? 'Completed' : assigned ? 'Added' : 'Open'}</Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
@@ -275,50 +269,113 @@ export default function TeamProgramsScreen() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={assigned ? `${name} already assigned` : isGeneral ? `Select students for ${name}` : `Add ${name} for ${selectedParticipant?.name ?? 'student'}`}
+          accessibilityLabel={assigned ? `${name} participants already assigned` : isGeneral ? `Select students for ${name}` : `Select participants for ${name}`}
           disabled={assigned || busy || !program.is_eligible}
-          onPress={() => isGeneral ? openGeneralPicker(program) : assignProgram(program)}
+          onPress={() => isGeneral ? openGeneralPicker(program) : openIndividualPicker(program)}
           style={{
-            minHeight: isPhone ? 44 : 42,
+            minHeight: 42,
             paddingHorizontal: 12,
             borderRadius: 7,
             alignItems: 'center',
             justifyContent: 'center',
             flexDirection: 'row',
             gap: 5,
-            backgroundColor: assigned ? ui.colors.primarySoft : ui.colors.primaryStrong,
+            backgroundColor: assigned ? ui.colors.primarySoft : ui.colors.primary,
             opacity: busy ? 0.75 : 1,
           }}
         >
           {busy ? <ActivityIndicator size="small" color={assigned ? orange : ui.colors.onPrimary} /> : assigned ? <Check size={14} color={orange} /> : null}
-          <Text style={{ color: assigned ? orange : ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{assigned ? 'Added' : busy ? 'Adding' : 'Assign participants'}</Text>
+          <Text style={{ color: assigned ? orange : ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{assigned ? 'Added' : busy ? 'Adding' : isGeneral ? 'Select team' : 'Select students'}</Text>
         </Pressable>
       </View>
     );
   };
 
-  const studentPicker = (
-    <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: ui.colors.overlay }}>
-        <View style={{ maxHeight: '88%', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: ui.colors.surface }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <View>
-              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Choose a student</Text>
-              <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>Only students in your team are listed.</Text>
+  const individualEntryPicker = (
+    <Modal visible={!!activeIndividualProgram} transparent animationType="slide" onRequestClose={() => {
+      if (savingItemId) return;
+      if (pendingCompletionProgram) setPendingCompletionProgram(null);
+      else setActiveIndividualProgram(null);
+    }}>
+      <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
+        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Choose participants</Text>
+              <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>
+                {activeIndividualProgram?.item_name_en || activeIndividualProgram?.item_name_ml || activeIndividualProgram?.item_code}
+                {' · Only eligible students in your team are listed.'}
+              </Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close student list" onPress={() => setPickerOpen(false)} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close participant selection" disabled={!!savingItemId} onPress={() => setActiveIndividualProgram(null)} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}>
               <X size={20} color={muted} />
             </Pressable>
           </View>
           <View style={{ minHeight: 42, borderWidth: 1, borderColor: border, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Search size={16} color={muted} />
-            <TextInput value={participantSearch} onChangeText={setParticipantSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
+            <TextInput value={individualMemberSearch} onChangeText={setIndividualMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8, paddingTop: 12 }}>
-            {visibleParticipants.map((person) => personButton(person))}
-            {!visibleParticipants.length ? <Text style={{ paddingVertical: 20, textAlign: 'center', color: muted, fontSize: 13 }}>No students match that search.</Text> : null}
+          <Text style={{ color: muted, fontSize: 11, marginTop: 10 }}>
+            {individualEligibleParticipants.length} eligible · {selectedIndividualParticipantIds.length} selected
+          </Text>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 120, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 10, paddingBottom: 8 }}>
+            {individualEligibleParticipants.map((person) => {
+              const alreadyAssigned = individualAssignedIds.has(person.id);
+              const selected = selectedIndividualParticipantIds.includes(person.id);
+              return (
+                <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: alreadyAssigned }} disabled={alreadyAssigned || !!savingItemId} onPress={() => toggleIndividualParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: alreadyAssigned ? ui.colors.success : selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: alreadyAssigned ? ui.colors.successSoft : selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: alreadyAssigned ? 0.82 : 1 }}>
+                  <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: alreadyAssigned ? ui.colors.success : selected ? orange : ui.colors.borderStrong, backgroundColor: selected ? orange : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                    {selected ? <Check size={15} color={ui.colors.onPrimary} /> : alreadyAssigned ? <Check size={15} color={ui.colors.success} /> : null}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name || 'Participant'}</Text>
+                    <Text numberOfLines={1} style={{ color: muted, fontSize: 11, marginTop: 2 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text>
+                  </View>
+                  {alreadyAssigned ? <Text style={{ color: ui.colors.success, fontSize: 10, fontWeight: '700' }}>Added</Text> : null}
+                </Pressable>
+              );
+            })}
+            {!individualEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program and search.</Text> : null}
           </ScrollView>
+          {individualSelectionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{individualSelectionError}</Text> : null}
+          <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8, flexDirection: 'row', gap: 8 }}>
+            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ flex: 1, minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
+              {savingItemId === activeIndividualProgram?.item_id && !pendingCompletionProgram ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId }}
+              disabled={!activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId}
+              onPress={() => { setCompletionError(''); setPendingCompletionProgram(activeIndividualProgram); }}
+              style={{ flex: 1, minHeight: 46, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.borderStrong, backgroundColor: activeIndividualProgram?.is_completed ? ui.colors.successSoft : ui.colors.surface, alignItems: 'center', justifyContent: 'center', opacity: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId ? 0.68 : 1 }}
+            >
+              {activeIndividualProgram?.is_completed ? <CheckCircle2 size={16} color={ui.colors.success} /> : null}
+              <Text style={{ color: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.text, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{activeIndividualProgram?.is_completed ? 'Completed' : 'Mark completed'}</Text>
+            </Pressable>
+          </View>
         </View>
+        {pendingCompletionProgram ? (
+          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
+            <View style={{ width: '100%', maxWidth: 440, padding: 20, borderRadius: 16, backgroundColor: ui.colors.surface }}>
+              <View style={{ width: 42, height: 42, borderRadius: 21, marginBottom: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.warningSoft }}>
+                <CheckCircle2 size={22} color={ui.colors.warning} />
+              </View>
+              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Mark program completed?</Text>
+              <Text style={{ color: muted, fontSize: 13, lineHeight: 20, marginTop: 8 }}>
+                Confirm that all {pendingCompletionProgram.assigned_participant_ids?.length ?? 0} assigned participants have completed this program and their assessment. You can mark it complete again if more participants are added later.
+              </Text>
+              {completionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{completionError}</Text> : null}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setPendingCompletionProgram(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Cancel</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId ? 0.65 : 1 }}>
+                  {savingItemId === pendingCompletionProgram.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -343,14 +400,14 @@ export default function TeamProgramsScreen() {
           </View>
           <View style={{ minHeight: 42, borderWidth: 1, borderColor: border, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Search size={16} color={muted} />
-            <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
+            <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 140, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 8 }}>
             {generalEligibleParticipants.map((person) => {
               const selected = selectedGeneralParticipantIds.includes(person.id);
               return (
                 <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggleGeneralParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: selected ? ui.colors.primaryStrong : ui.colors.borderStrong, backgroundColor: selected ? ui.colors.primaryStrong : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>{selected ? <Check size={15} color={ui.colors.onPrimary} /> : null}</View>
+                  <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: selected ? orange : ui.colors.borderStrong, backgroundColor: selected ? orange : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>{selected ? <Check size={15} color={ui.colors.onPrimary} /> : null}</View>
                   <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name || 'Participant'}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 2 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>
                 </Pressable>
               );
@@ -361,8 +418,8 @@ export default function TeamProgramsScreen() {
             <Text style={{ color: generalSelectionError ? ui.colors.danger : muted, fontSize: 12 }}>
               {generalSelectionError || `${selectedGeneralParticipantIds.length} selected · ${activeGeneralProgram?.group_min_members ?? 1} required minimum${Number(activeGeneralProgram?.group_max_members) > 0 ? ` · ${activeGeneralProgram?.group_max_members} maximum` : ''}`}
             </Text>
-            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: ui.colors.primaryStrong, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
-            {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800' }}>Create group entry</Text>}
+            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
+              {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800' }}>Create group entry</Text>}
             </Pressable>
           </View>
         </View>
@@ -376,7 +433,7 @@ export default function TeamProgramsScreen() {
 
   const availableProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (program.is_eligible || program.is_assigned)).length;
   const activeProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (
-    programKind === 'participant' ? program.is_assigned : program.team_entry_count > 0
+    programKind === 'participant' ? program.is_completed === true : program.team_entry_count > 0
   )).length;
   const progressPercent = availableProgramCount ? Math.round(activeProgramCount / availableProgramCount * 100) : 0;
   const cardWidth: `${number}%` = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
@@ -386,24 +443,19 @@ export default function TeamProgramsScreen() {
   return (
     <TeamLeaderAppShell>
       <ScrollView style={{ flex: 1, backgroundColor: ui.colors.background }} contentContainerStyle={{ width: '100%', maxWidth: 1320, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 28 }} keyboardShouldPersistTaps="handled">
-        <View style={{ marginBottom: 16, flexDirection: isPhone ? 'column' : 'row', flexWrap: 'wrap', alignItems: isPhone ? 'stretch' : 'flex-end', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ marginBottom: 16, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
           <View>
             <Text style={{ color: muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Festival · {context?.festival_name || context?.team_name || 'Team portal'}</Text>
             <Text style={{ color: ui.colors.text, fontSize: 26, fontWeight: '800', marginTop: 3 }}>Programs</Text>
-            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{availableProgramCount} programs · {activeProgramCount} {programKind === 'participant' ? 'assigned' : 'with team entries'}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{availableProgramCount} programs · {activeProgramCount} {programKind === 'participant' ? 'completed' : 'with team entries'}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {(['participant', 'general_team'] as const).map((kind) => {
               const selected = programKind === kind;
-              return <Pressable key={kind} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setKind(kind)} style={{ minHeight: isPhone ? 44 : 40, paddingHorizontal: 13, borderRadius: 10, borderWidth: 1, borderColor: selected ? ui.colors.primaryStrong : border, backgroundColor: selected ? ui.colors.primaryStrong : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+              return <Pressable key={kind} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setKind(kind)} style={{ minHeight: isPhone ? 44 : 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: selected ? ui.colors.primary : border, backgroundColor: selected ? ui.colors.primary : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ color: selected ? ui.colors.onPrimary : ui.colors.text, fontSize: 12, fontWeight: '700' }}>{kind === 'participant' ? 'Individual' : 'Group items'}</Text>
               </Pressable>;
             })}
-            {programKind === 'participant' ? <Pressable accessibilityRole="button" onPress={() => { setParticipantSearch(''); setPickerOpen(true); }} style={{ minHeight: isPhone ? 44 : 40, width: isPhone ? '100%' : undefined, maxWidth: 260, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <UserRound size={16} color={orange} />
-              <Text numberOfLines={1} style={{ maxWidth: 190, color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>{selectedParticipant?.name || 'Choose a student'}</Text>
-              <ChevronDown size={14} color={muted} />
-            </Pressable> : null}
           </View>
         </View>
 
@@ -414,7 +466,7 @@ export default function TeamProgramsScreen() {
           <View style={{ marginBottom: 12, padding: 8, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             <View style={{ minWidth: 210, height: isPhone ? 44 : 40, flex: 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Search size={16} color={muted} />
-              <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
+              <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
               {!!programSearch && <Pressable onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={muted} /></Pressable>}
             </View>
             {([['category', categoryFilter], ['gender', genderFilter]] as const).map(([key, value]) => <Pressable key={key} accessibilityRole="button" onPress={() => setFilterPicker(key)} style={{ minWidth: 116, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -424,7 +476,7 @@ export default function TeamProgramsScreen() {
 
           <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs assigned' : 'group programs have entries'}</Text>
+              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}</Text>
               <Text style={{ color: ui.colors.primary, fontSize: 12, fontWeight: '700' }}>{progressPercent}%</Text>
             </View>
             <View style={{ height: 6, marginTop: 9, overflow: 'hidden', borderRadius: 99, backgroundColor: ui.colors.surfaceMuted }}><View style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 99, backgroundColor: ui.colors.primary }} /></View>
@@ -433,7 +485,7 @@ export default function TeamProgramsScreen() {
           {notice ? <View style={{ marginBottom: 10, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 9, backgroundColor: notice.kind === 'success' ? ui.colors.primarySoft : ui.colors.dangerSoft, borderWidth: 1, borderColor: notice.kind === 'success' ? ui.colors.borderStrong : ui.colors.borderStrong }}><Text style={{ color: notice.kind === 'success' ? ui.colors.primary : ui.colors.danger, fontSize: 12 }}>{notice.text}</Text></View> : null}
           {programsQuery.isError ? <View style={{ marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text></View> : null}
           {programsQuery.isLoading ? <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={orange} /></View> : null}
-          {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ marginTop: 4, padding: 18, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch || categoryFilter !== 'All categories' || genderFilter !== 'All genders' ? 'Try changing your search or filters.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match this student. A registration restriction may also prevent entry.'}</Text></View> : null}
+          {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ marginTop: 4, padding: 18, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch || categoryFilter !== 'All categories' || genderFilter !== 'All genders' ? 'Try changing your search or filters.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match participants in your team. A registration restriction may also prevent entry.'}</Text></View> : null}
           {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
             {visiblePrograms.map((program) => programCard(program, cardWidth))}
           </View> : null}
@@ -448,7 +500,7 @@ export default function TeamProgramsScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-      {studentPicker}
+      {individualEntryPicker}
       {generalEntryPicker}
     </TeamLeaderAppShell>
   );

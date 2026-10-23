@@ -20,16 +20,6 @@ function TeamLeaderNavigation() {
   const { ui } = useTeamTheme();
   React.useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-    const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="manifest"]'));
-    const previousHrefs = links.map((link) => link.href);
-    let addedLink: HTMLLinkElement | null = null;
-    if (links.length === 0) {
-      addedLink = document.createElement('link');
-      addedLink.rel = 'manifest';
-      document.head.appendChild(addedLink);
-      links.push(addedLink);
-    }
-    links.forEach((link) => { link.href = '/team-manifest.json'; });
     const existingThemeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const previousThemeColor = existingThemeColor?.content;
     const themeColorFromBootstrap = existingThemeColor?.dataset.teamPortalBootstrap === 'true';
@@ -51,10 +41,6 @@ function TeamLeaderNavigation() {
     document.documentElement.style.backgroundColor = '#F4F5F6';
     document.body.style.backgroundColor = '#F4F5F6';
     return () => {
-      links.forEach((link, index) => {
-        if (link === addedLink) link.remove();
-        else link.href = new URL(previousHrefs[index]).pathname === '/team-manifest.json' ? '/manifest.json' : previousHrefs[index];
-      });
       if (themeColorFromBootstrap) {
         document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"][data-team-portal-bootstrap="true"]').forEach((item) => {
           if (item.dataset.teamPortalCreated === 'true') item.remove();

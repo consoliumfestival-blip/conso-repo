@@ -428,7 +428,7 @@ export function TeamLeaderAppShell({
   return (
     <View nativeID={portalRootId} style={{ flex: 1, backgroundColor: ui.colors.background }}>
       {!hideMobileHeader && (
-        <View style={{ backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <View style={{ backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: Platform.OS === 'web' ? 'max(12px, env(safe-area-inset-top, 0px))' as any : 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityRole="button" accessibilityLabel={`Open ${context?.team_name || 'team'} profile`}
             style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primaryStrong, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>

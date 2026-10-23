@@ -21,14 +21,15 @@ const dashboardGlassSurface = Platform.OS === 'web' ? {
 } as any : {};
 
 function SummaryMetric({ icon: Icon, label, value, helper, tone, description, mobile }: { icon: React.ComponentType<any>; label: string; value: string; helper: string; tone: string; description: string; mobile: boolean }) {
+  const ui = useTeamUi();
   return (
-    <View accessible accessibilityLabel={`${description}: ${value}. ${helper}`} style={{ ...dashboardGlassSurface, flex: 1, minWidth: 0, minHeight: mobile ? 68 : 78, paddingHorizontal: mobile ? 8 : 9, paddingVertical: mobile ? 8 : 10, borderRadius: 15, backgroundColor: 'rgba(255,247,241,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.68)' }}>
+    <View accessible accessibilityLabel={`${description}: ${value}. ${helper}`} style={{ ...dashboardGlassSurface, flex: 1, minWidth: 0, minHeight: mobile ? 68 : 78, paddingHorizontal: mobile ? 8 : 9, paddingVertical: mobile ? 8 : 10, borderRadius: 15, backgroundColor: ui.colors.primarySoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: mobile ? 5 : 7 }}>
         <Icon size={13} color={tone} />
-        <Text numberOfLines={1} style={{ flexShrink: 1, color: '#76665D', fontSize: 9, fontWeight: '700' }}>{label}</Text>
+        <Text numberOfLines={1} style={{ flexShrink: 1, color: ui.colors.textMuted, fontSize: 9, fontWeight: '700' }}>{label}</Text>
       </View>
-      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ color: '#2A211D', fontSize: mobile ? 16 : 17, lineHeight: 20, fontWeight: '800' }}>{value}</Text>
-      <Text numberOfLines={1} style={{ color: '#88786E', fontSize: 8, lineHeight: 12, marginTop: 2 }}>{helper}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ color: ui.colors.text, fontSize: mobile ? 16 : 17, lineHeight: 20, fontWeight: '800' }}>{value}</Text>
+      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 8, lineHeight: 12, marginTop: 2 }}>{helper}</Text>
     </View>
   );
 }
@@ -98,7 +99,7 @@ function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, 
           </View>
 
           <View style={{ flex: mobile ? undefined : 1.35, flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
-            <SummaryMetric icon={Trophy} label="Rank" value={rank ? String(rank) : '—'} helper="Current" tone="#EC5E27" description="Current rank" mobile={mobile} />
+            <SummaryMetric icon={Trophy} label="Rank" value={rank ? String(rank) : '—'} helper="Current" tone={ui.colors.primary} description="Current rank" mobile={mobile} />
             <SummaryMetric icon={CalendarDays} label="Today" value={String(todaysEvents)} helper="Events" tone="#3676D9" description="Today's events" mobile={mobile} />
             <SummaryMetric icon={CheckCircle2} label="Completed" value={`${completedEvents}/${totalEvents}`} helper="Events" tone="#34704B" description="Completed events out of total events" mobile={mobile} />
           </View>

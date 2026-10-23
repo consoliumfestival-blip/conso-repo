@@ -6,7 +6,47 @@ export const TEAM_FONT_FAMILY = Platform.OS === 'web'
   ? 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
   : Platform.OS === 'ios' ? 'System' : undefined;
 
-/** Fixed Team Leader palettes. The Admin design system is never mutated. */
+/** Team accents follow the team identity returned by the assigned portal context. */
+export const TEAM_ACCENT_PALETTES = {
+  'la-cosmix': {
+    name: 'LA-COSMIX',
+    primary: '#6D28D9', primaryHover: '#5B21B6', primaryStrong: '#5B21B6', primarySoft: '#F3E8FF',
+    darkPrimary: '#C4B5FD', darkPrimaryHover: '#DDD6FE', darkPrimaryStrong: '#C4B5FD', darkPrimarySoft: 'rgba(196,181,253,0.18)',
+  },
+  'al-cognix': {
+    name: 'Al-Cognix',
+    primary: '#B91C3B', primaryHover: '#9F1232', primaryStrong: '#9F1232', primarySoft: '#FCE7EC',
+    darkPrimary: '#FDA4B8', darkPrimaryHover: '#FECDD7', darkPrimaryStrong: '#FDA4B8', darkPrimarySoft: 'rgba(253,164,184,0.18)',
+  },
+  'el-clarix': {
+    name: 'EL-CLARIX',
+    primary: '#1D4ED8', primaryHover: '#1E40AF', primaryStrong: '#1E40AF', primarySoft: '#E8EEFF',
+    darkPrimary: '#93B4FF', darkPrimaryHover: '#B9CEFF', darkPrimaryStrong: '#93B4FF', darkPrimarySoft: 'rgba(147,180,255,0.18)',
+  },
+  'lo-glifix': {
+    name: 'LO-GLIFIX',
+    primary: '#047857', primaryHover: '#065F46', primaryStrong: '#065F46', primarySoft: '#E2F4EC',
+    darkPrimary: '#6EE7B7', darkPrimaryHover: '#A7F3D0', darkPrimaryStrong: '#6EE7B7', darkPrimarySoft: 'rgba(110,231,183,0.18)',
+  },
+  'der-zenix': {
+    name: 'DER-ZENIX',
+    primary: '#806000', primaryHover: '#6B5000', primaryStrong: '#6B5000', primarySoft: '#F5EFCF',
+    darkPrimary: '#E9C46A', darkPrimaryHover: '#F3D98F', darkPrimaryStrong: '#E9C46A', darkPrimarySoft: 'rgba(233,196,106,0.18)',
+    darkOnPrimary: '#211900',
+  },
+} as const;
+
+export type TeamAccentPalette = keyof typeof TEAM_ACCENT_PALETTES;
+
+/** Unknown or not-yet-loaded team identities keep the established orange accent. */
+export function getTeamAccentPalette(teamName?: string | null): TeamAccentPalette | null {
+  const key = (teamName ?? '').trim().toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
+  for (const [paletteKey, palette] of Object.entries(TEAM_ACCENT_PALETTES)) {
+    if (palette.name.toLocaleLowerCase().replace(/[^a-z0-9]/g, '') === key) return paletteKey as TeamAccentPalette;
+  }
+  return null;
+}
+
 const lightColors = {
   background: '#F4F5F6', surface: '#FFFFFF', surfaceGlass: 'rgba(255,255,255,0.96)',
   surfaceMuted: '#F3F4F5', surfaceStrong: '#E7E9EB',
@@ -35,8 +75,28 @@ const darkColors = {
 
 export type TeamThemeMode = 'light' | 'dark';
 
-export function createTeamUi(mode: TeamThemeMode) {
-  const colors = mode === 'dark' ? darkColors : lightColors;
+export function createTeamUi(mode: TeamThemeMode, teamName?: string | null) {
+  const paletteKey = getTeamAccentPalette(teamName);
+  const palette = paletteKey ? TEAM_ACCENT_PALETTES[paletteKey] : null;
+  const colors = mode === 'dark'
+    ? { ...darkColors, ...(palette ? {
+        primary: palette.darkPrimary,
+        primaryHover: palette.darkPrimaryHover,
+        primaryStrong: palette.darkPrimaryStrong,
+        primarySoft: palette.darkPrimarySoft,
+        onPrimary: 'darkOnPrimary' in palette ? palette.darkOnPrimary : '#171717',
+        navSelectedText: 'darkOnPrimary' in palette ? palette.darkOnPrimary : '#171717',
+        navActiveText: palette.darkPrimary,
+      } : {}) }
+    : { ...lightColors, ...(palette ? {
+        primary: palette.primary,
+        primaryHover: palette.primaryHover,
+        primaryStrong: palette.primaryStrong,
+        primarySoft: palette.primarySoft,
+        onPrimary: '#FFFFFF',
+        navSelectedText: '#FFFFFF',
+        navActiveText: palette.primary,
+      } : {}) };
   return {
     ...shared,
     fontFamily: TEAM_FONT_FAMILY,

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createTeamUi, TeamThemeMode } from '@/constants/teamLeaderTheme';
+import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 
 const STORAGE_KEY = 'team-leader-portal-theme';
 
@@ -17,6 +18,7 @@ const TeamThemeContext = createContext<TeamThemeState>({
 });
 
 export function TeamLeaderThemeProvider({ children }: { children: React.ReactNode }) {
+  const { context } = useTeamLeaderContext();
   const [mode, setMode] = useState<TeamThemeMode>('light');
   const [hydrated, setHydrated] = useState(false);
 
@@ -38,7 +40,8 @@ export function TeamLeaderThemeProvider({ children }: { children: React.ReactNod
     if (hydrated) AsyncStorage.setItem(STORAGE_KEY, mode).catch(() => undefined);
   }, [hydrated, mode]);
 
-  const value = useMemo(() => ({ mode, ui: createTeamUi(mode), toggleMode }), [mode, toggleMode]);
+  const teamName = context?.team_name ?? null;
+  const value = useMemo(() => ({ mode, ui: createTeamUi(mode, teamName), toggleMode }), [mode, teamName, toggleMode]);
   return <TeamThemeContext.Provider value={value}>{children}</TeamThemeContext.Provider>;
 }
 

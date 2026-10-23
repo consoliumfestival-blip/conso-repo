@@ -8,16 +8,29 @@ import { TeamInstallPrompt } from '@/components/team/TeamInstallPrompt';
 
 export default function TeamLeaderLayout() {
   return (
-    <TeamLeaderThemeProvider>
-      <TeamLeaderProvider>
+    <TeamLeaderProvider>
+      <TeamLeaderThemeProvider>
         <TeamLeaderNavigation />
-      </TeamLeaderProvider>
-    </TeamLeaderThemeProvider>
+      </TeamLeaderThemeProvider>
+    </TeamLeaderProvider>
   );
 }
 
 function TeamLeaderNavigation() {
   const { ui } = useTeamTheme();
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const rootStyle = document.documentElement.style;
+    const previous = rootStyle.getPropertyValue('--team-portal-scrollbar-color');
+    rootStyle.setProperty('--team-portal-scrollbar-color', `${ui.colors.primary}4D`);
+    rootStyle.setProperty('--team-portal-scrollbar-hover', ui.colors.primaryStrong);
+    return () => {
+      if (previous) rootStyle.setProperty('--team-portal-scrollbar-color', previous);
+      else rootStyle.removeProperty('--team-portal-scrollbar-color');
+      rootStyle.removeProperty('--team-portal-scrollbar-hover');
+    };
+  }, [ui.colors.primary, ui.colors.primaryStrong]);
+
   React.useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     const existingThemeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
@@ -27,6 +40,15 @@ function TeamLeaderNavigation() {
     themeColor.name = 'theme-color';
     themeColor.content = '#1D1B19';
     if (!existingThemeColor) document.head.appendChild(themeColor);
+    const appleMetaStates = (['apple-mobile-web-app-capable', 'apple-mobile-web-app-status-bar-style'] as const).map((name) => {
+      const existing = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
+      const meta = existing || document.createElement('meta');
+      const previous = existing?.content ?? '';
+      meta.name = name;
+      meta.content = name === 'apple-mobile-web-app-capable' ? 'yes' : 'black-translucent';
+      if (!existing) document.head.appendChild(meta);
+      return { meta, existing: !!existing, previous };
+    });
     const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
     const previousViewport = viewport?.content;
     const viewportFromBootstrap = viewport?.dataset.teamPortalBootstrap === 'true';
@@ -53,6 +75,10 @@ function TeamLeaderNavigation() {
       }
       else if (existingThemeColor) themeColor.content = previousThemeColor || '';
       else themeColor.remove();
+      appleMetaStates.forEach(({ meta, existing, previous }) => {
+        if (existing) meta.content = previous;
+        else meta.remove();
+      });
       if (viewport && previousViewport) viewport.content = viewportFromBootstrap
         ? bootstrapPreviousViewport || 'width=device-width, initial-scale=1, shrink-to-fit=no'
         : previousViewport;

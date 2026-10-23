@@ -81,8 +81,8 @@ export default function ScheduleScreen() {
               Full Schedule
             </Button>
             <Pressable accessibilityRole="button" accessibilityLabel="Export team schedule PDFs" accessibilityState={{ disabled: isExporting || !schedule.length, busy: isExporting }} disabled={isExporting || !schedule.length} onPress={() => setExportPickerOpen(true)} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 12, backgroundColor: ui.colors.primaryStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isExporting || !schedule.length ? 0.55 : 1 }}>
-              <Download size={15} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>{isExporting ? 'Preparing…' : 'Export'}</Text>
+              <Download size={15} color={ui.colors.onPrimary} />
+              <Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{isExporting ? 'Preparing…' : 'Export'}</Text>
             </Pressable>
           </View>} />
 

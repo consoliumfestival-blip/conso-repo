@@ -175,12 +175,12 @@ html, body, #root, #__next {
 
 
 
-/* Team Leader portal scrollbars use its isolated Orange and Milk palette. */
+/* Team Leader portal scrollbars follow the active team accent. */
 html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-thumb {
-  background: rgba(236, 94, 39, 0.30) !important;
+  background: var(--team-portal-scrollbar-color, rgba(236, 94, 39, 0.30)) !important;
 }
 html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-thumb:hover {
-  background: #B84015 !important;
+  background: var(--team-portal-scrollbar-hover, #B84015) !important;
 }
 
 /* Team Portal screen entrance: a short compositor-friendly transition on web. */

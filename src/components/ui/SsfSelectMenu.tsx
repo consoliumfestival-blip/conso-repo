@@ -18,6 +18,7 @@ import { ui } from '@/constants/designSystem';
 export type SsfSelectOption = {
   label: string;
   value: string;
+  searchText?: string;
   disabled?: boolean;
   separatorBefore?: boolean;
 };
@@ -42,6 +43,7 @@ export interface SsfSelectMenuProps {
   active?: boolean;
   searchable?: boolean;
   searchPlaceholder?: string;
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   style?: ViewStyle;
   align?: 'left' | 'center' | 'right';
 }
@@ -59,6 +61,7 @@ export function SsfSelectMenu({
   active = false,
   searchable,
   searchPlaceholder = 'Search options...',
+  keyboardShouldPersistTaps = 'handled',
   style,
   align = 'left',
 }: SsfSelectMenuProps) {
@@ -76,7 +79,7 @@ export function SsfSelectMenu({
   const filteredOptions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return options;
-    return options.filter((option) => option.label.toLowerCase().includes(query));
+    return options.filter((option) => (option.searchText ?? option.label).toLowerCase().includes(query));
   }, [options, searchQuery]);
 
   const openMenu = () => {
@@ -168,7 +171,7 @@ export function SsfSelectMenu({
               )}
               <ScrollView
                 showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps={keyboardShouldPersistTaps}
                 contentContainerStyle={styles.menuContent}
               >
                 {filteredOptions.map((option) => {

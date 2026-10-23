@@ -20,6 +20,7 @@ type SsfSheetProps = {
   description?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
 };
 
 export function SsfSheet({
@@ -29,6 +30,7 @@ export function SsfSheet({
   description,
   children,
   footer,
+  keyboardShouldPersistTaps = 'handled',
 }: SsfSheetProps) {
   const { width } = useWindowDimensions();
   const sheetWidth = width < 640 ? width : Math.min(520, width * 0.42);
@@ -76,7 +78,7 @@ export function SsfSheet({
           <ScrollView
             style={styles.content}
             contentContainerStyle={styles.contentContainer}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps={keyboardShouldPersistTaps}
             showsVerticalScrollIndicator={false}
           >
             {children}

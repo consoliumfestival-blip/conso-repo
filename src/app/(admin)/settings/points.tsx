@@ -51,6 +51,7 @@ export default function PointsSettings() {
     boost?: 'gradeBoostItemIds' | 'rankBoostItemIds';
     sectionId?: string;
   } | null>(null);
+  const [selectionPanelOrderIds, setSelectionPanelOrderIds] = useState<string[] | null>(null);
   useEffect(() => {
     if (!festival?.id || isLoading || isFetching || error || hydratedFestivalId === festival.id) return;
     setForm(normalizePointsConfig(record));
@@ -73,7 +74,7 @@ export default function PointsSettings() {
     return !isCollegeFest || enabledCategoryCodes.has(String(item.category_codes[0]).trim().toUpperCase());
   };
   const selectableItems = (items as any[]).filter(isEnabledCompetition);
-  const visibleItems = selectableItems.filter(item => [item.item_code, item.item_name_en, item.item_name_ml, ...(item.category_codes ?? [])]
+  const visibleItems = selectableItems.filter(item => [item.item_code, item.item_name_en, item.item_name_ml]
     .join(' ').toLowerCase().includes(search.trim().toLowerCase()));
   const allGradeBoostIds = form.gradeBoostSections.flatMap(section => section.itemIds);
   const allRankBoostIds = form.rankBoostSections.flatMap(section => section.itemIds);
@@ -109,12 +110,27 @@ export default function PointsSettings() {
     }) });
   };
   const assignments = (kind: 'gradeBoostItemIds' | 'rankBoostItemIds') => kind === 'gradeBoostItemIds' ? form.gradeBoostSections : form.rankBoostSections;
+  const openCompetitionSelector = (kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) => {
+    const selectedIds = assignments(kind).find(section => section.id === sectionId)?.itemIds ?? [];
+    const orderedItems = selectableItems.slice().sort((left, right) =>
+      Number(selectedIds.includes(right.id)) - Number(selectedIds.includes(left.id)));
+    setSearch('');
+    setSelectionPanelOrderIds(orderedItems.map(item => item.id));
+    setCompetitionPanel({ mode: 'select', boost: kind, sectionId });
+  };
+  const closeCompetitionPanel = () => {
+    setCompetitionPanel(null);
+    setSelectionPanelOrderIds(null);
+  };
   const assignedInOtherSection = (id: string, kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) =>
     assignments(kind).findIndex(section => section.id !== sectionId && section.itemIds.includes(id));
   const panelSection = competitionPanel?.boost === 'gradeBoostItemIds'
     ? form.gradeBoostSections.find(section => section.id === competitionPanel.sectionId)
     : form.rankBoostSections.find(section => section.id === competitionPanel?.sectionId);
   const panelSelectedIds = panelSection?.itemIds ?? [];
+  const selectionOrder = useMemo(() => new Map(
+    (selectionPanelOrderIds ?? []).map((id, index) => [id, index]),
+  ), [selectionPanelOrderIds]);
   const panelItems = competitionPanel?.mode === 'both'
     ? bothBoostItems
     : competitionPanel?.mode === 'preview'
@@ -122,7 +138,7 @@ export default function PointsSettings() {
         ? form.gradeBoostSections.find(section => section.id === competitionPanel.sectionId)?.itemIds.includes(item.id)
         : form.rankBoostSections.find(section => section.id === competitionPanel.sectionId)?.itemIds.includes(item.id))
       : visibleItems.slice().sort((left, right) =>
-        Number(panelSelectedIds.includes(right.id)) - Number(panelSelectedIds.includes(left.id)));
+        (selectionOrder.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (selectionOrder.get(right.id) ?? Number.MAX_SAFE_INTEGER));
   const competitionOptionsLoading = itemsLoading || (isCollegeFest && categoriesLoading);
   const competitionOptionsError = itemsError || (isCollegeFest && categoriesError);
   const panelTitle = competitionPanel?.mode === 'both'
@@ -140,7 +156,7 @@ export default function PointsSettings() {
       <View className="flex-row flex-wrap items-end gap-2">
         <SsfButton size="sm" variant="outline" label="Select Competitions" icon={<ListChecks size={16} color={ui.colors.primary} />}
           disabled={competitionOptionsLoading || !(kind === 'gradeBoostItemIds' ? form.gradeBoostEnabled : form.rankBoostEnabled)}
-          onPress={() => { setSearch(''); setCompetitionPanel({ mode: 'select', boost: kind, sectionId }); }} />
+          onPress={() => openCompetitionSelector(kind, sectionId)} />
         <View className="items-start">
           <Text className="font-poppins-bold text-[10px] text-ui-text-muted mb-1">{assignments(kind).find(section => section.id === sectionId)?.itemIds.length ?? 0} selected</Text>
           <SsfButton size="sm" variant="ghost" label="Selected Competitions" icon={<Eye size={15} color={ui.colors.primary} />}
@@ -274,10 +290,11 @@ export default function PointsSettings() {
       <SsfButton label="Cancel" variant="ghost" onPress={() => router.back()} /></View>
     {!!versions.length && <SsfCard><Text className="font-poppins-bold text-sm text-ui-text mb-2">Configuration history</Text>{versions.map(v =>
       <Text key={v.id} className="font-poppins text-xs text-ui-text-muted py-1">Version {v.config_version} · {v.change_reason || new Date(v.created_at).toLocaleString()}</Text>)}</SsfCard>}
-    <SsfSheet visible={!!competitionPanel} onClose={() => setCompetitionPanel(null)} title={panelTitle} description={panelDescription}
-      footer={<SsfButton label={competitionPanel?.mode === 'select' ? 'Done' : 'Close'} onPress={() => setCompetitionPanel(null)} />}>
+    <SsfSheet visible={!!competitionPanel} onClose={closeCompetitionPanel} title={panelTitle} description={panelDescription}
+      keyboardShouldPersistTaps={competitionPanel?.mode === 'select' ? 'always' : 'handled'}
+      footer={<SsfButton label={competitionPanel?.mode === 'select' ? 'Done' : 'Close'} onPress={closeCompetitionPanel} />}>
       {competitionPanel?.mode === 'select' && <SsfInput label="Find competitions" value={search} onChangeText={setSearch}
-        placeholder="Name, code or category" autoCapitalize="none" style={{ minHeight: 40, minWidth: 0, width: 0 }} />}
+        placeholder="Name or code" autoCapitalize="none" style={{ minHeight: 40, minWidth: 0, width: 0 }} />}
       {competitionOptionsLoading ? <ActivityIndicator className="py-5" /> : competitionOptionsError
         ? <Text className="font-poppins text-sm text-red-700">Could not load enabled competitions or categories. Close and reload before editing assignments.</Text>
         : <>

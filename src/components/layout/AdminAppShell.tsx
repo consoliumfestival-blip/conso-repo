@@ -44,6 +44,7 @@ import { FEATURE_FLAGS } from "@/core/config/features";
 import { ui } from "@/constants/designSystem";
 import { JudgeApprovalToast } from "../ui/JudgeApprovalToast";
 import { useJudgeApprovalStore } from "@/core/store/judgeApprovalStore";
+import { PortalInstallPrompt } from "@/components/pwa/PortalInstallPrompt";
 
 type IconType = React.ComponentType<{
   color?: string;
@@ -712,6 +713,8 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
           </View>
         )}
         <View style={[styles.content, !showSidebar && styles.mobileContent]}>
+          {(pathname === "/" || pathname === "/(admin)" || pathname === "/admin") && <PortalInstallPrompt portal="main" />}
+          {pathname === "/team-leaders" && <PortalInstallPrompt portal="team-management" />}
           {children}
         </View>
       </View>

@@ -89,13 +89,10 @@ export function TeamInstallPrompt() {
         </View>
         <View style={{ paddingLeft: 39, gap: 3 }}>
           <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
-            Android/tablet: browser menu (⋮) → Install app or Add to Home Screen.
+            1. Android/tablet: Open the browser menu (⋮), select “Install app” or “Add to Home screen,” then confirm.
           </TeamText>
           <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
-            iPhone/iPad: Share → Add to Home Screen.
-          </TeamText>
-          <TeamText style={{ color: ui.colors.textSubtle, fontSize: 10, lineHeight: 14, marginTop: 1 }}>
-            Updates load automatically the next time you open or refresh while online; no reinstall is needed.
+            2. iPhone/iPad: In Safari, tap Share, choose “Add to Home Screen,” then tap Add.
           </TeamText>
         </View>
       </View>

@@ -1,0 +1,18 @@
+{
+  "id": "/team-management-app",
+  "name": "Alviora Team Management",
+  "short_name": "Team Management",
+  "description": "Team leader account management for Alviora festival administrators.",
+  "start_url": "/team-leaders?installedPortal=team-management",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0F766E",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

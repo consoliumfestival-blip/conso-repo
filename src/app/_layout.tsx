@@ -53,6 +53,26 @@ function AppLoadingScreen() {
 
 function LayoutContent() {
   const blockProtectedCoreRoute = useProtectedRoute();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const manifestPath = pathname === "/team-leaders"
+      ? "/team-management-manifest.json"
+      : pathname === "/team" || pathname.startsWith("/team/")
+        ? "/team-manifest.json"
+        : "/manifest.json";
+    const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="manifest"]'));
+    if (links.length === 0) {
+      const link = document.createElement("link");
+      link.rel = "manifest";
+      link.href = manifestPath;
+      document.head.appendChild(link);
+      return;
+    }
+    links.forEach((link) => { link.href = manifestPath; });
+  }, [pathname]);
+
   if (blockProtectedCoreRoute) return <AppLoadingScreen />;
   return <Slot />;
 }

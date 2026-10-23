@@ -118,7 +118,7 @@ export default function TeamLeaderLogin() {
                 <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
                   accessibilityLabel="Username"
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
+                  style={{ flex: 1, fontFamily: ui.fontFamily, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your username"
                   placeholderTextColor={ui.colors.textMuted}
                   value={username}
@@ -144,7 +144,7 @@ export default function TeamLeaderLogin() {
               }}>
                 <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput accessibilityLabel="Password"
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
+                  style={{ flex: 1, fontFamily: ui.fontFamily, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={password}

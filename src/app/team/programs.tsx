@@ -312,7 +312,7 @@ export default function TeamProgramsScreen() {
           </View>
           <View style={{ minHeight: 42, borderWidth: 1, borderColor: border, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Search size={16} color={muted} />
-            <TextInput value={participantSearch} onChangeText={setParticipantSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
+            <TextInput value={participantSearch} onChangeText={setParticipantSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8, paddingTop: 12 }}>
             {visibleParticipants.map((person) => personButton(person))}
@@ -343,7 +343,7 @@ export default function TeamProgramsScreen() {
           </View>
           <View style={{ minHeight: 42, borderWidth: 1, borderColor: border, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Search size={16} color={muted} />
-            <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
+            <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 140, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 8 }}>
             {generalEligibleParticipants.map((person) => {
@@ -414,7 +414,7 @@ export default function TeamProgramsScreen() {
           <View style={{ marginBottom: 12, padding: 8, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             <View style={{ minWidth: 210, height: isPhone ? 44 : 40, flex: 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Search size={16} color={muted} />
-              <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
+              <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, fontFamily: ui.fontFamily, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
               {!!programSearch && <Pressable onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={muted} /></Pressable>}
             </View>
             {([['category', categoryFilter], ['gender', genderFilter]] as const).map(([key, value]) => <Pressable key={key} accessibilityRole="button" onPress={() => setFilterPicker(key)} style={{ minWidth: 116, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>

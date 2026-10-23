@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
 import { ui as shared } from './designSystem';
 
+/** Use each device's native UI font, including SF Pro on Apple devices. */
+export const TEAM_FONT_FAMILY = Platform.OS === 'web'
+  ? 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
+  : Platform.OS === 'ios' ? 'System' : undefined;
+
 /** Fixed Team Leader palettes. The Admin design system is never mutated. */
 const lightColors = {
   background: '#F4F5F6', surface: '#FFFFFF', surfaceGlass: 'rgba(255,255,255,0.96)',
@@ -34,6 +39,7 @@ export function createTeamUi(mode: TeamThemeMode) {
   const colors = mode === 'dark' ? darkColors : lightColors;
   return {
     ...shared,
+    fontFamily: TEAM_FONT_FAMILY,
     colors,
     radius: { ...shared.radius, card: 17 },
     shadow: Platform.select({

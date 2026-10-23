@@ -94,9 +94,11 @@ const navItems: NavItem[] = [
 export function TeamLeaderAppShell({
   children,
   hideMobileHeader = false,
+  mobileEdgeToEdge = false,
 }: {
   children: React.ReactNode;
   hideMobileHeader?: boolean;
+  mobileEdgeToEdge?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -444,7 +446,7 @@ export function TeamLeaderAppShell({
         </View>
       )}
       {/* Mobile content has its own composition and room for the floating navigation. */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: 112 }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={!mobileEdgeToEdge} contentContainerStyle={{ paddingHorizontal: mobileEdgeToEdge ? 0 : 16, paddingTop: mobileEdgeToEdge ? 0 : 4, paddingBottom: 112 }}>
         {children}
       </ScrollView>
 

@@ -143,7 +143,7 @@ export default function TeamLeaderFirstLogin() {
                 <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
                   accessibilityLabel="Username"
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
+                  style={{ flex: 1, fontFamily: ui.fontFamily, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="e.g. victoria or victoria_leader"
                   placeholderTextColor={ui.colors.textMuted}
                   value={newUsername}
@@ -179,7 +179,7 @@ export default function TeamLeaderFirstLogin() {
               }}>
                 <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput accessibilityLabel="Password"
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
+                  style={{ flex: 1, fontFamily: ui.fontFamily, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your new password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={newPassword}

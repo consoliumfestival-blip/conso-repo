@@ -1,7 +1,6 @@
 import { coreColor } from '@/constants/coreTheme';
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useRouter } from 'expo-router';
 import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react-native';
 import { useAuthStore } from '../../core/store/authStore';
 import { DevConfig } from '@/core/config/dev_config';
@@ -25,7 +24,6 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const setUser = useAuthStore((state) => state.setUser);
-  const router = useRouter();
 
   const handleLogin = async () => {
     setErrorMsg('');
@@ -86,10 +84,6 @@ export default function LoginScreen() {
               <Text style={styles.loginButtonText}>Sign in</Text>
               <ArrowRight size={18} color={palette.onPrimary} />
             </>}
-          </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="link"
-            onPress={() => router.replace('/(public)/leaderboard' as never)} style={styles.linkButton}>
-            <Text style={styles.linkButtonText}>Public results</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -157,6 +151,4 @@ const styles = StyleSheet.create({
   loginButton: { minHeight: 44, borderRadius: 10, backgroundColor: palette.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   loadingButton: { opacity: 0.7 },
   loginButtonText: { color: palette.onPrimary, fontSize: 14, fontWeight: '600' },
-  linkButton: { minHeight: 44, marginTop: 8, alignItems: 'center', justifyContent: 'center' },
-  linkButtonText: { color: palette.primaryText, fontSize: 13, fontWeight: '500' },
 });

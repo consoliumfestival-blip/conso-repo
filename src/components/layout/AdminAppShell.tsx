@@ -246,11 +246,13 @@ function DesktopSidebar({
   collapsed,
   onToggle,
   festivalName,
+  tabletWidth,
 }: {
   pathname: string;
   collapsed: boolean;
   onToggle: () => void;
   festivalName: string;
+  tabletWidth?: number;
 }) {
   const router = useRouter();
   const { user, role, logout } = useAuthStore();
@@ -260,9 +262,9 @@ function DesktopSidebar({
   return (
     <View
       className="no-print"
-      style={[styles.sidebar, collapsed && styles.sidebarCollapsed]}
+      style={[styles.sidebar, tabletWidth ? { width: tabletWidth } : null, collapsed && styles.sidebarCollapsed]}
     >
-      <View>
+      <View style={{ flex: 1, minHeight: 0 }}>
         <View style={[styles.brand, collapsed && styles.brandCollapsed]}>
           <View style={styles.brandMark}>
             <ShieldCheck
@@ -660,10 +662,13 @@ function MobileBottomBar({
 
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isDesktop = width >= 900;
+  // Tablets use the full navigation rail; short landscape phone windows keep phone navigation.
+  const showSidebar = width >= 900 || (width >= 600 && height >= 600);
+  const tabletSidebarWidth = width < 900 ? (width < 720 ? 220 : 240) : undefined;
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
   const { useActiveFestival } = useFestival();
@@ -679,12 +684,13 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.shell}>
       <JudgeApprovalToast />
-      {isDesktop && (
+      {showSidebar && (
         <DesktopSidebar
           pathname={pathname}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((current) => !current)}
           festivalName={festivalName}
+          tabletWidth={tabletSidebarWidth}
         />
       )}
       <View style={styles.shellMain}>
@@ -705,12 +711,12 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
             </View>
           </View>
         )}
-        <View style={[styles.content, !isDesktop && styles.mobileContent]}>
+        <View style={[styles.content, !showSidebar && styles.mobileContent]}>
           {children}
         </View>
       </View>
 
-      {!isDesktop && (
+      {!showSidebar && (
         <>
           <MobileBottomBar
             pathname={pathname}
@@ -815,7 +821,8 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   sidebarScroll: {
-    maxHeight: 620,
+    flex: 1,
+    minHeight: 0,
   },
   desktopNavItem: {
     minHeight: 40,

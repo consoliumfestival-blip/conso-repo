@@ -98,7 +98,7 @@ export function TeamLeaderAppShell({
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { context } = useTeamLeaderContext();
 
   React.useEffect(() => {
@@ -115,7 +115,9 @@ export function TeamLeaderAppShell({
     .charAt(0)
     .toUpperCase();
 
-  const isDesktop = width >= 900;
+  // Tablets use the full navigation rail; short landscape phone windows keep phone navigation.
+  const showSidebar = width >= 900 || (width >= 600 && height >= 600);
+  const sidebarWidth = width < 720 ? 220 : width < 900 ? 240 : 264;
 
   const handleLogout = async () => {
     await logout();
@@ -128,13 +130,13 @@ export function TeamLeaderAppShell({
   };
 
   // Desktop sidebar
-  if (isDesktop) {
+  if (showSidebar) {
     return (
       <View style={{ flex: 1, flexDirection: "row", backgroundColor: ui.colors.background }}>
         {/* Sidebar */}
         <View
           style={{
-            width: sidebarOpen ? 264 : 68,
+            width: sidebarOpen ? sidebarWidth : 68,
             backgroundColor: '#FBFBFC',
             borderRightWidth: 1,
             borderRightColor: ui.colors.border,

@@ -3,6 +3,26 @@ CREATE ROLE authenticated NOLOGIN;
 CREATE SCHEMA auth;
 CREATE SCHEMA team_assignment_test;
 
+CREATE TABLE public.tenants (id uuid PRIMARY KEY);
+INSERT INTO public.tenants VALUES ('40000000-0000-0000-0000-000000000001');
+CREATE TABLE public.festival_calendar (
+  id uuid PRIMARY KEY,
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id)
+);
+INSERT INTO public.festival_calendar VALUES
+  ('40000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001');
+CREATE TABLE public.organisations (
+  id uuid PRIMARY KEY,
+  tenant_id uuid NOT NULL REFERENCES public.tenants(id)
+);
+INSERT INTO public.organisations VALUES
+  ('30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001');
+
+CREATE FUNCTION public.get_visible_organisations(p_tenant_id uuid)
+RETURNS TABLE (id uuid, tenant_id uuid)
+LANGUAGE sql STABLE
+AS $$ SELECT o.id, o.tenant_id FROM public.organisations o WHERE p_tenant_id = '40000000-0000-0000-0000-000000000001'::uuid $$;
+
 CREATE FUNCTION auth.uid() RETURNS uuid
 LANGUAGE sql STABLE
 AS $$ SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
@@ -23,7 +43,9 @@ CREATE TABLE public.items (
   participation_type text,
   group_min_members integer,
   group_max_members integer,
-  is_active boolean
+  is_active boolean,
+  tenant_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001',
+  festival_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001'
 );
 CREATE TABLE public.registrations (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -31,10 +53,21 @@ CREATE TABLE public.registrations (
   item_id uuid NOT NULL,
   entry_kind text NOT NULL DEFAULT 'participant',
   status text NOT NULL DEFAULT 'pending',
+  tenant_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001',
+  festival_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001',
+  organisation_id uuid NOT NULL DEFAULT '30000000-0000-0000-0000-000000000001',
   UNIQUE (participant_id, item_id)
 );
+CREATE TABLE public.participants (
+  id uuid PRIMARY KEY,
+  tenant_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001',
+  festival_id uuid NOT NULL DEFAULT '40000000-0000-0000-0000-000000000001',
+  organisation_id uuid NOT NULL DEFAULT '30000000-0000-0000-0000-000000000001',
+  status text
+);
 
-INSERT INTO public.items VALUES
+INSERT INTO public.items (id, item_code, item_name_en, item_name_ml, category_codes, gender,
+                          participation_type, group_min_members, group_max_members, is_active) VALUES
   ('10000000-0000-0000-0000-000000000001', 'IND-1', 'Individual One', NULL, ARRAY['JR'], 'both', 'individual', NULL, NULL, true),
   ('10000000-0000-0000-0000-000000000003', 'IND-2', 'Individual Two', NULL, ARRAY['JR'], 'both', 'individual', NULL, NULL, true),
   ('10000000-0000-0000-0000-000000000002', 'GRP-1', 'Group One', NULL, ARRAY['GN'], 'both', 'group', 2, 4, true);
@@ -43,11 +76,17 @@ INSERT INTO team_assignment_test.members VALUES
   ('20000000-0000-0000-0000-000000000002', 'Eligible B', 'approved', true),
   ('20000000-0000-0000-0000-000000000003', 'Not Eligible', 'approved', false),
   ('20000000-0000-0000-0000-000000000004', 'Rejected', 'rejected', false);
+INSERT INTO public.participants (id, status)
+SELECT id, status FROM team_assignment_test.members;
 
 CREATE FUNCTION public.get_team_leader_context()
-RETURNS TABLE (team_id uuid)
+RETURNS TABLE (team_id uuid, parent_tenant_id uuid, festival_id uuid, organisation_id uuid)
 LANGUAGE sql STABLE
-AS $$ SELECT '30000000-0000-0000-0000-000000000001'::uuid WHERE auth.uid() IS NOT NULL $$;
+AS $$ SELECT '30000000-0000-0000-0000-000000000001'::uuid,
+                '40000000-0000-0000-0000-000000000001'::uuid,
+                '40000000-0000-0000-0000-000000000001'::uuid,
+                '30000000-0000-0000-0000-000000000001'::uuid
+       WHERE auth.uid() IS NOT NULL $$;
 
 CREATE FUNCTION public.get_team_leader_participants()
 RETURNS TABLE (id uuid, name text, gender text, category_code text, chest_number text,

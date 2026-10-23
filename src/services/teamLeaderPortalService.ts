@@ -81,6 +81,7 @@ export interface TeamLeaderProgramOption {
   team_entry_count: number;
   eligible_participant_ids?: string[] | null;
   assigned_participant_ids?: string[] | null;
+  is_completed?: boolean;
 }
 
 async function readRpc<T>(name: string): Promise<T[]> {
@@ -131,9 +132,24 @@ export const teamLeaderPortalService = {
     return (data ?? []) as TeamLeaderProgramOption[];
   },
   getProgramsForTeam: async () => {
-    const { data, error } = await supabase.rpc('get_team_leader_programs_for_team');
+    const [programs, completionRows] = await Promise.all([
+      supabase.rpc('get_team_leader_programs_for_team'),
+      supabase.rpc('get_team_leader_completed_program_ids'),
+    ]);
+    if (programs.error) throw programs.error;
+    if (completionRows.error) throw completionRows.error;
+    const completedIds = new Set(((completionRows.data ?? []) as { item_id: string }[]).map((row) => row.item_id));
+    return ((programs.data ?? []) as TeamLeaderProgramOption[]).map((program) => ({
+      ...program,
+      is_completed: completedIds.has(program.item_id),
+    }));
+  },
+  markProgramCompleted: async (itemId: string) => {
+    const { data, error } = await supabase.rpc('team_leader_mark_program_completed', {
+      p_item_id: itemId,
+    });
     if (error) throw error;
-    return (data ?? []) as TeamLeaderProgramOption[];
+    return data as { item_id: string; participant_count: number; completed_at: string; status: string };
   },
   assignProgram: async (participantId: string, itemId: string) => {
     const { data, error } = await supabase.rpc('team_leader_assign_program', {

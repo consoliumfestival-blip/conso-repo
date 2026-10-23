@@ -3,7 +3,7 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, Search, X } from 'lucide-react-native';
+import { Check, CheckCircle2, ChevronDown, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
@@ -35,6 +35,8 @@ export default function TeamProgramsScreen() {
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [programKind, setProgramKind] = useState<'participant' | 'general_team'>('participant');
   const [activeIndividualProgram, setActiveIndividualProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [pendingCompletionProgram, setPendingCompletionProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [completionError, setCompletionError] = useState('');
   const [selectedIndividualParticipantIds, setSelectedIndividualParticipantIds] = useState<string[]>([]);
   const [individualSelectionError, setIndividualSelectionError] = useState('');
   const [individualMemberSearch, setIndividualMemberSearch] = useState('');
@@ -203,8 +205,27 @@ export default function TeamProgramsScreen() {
     }
   };
 
+  const confirmProgramCompletion = async () => {
+    if (!pendingCompletionProgram || savingItemId) return;
+    const program = pendingCompletionProgram;
+    setSavingItemId(program.item_id);
+    setCompletionError('');
+    try {
+      const result = await teamLeaderPortalService.markProgramCompleted(program.item_id);
+      await queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] });
+      setPendingCompletionProgram(null);
+      setActiveIndividualProgram(null);
+      setNotice({ kind: 'success', text: `${program.item_name_en || program.item_name_ml || program.item_code || 'Program'} marked complete for ${result.participant_count} participants.` });
+    } catch (error: any) {
+      setCompletionError(error?.message || 'Could not mark this program completed. Please refresh and try again.');
+    } finally {
+      setSavingItemId(null);
+    }
+  };
+
   const programCard = (program: TeamLeaderProgramOption, cardWidth: `${number}%`) => {
     const isGeneral = program.entry_kind === 'general_team';
+    const completed = !isGeneral && program.is_completed === true;
     const assigned = isGeneral ? program.team_entry_count > 0 : program.is_assigned && !program.is_eligible;
     const busy = savingItemId === program.item_id;
     const name = program.item_name_en || program.item_name_ml || program.item_code || 'Program';
@@ -234,8 +255,8 @@ export default function TeamProgramsScreen() {
               <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700', lineHeight: 20 }}>{name}</Text>
               <Text numberOfLines={1} style={{ color: muted, fontSize: 11, marginTop: 5 }}>{categoryLabel(program.category_codes)}</Text>
             </View>
-            <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: assigned ? ui.colors.primarySoft : ui.colors.surfaceMuted }}>
-              <Text style={{ color: assigned ? ui.colors.success : ui.colors.textMuted, fontSize: 10, fontWeight: '700' }}>{assigned ? 'Added' : 'Open'}</Text>
+            <View style={{ borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: completed ? ui.colors.successSoft : assigned ? ui.colors.primarySoft : ui.colors.surfaceMuted }}>
+              <Text style={{ color: completed || assigned ? ui.colors.success : ui.colors.textMuted, fontSize: 10, fontWeight: '700' }}>{completed ? 'Completed' : assigned ? 'Added' : 'Open'}</Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
@@ -271,7 +292,11 @@ export default function TeamProgramsScreen() {
   };
 
   const individualEntryPicker = (
-    <Modal visible={!!activeIndividualProgram} transparent animationType="slide" onRequestClose={() => !savingItemId && setActiveIndividualProgram(null)}>
+    <Modal visible={!!activeIndividualProgram} transparent animationType="slide" onRequestClose={() => {
+      if (savingItemId) return;
+      if (pendingCompletionProgram) setPendingCompletionProgram(null);
+      else setActiveIndividualProgram(null);
+    }}>
       <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
         <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
@@ -313,12 +338,44 @@ export default function TeamProgramsScreen() {
             {!individualEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program and search.</Text> : null}
           </ScrollView>
           {individualSelectionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{individualSelectionError}</Text> : null}
-          <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8 }}>
-            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
-              {savingItemId === activeIndividualProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
+          <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8, flexDirection: 'row', gap: 8 }}>
+            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ flex: 1, minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
+              {savingItemId === activeIndividualProgram?.item_id && !pendingCompletionProgram ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId }}
+              disabled={!activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId}
+              onPress={() => { setCompletionError(''); setPendingCompletionProgram(activeIndividualProgram); }}
+              style={{ flex: 1, minHeight: 46, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.borderStrong, backgroundColor: activeIndividualProgram?.is_completed ? ui.colors.successSoft : ui.colors.surface, alignItems: 'center', justifyContent: 'center', opacity: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId ? 0.68 : 1 }}
+            >
+              {activeIndividualProgram?.is_completed ? <CheckCircle2 size={16} color={ui.colors.success} /> : null}
+              <Text style={{ color: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.text, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{activeIndividualProgram?.is_completed ? 'Completed' : 'Mark completed'}</Text>
             </Pressable>
           </View>
         </View>
+        {pendingCompletionProgram ? (
+          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
+            <View style={{ width: '100%', maxWidth: 440, padding: 20, borderRadius: 16, backgroundColor: ui.colors.surface }}>
+              <View style={{ width: 42, height: 42, borderRadius: 21, marginBottom: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.warningSoft }}>
+                <CheckCircle2 size={22} color={ui.colors.warning} />
+              </View>
+              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Mark program completed?</Text>
+              <Text style={{ color: muted, fontSize: 13, lineHeight: 20, marginTop: 8 }}>
+                Confirm that all {pendingCompletionProgram.assigned_participant_ids?.length ?? 0} assigned participants have completed this program and their assessment. You can mark it complete again if more participants are added later.
+              </Text>
+              {completionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{completionError}</Text> : null}
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setPendingCompletionProgram(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Cancel</Text>
+                </Pressable>
+                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId ? 0.65 : 1 }}>
+                  {savingItemId === pendingCompletionProgram.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : null}
       </View>
     </Modal>
   );
@@ -376,7 +433,7 @@ export default function TeamProgramsScreen() {
 
   const availableProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (program.is_eligible || program.is_assigned)).length;
   const activeProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (
-    programKind === 'participant' ? program.is_assigned : program.team_entry_count > 0
+    programKind === 'participant' ? program.is_completed === true : program.team_entry_count > 0
   )).length;
   const progressPercent = availableProgramCount ? Math.round(activeProgramCount / availableProgramCount * 100) : 0;
   const cardWidth: `${number}%` = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
@@ -390,7 +447,7 @@ export default function TeamProgramsScreen() {
           <View>
             <Text style={{ color: muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Festival · {context?.festival_name || context?.team_name || 'Team portal'}</Text>
             <Text style={{ color: ui.colors.text, fontSize: 26, fontWeight: '800', marginTop: 3 }}>Programs</Text>
-            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{availableProgramCount} programs · {activeProgramCount} {programKind === 'participant' ? 'assigned' : 'with team entries'}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{availableProgramCount} programs · {activeProgramCount} {programKind === 'participant' ? 'completed' : 'with team entries'}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {(['participant', 'general_team'] as const).map((kind) => {
@@ -419,7 +476,7 @@ export default function TeamProgramsScreen() {
 
           <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs assigned' : 'group programs have entries'}</Text>
+              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}</Text>
               <Text style={{ color: ui.colors.primary, fontSize: 12, fontWeight: '700' }}>{progressPercent}%</Text>
             </View>
             <View style={{ height: 6, marginTop: 9, overflow: 'hidden', borderRadius: 99, backgroundColor: ui.colors.surfaceMuted }}><View style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 99, backgroundColor: ui.colors.primary }} /></View>

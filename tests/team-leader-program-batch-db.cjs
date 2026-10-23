@@ -3,7 +3,7 @@
 const { spawnSync } = require('node:child_process');
 const { readFileSync } = require('node:fs');
 const { resolve } = require('node:path');
-const container = `conso-team-program-batch-${Date.now()}`;
+const container = `conso-team-program-contract-${Date.now()}`;
 
 function docker(args, input) {
   const result = spawnSync('docker', args, { input, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
@@ -33,6 +33,8 @@ function read(file) {
       read('supabase/tests/team_leader_multi_participant_fixture.sql'),
       read('supabase/migrations/20261023180000_team_leader_multi_participant_assignment.sql'),
       read('supabase/tests/team_leader_multi_participant_transaction.sql'),
+      read('supabase/migrations/20261023200000_team_leader_program_completion.sql'),
+      read('supabase/tests/team_leader_program_completion_transaction.sql'),
     ].join('\n');
     const output = docker(['exec', '-i', container, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres'], sql);
     const passed = output.split('\n').filter((line) => /PASS:/.test(line));

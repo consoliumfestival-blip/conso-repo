@@ -101,7 +101,7 @@ async function fetchDeepAnalytics(supabaseAdmin: any, tenantId: string, festival
     // 1. Total & Event Counts
     analytics.total_schedules = schedules?.length || 0;
     analytics.completed_schedules = schedules?.filter((s: any) => s.status === 'completed').length || 0;
-    analytics.live_schedules = schedules?.filter((s: any) => s.status === 'live').length || 0;
+    analytics.live_schedules = schedules?.filter((s: any) => ['live', 'ongoing', 'in_progress'].includes(String(s.status || '').toLowerCase())).length || 0;
 
     // 2. Duplicates Detection (Same item_id in schedules multiple times)
     const itemCounts: Record<string, number> = {};

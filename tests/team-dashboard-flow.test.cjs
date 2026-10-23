@@ -11,7 +11,18 @@ const compiled = ts.transpileModule(helperSource, {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
 }).outputText;
 const helperModule = { exports: {} };
-new Function('require', 'module', 'exports', compiled)(require, helperModule, helperModule.exports);
+const scheduleLifecyclePath = path.join(__dirname, '../src/core/utils/scheduleLifecycle.ts');
+const scheduleLifecycleSource = fs.readFileSync(scheduleLifecyclePath, 'utf8');
+const scheduleLifecycleCompiled = ts.transpileModule(scheduleLifecycleSource, {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText;
+const scheduleLifecycleModule = { exports: {} };
+new Function('require', 'module', 'exports', scheduleLifecycleCompiled)(require, scheduleLifecycleModule, scheduleLifecycleModule.exports);
+const helperRequire = (specifier) => {
+  if (specifier === '@/core/utils/scheduleLifecycle') return scheduleLifecycleModule.exports;
+  return require(specifier);
+};
+new Function('require', 'module', 'exports', compiled)(helperRequire, helperModule, helperModule.exports);
 const { getTeamDashboardEventsToday, getTeamDashboardUpcomingEvents, isTeamEventInProgress } = helperModule.exports;
 
 function event(id, values = {}) {

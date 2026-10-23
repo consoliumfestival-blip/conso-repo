@@ -1,6 +1,5 @@
 import type { TeamLeaderScheduleRow } from '@/services/teamLeaderPortalService';
-
-const LIVE_STATUSES = new Set(['ongoing', 'in_progress']);
+import { normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 
 function parseTimestamp(value: string | null): number | null {
   if (!value) return null;
@@ -9,8 +8,8 @@ function parseTimestamp(value: string | null): number | null {
 }
 
 export function isTeamEventInProgress(event: TeamLeaderScheduleRow, now = Date.now()): boolean {
-  const status = event.event_status?.trim().toLowerCase();
-  if (status && LIVE_STATUSES.has(status)) {
+  const status = normalizeScheduleLifecycleStatus(event.event_status);
+  if (status === 'ongoing') {
     const endsAt = parseTimestamp(event.end_time);
     return endsAt === null || endsAt >= now;
   }
@@ -30,8 +29,7 @@ export function getTeamDashboardUpcomingEvents(
   limit = 5,
 ): TeamLeaderScheduleRow[] {
   return schedule.filter((event) => {
-    const status = event.event_status?.trim().toLowerCase();
-    if (status === 'completed') return false;
+    if (normalizeScheduleLifecycleStatus(event.event_status) === 'completed') return false;
 
     const endsAt = parseTimestamp(event.end_time);
     if (endsAt !== null && endsAt < now) return false;

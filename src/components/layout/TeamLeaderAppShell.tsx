@@ -456,7 +456,7 @@ export function TeamLeaderAppShell({
           flexDirection: "row",
           ...glassSurface,
           backgroundColor: bottomNavBackground,
-          position: 'absolute', bottom: Platform.OS === 'ios' ? 22 : 14, left: 12, right: 12,
+          position: 'absolute', bottom: Platform.OS === 'web' ? 'max(14px, env(safe-area-inset-bottom, 0px))' as any : Platform.OS === 'ios' ? 22 : 14, left: 12, right: 12,
           maxWidth: 540, alignSelf: 'center', marginHorizontal: 'auto',
           borderWidth: 1, borderColor: ui.colors.border, borderRadius: 999,
           paddingVertical: 7, paddingHorizontal: 7,

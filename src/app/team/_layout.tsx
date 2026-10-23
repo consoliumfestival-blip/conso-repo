@@ -30,11 +30,56 @@ function TeamLeaderNavigation() {
       links.push(addedLink);
     }
     links.forEach((link) => { link.href = '/team-manifest.json'; });
+    const existingThemeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const previousThemeColor = existingThemeColor?.content;
+    const themeColorFromBootstrap = existingThemeColor?.dataset.teamPortalBootstrap === 'true';
+    const themeColor = existingThemeColor || document.createElement('meta');
+    themeColor.name = 'theme-color';
+    themeColor.content = '#1D1B19';
+    if (!existingThemeColor) document.head.appendChild(themeColor);
+    const viewport = document.querySelector<HTMLMetaElement>('meta[name="viewport"]');
+    const previousViewport = viewport?.content;
+    const viewportFromBootstrap = viewport?.dataset.teamPortalBootstrap === 'true';
+    const bootstrapPreviousViewport = viewport?.dataset.teamPortalPreviousContent;
+    if (viewport) viewport.content = 'width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover';
+    const previousDocumentBackground = document.documentElement.style.backgroundColor;
+    const previousBodyBackground = document.body.style.backgroundColor;
+    const documentBackgroundFromBootstrap = document.documentElement.dataset.teamPortalBootstrap === 'true';
+    const bodyBackgroundFromBootstrap = document.body.dataset.teamPortalBootstrap === 'true';
+    const bootstrapPreviousDocumentBackground = document.documentElement.dataset.teamPortalPreviousBackground;
+    const bootstrapPreviousBodyBackground = document.body.dataset.teamPortalPreviousBackground;
+    document.documentElement.style.backgroundColor = '#F4F5F6';
+    document.body.style.backgroundColor = '#F4F5F6';
     return () => {
       links.forEach((link, index) => {
         if (link === addedLink) link.remove();
-        else link.href = previousHrefs[index];
+        else link.href = new URL(previousHrefs[index]).pathname === '/team-manifest.json' ? '/manifest.json' : previousHrefs[index];
       });
+      if (themeColorFromBootstrap) {
+        document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"][data-team-portal-bootstrap="true"]').forEach((item) => {
+          if (item.dataset.teamPortalCreated === 'true') item.remove();
+          else {
+            item.content = item.dataset.teamPortalPreviousColor || '';
+            delete item.dataset.teamPortalBootstrap;
+            delete item.dataset.teamPortalPreviousColor;
+          }
+        });
+      }
+      else if (existingThemeColor) themeColor.content = previousThemeColor || '';
+      else themeColor.remove();
+      if (viewport && previousViewport) viewport.content = viewportFromBootstrap
+        ? bootstrapPreviousViewport || 'width=device-width, initial-scale=1, shrink-to-fit=no'
+        : previousViewport;
+      if (viewportFromBootstrap && viewport) {
+        delete viewport.dataset.teamPortalBootstrap;
+        delete viewport.dataset.teamPortalPreviousContent;
+      }
+      document.documentElement.style.backgroundColor = documentBackgroundFromBootstrap ? bootstrapPreviousDocumentBackground || '' : previousDocumentBackground;
+      document.body.style.backgroundColor = bodyBackgroundFromBootstrap ? bootstrapPreviousBodyBackground || '' : previousBodyBackground;
+      delete document.documentElement.dataset.teamPortalBootstrap;
+      delete document.documentElement.dataset.teamPortalPreviousBackground;
+      delete document.body.dataset.teamPortalBootstrap;
+      delete document.body.dataset.teamPortalPreviousBackground;
     };
   }, []);
 

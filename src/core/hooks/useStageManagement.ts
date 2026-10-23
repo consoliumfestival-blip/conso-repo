@@ -3,6 +3,7 @@ import { stageManagementService } from '../../services/stageManagementService';
 import { useAuthStore } from '../store/authStore';
 import { useCodeLetterUpdates } from './useCodeLetterUpdates';
 import { invalidateCodeLetters } from '../utils/invalidateCodeLetters';
+import { scheduleLifecycleService } from '../../services/scheduleLifecycleService';
 
 const mapSchedule = (row: any) => ({
   ...row,
@@ -103,6 +104,12 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
     },
   });
 
+  const setScheduleStatusMutation = useMutation({
+    mutationFn: (input: { scheduleId: string; status: 'scheduled' | 'ongoing' | 'completed'; expectedStatus: string | null | undefined }) =>
+      scheduleLifecycleService.setStatus(input.scheduleId, input.status, input.expectedStatus),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stage-management-schedules'] }),
+  });
+
   return {
     context,
     contextQuery,
@@ -118,5 +125,7 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
     isUpdatingCodeLetter: updateCodeLetterMutation.isPending,
     updateScheduleLock: updateScheduleLockMutation.mutateAsync,
     isUpdatingScheduleLock: updateScheduleLockMutation.isPending,
+    setScheduleStatus: setScheduleStatusMutation.mutateAsync,
+    isSettingScheduleStatus: setScheduleStatusMutation.isPending,
   };
 };

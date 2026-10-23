@@ -15,8 +15,9 @@ import { useAuthStore } from '../../../core/store/authStore';
 import { supabase } from '../../../core/config/supabase';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
-import { SsfActionMenu } from '../../../components/ui/SsfActionMenu';
 import { downloadAdminSchedulePdf, downloadBlankSchedulePdf, AdminSchedulePdfMode } from '../../../services/schedulePdfService';
+import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
+import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const getItemCategoryCodes = (schedule: any): string[] => {
   const rawCodes = schedule?.items?.category_codes;
@@ -51,11 +52,13 @@ const categoryAliases: Record<string, string[]> = {
 };
 
 function ScheduleWorkflowBadges({
+  status,
   scheduleId,
   registrations = [],
   isShuffleLocked,
   compact = false,
 }: {
+  status?: string | null;
   scheduleId: string;
   registrations?: any[];
   isShuffleLocked?: boolean;
@@ -103,16 +106,14 @@ function ScheduleWorkflowBadges({
   const badges: { label: string; bg: string; text: string }[] = [];
 
   // Check-in status (Malayalam highlighted text as requested)
-  if (checkinDone) {
-    badges.push({ label: 'Check-in Kazhinju', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
+  if (checkinDone && codesShuffled) {
+    badges.push({ label: 'Ready to start', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
   } else if (checkinPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
     badges.push({ label: 'Check-in Pending', bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-700' });
   }
 
   // Code Letter status
-  if (codesShuffled) {
-    badges.push({ label: 'Codes Shuffled', bg: 'bg-sky-50 border border-sky-200', text: 'text-sky-700' });
-  } else if (codesPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
+  if (!codesShuffled && codesPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
     badges.push({ label: 'Codes Pending', bg: 'bg-gray-100 border border-gray-200', text: 'text-gray-500' });
   }
 
@@ -123,10 +124,11 @@ function ScheduleWorkflowBadges({
     badges.push({ label: 'Published to Admin Leaderboard', bg: 'bg-blue-100 border border-blue-200', text: 'text-blue-700' });
   }
 
-  if (!badges.length && !rows.length) return null;
+  if (!badges.length && !rows.length && !status) return null;
 
   if (compact) {
     const labels = badges.map((badge) => badge.label);
+    if (status) labels.unshift(getScheduleLifecycleLabel(status));
     if (rows.length > 0) {
       labels.push(`Marks ${totalSubmitted}/${totalExpected} judges submitted`);
     }
@@ -139,6 +141,9 @@ function ScheduleWorkflowBadges({
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
+      <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-slate-100 border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
+        <Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-emerald-700' : 'text-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text>
+      </View>
       {badges.map((badge) => (
         <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
           <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
@@ -161,7 +166,7 @@ function ScheduleWorkflowBadges({
 
 export default function ScheduleDashboard() {
   const router = useRouter();
-  const { schedules, isLoadingSchedules, venues, isLoadingVenues, deleteSchedule } = useSchedule();
+  const { schedules, isLoadingSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus } = useSchedule();
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
@@ -215,6 +220,9 @@ export default function ScheduleDashboard() {
 
   const statusesList = [
     { id: 'All', name: 'All Statuses' },
+    { id: 'scheduled', name: 'Scheduled' },
+    { id: 'ongoing', name: 'Started' },
+    { id: 'completed', name: 'Completed' },
     { id: 'checkin_pending', name: 'Check-in Pending' },
     { id: 'checkin_done', name: 'Check-in Completed' },
     { id: 'codes_pending', name: 'Codes Pending' },
@@ -307,7 +315,9 @@ export default function ScheduleDashboard() {
         );
         const marksSubmitted = workflowStatus?.marks_completed === true || isPublished;
 
-        if (selectedStatus === 'checkin_pending') {
+        if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
+          matchesStatus = normalizeScheduleLifecycleStatus(schedule.status) === selectedStatus;
+        } else if (selectedStatus === 'checkin_pending') {
           matchesStatus = checkinPending;
         } else if (selectedStatus === 'checkin_done') {
           matchesStatus = checkinDone;
@@ -893,6 +903,7 @@ export default function ScheduleDashboard() {
                 </View>
                 <View style={{ flex: 1.4 }} className="pr-3">
                   <ScheduleWorkflowBadges
+                    status={schedule.status}
                     scheduleId={schedule.id}
                     registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
                     isShuffleLocked={schedule.is_shuffle_locked}
@@ -932,6 +943,7 @@ export default function ScheduleDashboard() {
                   >
                     <Trash2 size={13} color="#DC2626" />
                   </TouchableOpacity>
+                  <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })} />
                 </View>
               </View>
             ))}
@@ -957,11 +969,14 @@ export default function ScheduleDashboard() {
                       <Text className="font-poppins text-[10px] text-ssf-text-muted" numberOfLines={1}>{schedule.items.item_name_ml}</Text>
                     ) : null}
                   </View>
-                  <SsfActionMenu
+                  <ScheduleLifecycleActions
+                    scheduleName={schedule.items?.item_name_en || 'Event'}
+                    status={schedule.status}
+                    onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
                     accessibilityLabel={`Actions for ${schedule.items?.item_name_en || 'event'}`}
                     open={mobileActionMenuId === schedule.id}
                     onOpenChange={(nextOpen) => setMobileActionMenuId(nextOpen ? schedule.id : null)}
-                    items={[
+                    additionalItems={[
                       {
                         label: 'Check-in',
                         icon: <LogIn size={15} color={ui.colors.textMuted} />,
@@ -1044,6 +1059,7 @@ export default function ScheduleDashboard() {
               </View>
 
               <ScheduleWorkflowBadges 
+                status={schedule.status}
                 scheduleId={schedule.id} 
                 registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
                 isShuffleLocked={schedule.is_shuffle_locked}

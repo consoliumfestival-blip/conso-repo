@@ -9,6 +9,7 @@ import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamL
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
+import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 
 export default function FullScheduleScreen() {
   const ui = useTeamUi();
@@ -81,8 +82,8 @@ export default function FullScheduleScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' || event.event_status === 'in_progress' ? 'info' : 'outline'}>
-                      {event.event_status === 'in_progress' ? 'In progress' : event.event_status || 'scheduled'}
+                    <Badge variant={normalizeScheduleLifecycleStatus(event.event_status) === 'completed' ? 'secondary' : normalizeScheduleLifecycleStatus(event.event_status) === 'ongoing' ? 'info' : 'outline'}>
+                      {getScheduleLifecycleLabel(event.event_status)}
                     </Badge>
                   </View>
                 </CardContent>

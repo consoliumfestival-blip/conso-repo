@@ -23,10 +23,72 @@
         flex: 1;
       }
     </style>
-    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function () {
+        var isTeamRoute = function () {
+          return location.pathname === '/team' || location.pathname.indexOf('/team/') === 0;
+        };
+        var manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = isTeamRoute() ? '/team-manifest.json' : '/manifest.json';
+        document.head.appendChild(manifestLink);
+
+        window.addEventListener('beforeinstallprompt', function (event) {
+          if (!isTeamRoute()) return;
+          event.preventDefault();
+          window.__teamPortalInstallEvent = event;
+          window.dispatchEvent(new Event('teamportalinstallavailable'));
+        });
+
+        if (!isTeamRoute()) return;
+
+        var viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+          viewport.dataset.teamPortalPreviousContent = viewport.content;
+          viewport.content = 'width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover';
+          viewport.dataset.teamPortalBootstrap = 'true';
+        }
+        document.documentElement.dataset.teamPortalPreviousBackground = document.documentElement.style.backgroundColor;
+        document.documentElement.style.backgroundColor = '#F4F5F6';
+        document.documentElement.dataset.teamPortalBootstrap = 'true';
+
+        var applyTeamThemeColor = function () {
+          var themeColors = document.querySelectorAll('meta[name="theme-color"]');
+          if (themeColors.length === 0) {
+            var themeColor = document.createElement('meta');
+            themeColor.name = 'theme-color';
+            themeColor.dataset.teamPortalCreated = 'true';
+            themeColors = [themeColor];
+            document.head.appendChild(themeColor);
+          }
+          themeColors.forEach(function (themeColor) {
+            if (!Object.prototype.hasOwnProperty.call(themeColor.dataset, 'teamPortalPreviousColor')) {
+              themeColor.dataset.teamPortalPreviousColor = themeColor.content;
+            }
+            themeColor.content = '#1D1B19';
+            themeColor.dataset.teamPortalBootstrap = 'true';
+          });
+        };
+        applyTeamThemeColor();
+        var headObserver = new MutationObserver(applyTeamThemeColor);
+        headObserver.observe(document.head, { childList: true, subtree: true, attributes: true, attributeFilter: ['name'] });
+        document.addEventListener('DOMContentLoaded', function () {
+          applyTeamThemeColor();
+          headObserver.disconnect();
+        }, { once: true });
+
+      })();
+    </script>
   </head>
 
   <body style="background-color: #050505;">
+    <script>
+      if (location.pathname === '/team' || location.pathname.indexOf('/team/') === 0) {
+        document.body.dataset.teamPortalPreviousBackground = document.body.style.backgroundColor;
+        document.body.style.backgroundColor = '#F4F5F6';
+        document.body.dataset.teamPortalBootstrap = 'true';
+      }
+    </script>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
     <noscript>
       You need to enable JavaScript to run this app.

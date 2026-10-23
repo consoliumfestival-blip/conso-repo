@@ -229,7 +229,7 @@ const PremiumScheduleCarousel = ({ schedules, onSelectSchedule }: any) => {
           if (isPublished) { statusText = "PUBLISHED"; statusStyle = "bg-green-500/20 text-green-400 border-green-500/30"; }
           else if (isPending) { statusText = "VERIFICATION PENDING"; statusStyle = "bg-[#c69a53]/20 text-[#c69a53] border-[#c69a53]/30"; }
           else if (isCompleted) { statusText = "COMPLETED"; statusStyle = "bg-[#a9f5d0]/20 text-[#a9f5d0] border-[#a9f5d0]/30"; }
-          else if (isOngoing) { statusText = "ONGOING"; statusStyle = "bg-error-container text-on-error-container border-error-container/50"; }
+          else if (isOngoing) { statusText = "STARTED"; statusStyle = "bg-error-container text-on-error-container border-error-container/50"; }
 
           return (
             <div 

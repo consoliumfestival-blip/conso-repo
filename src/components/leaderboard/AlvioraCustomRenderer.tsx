@@ -624,7 +624,7 @@ export function AlvioraCustomRenderer({ page = 'landing' }: { page?: PublicLeade
   };
 
   const liveResultsCount = publishedResults.length;
-  const runningStagesCount = schedules.filter(s => s.status === 'live').length;
+  const runningStagesCount = schedules.filter(s => ['live', 'ongoing', 'in_progress'].includes(String(s.status || '').toLowerCase())).length;
   const publishedItemsCount = itemSections.length;
   const activeVenuesCount = [...new Set(schedules.map(s => s.venue_id))].filter(Boolean).length;
 
@@ -975,7 +975,7 @@ export function AlvioraCustomRenderer({ page = 'landing' }: { page?: PublicLeade
                     badgeStyle = [styles.statusBadgeCompleted];
                     textStyle = [styles.statusBadgeTextCompleted];
                   } else if (isLive) {
-                    statusText = 'Ongoing';
+                    statusText = 'Started';
                     badgeStyle = [styles.statusBadgeLive];
                     textStyle = [styles.statusBadgeTextLive];
                   } else {

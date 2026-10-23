@@ -3,6 +3,7 @@ import { scheduleService } from '../../services/scheduleService';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../config/supabase';
 import { useFestival } from './useFestival';
+import { scheduleLifecycleService } from '../../services/scheduleLifecycleService';
 
 export const useSchedule = () => {
   const { tenant_id } = useAuthStore();
@@ -61,6 +62,12 @@ export const useSchedule = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
   });
 
+  const setScheduleStatusMutation = useMutation({
+    mutationFn: ({ id, status, expectedStatus }: { id: string; status: 'scheduled' | 'ongoing' | 'completed'; expectedStatus: string | null | undefined }) =>
+      scheduleLifecycleService.setStatus(id, status, expectedStatus),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
+  });
+
   const deleteScheduleMutation = useMutation({
     mutationFn: (id: string) => scheduleService.deleteSchedule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
@@ -84,6 +91,8 @@ export const useSchedule = () => {
     isCreatingSchedules: createSchedulesMutation.isPending,
     updateSchedule: updateScheduleMutation.mutateAsync,
     isUpdatingSchedule: updateScheduleMutation.isPending,
+    setScheduleStatus: setScheduleStatusMutation.mutateAsync,
+    isSettingScheduleStatus: setScheduleStatusMutation.isPending,
     deleteSchedule: deleteScheduleMutation.mutateAsync,
     isDeletingSchedule: deleteScheduleMutation.isPending,
   };

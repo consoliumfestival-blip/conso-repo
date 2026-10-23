@@ -8,6 +8,8 @@ import { Calendar, MapPin, Clock, Search, X, Lock, Bell, RefreshCw, Copy, Check,
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { useAuthStore } from '../../../core/store/authStore';
+import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
+import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
   registrations.filter((registration: any) =>
@@ -15,36 +17,35 @@ const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
     && registration.festival_id === schedule.festival_id
   );
 
-function ScheduleWorkflowBadges({ registrations = [] }: { registrations?: any[] }) {
+function ScheduleWorkflowBadges({ registrations = [], status, isShuffleLocked }: { registrations?: any[]; status?: string | null; isShuffleLocked?: boolean }) {
   const activeRegs = registrations.filter((r: any) => r.status !== 'rejected');
   const verifiedRegs = activeRegs.filter((r: any) => r.is_verified);
   
-  const checkinDone = activeRegs.length > 0 && activeRegs.every((r: any) => r.is_verified);
+  const checkinDone = (activeRegs.length > 0 && activeRegs.every((r: any) => r.is_verified)) || isShuffleLocked;
   const checkinPending = activeRegs.length > 0 && activeRegs.some((r: any) => !r.is_verified);
   
-  const codesShuffled = verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined);
+  const codesShuffled = (verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined)) || isShuffleLocked;
   const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined);
 
   const badges: { label: string; bg: string; text: string }[] = [];
 
   // Check-in status (Malayalam highlighted text as requested)
-  if (checkinDone) {
-    badges.push({ label: 'Check-in Kazhinju', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
+  if (checkinDone && codesShuffled) {
+    badges.push({ label: 'Ready to start', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
   } else if (checkinPending) {
     badges.push({ label: 'Check-in Pending', bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-700' });
   }
 
   // Code Letter status
-  if (codesShuffled) {
-    badges.push({ label: 'Codes Shuffled', bg: 'bg-sky-50 border border-sky-200', text: 'text-sky-700' });
-  } else if (codesPending) {
+  if (!codesShuffled && codesPending) {
     badges.push({ label: 'Codes Pending', bg: 'bg-gray-100 border border-gray-200', text: 'text-gray-500' });
   }
 
-  if (!badges.length) return null;
+  if (!badges.length && !status) return null;
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
+      {status ? <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-slate-100 border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}><Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-emerald-700' : 'text-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text></View> : null}
       {badges.map((badge) => (
         <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
           <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
@@ -139,6 +140,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
 
   const statusesList = [
     { id: 'All', name: 'All Statuses' },
+    { id: 'scheduled', name: 'Scheduled' },
+    { id: 'ongoing', name: 'Started' },
+    { id: 'completed', name: 'Completed' },
     { id: 'checkin_pending', name: 'Check-in Pending' },
     { id: 'checkin_done', name: 'Check-in Completed' },
     { id: 'codes_pending', name: 'Codes Pending' },
@@ -186,6 +190,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       // 4. Status/Workflow Filter
       let matchesStatus = true;
       if (selectedStatus !== 'All') {
+        const lifecycleStatus = normalizeScheduleLifecycleStatus(schedule.status);
         const scheduleRegs = getRegistrationsForSchedule(allRegistrations, schedule)
           .filter((registration: any) => registration.status !== 'rejected');
         const verifiedRegs = scheduleRegs.filter((r: any) => r.is_verified);
@@ -196,7 +201,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
         const codesShuffled = verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined);
         const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined);
 
-        if (selectedStatus === 'checkin_pending') {
+        if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
+          matchesStatus = lifecycleStatus === selectedStatus;
+        } else if (selectedStatus === 'checkin_pending') {
           matchesStatus = checkinPending;
         } else if (selectedStatus === 'checkin_done') {
           matchesStatus = checkinDone;
@@ -785,7 +792,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
             <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
             <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
             <Text style={{ flex: 1.3 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workflow</Text>
-            <Text style={{ width: 190 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
+            <Text style={{ width: 235 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
           </View>
           {filteredSchedules.map((schedule: any) => (
             <View key={schedule.id} className="min-h-16 px-4 py-2 flex-row items-center border-b border-ui-border bg-white">
@@ -814,9 +821,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 </View>
               </View>
               <View style={{ flex: 1.3 }} className="pr-3">
-                <ScheduleWorkflowBadges registrations={getRegistrationsForSchedule(allRegistrations, schedule)} />
+                <ScheduleWorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={getRegistrationsForSchedule(allRegistrations, schedule)} />
               </View>
-              <View style={{ width: 190 }} className="flex-row justify-end gap-x-2">
+              <View style={{ width: 235 }} className="flex-row justify-end gap-x-2">
                 <TouchableOpacity
                   onPress={() => router.push(`/stage-management/${schedule.id}/checkin` as any)}
                   className="h-8 px-3 rounded-lg border border-ui-border bg-white items-center justify-center"
@@ -829,6 +836,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 >
                   <Text className="font-poppins-bold text-[9px] text-white">Code Letters</Text>
                 </TouchableOpacity>
+                <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
               </View>
             </View>
           ))}
@@ -840,12 +848,13 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               {/* Card Header: Title + Actions */}
               <View className="mb-2">
                 {/* Top row: title left */}
-                <View className="flex-row justify-between items-start">
+                  <View className="flex-row justify-between items-start">
                   <View className="flex-1 mr-2">
                     <Text className="font-poppins-bold text-base" numberOfLines={2}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
                     {schedule.items?.item_name_ml ? (
                       <Text className="font-poppins text-xs text-ssf-text-muted mt-0.5" numberOfLines={1}>{schedule.items.item_name_ml}</Text>
                     ) : null}
+                    <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
                   </View>
                 </View>
 
@@ -885,6 +894,8 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               </View>
 
               <ScheduleWorkflowBadges 
+                status={schedule.status}
+                isShuffleLocked={schedule.is_shuffle_locked}
                 registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
               />
 

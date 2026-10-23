@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
+import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 
 export default function ScheduleScreen() {
   const ui = useTeamUi();
@@ -50,8 +51,8 @@ export default function ScheduleScreen() {
   if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
 
   const filtered = filter === 'all' ? schedule : schedule.filter((s) => filter === 'ongoing'
-    ? s.event_status === 'ongoing' || s.event_status === 'in_progress'
-    : s.event_status === filter);
+    ? normalizeScheduleLifecycleStatus(s.event_status) === 'ongoing'
+    : normalizeScheduleLifecycleStatus(s.event_status) === filter);
   const exportMyTeamSchedule = async () => {
     if (!context || !filtered.length) return;
     try {
@@ -83,7 +84,7 @@ export default function ScheduleScreen() {
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="scheduled">Upcoming</TabsTrigger>
-            <TabsTrigger value="ongoing">Live</TabsTrigger>
+            <TabsTrigger value="ongoing">Started</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
           </TabsList>
 
@@ -117,8 +118,8 @@ export default function ScheduleScreen() {
                             {event.participant_count} participant{event.participant_count !== 1 ? 's' : ''} · {event.checked_in_count} checked in
                           </Text>
                         </View>
-                        <Badge variant={event.event_status === 'completed' ? 'secondary' : event.event_status === 'ongoing' || event.event_status === 'in_progress' ? 'info' : 'outline'}>
-                          {event.event_status === 'in_progress' ? 'In progress' : event.event_status || 'scheduled'}
+                        <Badge variant={normalizeScheduleLifecycleStatus(event.event_status) === 'completed' ? 'secondary' : normalizeScheduleLifecycleStatus(event.event_status) === 'ongoing' ? 'info' : 'outline'}>
+                          {getScheduleLifecycleLabel(event.event_status)}
                         </Badge>
                       </View>
                     </CardContent>

@@ -35,6 +35,8 @@ import { stageManagementService, StageRegistrationRow, StageScheduleRow } from '
 import { codeLetterTarget, codeLetterPreview } from '@/core/utils/codeLetters';
 import { invalidateCodeLetters } from '@/core/utils/invalidateCodeLetters';
 import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
+import { ScheduleLifecycleActions } from '@/components/schedule/ScheduleLifecycleActions';
+import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 
 type PortalRegistration = StageRegistrationRow & {
   entry_kind?: string;
@@ -64,19 +66,19 @@ const timeText = (value: string | null) => value
   ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   : '—';
 
-function WorkflowBadges({ registrations }: { registrations: PortalRegistration[] }) {
+function WorkflowBadges({ registrations, status, isShuffleLocked }: { registrations: PortalRegistration[]; status?: string | null; isShuffleLocked?: boolean }) {
   const active = registrations.filter((row) => row.status !== 'rejected');
   const verified = active.filter((row) => row.is_verified);
-  const checkinDone = active.length > 0 && active.every((row) => row.is_verified);
+  const checkinDone = (active.length > 0 && active.every((row) => row.is_verified)) || isShuffleLocked;
   const checkinPending = active.length > 0 && active.some((row) => !row.is_verified);
-  const codesDone = verified.length > 0 && verified.every((row) => !!row.code_letter);
+  const codesDone = (verified.length > 0 && verified.every((row) => !!row.code_letter)) || isShuffleLocked;
   const codesPending = verified.length > 0 && verified.some((row) => !row.code_letter);
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {checkinDone ? <Badge label="Check-in Kazhinju" tone="green" /> : null}
+      {status ? <Badge label={getScheduleLifecycleLabel(status)} tone={normalizeScheduleLifecycleStatus(status) === 'completed' ? 'gray' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'green' : 'blue'} /> : null}
+      {checkinDone && codesDone ? <Badge label="Ready to start" tone="green" /> : null}
       {!checkinDone && checkinPending ? <Badge label="Check-in Pending" tone="amber" /> : null}
-      {codesDone ? <Badge label="Codes Shuffled" tone="blue" /> : null}
       {!codesDone && codesPending ? <Badge label="Codes Pending" tone="gray" /> : null}
     </View>
   );
@@ -157,6 +159,9 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
   const categories = ['All', ...Array.from(new Set(schedules.flatMap((row) => row.category_codes ?? []))).sort()];
   const statuses = [
     { id: 'All', name: 'All Statuses' },
+    { id: 'scheduled', name: 'Scheduled' },
+    { id: 'ongoing', name: 'Started' },
+    { id: 'completed', name: 'Completed' },
     { id: 'checkin_pending', name: 'Check-in Pending' },
     { id: 'checkin_done', name: 'Check-in Completed' },
     { id: 'codes_pending', name: 'Codes Pending' },
@@ -175,6 +180,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     const textMatch = !text || [schedule.item_name_en, schedule.item_name_ml, schedule.item_code, ...(schedule.category_codes ?? [])]
       .some((value) => String(value ?? '').toLocaleLowerCase().includes(text));
     const statusMatch = selectedStatus === 'All'
+      || (['scheduled', 'ongoing', 'completed'].includes(selectedStatus) && normalizeScheduleLifecycleStatus(schedule.status) === selectedStatus)
       || (selectedStatus === 'checkin_pending' && checkinPending)
       || (selectedStatus === 'checkin_done' && checkinDone)
       || (selectedStatus === 'codes_pending' && codesPending)
@@ -597,8 +603,8 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
               <View style={{ flex: 1.4 }} className="pr-3"><Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{schedule.item_name_en || 'Unknown Event'}</Text><Text numberOfLines={1} className="mt-0.5 font-poppins text-[10px] text-ui-text-muted">{schedule.item_name_ml || schedule.item_code || '—'}</Text></View>
               <View style={{ flex: 1 }} className="items-start pr-3"><View className="rounded-md border border-emerald-100 bg-emerald-50 px-2 py-1"><Text numberOfLines={1} className="font-poppins-bold text-[9px] text-emerald-700">{schedule.venue_name || venueQuery.data?.venue.name || 'Stage'}</Text></View>{!!schedule.category_codes?.length ? <Text className="mt-1 font-poppins-bold text-[9px] text-teal-700">{schedule.category_codes.join(', ')}</Text> : null}</View>
               <View style={{ flex: 1 }} className="pr-3"><View className="flex-row items-center"><Calendar size={12} color="#64748B" /><Text className="ml-1.5 font-poppins text-[10px] text-ui-text-muted">{dateText(schedule.start_time)}</Text></View><View className="mt-1 flex-row items-center"><Clock size={12} color="#64748B" /><Text className="ml-1.5 font-poppins text-[10px] text-ui-text-muted">{timeText(schedule.start_time)} – {timeText(schedule.end_time)}</Text></View></View>
-              <View style={{ flex: 1.3 }} className="pr-3"><WorkflowBadges registrations={eventRegistrations(schedule.id)} /></View>
-              <View style={{ width: 190 }} className="flex-row justify-end gap-x-2"><PortalAction label="Check-in" onPress={() => openSchedule(schedule, 'checkin')} /><PortalAction label="Code Letters" primary onPress={() => openSchedule(schedule, 'codes')} /></View>
+              <View style={{ flex: 1.3 }} className="pr-3"><WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} /></View>
+              <View style={{ width: 235 }} className="flex-row justify-end gap-x-2"><PortalAction label="Check-in" onPress={() => openSchedule(schedule, 'checkin')} /><PortalAction label="Code Letters" primary onPress={() => openSchedule(schedule, 'codes')} /><ScheduleLifecycleActions scheduleName={schedule.item_name_en || 'Event'} status={schedule.status} disabled={busyId === `status-${schedule.id}`} onStatusChange={(status, expectedStatus) => runMutation(`status-${schedule.id}`, () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, status, expectedStatus), `Event status changed to ${getScheduleLifecycleLabel(status)}.`)} /></View>
             </View>
           ))}
         </View>
@@ -613,8 +619,8 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
                 {!!schedule.category_codes?.length ? <View className="mt-2 flex-row flex-wrap gap-1">{schedule.category_codes.map((code) => <View key={code} className="rounded-full border border-ssf-primary/20 bg-ssf-primary/10 px-2 py-0.5"><Text className="font-poppins-bold text-[10px] text-ssf-primary">{code}</Text></View>)}</View> : null}
               </View>
               <View className="mb-3 flex-row flex-wrap items-center gap-x-4 gap-y-1"><View className="flex-row items-center gap-x-1"><Clock size={13} color="#6B7280" /><Text className="font-poppins text-xs text-gray-600">{timeText(schedule.start_time)} – {timeText(schedule.end_time)}</Text></View><View className="flex-row items-center gap-x-1"><Calendar size={13} color="#6B7280" /><Text className="font-poppins text-xs text-gray-600">{dateText(schedule.start_time)}</Text></View></View>
-              <WorkflowBadges registrations={eventRegistrations(schedule.id)} />
-              <View className="mt-3 flex-row gap-x-2 border-t border-gray-100 pt-3"><SsfButton label="Check-In" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'checkin')} /><SsfButton label="Code Letters" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'codes')} /></View>
+              <WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} />
+              <View className="mt-3 flex-row gap-x-2 border-t border-gray-100 pt-3"><SsfButton label="Check-In" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'checkin')} /><SsfButton label="Code Letters" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'codes')} /><ScheduleLifecycleActions scheduleName={schedule.item_name_en || 'Event'} status={schedule.status} disabled={busyId === `status-${schedule.id}`} onStatusChange={(status, expectedStatus) => runMutation(`status-${schedule.id}`, () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, status, expectedStatus), `Event status changed to ${getScheduleLifecycleLabel(status)}.`)} /></View>
             </SsfCard>
           ))}
         </View>

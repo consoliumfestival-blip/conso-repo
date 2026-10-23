@@ -19,24 +19,34 @@ export function TeamInstallPrompt() {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
+    const installWindow = window as Window & { __teamPortalInstallEvent?: InstallPromptEvent };
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
       || (navigator as Navigator & { standalone?: boolean }).standalone === true;
     setIsStandalone(!!standalone);
+    if (installWindow.__teamPortalInstallEvent) setInstallEvent(installWindow.__teamPortalInstallEvent);
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
-      setInstallEvent(event as InstallPromptEvent);
+      const promptEvent = event as InstallPromptEvent;
+      installWindow.__teamPortalInstallEvent = promptEvent;
+      setInstallEvent(promptEvent);
+    };
+    const onInstallAvailable = () => {
+      if (installWindow.__teamPortalInstallEvent) setInstallEvent(installWindow.__teamPortalInstallEvent);
     };
     const onInstalled = () => {
       setIsStandalone(true);
+      installWindow.__teamPortalInstallEvent = undefined;
       setInstallEvent(null);
       setDismissed(true);
     };
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('teamportalinstallavailable', onInstallAvailable);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('teamportalinstallavailable', onInstallAvailable);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
@@ -48,9 +58,11 @@ export function TeamInstallPrompt() {
     try {
       await installEvent.prompt();
       await installEvent.userChoice;
+      (window as Window & { __teamPortalInstallEvent?: InstallPromptEvent }).__teamPortalInstallEvent = undefined;
       setInstallEvent(null);
       setDismissed(true);
     } catch {
+      (window as Window & { __teamPortalInstallEvent?: InstallPromptEvent }).__teamPortalInstallEvent = undefined;
       setInstallEvent(null);
     }
   };

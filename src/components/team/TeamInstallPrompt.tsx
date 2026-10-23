@@ -13,7 +13,6 @@ export function TeamInstallPrompt() {
   const ui = useTeamUi();
   const { width } = useWindowDimensions();
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
-  const [helpOpen, setHelpOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
@@ -42,39 +41,51 @@ export function TeamInstallPrompt() {
     };
   }, []);
 
-  if (Platform.OS !== 'web' || width >= 1100 || isStandalone || dismissed) return null;
+  if (Platform.OS !== 'web' || width >= 1280 || isStandalone || dismissed) return null;
 
   const handleInstall = async () => {
-    if (!installEvent) {
-      setHelpOpen((open) => !open);
-      return;
+    if (!installEvent) return;
+    try {
+      await installEvent.prompt();
+      await installEvent.userChoice;
+      setInstallEvent(null);
+      setDismissed(true);
+    } catch {
+      setInstallEvent(null);
     }
-    await installEvent.prompt();
-    const choice = await installEvent.userChoice;
-    setInstallEvent(null);
-    if (choice.outcome === 'accepted') setDismissed(true);
-    else setDismissed(true);
   };
 
   return (
     <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6 }}>
-      <View style={{ minHeight: 42, flexDirection: 'row', alignItems: 'center', gap: 9, paddingLeft: 11, paddingRight: 6, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 14, backgroundColor: ui.colors.surfaceGlass }}>
-        <Smartphone size={16} color={ui.colors.primary} />
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <TeamText numberOfLines={1} style={{ color: ui.colors.text, fontSize: 11, fontWeight: '700' }}>Install Team Portal</TeamText>
-          {helpOpen ? (
-            <TeamText style={{ color: ui.colors.textMuted, fontSize: 10, marginTop: 1 }}>Open your browser menu, then choose Install app or Add to Home Screen.</TeamText>
+      <View style={{ width: '100%', maxWidth: 900, minHeight: 94, alignSelf: 'center', padding: 12, gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 16, backgroundColor: ui.colors.surfaceGlass }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+          <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+            <Smartphone size={16} color={ui.colors.primary} />
+          </View>
+          <TeamText numberOfLines={1} style={{ flex: 1, minWidth: 0, color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Install Team Portal</TeamText>
+          {installEvent ? (
+            <Pressable onPress={handleInstall} accessibilityRole="button" accessibilityLabel="Install Team Portal"
+              style={{ minHeight: 38, minWidth: 76, paddingHorizontal: 11, borderRadius: 11, backgroundColor: ui.colors.navActive, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 }}>
+              <Download size={14} color={ui.colors.navActiveText} />
+              <TeamText style={{ color: ui.colors.navActiveText, fontSize: 11, fontWeight: '700' }}>Install</TeamText>
+            </Pressable>
           ) : null}
+          <Pressable onPress={() => setDismissed(true)} accessibilityRole="button" accessibilityLabel="Dismiss installation instructions" hitSlop={8}
+            style={{ width: 32, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+            <X size={16} color={ui.colors.textMuted} />
+          </Pressable>
         </View>
-        <Pressable onPress={handleInstall} accessibilityRole="button" accessibilityLabel={installEvent ? 'Install Team Portal' : 'Show installation instructions'}
-          style={{ minHeight: 34, minWidth: 58, paddingHorizontal: 10, borderRadius: 10, backgroundColor: ui.colors.navActive, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 }}>
-          {installEvent ? <Download size={13} color={ui.colors.navActiveText} /> : null}
-          <TeamText style={{ color: ui.colors.navActiveText, fontSize: 10, fontWeight: '700' }}>{installEvent ? 'Install' : 'How?'}</TeamText>
-        </Pressable>
-        <Pressable onPress={() => setDismissed(true)} accessibilityRole="button" accessibilityLabel="Dismiss installation prompt" hitSlop={8}
-          style={{ width: 32, height: 34, alignItems: 'center', justifyContent: 'center' }}>
-          <X size={15} color={ui.colors.textMuted} />
-        </Pressable>
+        <View style={{ paddingLeft: 39, gap: 3 }}>
+          <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
+            Android/tablet: browser menu (⋮) → Install app or Add to Home Screen.
+          </TeamText>
+          <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
+            iPhone/iPad: Share → Add to Home Screen.
+          </TeamText>
+          <TeamText style={{ color: ui.colors.textSubtle, fontSize: 10, lineHeight: 14, marginTop: 1 }}>
+            Updates load automatically the next time you open or refresh while online; no reinstall is needed.
+          </TeamText>
+        </View>
       </View>
     </View>
   );

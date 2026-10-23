@@ -102,6 +102,7 @@
   "src/components/participants/ChestTeamOrderRow.tsx",
   "src/components/participants/GroupEntryDeleteDialog.tsx",
   "src/components/participants/GroupRosterEditor.tsx",
+  "src/components/pwa/PortalInstallPrompt.tsx",
   "src/components/schedule/ScheduleLifecycleActions.tsx",
   "src/components/stage/GroupEntryRoster.tsx",
   "src/components/stage/StageVenuePortal.tsx",

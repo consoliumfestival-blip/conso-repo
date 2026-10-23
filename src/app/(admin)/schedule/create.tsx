@@ -156,7 +156,7 @@ export default function CreateSchedule() {
           {isLoadingSchedules ? (
             <Text className="font-poppins text-xs text-ssf-text-muted">Loading existing schedules…</Text>
           ) : isErrorSchedules ? (
-            <Text className="font-poppins text-xs text-red-700">Could not load schedules. Reload before selecting a competition.</Text>
+            <Text className="font-poppins text-xs text-core-danger-red-700">Could not load schedules. Reload before selecting a competition.</Text>
           ) : (
             <SsfSelectMenu
               value={itemId}

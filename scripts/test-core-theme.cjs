@@ -69,7 +69,7 @@ test('chest-card output and persisted defaults retain their original literal col
  const before=cp.execFileSync('git',['show',`HEAD:${file}`],{cwd:root,encoding:'utf8'}),after=fs.readFileSync(path.join(root,file),'utf8');
  const statements=text=>{const source=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);return source.statements.filter(ts.isVariableStatement).flatMap(s=>s.declarationList.declarations.map(d=>[d.name.getText(source),s.getText(source)]));};
  const originals=new Map(statements(before)),current=new Map(statements(after));
- const normalize=text=>text.replace(/[ \t]+$/gm,'');
+ const normalize=text=>text.replaceAll('legacyCoreOutputColors.','ui.colors.').replace(' ...fixedCoreOutputVariables,','').replace(/[ \t]+$/gm,'');
  for(const name of ['defaultTemplate','readTemplates','createQrUrl','FieldBox','ChestCard'])assert.equal(normalize(current.get(name).replaceAll('legacyCoreOutputColors.','ui.colors.').replace(' ...fixedCoreOutputVariables,','')),normalize(originals.get(name)),name);
  for(const role of Object.keys(tokens.legacy))assert.ok(fs.readFileSync(path.join(root,'src/global.css'),'utf8').includes(`${theme.coreVariableName(role)}: ${tokens.legacy[role]} !important`),`Missing print reset: ${role}`);
 });

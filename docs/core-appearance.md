@@ -38,7 +38,7 @@ Glass is restricted to major cards, navigation and popup/sheet surfaces: 97% sur
 
 ## Coverage and validation
 
-`scripts/core-theme-scope.json` records the current 132 UI modules. The audit checks that all current Admin/Superadmin/Auth routes are represented and flags remaining direct UI colour literals/utilities. Its reviewed exceptions are document output code, data colours, chart series, swatches, fixed neutral shadows and the native notification LED colour. This is static coverage, not evidence that every authenticated screen was exercised with live data.
+`scripts/core-theme-scope.json` records the current 133 UI modules. The audit checks that all current Admin/Superadmin/Auth routes are represented and flags remaining direct UI colour literals/utilities. Its reviewed exceptions are document output code, data colours, chart series, swatches, fixed neutral shadows and the native notification LED colour. This is static coverage, not evidence that every authenticated screen was exercised with live data.
 
 Commands:
 
@@ -69,3 +69,5 @@ Live authenticated end-to-end flows, real-device/native tests and production dep
 The core login uses centered Consolium branding and a compact credentials form on the selected core background. The festival marketing hero, sector logo, and promotional cards are removed. Credential validation, auth service calls, store updates, and the public results route remain unchanged. The isolated appearance fixture includes the real login UI with sign-in replaced by an explicit preview-only failure.
 
 Login validation: production web export passed; 320/390/768/1366px fixture checks found no horizontal overflow. Required-field errors, password visibility, preview-only failed sign-in recovery, and common Dark colours were verified. Real backend sign-in was not exercised.
+
+Integration validation: merged remote main through 35c2330, preserving its schedule, points, PWA, and Team Leader changes. Added its Core install prompt to the appearance audit and mapped its foreground and new schedule error text to semantic tokens. The chest-card comparison normalizes both baseline and current output aliases so it remains valid after the theme commit is recorded.

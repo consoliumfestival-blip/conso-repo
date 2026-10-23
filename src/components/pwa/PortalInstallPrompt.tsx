@@ -98,7 +98,7 @@ export function PortalInstallPrompt({ portal = 'main' }: { portal?: InstallPorta
             Install this portal on your device for direct access.
           </Text> : null}
         </View>
-        {installEvent ? <SsfButton size="sm" label="Install" icon={<Download size={14} color="#FFFFFF" />} onPress={handleInstall} /> : null}
+        {installEvent ? <SsfButton size="sm" label="Install" icon={<Download size={14} color={ui.colors.onPrimary} />} onPress={handleInstall} /> : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss installation instructions" onPress={() => setDismissed(true)} hitSlop={8}
           style={{ width: 34, height: 36, alignItems: 'center', justifyContent: 'center' }}>
           <X size={16} color={ui.colors.textMuted} />

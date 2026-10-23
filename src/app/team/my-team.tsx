@@ -49,7 +49,7 @@ export default function MyTeamScreen() {
 
         {/* Team Summary */}
         {ownTeam && (
-          <Card style={{ borderTopWidth: 4, borderTopColor: teamPrimary }}>
+          <Card>
             <CardContent style={{ padding: 18 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
@@ -60,7 +60,7 @@ export default function MyTeamScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Rank</Text>
-                  <Text style={{ fontSize: 24, fontWeight: '700', color: teamPrimary }}>
+                  <Text style={{ fontSize: 24, fontWeight: '700', color: ui.colors.text }}>
                     #{ownRank}
                   </Text>
                 </View>

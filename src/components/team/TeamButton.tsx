@@ -29,7 +29,7 @@ export const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>
       borderRadius: ui.radius.xl,
       borderWidth: primary || variant === 'ghost' || variant === 'link' ? 0 : 1,
       borderColor: destructive ? ui.colors.borderStrong : ui.colors.border,
-      backgroundColor: primary ? ui.colors.primary
+      backgroundColor: primary ? ui.colors.primaryStrong
         : destructive ? ui.colors.dangerSoft
           : variant === 'ghost' || variant === 'link' ? 'transparent' : ui.colors.primarySoft,
       alignItems: 'center',

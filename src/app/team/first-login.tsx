@@ -225,7 +225,7 @@ export default function TeamLeaderFirstLogin() {
                       backgroundColor: ui.colors.danger,
                     }}
                   >
-                    <Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '600' }}>Back to Sign In</Text>
+                    <Text style={{ color: '#24140D', fontSize: 12, fontWeight: '600' }}>Back to Sign In</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -258,7 +258,7 @@ export default function TeamLeaderFirstLogin() {
                 height: 44,
                 borderRadius: 10,
                 marginTop: 4,
-                backgroundColor: ui.colors.primary,
+                backgroundColor: ui.colors.primaryStrong,
               }}
             >
               <Text style={{ color: ui.colors.onPrimary, fontWeight: '700', fontSize: 14 }}>

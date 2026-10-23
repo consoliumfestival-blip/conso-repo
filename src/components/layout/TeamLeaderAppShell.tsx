@@ -198,7 +198,7 @@ export function TeamLeaderAppShell({
                         width: 42,
                         height: 42,
                         borderRadius: 13,
-                        backgroundColor: ui.colors.primary,
+                        backgroundColor: ui.colors.primaryStrong,
                         alignItems: "center",
                         justifyContent: "center",
                       }}
@@ -255,7 +255,7 @@ export function TeamLeaderAppShell({
                     width: 32,
                     height: 32,
                     borderRadius: 10,
-                    backgroundColor: ui.colors.primary,
+                    backgroundColor: ui.colors.primaryStrong,
                     alignItems: "center",
                     justifyContent: "center",
                   }}
@@ -430,7 +430,7 @@ export function TeamLeaderAppShell({
       {!hideMobileHeader && (
         <View style={{ backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityRole="button" accessibilityLabel={`Open ${context?.team_name || 'team'} profile`}
-            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primaryStrong, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

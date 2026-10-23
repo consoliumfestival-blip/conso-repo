@@ -60,8 +60,8 @@ export default function MyTeamScreen() {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Rank</Text>
-                  <Text style={{ fontSize: 24, fontWeight: '700', color: ui.colors.text }}>
-                    #{ownRank}
+                    <Text style={{ fontSize: 24, fontWeight: '700', color: ui.colors.text }}>
+                    {totalPoints > 0 && ownRank > 0 ? `#${ownRank}` : '—'}
                   </Text>
                 </View>
               </View>
@@ -70,7 +70,7 @@ export default function MyTeamScreen() {
                   <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Total Points</Text>
                   <Text style={{ fontSize: 16, fontWeight: '600', color: ui.colors.text }}>{totalPoints}</Text>
                 </View>
-                {ownRank > 1 && (
+                {totalPoints > 0 && ownRank > 1 && (
                   <View>
                     <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Behind Rank 1</Text>
                     <Text style={{ fontSize: 16, fontWeight: '600', color: ui.colors.danger }}>-{pointsBehind}</Text>
@@ -108,7 +108,7 @@ export default function MyTeamScreen() {
                   >
                     <View style={{ width: 32, alignItems: 'center' }}>
                       <Text style={{ fontSize: 14, fontWeight: '700', color: team.is_own_team ? teamPrimary : ui.colors.text }}>
-                        #{team.rank}
+                        {team.total_points > 0 ? `#${team.rank}` : '—'}
                       </Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>

@@ -83,8 +83,8 @@ export default function ParticipantsScreen() {
   }
 
   const filtered = filter === 'all' ? participants : participants.filter((p) => {
-    if (filter === 'active') return p.status === 'active' || p.status === 'registered';
-    if (filter === 'inactive') return p.status !== 'active' && p.status !== 'registered';
+    if (filter === 'active') return p.status === 'active' || p.status === 'registered' || p.status === 'approved';
+    if (filter === 'inactive') return p.status !== 'active' && p.status !== 'registered' && p.status !== 'approved';
     return true;
   });
   return (
@@ -128,17 +128,12 @@ export default function ParticipantsScreen() {
                             {p.category_code && (
                               <Badge variant="outline">{p.category_code}</Badge>
                             )}
-                            {p.gender && (
-                              <Badge variant="secondary">{p.gender}</Badge>
-                            )}
                             {p.chest_number && (
                               <Badge variant="info">Chest #{p.chest_number}</Badge>
                             )}
                           </View>
                         </View>
-                        <Badge variant={p.status === 'active' || p.status === 'registered' ? 'success' : 'secondary'}>
-                          {p.status || 'N/A'}
-                        </Badge>
+                        {p.status && p.status !== 'approved' ? <Badge variant={p.status === 'rejected' ? 'destructive' : p.status === 'active' || p.status === 'registered' ? 'success' : 'warning'}>{p.status}</Badge> : null}
                       </TouchableOpacity>
                     </CardContent>
                   </Card>

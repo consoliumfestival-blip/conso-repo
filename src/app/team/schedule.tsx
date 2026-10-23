@@ -2,10 +2,11 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
-import { Platform, View } from 'react-native';
+import { Modal, Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
+import { Download, X } from 'lucide-react-native';
 import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
@@ -21,10 +22,13 @@ export default function ScheduleScreen() {
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('scheduled');
   const [isExporting, setIsExporting] = useState(false);
+  const [exportPickerOpen, setExportPickerOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
   const router = useRouter();
 
   useEffect(() => {
@@ -54,10 +58,11 @@ export default function ScheduleScreen() {
     ? normalizeScheduleLifecycleStatus(s.event_status) === 'ongoing'
     : normalizeScheduleLifecycleStatus(s.event_status) === filter);
   const exportMyTeamSchedule = async () => {
-    if (!context || !filtered.length) return;
+    if (!context || !schedule.length) return;
     try {
       setIsExporting(true);
-      await downloadTeamLeaderSchedulePdf(context, filtered);
+      setExportPickerOpen(false);
+      await downloadTeamLeaderSchedulePdf(context, schedule);
       if (Platform.OS === 'web') window.alert('My Team Schedule PDF downloaded successfully.');
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert(error?.message || 'Unable to generate team schedule PDF.');
@@ -75,9 +80,10 @@ export default function ScheduleScreen() {
             <Button variant="outline" size="sm" onPress={() => router.push('/team/schedule/full')}>
               Full Schedule
             </Button>
-            <Button variant="default" size="sm" disabled={isExporting || !filtered.length} onPress={exportMyTeamSchedule}>
-              {isExporting ? 'Preparing…' : 'Download My Team PDF'}
-            </Button>
+            <Pressable accessibilityRole="button" accessibilityLabel="Export team schedule PDFs" accessibilityState={{ disabled: isExporting || !schedule.length, busy: isExporting }} disabled={isExporting || !schedule.length} onPress={() => setExportPickerOpen(true)} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 12, backgroundColor: ui.colors.primaryStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isExporting || !schedule.length ? 0.55 : 1 }}>
+              <Download size={15} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>{isExporting ? 'Preparing…' : 'Export'}</Text>
+            </Pressable>
           </View>} />
 
         <Tabs value={filter} onValueChange={setFilter}>
@@ -130,6 +136,24 @@ export default function ScheduleScreen() {
           </TabsContent>
         </Tabs>
       </View>
+      <Modal visible={exportPickerOpen} transparent animationType="fade" onRequestClose={() => !isExporting && setExportPickerOpen(false)}>
+        <Pressable onPress={() => !isExporting && setExportPickerOpen(false)} style={{ flex: 1, justifyContent: isMobile ? 'flex-end' : 'center', padding: isMobile ? 0 : 20, backgroundColor: ui.colors.overlay }}>
+          <Pressable onPress={(event) => event.stopPropagation()} style={{ width: '100%', maxWidth: 460, alignSelf: 'center', padding: 18, borderTopLeftRadius: isMobile ? 22 : 18, borderTopRightRadius: isMobile ? 22 : 18, borderBottomLeftRadius: isMobile ? 0 : 18, borderBottomRightRadius: isMobile ? 0 : 18, backgroundColor: ui.colors.surface }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Export</Text>
+              <Pressable accessibilityRole="button" accessibilityLabel="Close export options" disabled={isExporting} onPress={() => setExportPickerOpen(false)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}><X size={19} color={ui.colors.textMuted} /></Pressable>
+            </View>
+            <Text style={{ color: ui.colors.textMuted, fontSize: 12, lineHeight: 17, marginBottom: 14 }}>Choose a PDF format to download. The current option includes all events in your team schedule.</Text>
+            <Pressable accessibilityRole="button" disabled={isExporting} onPress={() => void exportMyTeamSchedule()} style={{ minHeight: 52, paddingHorizontal: 13, borderRadius: 12, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceGlass, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, opacity: isExporting ? 0.6 : 1 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>My Team Schedule</Text>
+                <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 2 }}>PDF · {schedule.length} events</Text>
+              </View>
+              <Download size={17} color={ui.colors.primaryStrong} />
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </TeamLeaderAppShell>
   );
 }

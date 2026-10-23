@@ -22,6 +22,7 @@ import { useGoBack } from '../../../core/hooks/useGoBack';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useAuthStore } from '../../../core/store/authStore';
+import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { uploadService } from '../../../services/storage/uploadService';
 import {
   ArrowLeft,
@@ -156,8 +157,9 @@ const saveIdMap = (key: string, value: Record<string, boolean>) => {
 };
 
 const createQrUrl = (chestNumber: string, profileSlug: string, categoryCode: string, size: number, color?: string, bgColor?: string) => {
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://sahi.in';
-  const qrData = encodeURIComponent(`${baseUrl}/candidate/${profileSlug}?chest=${chestNumber}&cat=${categoryCode}`);
+  const candidateUrl = getCurrentOriginAppUrl(`/candidate/${encodeURIComponent(profileSlug)}?chest=${encodeURIComponent(chestNumber)}&cat=${encodeURIComponent(categoryCode)}`);
+  if (!candidateUrl) return '';
+  const qrData = encodeURIComponent(candidateUrl);
   
   const fg = (color || '#111827').replace('#', '');
   const bg = bgColor && bgColor.trim() !== '' && bgColor !== 'transparent' ? bgColor.replace('#', '') : '0000';

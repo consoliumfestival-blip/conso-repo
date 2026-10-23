@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
-import { Download, Smartphone, X } from 'lucide-react-native';
+import { Download, X } from 'lucide-react-native';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText } from './TeamText';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -11,13 +13,18 @@ type InstallPromptEvent = Event & {
 
 export function TeamInstallPrompt() {
   const ui = useTeamUi();
+  const { context } = useTeamLeaderContext();
   const { width } = useWindowDimensions();
   const [installEvent, setInstallEvent] = useState<InstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [device, setDevice] = useState<'ios' | 'android' | 'other'>('other');
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const agent = window.navigator.userAgent;
+    setDevice(/iPhone|iPad|iPod/i.test(agent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      ? 'ios' : /Android/i.test(agent) ? 'android' : 'other');
 
     const installWindow = window as Window & { __teamPortalInstallEvent?: InstallPromptEvent };
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
@@ -72,9 +79,9 @@ export function TeamInstallPrompt() {
       <View style={{ ...(Platform.OS === 'web' ? { backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' } as any : {}), width: '100%', maxWidth: 520, minHeight: 94, alignSelf: 'center', padding: 12, gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 16, backgroundColor: ui.colors.surfaceGlass, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.09, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 3 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
           <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-            <Smartphone size={16} color={ui.colors.primary} />
+            <ConsoliumLogo size={30} borderRadius={9} />
           </View>
-          <TeamText numberOfLines={1} style={{ flex: 1, minWidth: 0, color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Install Team Portal</TeamText>
+          <TeamText numberOfLines={1} style={{ flex: 1, minWidth: 0, color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Install {context?.team_name || 'Team Portal'}</TeamText>
           {installEvent ? (
             <Pressable onPress={handleInstall} accessibilityRole="button" accessibilityLabel="Install Team Portal"
               style={{ minHeight: 38, minWidth: 76, paddingHorizontal: 11, borderRadius: 11, backgroundColor: ui.colors.navActive, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 5 }}>
@@ -89,11 +96,11 @@ export function TeamInstallPrompt() {
         </View>
         <View style={{ paddingLeft: 39, gap: 3 }}>
           <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
-            1. Android/tablet: Open the browser menu (⋮), select “Install app” or “Add to Home screen,” then confirm.
+            {device === 'ios' ? 'In Safari, tap Share, choose “Add to Home Screen,” then tap Add.' : 'Open the browser menu (⋮), select “Install app” or “Add to Home screen,” then confirm.'}
           </TeamText>
-          <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
-            2. iPhone/iPad: In Safari, tap Share, choose “Add to Home Screen,” then tap Add.
-          </TeamText>
+          {device === 'other' ? <TeamText style={{ color: ui.colors.textMuted, fontSize: 10.5, lineHeight: 15 }}>
+            On iPhone/iPad, use Safari Share → Add to Home Screen.
+          </TeamText> : null}
         </View>
       </View>
     </View>

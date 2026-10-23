@@ -1,11 +1,11 @@
-import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { coreColor, coreAlpha, DEFAULT_CORE_APPEARANCE, resolveCoreColors } from '@/constants/coreTheme';
+import { useCoreAppearance } from '@/core/contexts/CoreAppearanceContext';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import {
   Platform,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
@@ -16,7 +16,6 @@ import { SsfDashboardSkeleton } from '../../components/ui/SsfSkeleton';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   BarChart3,
   Bell,
@@ -84,7 +83,6 @@ type InsightView = 'overview' | 'categories' | 'organisations';
 
 const NAVY = ui.colors.text; // Text Primary
 const MUTED = ui.colors.textMuted; // Text Secondary
-const PAGE_BG = coreColor('#E2E8F0', 'background'); // Page Background
 const BORDER = coreColor('#E2E8F0', 'border'); // Border
 const EMERALD = coreColor('#0F766E', 'primary'); // Primary Green
 const EMERALD_DARK = coreColor('#0B5D4B', 'primaryHover'); // Dark Green
@@ -96,22 +94,14 @@ const WARNING = coreColor('#F59E0B', 'warning'); // Warning
 const DANGER = coreColor('#EF4444', 'danger'); // Danger
 const INFO = coreColor('#3B82F6', 'info'); // Info
 
-const categoryColors = ['#14B8A6', '#10B981', '#F97316', '#38BDF8', '#8B5CF6', '#6366F1', '#2563EB', '#F43F5E'];
-
 const dashboardBgStyle = {
-  backgroundColor: coreColor('#F4F8F7', 'surface'),
-  ...Platform.select({
-    web: {
-      backgroundImage: 'linear-gradient(135deg, #F4F8F7 0%, #F2F6FA 55%, #F7F9FB 100%)',
-    },
-    default: {},
-  }),
+  backgroundColor: coreColor('#F6F7F9', 'background'),
 } as any;
 
 // Layer 1 Surface (Welcome Section - Soft Glass)
 const welcomeSurface = {
   borderWidth: 1,
-  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
+  borderColor: BORDER,
   borderRadius: 10,
   shadowColor: "#111827",
   shadowOpacity: 0.015,
@@ -134,7 +124,7 @@ const welcomeSurface = {
 // Layer 2 Surface (Metric Cards - Soft Glass)
 const cardSurface = {
   borderWidth: 1,
-  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
+  borderColor: BORDER,
   borderRadius: 10,
   shadowColor: "#111827",
   shadowOpacity: 0.015,
@@ -157,7 +147,7 @@ const cardSurface = {
 // Layer 2.5 Surface (Quick Action Cards - Soft Glass)
 const actionCardSurface = {
   borderWidth: 1,
-  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
+  borderColor: BORDER,
   borderRadius: 10,
   shadowColor: "#111827",
   shadowOpacity: 0.015,
@@ -180,7 +170,7 @@ const actionCardSurface = {
 // Layer 3 Surface (Analytics & Activity Panels - High-Readability Data Panels)
 const panelSurface = {
   borderWidth: 1,
-  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
+  borderColor: BORDER,
   borderRadius: 10,
   shadowColor: "#111827",
   shadowOpacity: 0.015,
@@ -222,6 +212,7 @@ function formatRelativeTime(value: string) {
 }
 
 function MetricCard({ label, value, delta, trend, icon: Icon, iconBg, iconColor, delay }: MetricCardProps) {
+  const colors = useCoreAppearance()?.colors;
   const trendColor = trend === 'down' ? DANGER : trend === 'neutral' ? MUTED : SUCCESS;
   const trendPrefix = trend === 'down' ? '-' : trend === 'neutral' ? '' : '+';
 
@@ -229,7 +220,7 @@ function MetricCard({ label, value, delta, trend, icon: Icon, iconBg, iconColor,
     <Animated.View
       entering={FadeInUp.duration(420).delay(delay).springify()}
       className="metric-card"
-      style={[cardSurface, { flex: 1, minWidth: 190, height: 102, padding: 15, overflow: 'hidden' }]}
+      style={[cardSurface, { backgroundColor: colors?.surface, borderColor: colors?.border, flex: 1, minWidth: 190, height: 102, padding: 15, overflow: 'hidden' }]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11.5 }}>{label}</Text>
@@ -279,6 +270,7 @@ function SidebarItem({ label, icon: Icon, active, onPress }: NavigationItem) {
 
 
 function ActionCard({ label, icon: Icon, visible, onPress }: ActionCardProps) {
+  const colors = useCoreAppearance()?.colors;
   if (!visible) return null;
 
   return (
@@ -287,10 +279,10 @@ function ActionCard({ label, icon: Icon, visible, onPress }: ActionCardProps) {
       disabled={!onPress}
       activeOpacity={0.8}
       className="action-card"
-      style={[actionCardSurface, { height: 62, flex: 1, minWidth: 175, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }]}
+      style={[actionCardSurface, { backgroundColor: colors?.surface, borderColor: colors?.border, height: 62, flex: 1, minWidth: 175, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }]}
     >
-      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
-        <Icon color={coreColor(EMERALD_DARK, 'primaryText')} size={19} strokeWidth={2.4} />
+      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: colors?.primarySoft ?? ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
+        <Icon color={colors?.primaryText ?? EMERALD_DARK} size={19} strokeWidth={2.4} />
       </View>
       <Text numberOfLines={2} style={{ flex: 1, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11.5, lineHeight: 15 }}>
         {label}
@@ -332,6 +324,7 @@ function InsightChip({
 }
 
 function SectionHeader({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
+  const colors = useCoreAppearance()?.colors;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
       <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 14 }}>{title}</Text>
@@ -339,7 +332,7 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
         <TouchableOpacity
           onPress={onAction}
           disabled={!onAction}
-          style={{ height: 28, paddingHorizontal: 14, borderRadius: 999, backgroundColor: ui.colors.successSoft, flexDirection: 'row', alignItems: 'center' }}
+          style={{ height: 28, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors?.primarySoft ?? ui.colors.primarySoft, flexDirection: 'row', alignItems: 'center' }}
         >
           <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor(EMERALD_DARK, 'primaryText'), fontSize: 10 }}>{action}</Text>
           <ChevronRight color={coreColor(EMERALD_DARK, 'primaryText')} size={13} />
@@ -350,8 +343,9 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
 }
 
 function EmptyAnalytics({ title }: { title: string }) {
+  const colors = useCoreAppearance()?.colors;
   return (
-    <View style={[panelSurface, { flex: 1, minWidth: 310, minHeight: 222, padding: 16 }]}>
+    <View style={[panelSurface, { backgroundColor: colors?.surface, borderColor: colors?.border, flex: 1, minWidth: 310, minHeight: 222, padding: 16 }]}>
       <SectionHeader title={title} />
       <View style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: BORDER, backgroundColor: coreColor('#EDF2F7', 'surface'), alignItems: 'center', justifyContent: 'center' }}>
         <BarChart3 color={coreColor("#CBD5E1", 'text')} size={34} />
@@ -362,6 +356,9 @@ function EmptyAnalytics({ title }: { title: string }) {
 }
 
 export default function AdminDashboard() {
+  const appearance = useCoreAppearance();
+  const dashboardColors = appearance?.colors ?? resolveCoreColors(DEFAULT_CORE_APPEARANCE, false);
+  const categoryColors = [dashboardColors.primary, dashboardColors.info, dashboardColors.success, dashboardColors.warning, dashboardColors.danger, dashboardColors.textMuted, dashboardColors.primaryHover, dashboardColors.borderStrong];
   const { logout, user, role, is_superadmin } = useAuthStore();
   const router = useRouter();
   const { useStats } = useAdminDashboard();
@@ -459,7 +456,7 @@ export default function AdminDashboard() {
     detail: `${registration.itemName} • ${registration.organisationName}`,
     time: formatRelativeTime(registration.createdAt),
     icon: Users,
-    bg: ui.colors.successSoft,
+    bg: dashboardColors.primarySoft,
     color: coreColor(EMERALD_DARK, 'primaryText'),
   }));
 
@@ -469,7 +466,7 @@ export default function AdminDashboard() {
 
   return (
     <PageAccessControl pageKey="admin_dashboard">
-      <View style={{ flex: 1, backgroundColor: PAGE_BG, flexDirection: 'row' }}>
+      <View style={{ flex: 1, backgroundColor: dashboardColors.background, flexDirection: 'row' }}>
         {showEmbeddedNavigation && isTablet && showSidebar && (
           <View style={{ width: 210, backgroundColor: SIDEBAR }}>
             <View style={{ height: 84, paddingHorizontal: 16, justifyContent: 'center', backgroundColor: SIDEBAR_DARK }}>
@@ -515,7 +512,7 @@ export default function AdminDashboard() {
           </View>
         )}
 
-        <View style={[{ flex: 1 }, dashboardBgStyle]}>
+        <View style={[{ flex: 1 }, dashboardBgStyle, { backgroundColor: dashboardColors.background }]}>
           <View
             style={[
               { display: isTablet ? 'none' : 'flex', height: 56, backgroundColor: ui.colors.surface, borderBottomWidth: 1, borderBottomColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.8), paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
@@ -617,7 +614,7 @@ export default function AdminDashboard() {
           </View>
 
           <ScrollView
-            style={[{ flex: 1 }, dashboardBgStyle]}
+            style={[{ flex: 1 }, dashboardBgStyle, { backgroundColor: dashboardColors.background }]}
             contentContainerStyle={{
               padding: isDesktop ? 24 : 16,
               paddingBottom: 16,
@@ -639,6 +636,7 @@ export default function AdminDashboard() {
               className="welcome-card"
               style={[
                 welcomeSurface,
+                { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border },
                 {
                   minHeight: 88,
                   padding: isDesktop ? 17 : 16,
@@ -647,15 +645,9 @@ export default function AdminDashboard() {
                 }
               ]}
             >
-              <LinearGradient
-                colors={[ui.colors.surface, coreColor('#F8FBFA', 'surface')]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={[StyleSheet.absoluteFillObject, { zIndex: -1 }]}
-              />
               <View style={{ flexDirection: isDesktop ? 'row' : 'column', alignItems: isDesktop ? 'center' : 'flex-start', justifyContent: 'space-between', width: '100%' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 260 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: coreColor('#D1FAE5', 'successSoft'), alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: dashboardColors.primarySoft, alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
                     <Users color={coreColor(EMERALD_DARK, 'primaryText')} size={23} strokeWidth={2.4} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -683,7 +675,7 @@ export default function AdminDashboard() {
             </Animated.View>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta={`${data?.participantsLast7Days ?? 0} added in last 7 days`} trend="neutral" icon={Users} iconBg={ui.colors.primarySoft} iconColor={coreColor(EMERALD, 'primaryText')} delay={80} />
+              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta={`${data?.participantsLast7Days ?? 0} added in last 7 days`} trend="neutral" icon={Users} iconBg={dashboardColors.primarySoft} iconColor={dashboardColors.primaryText} delay={80} />
               <MetricCard label="Items" value={stats.items.toLocaleString()} delta="Active festival items" trend="neutral" icon={Trophy} iconBg={ui.colors.warningSoft} iconColor={WARNING} delay={140} />
               <MetricCard label="Pending Registrations" value={stats.pendingRegs.toLocaleString()} delta={`${data?.pendingRegsLast7Days ?? 0} created in last 7 days`} trend="neutral" icon={Clock} iconBg={ui.colors.destructiveSoft} iconColor={DANGER} delay={200} />
               <MetricCard label="Active Schedules" value={(data?.activeSchedulesCount ?? 0).toLocaleString()} delta="Scheduled or ongoing events" trend="neutral" icon={Calendar} iconBg={ui.colors.infoSoft} iconColor={INFO} delay={260} />
@@ -705,6 +697,7 @@ export default function AdminDashboard() {
             <View
               style={[
                 panelSurface,
+                { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border },
                 {
                   minHeight: 58,
                   paddingHorizontal: 14,
@@ -735,7 +728,7 @@ export default function AdminDashboard() {
 
             <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
               {insightView !== 'organisations' && (data?.categoryGraph && data.categoryGraph.length > 0 ? (
-                <Animated.View entering={FadeInUp.duration(460).delay(360).springify()} className="panel-card" style={[panelSurface, { flex: insightView === 'categories' ? 1.45 : 1, minWidth: 330, minHeight: 222, padding: 16 }]}>
+                <Animated.View entering={FadeInUp.duration(460).delay(360).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'categories' ? 1.45 : 1, minWidth: 330, minHeight: 222, padding: 16 }]}>
                   <SectionHeader title="Participants by Category" action="View Details" onAction={() => router.push('/(admin)/participants' as any)} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
@@ -798,7 +791,7 @@ export default function AdminDashboard() {
               ))}
 
               {insightView !== 'categories' && (data?.unitGraph && data.unitGraph.length > 0 ? (
-                <Animated.View entering={FadeInUp.duration(460).delay(430).springify()} className="panel-card" style={[panelSurface, { flex: insightView === 'organisations' ? 1.45 : 1, minWidth: 340, minHeight: 222, padding: 16 }]}>
+                <Animated.View entering={FadeInUp.duration(460).delay(430).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'organisations' ? 1.45 : 1, minWidth: 340, minHeight: 222, padding: 16 }]}>
                   <SectionHeader title="Participants by Team" action="View Details" onAction={() => router.push('/(admin)/organisations' as any)} />
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
@@ -860,7 +853,7 @@ export default function AdminDashboard() {
                 <EmptyAnalytics title="Participants by Team" />
               ))}
 
-              <Animated.View entering={FadeInUp.duration(460).delay(500).springify()} className="panel-card" style={[panelSurface, { flex: 1, minWidth: 292, minHeight: 222, padding: 16 }]}>
+              <Animated.View entering={FadeInUp.duration(460).delay(500).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: 1, minWidth: 292, minHeight: 222, padding: 16 }]}>
                 <SectionHeader title="Recent Registrations" action="View All" onAction={() => router.push('/(admin)/participants' as any)} />
                 <View style={{ gap: 12 }}>
                   {activityItems.length === 0 ? (

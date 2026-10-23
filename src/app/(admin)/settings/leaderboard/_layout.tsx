@@ -1,5 +1,6 @@
 import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -65,7 +66,7 @@ const formatDateTime = (value: string | null) => {
 
 const getDistrictLabel = (row: LeaderboardRow) => {
   if (row.organisation_type?.toLowerCase().includes('district')) return row.organisation_name;
-  return 'Sahithyolsav District';
+  return 'Consolium District';
 };
 
 const Sidebar = ({
@@ -84,11 +85,11 @@ const Sidebar = ({
       <View>
         <View style={styles.brandRow}>
           <View style={styles.logoMark}>
-            <Trophy size={22} color={ui.colors.onPrimary} />
+            <ConsoliumLogo size={42} borderRadius={13} />
           </View>
           {!compact && (
             <View style={{ flex: 1 }}>
-              <Text style={styles.brandTitle}>Sahithyolsav</Text>
+              <Text style={styles.brandTitle}>Consolium</Text>
               <Text style={styles.brandYear}>2026 Admin</Text>
             </View>
           )}
@@ -306,7 +307,7 @@ export default function LeaderboardLayout() {
                 <ArrowLeft size={21} color={coreColor(colors.navy, 'primaryText')} />
               </TouchableOpacity>
               <View>
-                <Text style={styles.eyebrow}>Sahithyolsav 2026</Text>
+                <Text style={styles.eyebrow}>Consolium</Text>
                 <Text style={styles.pageTitle}>{pageTitle}</Text>
               </View>
             </View>

@@ -6,14 +6,17 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ShieldCheck, AlertCircle, ArrowLeft, ArrowRight, Camera, X } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, ArrowRight, Camera, X } from 'lucide-react-native';
 import { judgeTokenService } from '../../services/judgeTokenService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Device from 'expo-device';
 import { supabase } from '../../core/config/supabase';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 
 export default function JudgePortalLanding() {
+  useEffect(() => applyPortalPwaMetadata('admin', 'Consolium Judge'), []);
   const router = useRouter();
   const params = useLocalSearchParams();
   
@@ -458,11 +461,11 @@ export default function JudgePortalLanding() {
             {/* Left Column (Brand & Info) */}
             <View style={{ flex: 1, padding: 56, position: 'relative', borderRightWidth: 1, borderRightColor: '#F1F5F9' }}>
               {renderBackButton()}
-              <Text style={{ fontFamily: 'Poppins_900Black', color: '#1D4ED8', fontSize: 20, letterSpacing: 1, marginTop: 20, marginBottom: 32 }}>ALVIORA</Text>
+              <View style={{ marginTop: 20, marginBottom: 32 }}><ConsoliumLogo size={46} /></View>
               
               <View style={{ marginTop: 20 }}>
                 <View style={{ width: 64, height: 64, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 32 }}>
-                  <ShieldCheck size={32} color="#2563EB" strokeWidth={2} />
+                  <ConsoliumLogo size={64} borderRadius={16} />
                 </View>
                 <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 44, color: '#0F172A', lineHeight: 48 }}>Judging</Text>
                 <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 44, color: '#2563EB', lineHeight: 48 }}>System</Text>
@@ -487,7 +490,7 @@ export default function JudgePortalLanding() {
               </View>
               
               <View className="mt-16 items-center">
-                <Text className="text-[#94A3B8] font-poppins-medium text-[10px] tracking-widest uppercase">Powered by ALVIORA</Text>
+                <Text className="text-[#94A3B8] font-poppins-medium text-[10px] tracking-widest uppercase">Consolium</Text>
               </View>
             </View>
 
@@ -509,7 +512,7 @@ export default function JudgePortalLanding() {
               </View>
               
               <View style={{ width: 60, height: 60, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
-                <ShieldCheck size={28} color="#2563EB" strokeWidth={2} />
+                <ConsoliumLogo size={56} borderRadius={16} />
               </View>
               <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 32, color: '#0F172A', lineHeight: 36, textAlign: 'center' }}>Judging</Text>
               <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 32, color: '#2563EB', lineHeight: 36, textAlign: 'center' }}>System</Text>
@@ -525,7 +528,7 @@ export default function JudgePortalLanding() {
               </View>
 
               <View className="mt-12 mb-6 items-center">
-                <Text className="text-[#94A3B8] font-poppins-medium text-[10px] tracking-widest uppercase">Powered by ALVIORA</Text>
+                <Text className="text-[#94A3B8] font-poppins-medium text-[10px] tracking-widest uppercase">Consolium</Text>
               </View>
             </View>
 

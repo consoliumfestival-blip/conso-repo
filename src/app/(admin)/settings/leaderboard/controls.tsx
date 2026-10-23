@@ -307,7 +307,7 @@ export default function LeaderboardControlsPage() {
                     await persistSetting({ public_festival_name: publicFestivalName.trim() || null });
                   }
                 }}
-                placeholder={activeFestival?.custom_name || 'e.g. Alviora Festival 2026'}
+                placeholder={activeFestival?.custom_name || 'e.g. Festival 2026'}
                 style={styles.textInput}
                 placeholderTextColor={colors.muted}
                 editable={!updateSettingsMutation.isPending}

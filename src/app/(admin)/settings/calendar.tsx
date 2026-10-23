@@ -138,7 +138,7 @@ export default function FestivalCalendarSettings() {
             <View>
               <Label>Festival Name (Optional)</Label>
               <Input
-                placeholder={`e.g., Sahithyolsav ${formData.start_date.slice(0, 4) || new Date().getFullYear()}`}
+                placeholder={`e.g., Festival ${formData.start_date.slice(0, 4) || new Date().getFullYear()}`}
                 value={formData.custom_name}
                 onChangeText={(text) => setFormData({ ...formData, custom_name: text })}
               />

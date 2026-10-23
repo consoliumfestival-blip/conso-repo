@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 
 const festivalTypes = [
   { label: 'College Fest', icon: '🎓' },
-  { label: 'Sahithyolsav', icon: '📚' },
+  { label: 'Festival', icon: '📚' },
   { label: 'School Fest', icon: '🏫' },
   { label: 'Custom Festival', icon: '✨' },
 ];

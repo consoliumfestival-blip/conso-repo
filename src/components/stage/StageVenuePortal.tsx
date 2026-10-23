@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   Clock,
   Lock,
-  LockKeyhole,
   MapPin,
   RefreshCw,
   RotateCcw,
@@ -36,6 +35,9 @@ import { stageManagementService, StageRegistrationRow, StageScheduleRow } from '
 import { codeLetterTarget, codeLetterPreview } from '@/core/utils/codeLetters';
 import { invalidateCodeLetters } from '@/core/utils/invalidateCodeLetters';
 import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
+import { PwaInstallCard } from '@/components/ui/PwaInstallCard';
 import { ScheduleLifecycleActions } from '@/components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 
@@ -123,6 +125,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     retry: false,
     staleTime: 0,
   });
+  React.useEffect(() => applyPortalPwaMetadata('stage', venueQuery.data?.venue.name, venueId), [venueQuery.data?.venue.name, venueId]);
   const schedules = venueQuery.data?.schedules ?? [];
   const registrations = (venueQuery.data?.registrations ?? []) as PortalRegistration[];
   useCodeLetterUpdates(pin ? `venue:${venueId}` : null, () => venueQuery.refetch());
@@ -264,7 +267,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     return (
       <View className="flex-1 bg-ssf-bg items-center justify-center px-5 py-8">
         <SsfCard className={`w-full max-w-md shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}>
-          <View className="mb-4 h-12 w-12 items-center justify-center rounded-xl bg-core-primary-soft-teal-50"><LockKeyhole size={23} color={coreColor("#0F766E", 'primaryText')} /></View>
+          <View className="mb-4"><ConsoliumLogo size={48} borderRadius={12} /></View>
           <Text className="text-2xl font-poppins-black text-ssf-text">Stage access</Text>
           <Text className="mt-1 font-poppins text-sm text-ssf-text-muted">Enter the four-digit PIN provided for this stage.</Text>
           <TextInput
@@ -533,14 +536,19 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
   return (
       <ScrollView className={`flex-1 bg-ssf-bg ${isMobile ? 'px-3 py-3' : 'px-4 py-6'}`} refreshControl={<RefreshControl refreshing={venueQuery.isRefetching} onRefresh={refresh} />}>
       <View className="mb-5 flex-row items-center justify-between gap-3">
-        <View className="flex-1">
-          <Text numberOfLines={isMobile ? 2 : undefined} className={`${isMobile ? 'text-xl' : 'text-3xl'} font-poppins-black text-ssf-text`}>{venueQuery.data?.venue.name || 'Stage Management'}</Text>
-          <Text className="mt-1 font-poppins text-sm text-ssf-text-muted">{filteredSchedules.length} scheduled events</Text>
+        <View className="flex-1 flex-row items-center gap-3">
+          <ConsoliumLogo size={isMobile ? 38 : 46} />
+          <View className="flex-1">
+            <Text numberOfLines={isMobile ? 2 : undefined} className={`${isMobile ? 'text-xl' : 'text-3xl'} font-poppins-black text-ssf-text`}>{venueQuery.data?.venue.name || 'Stage Management'}</Text>
+            <Text className="mt-1 font-poppins text-sm text-ssf-text-muted">{filteredSchedules.length} scheduled events</Text>
+          </View>
         </View>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stage events" onPress={refresh} disabled={venueQuery.isRefetching} className={`${isMobile ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center rounded-xl border border-ssf-border bg-core-surface-white`}>
           <RefreshCw size={16} color={coreColor("#475569", 'text')} />
         </TouchableOpacity>
       </View>
+
+      <View className="mb-4"><PwaInstallCard appName={venueQuery.data?.venue.name || 'Stage Management'} /></View>
 
       <View className="mb-4 flex-row flex-wrap gap-3">
         <View className="min-w-[140px] flex-1 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white p-3">

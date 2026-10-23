@@ -12,8 +12,11 @@ import { Card } from '@/components/team/TeamCard';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { authService } from '@/services/authService';
 import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 
 export default function TeamLeaderFirstLogin() {
+  React.useEffect(() => applyPortalPwaMetadata('team'), []);
   const ui = useTeamUi();
   const { mode, toggleMode } = useTeamTheme();
   const user = useAuthStore((state) => state.user);
@@ -108,7 +111,7 @@ export default function TeamLeaderFirstLogin() {
               justifyContent: 'center',
               marginBottom: 12,
             }}>
-              <ShieldCheck size={28} color={ui.colors.primary} />
+              <ConsoliumLogo size={56} borderRadius={28} />
             </View>
             <Text style={{
               fontSize: 20,
@@ -120,7 +123,7 @@ export default function TeamLeaderFirstLogin() {
             </Text>
             <Text style={{ fontSize: 13, color: ui.colors.textMuted, marginTop: 6, textAlign: 'center' }}>
               {requiresUsernameChange
-                ? 'Welcome to Alviora Team Portal! Choose the username and password you want to use.'
+                ? 'Welcome to the Team Portal. Choose the username and password you want to use.'
                 : 'Your administrator reset your temporary password. Choose a new password to continue.'}
             </Text>
           </View>

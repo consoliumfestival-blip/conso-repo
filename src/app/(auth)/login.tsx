@@ -5,6 +5,8 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react-na
 import { useAuthStore } from '../../core/store/authStore';
 import { DevConfig } from '@/core/config/dev_config';
 import { authService } from '@/services/authService';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 
 const palette = {
   ink: coreColor('#17212E', 'text'),
@@ -18,6 +20,7 @@ const palette = {
 };
 
 export default function LoginScreen() {
+  React.useEffect(() => applyPortalPwaMetadata('admin'), []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -57,6 +60,7 @@ export default function LoginScreen() {
     <ScrollView style={styles.screen} contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <View style={styles.shell}>
+        <View style={{ alignItems: 'center', marginBottom: 12 }}><ConsoliumLogo size={56} borderRadius={16} /></View>
         <Text accessibilityRole="header" style={styles.brandTitle}>Consolium</Text>
         <View style={styles.loginCard}>
           <View style={styles.loginHeader}>

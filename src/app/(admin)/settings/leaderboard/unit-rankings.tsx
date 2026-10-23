@@ -63,7 +63,7 @@ const formatDateTime = (value: string | null) => {
 
 const getDistrictLabel = (row: LeaderboardRow) => {
   if (row.organisation_type?.toLowerCase().includes('district')) return row.organisation_name;
-  return 'Sahithyolsav District';
+  return 'Consolium District';
 };
 
 const RankBadge = ({ rank }: { rank: number }) => {

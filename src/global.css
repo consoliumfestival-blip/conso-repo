@@ -130,17 +130,13 @@ html, body, #root, #__next {
 }
 
 .welcome-card, .metric-card, .action-card {
-  background: rgba(255, 255, 255, 0.90) !important;
   backdrop-filter: blur(6px) !important;
   -webkit-backdrop-filter: blur(6px) !important;
-  border: 1px solid rgba(100, 116, 139, 0.25) !important;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
 
 .panel-card {
-  background: rgba(255, 255, 255, 0.97) !important;
-  border: 1px solid rgba(100, 116, 139, 0.25) !important;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
 }
@@ -148,7 +144,6 @@ html, body, #root, #__next {
 .action-card:hover {
   transform: translateY(-1px) !important;
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.025) !important;
-  border-color: rgba(71, 85, 105, 0.34) !important;
 }
 
 .metric-card:hover, .welcome-card:hover, .panel-card:hover {
@@ -156,16 +151,6 @@ html, body, #root, #__next {
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.015) !important;
 }
 
-@supports not (backdrop-filter: blur(6px)) {
-  .welcome-card, .metric-card, .action-card {
-    background: rgba(255, 255, 255, 0.97) !important;
-  }
-}
-@supports not (-webkit-backdrop-filter: blur(6px)) {
-  .welcome-card, .metric-card, .action-card {
-    background: rgba(255, 255, 255, 0.97) !important;
-  }
-}
 @font-face {
   font-family: 'Barabara';
   src: url('/fonts/BARABARA-final.otf') format('opentype');
@@ -211,8 +196,6 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
 [data-core-theme-scope] .metric-card,
 [data-core-theme-scope] .action-card,
 [data-core-theme-scope] .panel-card {
-  background: var(--core-surface) !important;
-  border-color: var(--core-border) !important;
   box-shadow: 0 2px 8px rgb(var(--core-overlay-rgb) / 0.045) !important;
   -webkit-backdrop-filter: var(--core-blur, none) !important;
   backdrop-filter: var(--core-blur, none) !important;

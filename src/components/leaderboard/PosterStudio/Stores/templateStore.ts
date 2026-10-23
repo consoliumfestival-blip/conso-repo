@@ -124,11 +124,11 @@ const DEFAULT_VARIABLES: TemplateVariables = {
   category_name_ml: 'ലോവർ പ്രൈമറി',
   result_no: '128',
   name_1: 'SHAMIL',
-  unit_1: 'Kodasseri',
+  unit_1: 'Team A',
   name_2: 'NOUFAL',
-  unit_2: 'Karuvarakkund',
+  unit_2: 'Team B',
   name_3: 'YASIN',
-  unit_3: 'Kalikavu',
+  unit_3: 'Team C',
 };
 
 /** Inject event_name_primary + event_name_secondary computed variables */

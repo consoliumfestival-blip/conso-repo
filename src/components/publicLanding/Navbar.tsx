@@ -1,7 +1,8 @@
 import React from 'react';
-import { Platform, Text, TouchableOpacity, useWindowDimensions, View, Image } from 'react-native';
+import { Platform, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 
 const navItems = [
   { label: 'Home', href: '/(public)' },
@@ -36,17 +37,13 @@ export function Navbar() {
         }}
       >
         <TouchableOpacity onPress={() => router.push('/(public)' as never)} activeOpacity={0.82} className="flex-row items-center">
-          <Image
-            source={{ uri: '/logo/image-removebg-preview.png' }}
-            style={{ width: 36, height: 36, marginRight: 12 }}
-            resizeMode="contain"
-          />
+          <ConsoliumLogo size={36} style={{ marginRight: 12 }} />
           <View>
             <Text className="font-poppins-bold uppercase" style={{ color: '#FFFFFF', fontSize: 12, letterSpacing: 2 }}>
-              Kodasseri Sector
+              Consolium
             </Text>
             <Text className="font-poppins uppercase" style={{ color: 'rgba(255,255,255,0.58)', fontSize: 10, letterSpacing: 1.5 }}>
-              Sahithyolsav 2026
+              Festival Management
             </Text>
           </View>
         </TouchableOpacity>

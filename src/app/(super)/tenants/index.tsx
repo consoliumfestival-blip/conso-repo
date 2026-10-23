@@ -561,7 +561,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
           <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Festival Template</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
             {([
-              { value: 'sahithyolsav', label: 'Sahithyolsav' },
+              { value: 'sahithyolsav', label: 'Standard Festival' },
               { value: 'college_fest', label: 'College Fest' },
             ] as { value: FestivalTemplate; label: string }[]).map(option => (
               <TouchableOpacity

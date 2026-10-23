@@ -9,6 +9,7 @@ import { Calendar, MapPin, Clock, Search, X, Lock, Bell, RefreshCw, Copy, Check,
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { useAuthStore } from '../../../core/store/authStore';
+import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
@@ -102,12 +103,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
 
   const copyStageLink = async (venueId: string) => {
     const path = `/stage-management/venue/${venueId}`;
-    const url = Platform.OS === 'web' && typeof window !== 'undefined'
-      ? `${window.location.origin}${path}`
-      : `http://localhost:8081${path}`;
+    const url = Platform.OS === 'web' ? getCurrentOriginAppUrl(path) : null;
 
     try {
-      if (Platform.OS !== 'web' || !navigator?.clipboard?.writeText) {
+      if (!url || Platform.OS !== 'web' || !navigator?.clipboard?.writeText) {
         throw new Error('Clipboard is unavailable on this device.');
       }
       await navigator.clipboard.writeText(url);

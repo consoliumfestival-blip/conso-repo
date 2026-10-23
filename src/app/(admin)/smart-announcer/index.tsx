@@ -12,6 +12,7 @@ import { useAuthStore } from '@/core/store/authStore';
 import { useFestival } from '@/core/hooks/useFestival';
 import { ui } from '@/constants/designSystem';
 import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
+import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 
 
 interface StrategicResult {
@@ -437,7 +438,7 @@ export default function SmartAnnouncerPage() {
               <View style={{ alignItems: 'center' }}>
                 <View style={{ padding: 16, backgroundColor: coreColor('white', 'surface'), borderRadius: 12, borderWidth: 1, borderColor: coreColor('#e2e8f0', 'border'), marginBottom: 16 }}>
                   <QRCode
-                    value={typeof window !== 'undefined' ? `${window.location.origin}/announcer/${announcerToken}` : `https://sahi-app.com/announcer/${announcerToken}`}
+                    value={getCurrentOriginAppUrl(`/announcer/${encodeURIComponent(announcerToken)}`) || ''}
                     size={160}
                     color={coreColor("#0f766e", 'primaryText')}
                     backgroundColor={coreColor("white", 'surface')}

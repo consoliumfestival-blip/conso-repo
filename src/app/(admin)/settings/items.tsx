@@ -292,7 +292,7 @@ export default function ItemActivationSettings() {
         <View className="mb-6">
           <Text className="text-3xl font-poppins-black text-ui-text">Item Activation</Text>
           <Text className="text-sm font-poppins text-ui-text-muted mt-1">
-            Enable items from the {HANDBOOK_ITEMS.length} Sahityotsav 2026 events
+            Enable items from the {HANDBOOK_ITEMS.length} official events
           </Text>
         </View>
 

@@ -65,7 +65,14 @@ function LayoutContent() {
       ? "/team-management-manifest.json"
       : pathname === "/team" || pathname.startsWith("/team/")
         ? "/team-manifest.json"
+        : pathname.startsWith("/stage-management/venue/")
+          ? `/portal-manifest?portal=stage&identity=${encodeURIComponent(pathname.split('/')[3] || '')}`
         : "/manifest.json";
+    const portal = pathname === "/team-leaders"
+      ? "team-management"
+      : pathname === "/team" || pathname.startsWith("/team/")
+        ? "team"
+      : pathname.startsWith("/stage-management/venue/") ? "stage" : "admin";
     const links = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel~="manifest"]'));
     if (links.length === 0) {
       const link = document.createElement("link");
@@ -74,7 +81,11 @@ function LayoutContent() {
       document.head.appendChild(link);
       return;
     }
-    links.forEach((link) => { link.href = manifestPath; });
+    links.forEach((link) => {
+      if (link.dataset.portalPwa === portal) return;
+      link.href = manifestPath;
+      delete link.dataset.portalPwa;
+    });
   }, [pathname]);
 
   if (blockProtectedCoreRoute) return <AppLoadingScreen />;

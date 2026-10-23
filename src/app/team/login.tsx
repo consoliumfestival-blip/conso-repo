@@ -10,8 +10,11 @@ import { Button } from '@/components/team/TeamButton';
 import { Label } from '@/components/team/TeamLabel';
 import { Card } from '@/components/team/TeamCard';
 import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 
 export default function TeamLeaderLogin() {
+  React.useEffect(() => applyPortalPwaMetadata('team'), []);
   const ui = useTeamUi();
   const { mode, toggleMode } = useTeamTheme();
   const [username, setUsername] = useState('');
@@ -87,7 +90,7 @@ export default function TeamLeaderLogin() {
               justifyContent: 'center',
               marginBottom: 12,
             }}>
-              <UserRound size={28} color={ui.colors.primary} style={{ opacity: 1 }} />
+              <ConsoliumLogo size={56} borderRadius={28} />
             </View>
             <Text style={{
               fontSize: 20,

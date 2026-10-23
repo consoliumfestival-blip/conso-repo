@@ -4,6 +4,7 @@
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [
+    { "source": "/portal-manifest", "destination": "/api/portal-manifest" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

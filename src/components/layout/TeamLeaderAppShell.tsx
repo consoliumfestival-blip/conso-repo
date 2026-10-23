@@ -24,6 +24,8 @@ import {
 } from "lucide-react-native";
 import { useAuthStore } from "@/core/store/authStore";
 import { useTeamLeaderContext } from "@/core/contexts/TeamLeaderContext";
+import { ConsoliumLogo } from "@/components/ui/ConsoliumLogo";
+import { applyPortalPwaMetadata } from "@/core/utils/portalPwaMetadata";
 
 type IconType = React.ComponentType<{
   color?: string;
@@ -121,10 +123,7 @@ export function TeamLeaderAppShell({
       router.replace("/team/first-login");
     }
   }, [user, pathname, router]);
-  const teamInitial = (context?.team_name || "T")
-    .trim()
-    .charAt(0)
-    .toUpperCase();
+  React.useEffect(() => applyPortalPwaMetadata('team', context?.team_name, context?.festival_team_id), [context?.team_name, context?.festival_team_id]);
   const portalRootId = Platform.OS === 'web' && isFocused
     ? 'team-leader-portal-active'
     : 'team-leader-portal';
@@ -193,26 +192,7 @@ export function TeamLeaderAppShell({
                       gap: 9,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 13,
-                        backgroundColor: ui.colors.primaryStrong,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: ui.colors.onPrimary,
-                          fontSize: 15,
-                          fontWeight: "800",
-                        }}
-                      >
-                        {teamInitial}
-                      </Text>
-                    </View>
+                    <ConsoliumLogo size={42} borderRadius={13} />
                     <View>
                       <Text
                         style={{
@@ -250,26 +230,7 @@ export function TeamLeaderAppShell({
                 hitSlop={8}
                 style={{ alignItems: "center" }}
               >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    backgroundColor: ui.colors.primaryStrong,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: ui.colors.onPrimary,
-                      fontSize: 15,
-                      fontWeight: "800",
-                    }}
-                  >
-                    {teamInitial}
-                  </Text>
-                </View>
+                <ConsoliumLogo size={32} borderRadius={10} />
                 <PanelLeftOpen
                   size={15}
                   color={ui.colors.textMuted}
@@ -404,11 +365,7 @@ export function TeamLeaderAppShell({
                   justifyContent: "center",
                 }}
               >
-                  <Text
-                  style={{ color: ui.colors.primary, fontSize: 13, fontWeight: "700" }}
-                >
-                  {teamInitial}
-                </Text>
+                <ConsoliumLogo size={30} borderRadius={10} />
               </TouchableOpacity>
             </View>
           </View>
@@ -431,7 +388,7 @@ export function TeamLeaderAppShell({
         <View style={{ backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityRole="button" accessibilityLabel={`Open ${context?.team_name || 'team'} profile`}
             style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primaryStrong, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>
+            <ConsoliumLogo size={40} borderRadius={20} />
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TouchableOpacity onPress={toggleMode} accessibilityRole="button" accessibilityLabel={themeActionLabel}

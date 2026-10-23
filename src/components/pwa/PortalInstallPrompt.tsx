@@ -3,6 +3,7 @@ import { Platform, Pressable, Text, View, useWindowDimensions } from 'react-nati
 import { Download, X } from 'lucide-react-native';
 import { ui } from '@/constants/designSystem';
 import { SsfButton } from '@/components/ui/SsfButton';
+import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 
 type InstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -33,9 +34,13 @@ export function PortalInstallPrompt({ portal = 'main' }: { portal?: InstallPorta
   const [installEvent, setInstallEventState] = useState<InstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [device, setDevice] = useState<'ios' | 'android' | 'other'>('other');
 
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const agent = window.navigator.userAgent;
+    setDevice(/iPhone|iPad|iPod/i.test(agent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+      ? 'ios' : /Android/i.test(agent) ? 'android' : 'other');
     const installWindow = window as InstallWindow;
     const standalone = window.matchMedia?.('(display-mode: standalone)').matches
       || (navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -87,11 +92,12 @@ export function PortalInstallPrompt({ portal = 'main' }: { portal?: InstallPorta
     }
   };
 
-  const portalLabel = portal === 'main' ? 'Main Portal' : 'Team Management';
+  const portalLabel = portal === 'main' ? 'Consolium' : 'Team Management';
   return (
     <View style={{ marginHorizontal: 12, marginTop: 10, marginBottom: 8, padding: 12, borderRadius: 14,
       borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, gap: 8 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <ConsoliumLogo size={30} borderRadius={9} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Install {portalLabel}</Text>
           {installEvent ? <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 2 }}>
@@ -106,11 +112,11 @@ export function PortalInstallPrompt({ portal = 'main' }: { portal?: InstallPorta
       </View>
       {!installEvent ? <View style={{ paddingLeft: 2, gap: 4 }}>
         <Text style={{ color: ui.colors.textMuted, fontSize: 11, lineHeight: 16 }}>
-          1. Android/tablet: Open the browser menu (⋮), choose “Install app” or “Add to Home screen,” then confirm.
+          {device === 'ios' ? 'In Safari, tap Share, choose “Add to Home Screen,” then tap Add.' : 'Open the browser menu (⋮), choose “Install app” or “Add to Home screen,” then confirm.'}
         </Text>
-        <Text style={{ color: ui.colors.textMuted, fontSize: 11, lineHeight: 16 }}>
-          2. iPhone/iPad: In Safari, tap Share, choose “Add to Home Screen,” then tap Add.
-        </Text>
+        {device === 'other' ? <Text style={{ color: ui.colors.textMuted, fontSize: 11, lineHeight: 16 }}>
+          On iPhone/iPad, use Safari Share → Add to Home Screen.
+        </Text> : null}
       </View> : null}
     </View>
   );

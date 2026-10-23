@@ -32,6 +32,7 @@ import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfInput } from '../../../components/ui/SsfInput';
 import { useJudges } from '../../../core/hooks/useJudges';
+import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { useAuthStore } from '../../../core/store/authStore';
 import { judgeTokenService } from '../../../services/judgeTokenService';
 import { useSchedule } from '../../../core/hooks/useSchedule';
@@ -39,6 +40,7 @@ import { supabase } from '../../../core/config/supabase';
 import QRCode from 'react-native-qrcode-svg';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
+import { ConsoliumLogo } from '../../../components/ui/ConsoliumLogo';
 
 export default function JudgesPage() {
   const router = useRouter();
@@ -1191,7 +1193,7 @@ export default function JudgesPage() {
                 <View className="bg-ui-muted rounded-xl p-4 items-center mb-4 border border-ui-border">
                   <View className="bg-core-surface-white p-2.5 rounded-xl mb-3 border border-ui-border">
                     <QRCode
-                      value={typeof window !== 'undefined' ? `${window.location.origin}/judge?code=${generatedToken}` : `https://sahi-app.com/judge?code=${generatedToken}`}
+                      value={getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`) || ''}
                       size={150}
                       color={coreColor("#065F46", 'success')}
                       backgroundColor={ui.colors.surface}
@@ -1409,8 +1411,9 @@ export default function JudgesPage() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#000080', paddingBottom: 24, marginBottom: 16, maxHeight: 265 }}>
             {/* Left Side: Inviting Message & Event Details */}
             <View style={{ flex: 1, paddingRight: 16, justifyContent: 'flex-start' }}>
+              <ConsoliumLogo size={48} style={{ marginBottom: 8 }} />
               <Text style={{ fontSize: 26, fontFamily: 'Poppins_900Black', color: '#000080', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
-                ALVIORA 2K26
+                CONSOLIUM
               </Text>
               <Text style={{ fontSize: 16, fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.text, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
                 OFFICIAL EVALUATION SHEET
@@ -1439,7 +1442,7 @@ export default function JudgesPage() {
             {/* Right Side: QR Code & Access Code (No border, Dark Blue QR) */}
             <View style={{ alignItems: 'center', justifyContent: 'center', padding: 8 }}>
               <QRCode
-                value={typeof window !== 'undefined' ? `${window.location.origin}/judge?code=${generatedToken}` : `https://sahi-app.com/judge?code=${generatedToken}`}
+                value={getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`) || ''}
                 size={140}
                 color="#000080"
                 backgroundColor={legacyCoreOutputColors.surface}

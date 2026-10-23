@@ -3,12 +3,11 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, CheckCircle2, ChevronDown, Search, X } from 'lucide-react-native';
+import { Check, CheckCircle2, ChevronDown, Eye, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
-import { matchesCompetitionCategory } from '@/core/utils/groupParticipation';
 
 
 function categoryLabel(codes: string[] | null) {
@@ -41,6 +40,7 @@ export default function TeamProgramsScreen() {
   const [individualSelectionError, setIndividualSelectionError] = useState('');
   const [individualMemberSearch, setIndividualMemberSearch] = useState('');
   const [activeGeneralProgram, setActiveGeneralProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [activeViewProgram, setActiveViewProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [selectedGeneralParticipantIds, setSelectedGeneralParticipantIds] = useState<string[]>([]);
   const [generalSelectionError, setGeneralSelectionError] = useState('');
   const [generalMemberSearch, setGeneralMemberSearch] = useState('');
@@ -78,6 +78,20 @@ export default function TeamProgramsScreen() {
     enabled: !!context,
     queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
+  const groupEligibilityQuery = useQuery({
+    queryKey: ['team-group-eligible-members', context?.festival_id, activeGeneralProgram?.item_id],
+    enabled: !!context && !!activeGeneralProgram,
+    queryFn: () => teamLeaderPortalService.getEligibleGroupMemberIds(activeGeneralProgram!.item_id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const groupRosterQuery = useQuery({
+    queryKey: ['team-program-group-roster', context?.festival_id, activeViewProgram?.item_id],
+    enabled: !!context && activeViewProgram?.entry_kind === 'general_team',
+    queryFn: () => teamLeaderPortalService.getProgramGroupRoster(activeViewProgram!.item_id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
 
   const visiblePrograms = useMemo(() => (programsQuery.data ?? []).filter((program) =>
     program.entry_kind === programKind && (program.is_eligible || program.is_assigned),
@@ -104,13 +118,18 @@ export default function TeamProgramsScreen() {
       && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`
         .toLowerCase().includes(individualMemberSearch.trim().toLowerCase()))
     : [];
-  const generalEligibleParticipants = activeGeneralProgram
+  const generalEligibleIds = new Set(groupEligibilityQuery.data ?? []);
+  const generalEligibleParticipants = activeGeneralProgram && groupEligibilityQuery.isSuccess
     ? participants.filter((person) =>
-        (activeGeneralProgram.category_codes ?? []).some(code => matchesCompetitionCategory(person.category_code || '', code))
-        && (!activeGeneralProgram.gender || activeGeneralProgram.gender.toLowerCase() === 'both'
-          || activeGeneralProgram.gender.toLowerCase() === String(person.gender || '').toLowerCase())
+        generalEligibleIds.has(person.id)
         && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`.toLowerCase().includes(generalMemberSearch.trim().toLowerCase()),
       )
+    : [];
+  const participantById = new Map(participants.map((person) => [person.id, person]));
+  const viewedIndividualParticipants = activeViewProgram?.entry_kind === 'participant'
+    ? (activeViewProgram.assigned_participant_ids ?? [])
+        .map((id) => participantById.get(id))
+        .filter((person): person is TeamLeaderParticipant => !!person)
     : [];
 
   const openIndividualPicker = (program: TeamLeaderProgramOption) => {
@@ -152,6 +171,10 @@ export default function TeamProgramsScreen() {
 
   const createGeneralEntry = async () => {
     if (!activeGeneralProgram || savingItemId) return;
+    if (!groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.some(id => !generalEligibleIds.has(id))) {
+      setGeneralSelectionError('Refresh the eligible students before creating this group entry.');
+      return;
+    }
     const min = Number(activeGeneralProgram.group_min_members ?? 0);
     const max = Number(activeGeneralProgram.group_max_members ?? 0);
     if (selectedGeneralParticipantIds.length < min || (max > 0 && selectedGeneralParticipantIds.length > max)) {
@@ -165,6 +188,9 @@ export default function TeamProgramsScreen() {
       if (context?.festival_id) await invalidateGeneralMembership(queryClient, context.festival_id, selectedGeneralParticipantIds);
       await queryClient.invalidateQueries({
         queryKey: ['team-leader-programs', context?.festival_id],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ['team-group-eligible-members', context?.festival_id, activeGeneralProgram.item_id],
       });
       setActiveGeneralProgram(null);
       setSelectedGeneralParticipantIds([]);
@@ -267,6 +293,7 @@ export default function TeamProgramsScreen() {
           </View>
           <Text numberOfLines={2} style={{ color: muted, fontSize: 11, marginBottom: 12 }}>{detail}</Text>
         </View>
+        <View style={{ gap: 8 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={assigned ? `${name} participants already assigned` : isGeneral ? `Select students for ${name}` : `Select participants for ${name}`}
@@ -287,6 +314,16 @@ export default function TeamProgramsScreen() {
           {busy ? <ActivityIndicator size="small" color={assigned ? orange : ui.colors.onPrimary} /> : assigned ? <Check size={14} color={orange} /> : null}
           <Text style={{ color: assigned ? orange : ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{assigned ? 'Added' : busy ? 'Adding' : isGeneral ? 'Select team' : 'Select students'}</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`View participants for ${name}`}
+          onPress={() => setActiveViewProgram(program)}
+          style={{ minHeight: 42, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 }}
+        >
+          <Eye size={15} color={ui.colors.text} />
+          <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>View Participants</Text>
+        </Pressable>
+        </View>
       </View>
     );
   };
@@ -403,7 +440,9 @@ export default function TeamProgramsScreen() {
             <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 140, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 8 }}>
-            {generalEligibleParticipants.map((person) => {
+            {groupEligibilityQuery.isLoading || groupEligibilityQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 18 }} color={orange} /> : null}
+            {groupEligibilityQuery.isError ? <View style={{ paddingVertical: 12, gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to check eligible students. Please retry.</Text><Pressable accessibilityRole="button" onPress={() => groupEligibilityQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View> : null}
+            {groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching ? generalEligibleParticipants.map((person) => {
               const selected = selectedGeneralParticipantIds.includes(person.id);
               return (
                 <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggleGeneralParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -411,17 +450,46 @@ export default function TeamProgramsScreen() {
                   <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name || 'Participant'}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 2 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>
                 </Pressable>
               );
-            })}
-            {!generalEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program.</Text> : null}
+            }) : null}
+            {groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching && !generalEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program.</Text> : null}
           </ScrollView>
           <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, gap: 9 }}>
             <Text style={{ color: generalSelectionError ? ui.colors.danger : muted, fontSize: 12 }}>
               {generalSelectionError || `${selectedGeneralParticipantIds.length} selected · ${activeGeneralProgram?.group_min_members ?? 1} required minimum${Number(activeGeneralProgram?.group_max_members) > 0 ? ` · ${activeGeneralProgram?.group_max_members} maximum` : ''}`}
             </Text>
-            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
+            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
               {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800' }}>Create group entry</Text>}
             </Pressable>
           </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const participantView = (
+    <Modal visible={!!activeViewProgram} transparent animationType="slide" onRequestClose={() => setActiveViewProgram(null)}>
+      <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
+        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Participants</Text>
+              <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{activeViewProgram?.item_name_en || activeViewProgram?.item_name_ml || activeViewProgram?.item_code}</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close participants" onPress={() => setActiveViewProgram(null)} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}><X size={20} color={muted} /></Pressable>
+          </View>
+          <ScrollView style={{ flexGrow: 0, minHeight: 100, maxHeight: isDesktop ? 440 : 360 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+            {activeViewProgram?.entry_kind === 'general_team' ? (
+              groupRosterQuery.isLoading || groupRosterQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 20 }} color={orange} />
+                : groupRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load group participants.</Text><Pressable accessibilityRole="button" onPress={() => groupRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
+                  : groupRosterQuery.data?.length ? groupRosterQuery.data.map((member, index, rows) => <View key={`${member.registration_id}-${member.participant_id}`} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
+                      {index === 0 || rows[index - 1].registration_id !== member.registration_id ? <Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 5 }}>Group entry {member.entry_chest_number ? `· Chest ${member.entry_chest_number}` : ''}</Text> : null}
+                      <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{member.participant_name}{member.is_leader ? ' · Leader' : ''}</Text>
+                      <Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{member.participant_chest_number ? `Chest ${member.participant_chest_number}` : 'Chest number unavailable'}</Text>
+                    </View>)
+                    : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No group entries yet.</Text>
+            ) : viewedIndividualParticipants.length ? viewedIndividualParticipants.map((person) => <View key={person.id} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>)
+              : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No participants assigned yet.</Text>}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -502,6 +570,7 @@ export default function TeamProgramsScreen() {
       </Modal>
       {individualEntryPicker}
       {generalEntryPicker}
+      {participantView}
     </TeamLeaderAppShell>
   );
 }

@@ -84,6 +84,16 @@ export interface TeamLeaderProgramOption {
   is_completed?: boolean;
 }
 
+export interface TeamLeaderGroupRosterMember {
+  registration_id: string;
+  entry_chest_number: string | null;
+  participant_id: string;
+  participant_name: string;
+  participant_chest_number: string | null;
+  member_order: number | null;
+  is_leader: boolean;
+}
+
 async function readRpc<T>(name: string): Promise<T[]> {
   const { data, error } = await supabase.rpc(name);
   if (error) throw error;
@@ -143,6 +153,20 @@ export const teamLeaderPortalService = {
       ...program,
       is_completed: completedIds.has(program.item_id),
     }));
+  },
+  getEligibleGroupMemberIds: async (itemId: string) => {
+    const { data, error } = await supabase.rpc('get_team_leader_eligible_group_member_ids', {
+      p_item_id: itemId,
+    });
+    if (error) throw error;
+    return ((data ?? []) as { participant_id: string }[]).map((row) => row.participant_id);
+  },
+  getProgramGroupRoster: async (itemId: string) => {
+    const { data, error } = await supabase.rpc('get_team_leader_program_group_roster', {
+      p_item_id: itemId,
+    });
+    if (error) throw error;
+    return (data ?? []) as TeamLeaderGroupRosterMember[];
   },
   markProgramCompleted: async (itemId: string) => {
     const { data, error } = await supabase.rpc('team_leader_mark_program_completed', {

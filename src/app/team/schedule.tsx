@@ -1,14 +1,17 @@
+import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { Platform, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamLeaderPortalService';
-import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
-import { Button } from '@/components/ui/shadcn/button';
+import { Card, CardContent } from '@/components/team/TeamCard';
+import { Badge } from '@/components/team/TeamBadge';
+import { Button } from '@/components/team/TeamButton';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
@@ -46,9 +49,6 @@ export default function ScheduleScreen() {
   if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
 
   const filtered = filter === 'all' ? schedule : schedule.filter((s) => s.event_status === filter);
-  const teamPrimary = context?.portal_primary_color || '#0F766E';
-  const teamAccent = context?.portal_accent_color || '#14B8A6';
-
   const exportMyTeamSchedule = async () => {
     if (!context || !filtered.length) return;
     try {
@@ -65,23 +65,16 @@ export default function ScheduleScreen() {
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 16 }}>
-        <View style={{ padding: 18, borderRadius: 16, backgroundColor: `${teamAccent}12`, borderWidth: 1, borderColor: `${teamAccent}45`, borderLeftWidth: 4, borderLeftColor: teamPrimary, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <View>
-            <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: teamPrimary }}>Planning</Text>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: 'hsl(var(--foreground))', marginTop: 4 }}>Schedule</Text>
-            <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-              {schedule.length} event{schedule.length === 1 ? '' : 's'} for your team
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <TeamPageHeading title="Schedule" teamName={context?.team_name}
+          subtitle={`${schedule.length} event${schedule.length === 1 ? '' : 's'} for your team`}
+          actions={<View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             <Button variant="outline" size="sm" onPress={() => router.push('/team/schedule/full')}>
               Full Schedule
             </Button>
             <Button variant="default" size="sm" disabled={isExporting || !filtered.length} onPress={exportMyTeamSchedule}>
               {isExporting ? 'Preparing…' : 'Download My Team PDF'}
             </Button>
-          </View>
-        </View>
+          </View>} />
 
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
@@ -95,7 +88,7 @@ export default function ScheduleScreen() {
             {filtered.length === 0 ? (
               <Card>
                 <CardContent style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>No events found</Text>
+                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No events found</Text>
                 </CardContent>
               </Card>
             ) : (
@@ -105,19 +98,19 @@ export default function ScheduleScreen() {
                     <CardContent style={{ padding: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: 'hsl(var(--foreground))' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
                             {event.item_name || event.item_code || 'Event'}
                           </Text>
-                          <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
+                          <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
                             {event.start_time ? new Date(event.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                             {event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                           </Text>
                           {event.venue_name && (
-                            <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
+                            <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
                               Venue: {event.venue_name}
                             </Text>
                           )}
-                          <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
+                          <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
                             {event.participant_count} participant{event.participant_count !== 1 ? 's' : ''} · {event.checked_in_count} checked in
                           </Text>
                         </View>

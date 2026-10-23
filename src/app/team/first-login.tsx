@@ -1,19 +1,14 @@
+import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound, CheckCircle2 } from 'lucide-react-native';
 import { useAuthStore } from '@/core/store/authStore';
 import { supabase } from '@/core/config/supabase';
-import { Button } from '@/components/ui/shadcn/button';
+import { Button } from '@/components/team/TeamButton';
 import { Label } from '@/components/ui/shadcn/label';
-import { Card } from '@/components/ui/shadcn/card';
+import { Card } from '@/components/team/TeamCard';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { authService } from '@/services/authService';
 
@@ -78,7 +73,7 @@ export default function TeamLeaderFirstLogin() {
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'hsl(var(--background))' }}>
+    <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -107,13 +102,13 @@ export default function TeamLeaderFirstLogin() {
             <Text style={{
               fontSize: 20,
               fontWeight: '700',
-              color: 'hsl(var(--foreground))',
+              color: ui.colors.text,
               fontFamily: 'Poppins_700Bold',
               textAlign: 'center',
             }}>
               {requiresUsernameChange ? 'Set Up Your Private Credentials' : 'Change Your Password'}
             </Text>
-            <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 6, textAlign: 'center' }}>
+            <Text style={{ fontSize: 13, color: ui.colors.textMuted, marginTop: 6, textAlign: 'center' }}>
               {requiresUsernameChange
                 ? 'Welcome to Alviora Team Portal! Choose the username and password you want to use.'
                 : 'Your administrator reset your temporary password. Choose a new password to continue.'}
@@ -129,17 +124,17 @@ export default function TeamLeaderFirstLogin() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: 'hsl(var(--input))',
+                borderColor: ui.colors.border,
                 borderRadius: 10,
                 paddingHorizontal: 12,
                 height: 44,
-                backgroundColor: 'hsl(var(--background))',
+                backgroundColor: ui.colors.background,
               }}>
-                <UserRound size={16} color="hsl(var(--muted-foreground))" style={{ marginRight: 8 }} />
+                <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: 'hsl(var(--foreground))', padding: 0 }}
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
                   placeholder="e.g. victoria or victoria_leader"
-                  placeholderTextColor="hsl(var(--muted-foreground))"
+                  placeholderTextColor={ui.colors.textMuted}
                   value={newUsername}
                   onChangeText={setNewUsername}
                   autoCapitalize="none"
@@ -147,13 +142,13 @@ export default function TeamLeaderFirstLogin() {
                   editable={!loading}
                 />
               </View>
-              <Text style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+              <Text style={{ fontSize: 11, color: ui.colors.textMuted }}>
                 {currentUsername
                   ? `Leave blank to keep ${currentUsername}, or enter a new username.`
                   : 'Enter the username you want to use.'}
               </Text>
             </View> : (
-              <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>
+              <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>
                 Username remains {currentUsername}.
               </Text>
             )}
@@ -165,17 +160,17 @@ export default function TeamLeaderFirstLogin() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: 'hsl(var(--input))',
+                borderColor: ui.colors.border,
                 borderRadius: 10,
                 paddingHorizontal: 12,
                 height: 44,
-                backgroundColor: 'hsl(var(--background))',
+                backgroundColor: ui.colors.background,
               }}>
-                <LockKeyhole size={16} color="hsl(var(--muted-foreground))" style={{ marginRight: 8 }} />
+                <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: 'hsl(var(--foreground))', padding: 0 }}
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
                   placeholder="Enter your new password"
-                  placeholderTextColor="hsl(var(--muted-foreground))"
+                  placeholderTextColor={ui.colors.textMuted}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry={!showPassword}
@@ -186,13 +181,13 @@ export default function TeamLeaderFirstLogin() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   {showPassword ? (
-                    <EyeOff size={16} color="hsl(var(--muted-foreground))" />
+                    <EyeOff size={16} color={ui.colors.textMuted} />
                   ) : (
-                    <Eye size={16} color="hsl(var(--muted-foreground))" />
+                    <Eye size={16} color={ui.colors.textMuted} />
                   )}
                 </TouchableOpacity>
               </View>
-              <Text style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}>
+              <Text style={{ fontSize: 11, color: ui.colors.textMuted }}>
                 Choose a password you can remember.
               </Text>
             </View>

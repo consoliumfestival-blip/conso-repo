@@ -1,19 +1,14 @@
+import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react-native';
 import { useAuthStore } from '@/core/store/authStore';
 import { authService } from '@/services/authService';
-import { Button } from '@/components/ui/shadcn/button';
+import { Button } from '@/components/team/TeamButton';
 import { Label } from '@/components/ui/shadcn/label';
-import { Card } from '@/components/ui/shadcn/card';
+import { Card } from '@/components/team/TeamCard';
 
 export default function TeamLeaderLogin() {
   const [username, setUsername] = useState('');
@@ -59,7 +54,7 @@ export default function TeamLeaderLogin() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: 'hsl(var(--background))' }}>
+    <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -76,23 +71,22 @@ export default function TeamLeaderLogin() {
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: 'hsl(var(--primary))',
+              backgroundColor: ui.colors.primarySoft,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 12,
-              opacity: 0.1,
             }}>
-              <UserRound size={28} color="hsl(var(--primary))" style={{ opacity: 1 }} />
+              <UserRound size={28} color={ui.colors.primary} style={{ opacity: 1 }} />
             </View>
             <Text style={{
               fontSize: 20,
               fontWeight: '700',
-              color: 'hsl(var(--foreground))',
+              color: ui.colors.text,
               fontFamily: 'Poppins_700Bold',
             }}>
               Team Leader Portal
             </Text>
-            <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 4 }}>
+            <Text style={{ fontSize: 13, color: ui.colors.textMuted, marginTop: 4 }}>
               Sign in to access your team dashboard
             </Text>
           </View>
@@ -105,17 +99,17 @@ export default function TeamLeaderLogin() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: 'hsl(var(--input))',
+                borderColor: ui.colors.border,
                 borderRadius: 10,
                 paddingHorizontal: 12,
                 height: 44,
-                backgroundColor: 'hsl(var(--background))',
+                backgroundColor: ui.colors.background,
               }}>
-                <UserRound size={16} color="hsl(var(--muted-foreground))" style={{ marginRight: 8 }} />
+                <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: 'hsl(var(--foreground))', padding: 0 }}
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
                   placeholder="Enter your username"
-                  placeholderTextColor="hsl(var(--muted-foreground))"
+                  placeholderTextColor={ui.colors.textMuted}
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize="none"
@@ -131,17 +125,17 @@ export default function TeamLeaderLogin() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: 'hsl(var(--input))',
+                borderColor: ui.colors.border,
                 borderRadius: 10,
                 paddingHorizontal: 12,
                 height: 44,
-                backgroundColor: 'hsl(var(--background))',
+                backgroundColor: ui.colors.background,
               }}>
-                <LockKeyhole size={16} color="hsl(var(--muted-foreground))" style={{ marginRight: 8 }} />
+                <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: 'hsl(var(--foreground))', padding: 0 }}
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
                   placeholder="Enter your password"
-                  placeholderTextColor="hsl(var(--muted-foreground))"
+                  placeholderTextColor={ui.colors.textMuted}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -149,9 +143,9 @@ export default function TeamLeaderLogin() {
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
                   {showPassword ? (
-                    <EyeOff size={16} color="hsl(var(--muted-foreground))" />
+                    <EyeOff size={16} color={ui.colors.textMuted} />
                   ) : (
-                    <Eye size={16} color="hsl(var(--muted-foreground))" />
+                    <Eye size={16} color={ui.colors.textMuted} />
                   )}
                 </TouchableOpacity>
               </View>
@@ -159,14 +153,13 @@ export default function TeamLeaderLogin() {
 
             {errorMsg ? (
               <View style={{
-                backgroundColor: 'hsl(var(--destructive))',
+                backgroundColor: ui.colors.dangerSoft,
                 borderWidth: 1,
-                borderColor: 'hsl(var(--destructive))',
+                borderColor: ui.colors.danger,
                 borderRadius: 8,
                 padding: 10,
-                opacity: 0.1,
               }}>
-                <Text style={{ color: 'hsl(var(--destructive))', fontSize: 13 }}>
+                <Text style={{ color: ui.colors.danger, fontSize: 13 }}>
                   {errorMsg}
                 </Text>
               </View>
@@ -184,7 +177,7 @@ export default function TeamLeaderLogin() {
 
           {/* Footer */}
           <View style={{ marginTop: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+            <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>
               Contact your Festival Administrator if you need access.
             </Text>
           </View>

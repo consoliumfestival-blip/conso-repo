@@ -1,12 +1,13 @@
 import { ui } from '@/constants/designSystem';
+import { TeamText as Text } from '@/components/team/TeamText';
 import React, { useEffect, useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { ArrowRight, CalendarDays, Megaphone, Radio, Trophy, Users } from 'lucide-react-native';
+import { Pressable, View, useWindowDimensions } from 'react-native';
+import { ArrowRight, CalendarDays, Megaphone, Trophy, Users } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderScheduleRow, TeamLeaderPublishedResult, TeamLeaderAnnouncement, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
-import { Card, CardContent } from '@/components/ui/shadcn/card';
+import { Card, CardContent } from '@/components/team/TeamCard';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
@@ -90,22 +91,24 @@ export default function TeamLeaderDashboard() {
   const ownStanding = standings.find((row) => row.is_own_team);
   const nextEvent = upcomingEvents[0];
   const goTo = (path: string) => router.push(path as any);
-  const statWidth = width < 600 ? 300 : width < 1100 ? 250 : 170;
+  const statWidth = width < 600 ? '100%' : width < 1100 ? 250 : 170;
 
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
-        <View style={{ minHeight: 190, padding: 26, borderRadius: 22, backgroundColor: teamPrimary, overflow: 'hidden', position: 'relative' }}>
-          <View style={{ position: 'absolute', right: 0, top: 8, width: 255, height: 190, borderRadius: 130, borderWidth: 1, borderColor: 'rgba(100,240,220,0.12)', transform: [{ rotate: '-20deg' }] }} />
-          <View style={{ position: 'absolute', right: 76, top: 40, width: 108, height: 108, borderRadius: 54, borderWidth: 1, borderColor: 'rgba(100,240,220,0.1)' }} />
-          <View style={{ position: 'absolute', right: 78, top: 51, opacity: 0.2 }}><Trophy size={100} color="#79E5D5" strokeWidth={1.3} /></View>
-          <Text style={{ color: '#6CE3D2', fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' }}>Team Leader Portal</Text>
-          <Text style={{ color: ui.colors.surface, fontSize: width < 600 ? 30 : 39, fontWeight: '800', marginTop: 7 }}>{teamName}</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.86)', fontSize: 14, marginTop: 3 }}>You&apos;re in charge. Lead, inspire, achieve.</Text>
-          <Pressable onPress={() => goTo('/team/my-team')} accessibilityRole="button" style={{ alignSelf: 'flex-start', marginTop: 19, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 11, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Radio size={15} color={ui.colors.primary} /><Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '800' }}>LIVE TEAM SPACE</Text>
-          </Pressable>
-        </View>
+        <Card>
+          <CardContent style={{ padding: 20, minHeight: 116, justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <View style={{ width: 54, height: 54, borderRadius: 16, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={25} color={teamPrimary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: ui.colors.text, fontSize: width < 600 ? 18 : 20, fontWeight: '700' }}>Welcome back, {teamName}!</Text>
+                <Text style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 3 }}>Here is what is happening with your team today.</Text>
+              </View>
+            </View>
+          </CardContent>
+        </Card>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <View style={{ width: statWidth }}><StatCard icon={Trophy} label="Current Rank" value={ownStanding?.rank ? `#${ownStanding.rank}` : '—'} helper="Keep pushing!" tone="#23B981" iconBg={ui.colors.successSoft} /></View>

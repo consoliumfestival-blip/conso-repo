@@ -1,12 +1,15 @@
+import { ui } from '@/constants/designSystem';
 import React from 'react';
-import { Alert, Text, View } from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { Alert, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/core/store/authStore';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
-import { Button } from '@/components/ui/shadcn/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
+import { Badge } from '@/components/team/TeamBadge';
+import { Button } from '@/components/team/TeamButton';
 import { Label } from '@/components/ui/shadcn/label';
 import { Separator } from '@/components/ui/shadcn/separator';
 
@@ -32,12 +35,7 @@ export default function ProfileScreen() {
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 16 }}>
-        <View>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: 'hsl(var(--foreground))' }}>Profile</Text>
-          <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
-            Your account and portal details
-          </Text>
-        </View>
+        <TeamPageHeading title="Profile" teamName={context?.team_name} subtitle="Your account and portal details" />
 
         {/* Account Info */}
         <Card>
@@ -47,14 +45,14 @@ export default function ProfileScreen() {
           <CardContent style={{ gap: 12 }}>
             <View style={{ gap: 4 }}>
               <Label>Name</Label>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'hsl(var(--foreground))' }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
                 {user?.full_name || user?.display_name || user?.username || 'Team Leader'}
               </Text>
             </View>
             <Separator />
             <View style={{ gap: 4 }}>
               <Label>Email</Label>
-              <Text style={{ fontSize: 14, fontWeight: '500', color: 'hsl(var(--foreground))' }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
                 {user?.email || 'N/A'}
               </Text>
             </View>
@@ -75,14 +73,14 @@ export default function ProfileScreen() {
             <CardContent style={{ gap: 12 }}>
               <View style={{ gap: 4 }}>
                 <Label>Organisation ID</Label>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: 'hsl(var(--foreground))' }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
                   {context.organisation_id || 'N/A'}
                 </Text>
               </View>
               <Separator />
               <View style={{ gap: 4 }}>
                 <Label>Festival ID</Label>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: 'hsl(var(--foreground))' }}>
+                <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
                   {context.festival_id || 'N/A'}
                 </Text>
               </View>

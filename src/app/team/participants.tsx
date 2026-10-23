@@ -1,13 +1,16 @@
+import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
-import { Text, View, TouchableOpacity } from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { View, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderParticipant } from '@/services/teamLeaderPortalService';
-import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
+import { Card, CardContent } from '@/components/team/TeamCard';
+import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 
 export default function ParticipantsScreen() {
   const router = useRouter();
@@ -70,8 +73,8 @@ export default function ParticipantsScreen() {
       <TeamLeaderAppShell>
         <Card>
           <CardContent style={{ padding: 24, alignItems: 'center' }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: 'hsl(var(--foreground))' }}>Unable to load participants</Text>
-            <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 8, textAlign: 'center' }}>{loadError}</Text>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: ui.colors.text }}>Unable to load participants</Text>
+            <Text style={{ fontSize: 13, color: ui.colors.textMuted, marginTop: 8, textAlign: 'center' }}>{loadError}</Text>
           </CardContent>
         </Card>
       </TeamLeaderAppShell>
@@ -83,19 +86,11 @@ export default function ParticipantsScreen() {
     if (filter === 'inactive') return p.status !== 'active' && p.status !== 'registered';
     return true;
   });
-  const teamPrimary = context?.portal_primary_color || '#0F766E';
-  const teamAccent = context?.portal_accent_color || '#14B8A6';
-
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 16 }}>
-        <View style={{ padding: 18, borderRadius: 16, backgroundColor: `${teamAccent}12`, borderWidth: 1, borderColor: `${teamAccent}45`, borderLeftWidth: 4, borderLeftColor: teamPrimary }}>
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: teamPrimary }}>Roster</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: 'hsl(var(--foreground))', marginTop: 4 }}>Participants</Text>
-          <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 3 }}>
-            {participants.length} registered participant{participants.length === 1 ? '' : 's'} in your team
-          </Text>
-        </View>
+        <TeamPageHeading title="Participants" teamName={context?.team_name}
+          subtitle={`${participants.length} registered participant${participants.length === 1 ? '' : 's'} in your team`} />
 
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
@@ -108,7 +103,7 @@ export default function ParticipantsScreen() {
             {filtered.length === 0 ? (
               <Card>
                 <CardContent style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>No participants found</Text>
+                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No participants found</Text>
                 </CardContent>
               </Card>
             ) : (
@@ -125,7 +120,7 @@ export default function ParticipantsScreen() {
                         style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                       >
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: 'hsl(var(--foreground))' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
                             {p.name || 'Participant'}
                           </Text>
                           <View style={{ flexDirection: 'row', gap: 6, marginTop: 4 }}>

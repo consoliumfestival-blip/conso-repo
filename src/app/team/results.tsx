@@ -1,12 +1,15 @@
+import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { View } from 'react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderPublishedResult } from '@/services/teamLeaderPortalService';
-import { Card, CardContent } from '@/components/ui/shadcn/card';
-import { Badge } from '@/components/ui/shadcn/badge';
+import { Card, CardContent } from '@/components/team/TeamCard';
+import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function ResultsScreen() {
@@ -44,19 +47,11 @@ export default function ResultsScreen() {
     if (filter === 'medal') return r.rank != null && r.rank <= 3;
     return true;
   });
-  const teamPrimary = context?.portal_primary_color || '#0F766E';
-  const teamAccent = context?.portal_accent_color || '#14B8A6';
-
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 16 }}>
-        <View style={{ padding: 18, borderRadius: 16, backgroundColor: `${teamAccent}12`, borderWidth: 1, borderColor: `${teamAccent}45`, borderLeftWidth: 4, borderLeftColor: teamPrimary }}>
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: teamPrimary }}>Performance</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: 'hsl(var(--foreground))', marginTop: 4 }}>Results</Text>
-          <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 3 }}>
-            {results.length} published result{results.length === 1 ? '' : 's'} for your team
-          </Text>
-        </View>
+        <TeamPageHeading title="Results" teamName={context?.team_name}
+          subtitle={`${results.length} published result${results.length === 1 ? '' : 's'} for your team`} />
 
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
@@ -68,7 +63,7 @@ export default function ResultsScreen() {
             {filtered.length === 0 ? (
               <Card>
                 <CardContent style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))' }}>No results to display</Text>
+                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No results to display</Text>
                 </CardContent>
               </Card>
             ) : (
@@ -78,10 +73,10 @@ export default function ResultsScreen() {
                     <CardContent style={{ padding: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: 'hsl(var(--foreground))' }}>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
                             {result.item_name || result.item_code || 'Item'}
                           </Text>
-                          <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))', marginTop: 2 }}>
+                          <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
                             {result.participant_name || 'Participant'}
                           </Text>
                           <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>

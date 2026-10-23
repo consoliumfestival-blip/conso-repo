@@ -1,9 +1,12 @@
+import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { View } from 'react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
 import { Skeleton } from '@/components/ui/shadcn/skeleton';
 
 export default function MyTeamScreen() {
@@ -40,13 +43,8 @@ export default function MyTeamScreen() {
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 16 }}>
-        <View style={{ padding: 18, borderRadius: 16, backgroundColor: `${teamAccent}12`, borderWidth: 1, borderColor: `${teamAccent}45`, borderLeftWidth: 4, borderLeftColor: teamPrimary }}>
-          <Text style={{ fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase', color: teamPrimary }}>Leaderboard</Text>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: 'hsl(var(--foreground))', marginTop: 4 }}>My Team</Text>
-          <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 3 }}>
-            Track your team&apos;s position and points
-          </Text>
-        </View>
+        <TeamPageHeading title="My Team" teamName={context?.team_name}
+          subtitle="Track your team's position and points" />
 
         {/* Team Summary */}
         {ownTeam && (
@@ -54,13 +52,13 @@ export default function MyTeamScreen() {
             <CardContent style={{ padding: 18 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <View>
-                  <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>Your Team</Text>
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: 'hsl(var(--foreground))', marginTop: 2 }}>
+                  <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Your Team</Text>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: ui.colors.text, marginTop: 2 }}>
                     {ownTeam.team_name}
                   </Text>
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>Rank</Text>
+                  <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Rank</Text>
                   <Text style={{ fontSize: 24, fontWeight: '700', color: teamPrimary }}>
                     #{ownRank}
                   </Text>
@@ -68,13 +66,13 @@ export default function MyTeamScreen() {
               </View>
               <View style={{ flexDirection: 'row', gap: 16, marginTop: 12 }}>
                 <View>
-                  <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>Total Points</Text>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: 'hsl(var(--foreground))' }}>{totalPoints}</Text>
+                  <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Total Points</Text>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: ui.colors.text }}>{totalPoints}</Text>
                 </View>
                 {ownRank > 1 && (
                   <View>
-                    <Text style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>Behind Rank 1</Text>
-                    <Text style={{ fontSize: 16, fontWeight: '600', color: 'hsl(var(--destructive))' }}>-{pointsBehind}</Text>
+                    <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Behind Rank 1</Text>
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: ui.colors.danger }}>-{pointsBehind}</Text>
                   </View>
                 )}
               </View>
@@ -89,7 +87,7 @@ export default function MyTeamScreen() {
           </CardHeader>
           <CardContent>
             {standings.length === 0 ? (
-              <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', textAlign: 'center', padding: 16 }}>
+              <Text style={{ fontSize: 13, color: ui.colors.textMuted, textAlign: 'center', padding: 16 }}>
                 No standings available
               </Text>
             ) : (
@@ -103,24 +101,24 @@ export default function MyTeamScreen() {
                       padding: 12,
                       borderRadius: 8,
                       borderWidth: 1,
-                      borderColor: team.is_own_team ? teamPrimary : 'hsl(var(--border))',
-                      backgroundColor: team.is_own_team ? `${teamAccent}16` : 'hsl(var(--card))',
+                      borderColor: team.is_own_team ? teamPrimary : ui.colors.border,
+                      backgroundColor: team.is_own_team ? `${teamAccent}16` : ui.colors.surface,
                     }}
                   >
                     <View style={{ width: 32, alignItems: 'center' }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: team.is_own_team ? teamPrimary : 'hsl(var(--foreground))' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: team.is_own_team ? teamPrimary : ui.colors.text }}>
                         #{team.rank}
                       </Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={{ fontSize: 14, fontWeight: team.is_own_team ? '700' : '500', color: 'hsl(var(--foreground))' }}>
+                      <Text style={{ fontSize: 14, fontWeight: team.is_own_team ? '700' : '500', color: ui.colors.text }}>
                         {team.team_name}
                         {team.is_own_team && (
                           <Text style={{ fontSize: 11, color: teamPrimary, marginLeft: 6 }}>Your Team</Text>
                         )}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: 'hsl(var(--foreground))' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
                       {team.total_points}
                     </Text>
                   </View>

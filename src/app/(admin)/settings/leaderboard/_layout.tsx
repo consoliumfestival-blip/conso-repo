@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     alignSelf: 'center',
-    padding: 24,
+    padding: 20,
     paddingBottom: 34,
   },
   header: {
@@ -572,9 +572,9 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
-    fontSize: 30,
-    lineHeight: 36,
+    fontFamily: 'Poppins_800ExtraBold',
+    fontSize: 24,
+    lineHeight: 30,
   },
   headerActions: {
     flexDirection: 'row',
@@ -610,8 +610,8 @@ const styles = StyleSheet.create({
   },
   previewButton: {
     height: 40,
-    borderRadius: 14,
-    backgroundColor: colors.navy,
+    borderRadius: ui.radius.xl,
+    backgroundColor: ui.colors.primary,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -642,14 +642,14 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     minWidth: 180,
     backgroundColor: colors.card,
-    borderRadius: 10,
+    borderRadius: ui.radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 16,
     shadowColor: ui.shadow.shadowColor,
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.025,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
   metricTop: {
     flexDirection: 'row',

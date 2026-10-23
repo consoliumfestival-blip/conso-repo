@@ -1,14 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ui } from '@/constants/designSystem';
+import { TeamText as Text } from '@/components/team/TeamText';
+import { TeamPageHeading } from '@/components/team/TeamPageHeading';
+import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, Search, UserRound, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
@@ -17,9 +11,9 @@ import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
 import { matchesCompetitionCategory } from '@/core/utils/groupParticipation';
 
-const teal = '#0F766E';
-const muted = '#64748B';
-const border = '#E2E8F0';
+const teal = ui.colors.primary;
+const muted = ui.colors.textMuted;
+const border = ui.colors.border;
 
 function categoryLabel(codes: string[] | null) {
   return Array.isArray(codes) && codes.length ? codes.join(', ') : 'All categories';
@@ -353,11 +347,8 @@ export default function TeamProgramsScreen() {
   return (
     <TeamLeaderAppShell>
       <View style={{ width: '100%', maxWidth: 1320, alignSelf: 'center', gap: 16, paddingBottom: 24 }}>
-        <View style={{ padding: isDesktop ? 22 : 16, borderRadius: 16, backgroundColor: '#F0FDFA', borderWidth: 1, borderColor: '#BFE8E3', borderLeftWidth: 4, borderLeftColor: context?.portal_primary_color || teal }}>
-          <Text style={{ color: context?.portal_primary_color || teal, fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' }}>Program enrollment</Text>
-          <Text style={{ color: '#0F172A', fontSize: isDesktop ? 23 : 20, fontWeight: '800', marginTop: 4 }}>Add programs to your team</Text>
-          <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>Assign individual programs or create group entries for your students.</Text>
-        </View>
+        <TeamPageHeading title="Programs" teamName={context?.team_name}
+          subtitle="Assign individual programs or create group entries for your students." />
 
         <View accessibilityRole="tablist" style={{ flexDirection: 'row', gap: 8, padding: 4, borderRadius: 11, backgroundColor: '#E2E8F0', alignSelf: 'flex-start' }}>
           {([{ key: 'participant', label: 'Individual' }, { key: 'general_team', label: 'Group' }] as const).map((tab) => {
@@ -401,7 +392,7 @@ export default function TeamProgramsScreen() {
               {notice ? <View style={{ paddingHorizontal: 11, paddingVertical: 9, borderRadius: 9, backgroundColor: notice.kind === 'success' ? '#F0FDFA' : '#FEF2F2', borderWidth: 1, borderColor: notice.kind === 'success' ? '#99D5D0' : '#FECACA' }}><Text style={{ color: notice.kind === 'success' ? '#0F766E' : '#B91C1C', fontSize: 12 }}>{notice.text}</Text></View> : null}
               {programsQuery.isLoading ? <View style={{ minHeight: 160, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={teal} /></View> : null}
               {programsQuery.isError ? <View style={{ padding: 14, borderRadius: 10, backgroundColor: '#FEF2F2' }}><Text style={{ color: '#B91C1C', fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text></View> : null}
-              {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ padding: 18, borderRadius: 10, backgroundColor: '#F8FAFC' }}><Text style={{ color: '#0F172A', fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch ? 'Try a different search.' : programKind === 'general_team' ? 'No active General programs are currently available for this team.' : 'No active individual programs match this student. A registration restriction may also prevent entry.'}</Text></View> : null}
+              {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ padding: 18, borderRadius: 10, backgroundColor: '#F8FAFC' }}><Text style={{ color: '#0F172A', fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch ? 'Try a different search.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match this student. A registration restriction may also prevent entry.'}</Text></View> : null}
               <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexDirection: isDesktop ? 'row' : 'column', flexWrap: isDesktop ? 'wrap' : 'nowrap', gap: 9 }}>
                 {visiblePrograms.map((program) => programCard(program, isDesktop))}
               </ScrollView>

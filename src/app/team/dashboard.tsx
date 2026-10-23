@@ -1,12 +1,12 @@
 import { TEAM_DESKTOP_MIN_WIDTH } from '@/constants/teamLeaderTheme';
 import { TeamText as Text } from '@/components/team/TeamText';
 import React, { useCallback, useState } from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
-import { ArrowRight, CalendarDays, Clock3, Trophy, Users } from 'lucide-react-native';
+import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { ArrowRight, CalendarDays, Clock3, MessageSquare, Moon, Sun, Trophy, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
-import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
+import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderScheduleRow, TeamLeaderPublishedResult, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
@@ -14,16 +14,48 @@ import { Skeleton } from '@/components/team/TeamSkeleton';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getTeamDashboardEventsToday, getTeamDashboardUpcomingEvents, isTeamEventInProgress } from '@/core/utils/teamDashboardFlow';
 
+const dashboardGlassSurface = Platform.OS === 'web' ? {
+  backdropFilter: 'blur(4px)',
+  WebkitBackdropFilter: 'blur(4px)',
+} as any : {};
 
-function SummaryMetric({ icon: Icon, label, value, helper, tone, description }: { icon: React.ComponentType<any>; label: string; value: string; helper: string; tone: string; description: string }) {
+function SummaryMetric({ icon: Icon, label, value, helper, tone, description, mobile }: { icon: React.ComponentType<any>; label: string; value: string; helper: string; tone: string; description: string; mobile: boolean }) {
   return (
-    <View accessible accessibilityLabel={`${description}: ${value}. ${helper}`} style={{ flex: 1, minWidth: 0, minHeight: 78, paddingHorizontal: 9, paddingVertical: 10, borderRadius: 15, backgroundColor: '#FFF7F1', borderWidth: 1, borderColor: 'rgba(255,255,255,0.58)' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 7 }}>
+    <View accessible accessibilityLabel={`${description}: ${value}. ${helper}`} style={{ ...dashboardGlassSurface, flex: 1, minWidth: 0, minHeight: mobile ? 68 : 78, paddingHorizontal: mobile ? 8 : 9, paddingVertical: mobile ? 8 : 10, borderRadius: 15, backgroundColor: 'rgba(255,247,241,0.94)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.68)' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: mobile ? 5 : 7 }}>
         <Icon size={13} color={tone} />
         <Text numberOfLines={1} style={{ flexShrink: 1, color: '#76665D', fontSize: 9, fontWeight: '700' }}>{label}</Text>
       </View>
-      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ color: '#2A211D', fontSize: 17, lineHeight: 21, fontWeight: '800' }}>{value}</Text>
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ color: '#2A211D', fontSize: mobile ? 16 : 17, lineHeight: 20, fontWeight: '800' }}>{value}</Text>
       <Text numberOfLines={1} style={{ color: '#88786E', fontSize: 8, lineHeight: 12, marginTop: 2 }}>{helper}</Text>
+    </View>
+  );
+}
+
+function DashboardHeaderActions() {
+  const { mode, toggleMode } = useTeamTheme();
+  const router = useRouter();
+  const ThemeIcon = mode === 'dark' ? Sun : Moon;
+  const buttonStyle = {
+    ...dashboardGlassSurface,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Pressable onPress={toggleMode} accessibilityRole="button" accessibilityLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={buttonStyle}>
+        <ThemeIcon size={18} color="#FFFFFF" />
+      </Pressable>
+      <Pressable onPress={() => router.push('/team/announcements')} accessibilityRole="button" accessibilityLabel="Open announcements" style={buttonStyle}>
+        <MessageSquare size={18} color="#FFFFFF" />
+      </Pressable>
     </View>
   );
 }
@@ -39,6 +71,7 @@ function DashboardHero({ teamName, points, rank, todaysEvents, nextEvent, now, l
   mobile: boolean;
 }) {
   const ui = useTeamUi();
+  const router = useRouter();
   const pointsProgress = leaderPoints > 0 ? Math.min(100, Math.max(0, (points / leaderPoints) * 100)) : 0;
   const progressLabel = leaderPoints > 0 ? `${Math.round(pointsProgress)}% of top score` : 'Points will appear after results are published';
   const nextIsLive = nextEvent ? isTeamEventInProgress(nextEvent, now) : false;
@@ -47,34 +80,34 @@ function DashboardHero({ teamName, points, rank, todaysEvents, nextEvent, now, l
     : '—';
   const nextHelper = nextEvent ? nextIsLive ? 'In progress' : nextEvent.start_time ? 'Upcoming event' : 'Time TBA' : 'No event';
   const hour = new Date(now).getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
   const teamInitial = teamName.trim().charAt(0).toUpperCase() || 'T';
 
   return (
     <View style={{ overflow: 'hidden', borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', ...ui.shadow }}>
-      <LinearGradient colors={['#45200F', '#2A1B16', '#1D1B19']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ padding: mobile ? 16 : 22, gap: mobile ? 18 : 20 }}>
+      <LinearGradient colors={['rgba(75,33,16,0.97)', 'rgba(44,27,21,0.96)', 'rgba(29,27,25,0.96)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ ...dashboardGlassSurface, padding: mobile ? 15 : 22, gap: mobile ? 14 : 20 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '800' }}>{teamInitial}</Text>
-          </View>
+          <Pressable onPress={() => router.push('/team/profile')} accessibilityRole="button" accessibilityLabel="Open team profile" style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800' }}>{teamInitial}</Text>
+          </Pressable>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.62)', fontSize: 9, fontWeight: '700', letterSpacing: 0.8 }}>TEAM DASHBOARD</Text>
-            <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: mobile ? 17 : 19, lineHeight: 24, fontWeight: '700', marginTop: 2 }}>{greeting}, {teamName}</Text>
+            <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: mobile ? 16 : 19, lineHeight: mobile ? 21 : 24, fontWeight: '700' }}>{greeting}, {teamName}</Text>
           </View>
+          {mobile && <DashboardHeaderActions />}
         </View>
 
         <View style={{ flexDirection: mobile ? 'column' : 'row', alignItems: 'stretch', gap: mobile ? 16 : 22 }}>
           <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <Text style={{ color: 'rgba(255,255,255,0.66)', fontSize: 10, fontWeight: '600' }}>Total points</Text>
-              {leaderPoints > 0 && <Text numberOfLines={1} style={{ color: '#FFAB84', fontSize: 9, fontWeight: '700' }}>{progressLabel}</Text>}
+              {leaderPoints > 0 && <View style={{ borderRadius: 999, backgroundColor: 'rgba(236,94,39,0.22)', paddingHorizontal: 8, paddingVertical: 4 }}><Text numberOfLines={1} style={{ color: '#FFAB84', fontSize: 9, fontWeight: '700' }}>{progressLabel}</Text></View>}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 2 }}>
-              <Text adjustsFontSizeToFit numberOfLines={1} style={{ flexShrink: 1, color: '#FFFFFF', fontSize: mobile ? 40 : 46, lineHeight: mobile ? 46 : 52, fontWeight: '800' }}>{points.toLocaleString()}</Text>
+              <Text adjustsFontSizeToFit numberOfLines={1} style={{ flexShrink: 1, color: '#FFFFFF', fontSize: mobile ? 38 : 46, lineHeight: mobile ? 44 : 52, fontWeight: '800' }}>{points.toLocaleString()}</Text>
               {leaderPoints > 0 && <Text numberOfLines={1} style={{ color: 'rgba(255,255,255,0.56)', fontSize: 10 }}>/ {leaderPoints.toLocaleString()}</Text>}
             </View>
-            <View style={{ marginTop: 10 }}>
-              <View accessible accessibilityRole="progressbar" accessibilityLabel={progressLabel} accessibilityValue={{ min: 0, max: 100, now: Math.round(pointsProgress) }} style={{ height: 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' }}>
+            <View style={{ marginTop: mobile ? 7 : 10 }}>
+              <View accessible accessibilityRole="progressbar" accessibilityLabel={progressLabel} accessibilityValue={{ min: 0, max: 100, now: Math.round(pointsProgress) }} style={{ height: mobile ? 5 : 7, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)', overflow: 'hidden' }}>
                 <View style={{ width: `${pointsProgress}%`, height: '100%', borderRadius: 999, backgroundColor: ui.colors.primary }} />
               </View>
               {leaderPoints === 0 && <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 9, marginTop: 5 }}>{progressLabel}</Text>}
@@ -82,9 +115,9 @@ function DashboardHero({ teamName, points, rank, todaysEvents, nextEvent, now, l
           </View>
 
           <View style={{ flex: 1.35, flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
-            <SummaryMetric icon={Trophy} label="Rank" value={rank ? `#${rank}` : '—'} helper="Current" tone="#EC5E27" description="Current rank" />
-            <SummaryMetric icon={CalendarDays} label="Today" value={String(todaysEvents)} helper="Events" tone="#3676D9" description="Today's events" />
-            <SummaryMetric icon={Clock3} label="Next" value={nextValue} helper={nextHelper} tone={nextIsLive ? '#34704B' : '#EC5E27'} description="Next competition" />
+            <SummaryMetric icon={Trophy} label="Rank" value={rank ? `#${rank}` : '—'} helper="Current" tone="#EC5E27" description="Current rank" mobile={mobile} />
+            <SummaryMetric icon={CalendarDays} label="Today" value={String(todaysEvents)} helper="Events" tone="#3676D9" description="Today's events" mobile={mobile} />
+            <SummaryMetric icon={Clock3} label="Next" value={nextValue} helper={nextHelper} tone={nextIsLive ? '#34704B' : '#EC5E27'} description="Next competition" mobile={mobile} />
           </View>
         </View>
       </LinearGradient>
@@ -184,15 +217,17 @@ export default function TeamLeaderDashboard() {
   const mobile = width < TEAM_DESKTOP_MIN_WIDTH;
 
   return (
-    <TeamLeaderAppShell>
+    <TeamLeaderAppShell hideMobileHeader>
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
-        <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? 0} rank={ownStanding?.rank} todaysEvents={todaysEvents.length} nextEvent={nextEvent} now={now} leaderPoints={leaderPoints} mobile={mobile} />
+        <View style={{ marginHorizontal: mobile ? -16 : 0, marginTop: mobile ? -4 : 0 }}>
+          <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? 0} rank={ownStanding?.rank} todaysEvents={todaysEvents.length} nextEvent={nextEvent} now={now} leaderPoints={leaderPoints} mobile={mobile} />
+        </View>
 
         <View>
           <Text style={{ color: ui.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>Quick access</Text>
-          <View style={{ backgroundColor: ui.colors.surfaceGlass, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 17, padding: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          <View style={{ ...dashboardGlassSurface, backgroundColor: ui.colors.surfaceGlass, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 17, padding: 12, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
             {[{ label: 'My team', desc: 'View and manage your team', path: '/team/my-team', icon: Users }, { label: 'Full schedule', desc: 'Browse all events & timings', path: '/team/schedule', icon: CalendarDays }, { label: 'View results', desc: 'Check results & standings', path: '/team/results', icon: Trophy }].map(({ label, desc, path, icon: Icon }) => (
-              <Pressable key={path} onPress={() => goTo(path)} accessibilityRole="button" style={{ flex: 1, minWidth: mobile ? 220 : 210, minHeight: 56, padding: mobile ? 11 : 13, borderRadius: 14, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Pressable key={path} onPress={() => goTo(path)} accessibilityRole="button" style={{ ...dashboardGlassSurface, flex: 1, minWidth: mobile ? 220 : 210, minHeight: 56, padding: mobile ? 11 : 13, borderRadius: 14, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceGlass, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Icon size={23} color={ui.colors.primary} /><View style={{ flex: 1 }}><Text style={{ color: ui.colors.primary, fontSize: 13, fontWeight: '800' }}>{label}</Text><Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 3 }}>{desc}</Text></View><ArrowRight size={17} color={ui.colors.primary} />
               </Pressable>
             ))}

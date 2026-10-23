@@ -93,8 +93,10 @@ const navItems: NavItem[] = [
 
 export function TeamLeaderAppShell({
   children,
+  hideMobileHeader = false,
 }: {
   children: React.ReactNode;
+  hideMobileHeader?: boolean;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -360,10 +362,7 @@ export function TeamLeaderAppShell({
           <View
             style={{
               minHeight: 76,
-              ...glassSurface,
-              backgroundColor: ui.colors.surfaceGlass,
-              borderBottomWidth: 1,
-              borderBottomColor: ui.colors.border,
+              backgroundColor: 'transparent',
               flexDirection: "row",
               alignItems: "center",
               justifyContent: "space-between",
@@ -385,7 +384,7 @@ export function TeamLeaderAppShell({
                 onPress={toggleMode}
                 accessibilityRole="button"
                 accessibilityLabel={themeActionLabel}
-                style={{ width: 40, height: 40, borderRadius: 13, backgroundColor: ui.colors.surfaceGlass, borderWidth: 1, borderColor: ui.colors.border, alignItems: "center", justifyContent: "center" }}
+                style={{ ...iconGlassSurface, width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.surfaceGlass, borderWidth: 1, borderColor: ui.colors.border, alignItems: "center", justifyContent: "center" }}
               >
                 <ThemeIcon size={17} color={ui.colors.textMuted} />
               </TouchableOpacity>
@@ -426,22 +425,24 @@ export function TeamLeaderAppShell({
   // Mobile layout
   return (
     <View nativeID={portalRootId} style={{ flex: 1, backgroundColor: ui.colors.background }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityRole="button" accessibilityLabel={`Open ${context?.team_name || 'team'} profile`}
-          style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>
-        </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity onPress={toggleMode} accessibilityRole="button" accessibilityLabel={themeActionLabel}
-            style={{ ...iconGlassSurface, width: 42, height: 42, borderRadius: 21, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
-            <ThemeIcon size={18} color={ui.colors.textMuted} />
+      {!hideMobileHeader && (
+        <View style={{ backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityRole="button" accessibilityLabel={`Open ${context?.team_name || 'team'} profile`}
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigate('/team/announcements')} accessibilityRole="button" accessibilityLabel="Open announcements"
-            style={{ ...iconGlassSurface, width: 42, height: 42, borderRadius: 21, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
-            <MessageSquare size={19} color={ui.colors.text} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={toggleMode} accessibilityRole="button" accessibilityLabel={themeActionLabel}
+              style={{ ...iconGlassSurface, width: 42, height: 42, borderRadius: 21, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
+              <ThemeIcon size={18} color={ui.colors.textMuted} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigate('/team/announcements')} accessibilityRole="button" accessibilityLabel="Open announcements"
+              style={{ ...iconGlassSurface, width: 42, height: 42, borderRadius: 21, backgroundColor: ui.colors.surfaceGlass, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1 }}>
+              <MessageSquare size={19} color={ui.colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
       {/* Mobile content has its own composition and room for the floating navigation. */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: 112 }}>
         {children}

@@ -56,8 +56,8 @@ export function TeamInstallPrompt() {
   };
 
   return (
-    <View style={{ paddingHorizontal: 12, paddingTop: 8, paddingBottom: 6 }}>
-      <View style={{ width: '100%', maxWidth: 900, minHeight: 94, alignSelf: 'center', padding: 12, gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 16, backgroundColor: ui.colors.surfaceGlass }}>
+    <View pointerEvents="box-none" style={{ position: 'absolute', top: 8, left: 12, right: 12, zIndex: 1000, elevation: 20 }}>
+      <View style={{ ...(Platform.OS === 'web' ? { backdropFilter: 'blur(5px)', WebkitBackdropFilter: 'blur(5px)' } as any : {}), width: '100%', maxWidth: 520, minHeight: 94, alignSelf: 'center', padding: 12, gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 16, backgroundColor: ui.colors.surfaceGlass, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.09, shadowRadius: 14, shadowOffset: { width: 0, height: 5 }, elevation: 3 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
           <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
             <Smartphone size={16} color={ui.colors.primary} />

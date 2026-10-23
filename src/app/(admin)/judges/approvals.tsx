@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -67,30 +68,30 @@ const statusStyle = (status: ApprovalFilter) => {
   if (status === 'approved') {
     return {
       label: 'Approved',
-      background: 'bg-green-100',
-      border: 'border-green-200',
-      text: 'text-green-700',
+      background: 'bg-core-success-soft-green-100',
+      border: 'border-core-success-soft-green-200',
+      text: 'text-core-success-green-700',
       icon: CheckCircle2,
-      iconColor: '#15803D',
+      iconColor: coreColor('#15803D', 'success'),
     };
   }
   if (status === 'rejected') {
     return {
       label: 'Rejected',
-      background: 'bg-red-100',
-      border: 'border-red-200',
-      text: 'text-red-700',
+      background: 'bg-core-danger-soft-red-100',
+      border: 'border-core-danger-soft-red-200',
+      text: 'text-core-danger-red-700',
       icon: XCircle,
       iconColor: ui.colors.destructive,
     };
   }
   return {
     label: 'Pending',
-    background: 'bg-amber-100',
-    border: 'border-amber-200',
-    text: 'text-amber-700',
+    background: 'bg-core-warning-soft-amber-100',
+    border: 'border-core-warning-soft-amber-200',
+    text: 'text-core-warning-amber-700',
     icon: Clock3,
-    iconColor: '#B45309',
+    iconColor: coreColor('#B45309', 'warning'),
   };
 };
 
@@ -289,15 +290,15 @@ export default function JudgeApprovalsPage() {
 
   return (
     <View className="flex-1 bg-ssf-bg">
-      <View className="bg-white border-b border-ui-border py-4 px-5">
+      <View className="bg-core-surface-white border-b border-ui-border py-4 px-5">
         <View className="flex-row items-center">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="h-9 w-9 mr-3 rounded-lg border border-ui-border bg-white items-center justify-center"
+            className="h-9 w-9 mr-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="Back to Judge Panel"
           >
-            <ArrowLeft size={18} color="#334155" />
+            <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
           </TouchableOpacity>
           <View className="flex-1">
             <Text className="font-poppins-black text-ui-text text-xl">
@@ -310,20 +311,20 @@ export default function JudgeApprovalsPage() {
           <TouchableOpacity
             onPress={() => fetchApprovals(true)}
             disabled={isRefreshing}
-            className="h-9 w-9 rounded-lg bg-white border border-ui-border items-center justify-center"
+            className="h-9 w-9 rounded-lg bg-core-surface-white border border-ui-border items-center justify-center"
             accessibilityRole="button"
             accessibilityLabel="Refresh approvals"
           >
             {isRefreshing
-              ? <ActivityIndicator size="small" color="#0F766E" />
-              : <RefreshCw size={17} color="#0F766E" />}
+              ? <ActivityIndicator size="small" color={coreColor("#0F766E", 'primaryText')} />
+              : <RefreshCw size={17} color={coreColor("#0F766E", 'primaryText')} />}
           </TouchableOpacity>
         </View>
       </View>
 
-      <View className="mx-4 mt-4 bg-white border border-ui-border rounded-xl p-3">
-        <View className="flex-row items-center bg-white border border-ui-border rounded-lg px-3 h-10">
-          <Search size={17} color="#9CA3AF" />
+      <View className="mx-4 mt-4 bg-core-surface-white border border-ui-border rounded-xl p-3">
+        <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-lg px-3 h-10">
+          <Search size={17} color={coreColor("#9CA3AF", 'textMuted')} />
           <TextInput
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -347,23 +348,23 @@ export default function JudgeApprovalsPage() {
                 onPress={() => setSelectedFilter(filter.key)}
                 className={`flex-row items-center px-3 h-8 rounded-lg border ${
                   isSelected
-                    ? 'bg-teal-50 border-teal-200'
-                    : 'bg-white border-ui-border'
+                    ? 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200'
+                    : 'bg-core-surface-white border-ui-border'
                 }`}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
                 accessibilityLabel={`${filter.label}, ${counts[filter.key]}`}
               >
                 <Text className={`font-poppins-bold text-xs ${
-                  isSelected ? 'text-teal-700' : 'text-ui-text-muted'
+                  isSelected ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'
                 }`}>
                   {filter.label}
                 </Text>
                 <View className={`ml-2 min-w-5 h-5 px-1 rounded-full items-center justify-center ${
-                  isSelected ? 'bg-teal-100' : 'bg-ui-muted'
+                  isSelected ? 'bg-core-primary-soft-teal-100' : 'bg-ui-muted'
                 }`}>
                   <Text className={`font-poppins-bold text-[10px] ${
-                    isSelected ? 'text-teal-700' : 'text-ui-text-muted'
+                    isSelected ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'
                   }`}>
                     {counts[filter.key]}
                   </Text>
@@ -375,8 +376,8 @@ export default function JudgeApprovalsPage() {
       </View>
 
       {errorMessage && (
-        <View className="mx-4 mt-3 p-3 rounded-xl bg-red-50 border border-red-200">
-          <Text className="font-poppins text-xs text-red-700">{errorMessage}</Text>
+        <View className="mx-4 mt-3 p-3 rounded-xl bg-core-danger-soft-red-50 border border-core-danger-soft-red-200">
+          <Text className="font-poppins text-xs text-core-danger-red-700">{errorMessage}</Text>
         </View>
       )}
 
@@ -386,13 +387,13 @@ export default function JudgeApprovalsPage() {
         </View>
       ) : filteredApprovals.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <View className="w-16 h-16 rounded-2xl bg-gray-100 items-center justify-center">
-            <ShieldCheck size={30} color="#9CA3AF" />
+          <View className="w-16 h-16 rounded-2xl bg-core-surface-muted-gray-100 items-center justify-center">
+            <ShieldCheck size={30} color={coreColor("#9CA3AF", 'textMuted')} />
           </View>
           <Text className="font-poppins-bold text-ssf-text mt-4">
             No approval requests found
           </Text>
-          <Text className="font-poppins text-xs text-gray-500 text-center mt-1">
+          <Text className="font-poppins text-xs text-core-text-muted-gray-500 text-center mt-1">
             New judge login requests will appear here automatically.
           </Text>
         </View>
@@ -406,7 +407,7 @@ export default function JudgeApprovalsPage() {
             showsHorizontalScrollIndicator
             contentContainerStyle={{ flexGrow: 1 }}
           >
-            <View className="flex-1 bg-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 1060 }}>
+            <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 1060 }}>
               <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
                 <Text style={{ flex: 1.25 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Judge</Text>
                 <Text style={{ flex: 1.7 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
@@ -430,10 +431,10 @@ export default function JudgeApprovalsPage() {
                   : false;
 
                 return (
-                  <View key={approval.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-white">
+                  <View key={approval.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
                     <View style={{ flex: 1.25 }} className="flex-row items-center pr-3">
-                      <View className="h-8 w-8 rounded-lg bg-teal-50 items-center justify-center mr-2.5">
-                        <Text className="font-poppins-black text-xs text-teal-700">{judgeName.charAt(0).toUpperCase()}</Text>
+                      <View className="h-8 w-8 rounded-lg bg-core-primary-soft-teal-50 items-center justify-center mr-2.5">
+                        <Text className="font-poppins-black text-xs text-core-primary-text-teal-700">{judgeName.charAt(0).toUpperCase()}</Text>
                       </View>
                       <Text numberOfLines={1} className="flex-1 font-poppins-bold text-xs text-ui-text">{judgeName}</Text>
                     </View>
@@ -445,7 +446,7 @@ export default function JudgeApprovalsPage() {
                       {approval.schedules?.venues?.name || '—'}
                     </Text>
                     <View style={{ width: 120 }}>
-                      <Text className="font-poppins-black text-xs text-teal-700 tracking-widest">{approval.token || 'Hidden'}</Text>
+                      <Text className="font-poppins-black text-xs text-core-primary-text-teal-700 tracking-widest">{approval.token || 'Hidden'}</Text>
                       {(isExpired || approval.is_used) && (
                         <Text className="font-poppins-bold text-[9px] text-ui-text-muted mt-0.5">
                           {isExpired ? 'Expired' : 'Used'}
@@ -467,23 +468,23 @@ export default function JudgeApprovalsPage() {
                           <TouchableOpacity
                             onPress={() => rejectRequest(approval.id)}
                             disabled={actionTokenId !== null}
-                            className="h-8 px-3 rounded-lg border border-red-200 bg-white flex-row items-center justify-center"
+                            className="h-8 px-3 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white flex-row items-center justify-center"
                             accessibilityLabel={`Reject ${judgeName}'s login request`}
                           >
-                            <X size={13} color="#DC2626" />
-                            <Text className="ml-1 font-poppins-bold text-[10px] text-red-600">Reject</Text>
+                            <X size={13} color={coreColor("#DC2626", 'danger')} />
+                            <Text className="ml-1 font-poppins-bold text-[10px] text-core-danger-red-600">Reject</Text>
                           </TouchableOpacity>
                           <TouchableOpacity
                             onPress={() => approveRequest(approval.id)}
                             disabled={actionTokenId !== null}
-                            className="h-8 px-3 rounded-lg bg-teal-700 flex-row items-center justify-center"
+                            className="h-8 px-3 rounded-lg bg-core-primary-teal-700 flex-row items-center justify-center"
                             accessibilityLabel={`Approve ${judgeName}'s login request`}
                           >
                             {isActionRunning
-                              ? <ActivityIndicator size="small" color={ui.colors.surface} />
+                              ? <ActivityIndicator size="small" color={ui.colors.onPrimary} />
                               : <>
-                                  <Check size={13} color={ui.colors.surface} />
-                                  <Text className="ml-1 font-poppins-bold text-[10px] text-white">Approve</Text>
+                                  <Check size={13} color={ui.colors.onPrimary} />
+                                  <Text className="ml-1 font-poppins-bold text-[10px] text-core-on-primary-white">Approve</Text>
                                 </>}
                           </TouchableOpacity>
                         </>

@@ -1,10 +1,9 @@
+import { fixedCoreOutputVariables, legacyCoreOutputColors } from '@/constants/coreThemeOutput';
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useMemo } from 'react';
-import {
-  View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Modal, Clipboard, Share,
-  TextInput, useWindowDimensions, Platform
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Clipboard, Share, TextInput, useWindowDimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Users,
@@ -528,16 +527,16 @@ export default function JudgesPage() {
   return (
     <>
     <View className="flex-1 bg-ssf-bg print:hidden">
-      <View className="bg-white border-b border-ui-border px-5 py-4">
+      <View className="bg-core-surface-white border-b border-ui-border px-5 py-4">
         <View className="flex-row flex-wrap items-center justify-between gap-3">
           <View className="flex-row items-center">
             <TouchableOpacity
               onPress={() => router.canGoBack() ? router.back() : router.replace('/(admin)/schedule' as any)}
-              className="mr-3 h-9 w-9 bg-white border border-ui-border rounded-lg items-center justify-center"
+              className="mr-3 h-9 w-9 bg-core-surface-white border border-ui-border rounded-lg items-center justify-center"
               accessibilityRole="button"
               accessibilityLabel="Back to schedule"
             >
-              <ArrowLeft size={18} color="#334155" />
+              <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
             </TouchableOpacity>
             <View>
               <Text className="text-xl font-poppins-black text-ui-text">Judge Panel</Text>
@@ -549,15 +548,15 @@ export default function JudgesPage() {
           <View className="flex-row items-center gap-x-2">
             <TouchableOpacity
               onPress={() => router.push('/(admin)/judges/approvals' as any)}
-              className="h-9 flex-row items-center bg-white px-3 rounded-lg border border-ui-border"
+              className="h-9 flex-row items-center bg-core-surface-white px-3 rounded-lg border border-ui-border"
               accessibilityRole="button"
               accessibilityLabel={`Open approvals${pendingTokens.length ? `, ${pendingTokens.length} pending` : ''}`}
             >
-              <ClipboardCheck size={15} color="#0F766E" />
-              <Text className="font-poppins-bold text-teal-700 text-xs ml-2">Approvals</Text>
+              <ClipboardCheck size={15} color={coreColor("#0F766E", 'primaryText')} />
+              <Text className="font-poppins-bold text-core-primary-text-teal-700 text-xs ml-2">Approvals</Text>
               {pendingTokens.length > 0 && (
-                <View className="ml-2 min-w-5 h-5 px-1 rounded-full bg-red-500 items-center justify-center">
-                  <Text className="font-poppins-bold text-white text-[10px]">
+                <View className="ml-2 min-w-5 h-5 px-1 rounded-full bg-core-danger-action-red-500 items-center justify-center">
+                  <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">
                     {pendingTokens.length > 99 ? '99+' : pendingTokens.length}
                   </Text>
                 </View>
@@ -565,21 +564,21 @@ export default function JudgesPage() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push('/(admin)/judges/audit' as any)}
-              className="h-9 flex-row items-center bg-white px-3 rounded-lg border border-ui-border"
+              className="h-9 flex-row items-center bg-core-surface-white px-3 rounded-lg border border-ui-border"
               accessibilityRole="button"
               accessibilityLabel="Open judge audit log"
             >
-              <Activity size={15} color="#B45309" />
-              <Text className="font-poppins-bold text-amber-700 text-xs ml-2">Audit Log</Text>
+              <Activity size={15} color={coreColor("#B45309", 'warning')} />
+              <Text className="font-poppins-bold text-core-warning-amber-700 text-xs ml-2">Audit Log</Text>
             </TouchableOpacity>
             {activeTab === 'judges' && (
               <TouchableOpacity
                 onPress={() => setIsAddModalOpen(true)}
-                className="h-9 flex-row items-center bg-teal-700 px-3 rounded-lg"
+                className="h-9 flex-row items-center bg-core-primary-teal-700 px-3 rounded-lg"
                 accessibilityLabel="Add judge"
               >
-                <Plus size={15} color={ui.colors.surface} />
-                <Text className="font-poppins-bold text-white text-xs ml-1.5">Add Judge</Text>
+                <Plus size={15} color={ui.colors.onPrimary} />
+                <Text className="font-poppins-bold text-core-on-primary-white text-xs ml-1.5">Add Judge</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -587,64 +586,64 @@ export default function JudgesPage() {
         <View className="flex-row mt-4 border-b border-ui-border">
           <TouchableOpacity 
             onPress={() => setActiveTab('judges')} 
-            className={`px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-teal-700' : 'border-transparent'}`}
+            className={`px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
             accessibilityRole="tab"
             accessibilityLabel="Judges Directory"
             accessibilityState={{ selected: activeTab === 'judges' }}
           >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'judges' ? 'text-teal-700' : 'text-ui-text-muted'}`}>Judges Directory</Text>
+            <Text className={`font-poppins-bold text-xs ${activeTab === 'judges' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Judges Directory</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => setActiveTab('assignments')} 
-            className={`px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-teal-700' : 'border-transparent'}`}
+            className={`px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
             accessibilityRole="tab"
             accessibilityLabel="Assignments and Codes"
             accessibilityState={{ selected: activeTab === 'assignments' }}
           >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'assignments' ? 'text-teal-700' : 'text-ui-text-muted'}`}>Assignments & Codes</Text>
+            <Text className={`font-poppins-bold text-xs ${activeTab === 'assignments' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Assignments & Codes</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4">
         {pendingTokens.length > 0 && (
-          <View className="mb-6 p-4 rounded-2xl bg-yellow-400/10 border border-yellow-400/30">
+          <View className="mb-6 p-4 rounded-2xl bg-core-warning-action-yellow-400/10 border border-core-warning-yellow-400/30">
             <View className="flex-row items-center mb-3">
-              <Activity size={20} color="#F59E0B" />
-              <Text className="font-poppins-black text-yellow-600 ml-2 text-base">Pending Login Requests ({pendingTokens.length})</Text>
+              <Activity size={20} color={coreColor("#F59E0B", 'warning')} />
+              <Text className="font-poppins-black text-core-warning-yellow-600 ml-2 text-base">Pending Login Requests ({pendingTokens.length})</Text>
             </View>
             <View className="gap-y-3">
               {pendingTokens.map(token => {
                 const j = judges.find((x: any) => x.id === token.judge_id);
                 const s = schedules?.find((x: any) => x.id === token.schedule_id);
                 return (
-                  <View key={token.id} className="bg-white p-3 rounded-xl border border-gray-100 flex-row items-center justify-between shadow-sm">
+                  <View key={token.id} className="bg-core-surface-white p-3 rounded-xl border border-core-border-gray-100 flex-row items-center justify-between shadow-sm">
                     <View className="flex-1">
                       <Text className="font-poppins-bold text-ssf-text">{j?.name || 'Unknown Judge'}</Text>
                       <Text className="font-poppins text-xs text-ssf-text-muted mt-0.5">
                         {s?.items?.item_name_en || 'Unknown Event'} - Code: {token.token}
                       </Text>
-                      <Text className="font-poppins text-[10px] text-gray-400 mt-1">
+                      <Text className="font-poppins text-[10px] text-core-text-muted-gray-400 mt-1">
                         {new Date(token.created_at).toLocaleTimeString()}
                       </Text>
                     </View>
                   <View className="flex-row items-center gap-x-2">
                     <TouchableOpacity
                       onPress={() => handleRejectToken(token.id)}
-                      className="p-2 bg-red-100 rounded-lg"
+                      className="p-2 bg-core-danger-soft-red-100 rounded-lg"
                       accessibilityRole="button"
                       accessibilityLabel={`Reject login request from ${j?.name || 'judge'}`}
                     >
-                      <X size={16} color="#DC2626" />
+                      <X size={16} color={coreColor("#DC2626", 'danger')} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleApproveToken(token.id)}
-                      className="px-3 py-2 bg-green-500 rounded-lg flex-row items-center"
+                      className="px-3 py-2 bg-core-success-action-green-500 rounded-lg flex-row items-center"
                       accessibilityRole="button"
                       accessibilityLabel={`Approve login request from ${j?.name || 'judge'}`}
                     >
-                      <UserCheck size={14} color={ui.colors.surface} />
-                      <Text className="font-poppins-bold text-white text-xs ml-1">Approve</Text>
+                      <UserCheck size={14} color={ui.colors.onPrimary} />
+                      <Text className="font-poppins-bold text-core-on-primary-white text-xs ml-1">Approve</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -667,7 +666,7 @@ export default function JudgesPage() {
             </SsfCard>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex-1 bg-white border border-ui-border rounded-xl overflow-hidden mb-24" style={{ minWidth: 760 }}>
+              <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-24" style={{ minWidth: 760 }}>
                 <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
                   <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Judge</Text>
                   <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Phone</Text>
@@ -678,18 +677,18 @@ export default function JudgesPage() {
                   const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
                   const latestToken = judgeTokens[0];
                   return (
-                  <View key={judge.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-white">
+                  <View key={judge.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
                     <View style={{ flex: 1.4 }} className="flex-row items-center pr-3">
-                      <View className="h-8 w-8 rounded-lg bg-teal-50 items-center justify-center mr-2.5">
-                        <Text className="font-poppins-black text-xs text-teal-700">
+                      <View className="h-8 w-8 rounded-lg bg-core-primary-soft-teal-50 items-center justify-center mr-2.5">
+                        <Text className="font-poppins-black text-xs text-core-primary-text-teal-700">
                           {judge.name?.charAt(0)?.toUpperCase() ?? '?'}
                         </Text>
                       </View>
                       <View className="flex-1">
                         <Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{judge.name}</Text>
                         {judgeTokens.length > 0 && (
-                          <View className="self-start mt-1 px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200">
-                            <Text className="font-poppins-bold text-[9px] text-blue-700">
+                          <View className="self-start mt-1 px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
+                            <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
                               {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
                             </Text>
                           </View>
@@ -708,26 +707,26 @@ export default function JudgesPage() {
                     <View style={{ width: 245 }} className="flex-row justify-end gap-x-2">
                       <TouchableOpacity
                         onPress={() => openTokenModal(judge, latestToken?.schedule_id || '')}
-                        className={`h-8 flex-row items-center justify-center border rounded-lg px-3 ${latestToken ? 'bg-blue-50 border-blue-200' : 'bg-teal-50 border-teal-200'}`}
+                        className={`h-8 flex-row items-center justify-center border rounded-lg px-3 ${latestToken ? 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200' : 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200'}`}
                         accessibilityRole="button"
                         accessibilityLabel={latestToken ? `View active access code for ${judge.name}` : `Generate access code for ${judge.name} in an assigned event`}
                       >
-                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color="#0F766E" />}
-                        <Text className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-blue-700' : 'text-teal-700'}`}>
+                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor("#0F766E", 'primaryText')} />}
+                        <Text className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-core-info-blue-700' : 'text-core-primary-text-teal-700'}`}>
                           {latestToken ? 'View / Copy Code' : 'Generate Code'}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(judge.id, judge.name)}
-                        className="h-8 w-8 rounded-lg border border-red-200 bg-white items-center justify-center"
+                        className="h-8 w-8 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white items-center justify-center"
                         disabled={deletingJudgeId === judge.id}
                         accessibilityRole="button"
                         accessibilityLabel={`Delete judge ${judge.name}`}
                         accessibilityState={{ disabled: deletingJudgeId === judge.id, busy: deletingJudgeId === judge.id }}
                       >
                         {deletingJudgeId === judge.id
-                          ? <ActivityIndicator size="small" color="#EF4444" />
-                          : <Trash2 size={14} color="#EF4444" />}
+                          ? <ActivityIndicator size="small" color={coreColor("#EF4444", 'danger')} />
+                          : <Trash2 size={14} color={coreColor("#EF4444", 'danger')} />}
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -740,9 +739,9 @@ export default function JudgesPage() {
           /* ================= ASSIGNMENTS TABLE ================= */
           <View className="mb-24">
             {/* Filters */}
-            <View className="flex-row flex-wrap items-center gap-2 mb-4 bg-white p-3 rounded-xl border border-ui-border">
-              <View className="flex-row items-center bg-white rounded-lg px-3 h-10 border border-ui-border flex-1 min-w-[260px]">
-                <Search size={16} color="#9CA3AF" />
+            <View className="flex-row flex-wrap items-center gap-2 mb-4 bg-core-surface-white p-3 rounded-xl border border-ui-border">
+              <View className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border flex-1 min-w-[260px]">
+                <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
                 <TextInput
                   className="flex-1 ml-2 font-poppins text-sm text-ssf-text h-full outline-none"
                   placeholder="Search by Item Name or Code..."
@@ -798,7 +797,7 @@ export default function JudgesPage() {
             </View>
 
             {filteredSchedules.length === 0 ? (
-              <View className="items-center py-10 bg-white rounded-xl border border-gray-100">
+              <View className="items-center py-10 bg-core-surface-white rounded-xl border border-core-border-gray-100">
                 <ListFilter size={40} color={ui.colors.border} />
                 <Text className="font-poppins text-ssf-text-muted mt-3">No assignments match your filters.</Text>
               </View>
@@ -815,11 +814,11 @@ export default function JudgesPage() {
                         </Text>
                         {schedule.items?.item_name_ml && <Text className="font-poppins text-xs text-ssf-text-muted">{schedule.items.item_name_ml}</Text>}
                         {schedule.items?.category_codes && (
-                          <Text className="font-poppins text-[10px] text-ssf-primary mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
+                          <Text className="font-poppins text-[10px] text-ui-primary-text mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
                         )}
                       </View>
-                      <View className="bg-blue-100 px-2 py-0.5 rounded-full">
-                        <Text className="font-poppins-bold text-[10px] text-blue-700">{schedule.venues?.name || 'No Venue'}</Text>
+                      <View className="bg-core-info-soft-blue-100 px-2 py-0.5 rounded-full">
+                        <Text className="font-poppins-bold text-[10px] text-core-info-blue-700">{schedule.venues?.name || 'No Venue'}</Text>
                       </View>
                     </View>
 
@@ -828,15 +827,15 @@ export default function JudgesPage() {
                       const assigned = schedule.assigned_judge_ids?.length || 0;
                       const difference = required - assigned;
                       return (
-                        <View className="flex-row flex-wrap items-center gap-2 border-t border-gray-100 pt-2 mt-2 mb-2">
+                        <View className="flex-row flex-wrap items-center gap-2 border-t border-core-border-gray-100 pt-2 mt-2 mb-2">
                           <Text className="font-poppins-bold text-sm text-ssf-text">
                             Assigned Judges: {assigned} / {required}
                           </Text>
                           <View className={`px-2 py-0.5 rounded-full ${
-                            difference > 0 ? 'bg-amber-100' : difference === 0 ? 'bg-green-100' : 'bg-red-100'
+                            difference > 0 ? 'bg-core-warning-soft-amber-100' : difference === 0 ? 'bg-core-success-soft-green-100' : 'bg-core-danger-soft-red-100'
                           }`}>
                             <Text className={`font-poppins-bold text-[10px] ${
-                              difference > 0 ? 'text-amber-700' : difference === 0 ? 'text-green-700' : 'text-red-700'
+                              difference > 0 ? 'text-core-warning-amber-700' : difference === 0 ? 'text-core-success-green-700' : 'text-core-danger-red-700'
                             }`}>
                               {difference > 0
                                 ? `${difference} Remaining`
@@ -855,26 +854,26 @@ export default function JudgesPage() {
                           if (!j) return null;
                           const existingToken = allTokens.find((t: any) => t.judge_id === jid && t.schedule_id === schedule.id);
                           return (
-                            <View key={jid} className="flex-row justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
+                            <View key={jid} className="flex-row justify-between items-center bg-core-surface-muted-gray-50 p-2 rounded-lg border border-core-border-gray-100">
                               <View className="flex-row items-center gap-x-2 flex-1 pr-2">
                                 <View className="w-6 h-6 rounded-full bg-ssf-primary/20 items-center justify-center">
-                                  <Text className="font-poppins-bold text-ssf-primary text-[10px]">{j.name.charAt(0)}</Text>
+                                  <Text className="font-poppins-bold text-ui-primary-text text-[10px]">{j.name.charAt(0)}</Text>
                                 </View>
                                 <Text className="font-poppins text-xs text-ssf-text flex-1">{j.name}</Text>
                               </View>
                               <View className="flex-row items-center gap-x-1.5">
                                 {existingToken ? (
                                   <>
-                                    <View className="bg-gray-200 px-2.5 py-1 rounded-md">
-                                      <Text className="font-poppins-bold text-gray-700 text-[10px]">Code: {existingToken.token}</Text>
+                                    <View className="bg-core-surface-strong-gray-200 px-2.5 py-1 rounded-md">
+                                      <Text className="font-poppins-bold text-core-text-gray-700 text-[10px]">Code: {existingToken.token}</Text>
                                     </View>
                                   <TouchableOpacity
                                     onPress={() => openTokenModal(j, schedule.id)}
-                                    className="bg-red-500 px-2.5 py-1 rounded-md"
+                                    className="bg-core-danger-action-red-500 px-2.5 py-1 rounded-md"
                                     accessibilityRole="button"
                                     accessibilityLabel={`Regenerate access code for ${j.name}`}
                                   >
-                                      <Text className="font-poppins-bold text-white text-[10px]">Regenerate</Text>
+                                      <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Regenerate</Text>
                                     </TouchableOpacity>
                                   </>
                                 ) : (
@@ -884,16 +883,16 @@ export default function JudgesPage() {
                                     accessibilityRole="button"
                                     accessibilityLabel={`Generate access code for ${j.name}`}
                                   >
-                                    <Text className="font-poppins-bold text-white text-[10px]">Gen Code</Text>
+                                    <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Gen Code</Text>
                                   </TouchableOpacity>
                                 )}
                                 <TouchableOpacity
                                   onPress={() => handleQuickRemoveJudge(schedule, jid)}
-                                  className="bg-red-50 p-1 rounded-md border border-red-100"
+                                  className="bg-core-danger-soft-red-50 p-1 rounded-md border border-core-danger-soft-red-100"
                                   accessibilityRole="button"
                                   accessibilityLabel={`Remove ${j.name} from this event`}
                                 >
-                                  <Trash2 size={13} color="#EF4444" />
+                                  <Trash2 size={13} color={coreColor("#EF4444", 'danger')} />
                                 </TouchableOpacity>
                               </View>
                             </View>
@@ -901,38 +900,38 @@ export default function JudgesPage() {
                         })}
                       </View>
                     ) : (
-                      <Text className="font-poppins text-xs text-gray-400 italic mb-2">No judges assigned</Text>
+                      <Text className="font-poppins text-xs text-core-text-muted-gray-400 italic mb-2">No judges assigned</Text>
                     )}
                     
                     <TouchableOpacity 
-                      className="mt-3 flex-row items-center justify-center gap-x-1 border border-dashed border-gray-300 py-2 rounded-lg"
+                      className="mt-3 flex-row items-center justify-center gap-x-1 border border-dashed border-core-border-gray-300 py-2 rounded-lg"
                       onPress={() => openPanelEditModal(schedule)}
                       accessibilityRole="button"
                       accessibilityLabel={`Manage judge panel for ${schedule.items?.item_name_en || 'event'}`}
                     >
-                      <Users size={14} color="#6B7280" />
-                      <Text className="font-poppins-bold text-xs text-gray-500">Manage Panel in Event</Text>
+                      <Users size={14} color={coreColor("#6B7280", 'text')} />
+                      <Text className="font-poppins-bold text-xs text-core-text-muted-gray-500">Manage Panel in Event</Text>
                     </TouchableOpacity>
                   </SsfCard>
                 ))}
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex-1 bg-white rounded-xl border border-ui-border overflow-hidden" style={{ minWidth: 1150 }}>
+              <View className="flex-1 bg-core-surface-white rounded-xl border border-ui-border overflow-hidden" style={{ minWidth: 1150 }}>
                 <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
                   <Text style={{ width: 340 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event Details</Text>
                   <Text style={{ width: 210 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue</Text>
                   <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted flex-1">Assigned Judges & Codes</Text>
                 </View>
                 {filteredSchedules.map(schedule => (
-                  <View key={schedule.id} className="flex-row px-4 py-4 border-b border-ui-border items-start bg-white">
+                  <View key={schedule.id} className="flex-row px-4 py-4 border-b border-ui-border items-start bg-core-surface-white">
                     <View style={{ width: 340 }} className="pr-5">
                       <Text className="font-poppins-bold text-sm text-ui-text">
                         {schedule.items?.item_name_en} {schedule.items?.item_code ? `(${schedule.items.item_code})` : ''}
                       </Text>
-                      {schedule.items?.item_name_ml && <Text className="font-poppins text-xs text-gray-500">{schedule.items.item_name_ml}</Text>}
+                      {schedule.items?.item_name_ml && <Text className="font-poppins text-xs text-core-text-muted-gray-500">{schedule.items.item_name_ml}</Text>}
                       {schedule.items?.category_codes && (
-                        <Text className="font-poppins text-[10px] text-ssf-primary mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
+                        <Text className="font-poppins text-[10px] text-ui-primary-text mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
                       )}
                       {(() => {
                         const required = schedule.expected_judge_count || 3;
@@ -944,10 +943,10 @@ export default function JudgesPage() {
                               Judges: {assigned}/{required}
                             </Text>
                             <View className={`px-2 py-0.5 rounded-full ${
-                              difference > 0 ? 'bg-amber-100' : difference === 0 ? 'bg-green-100' : 'bg-red-100'
+                              difference > 0 ? 'bg-core-warning-soft-amber-100' : difference === 0 ? 'bg-core-success-soft-green-100' : 'bg-core-danger-soft-red-100'
                             }`}>
                               <Text className={`font-poppins-bold text-[9px] ${
-                                difference > 0 ? 'text-amber-700' : difference === 0 ? 'text-green-700' : 'text-red-700'
+                                difference > 0 ? 'text-core-warning-amber-700' : difference === 0 ? 'text-core-success-green-700' : 'text-core-danger-red-700'
                               }`}>
                                 {difference > 0
                                   ? `${difference} Remaining`
@@ -961,8 +960,8 @@ export default function JudgesPage() {
                       })()}
                     </View>
                     <View style={{ width: 210 }} className="justify-center pr-5">
-                      <View className="bg-blue-50 self-start px-2.5 py-1 rounded-lg border border-blue-100">
-                        <Text className="font-poppins text-[10px] text-blue-700" numberOfLines={1}>{schedule.venues?.name || 'N/A'}</Text>
+                      <View className="bg-core-info-soft-blue-50 self-start px-2.5 py-1 rounded-lg border border-core-info-soft-blue-100">
+                        <Text className="font-poppins text-[10px] text-core-info-blue-700" numberOfLines={1}>{schedule.venues?.name || 'N/A'}</Text>
                       </View>
                     </View>
                     <View className="flex-1 gap-y-2">
@@ -974,50 +973,50 @@ export default function JudgesPage() {
                           return (
                             <View key={jid} className="min-h-11 flex-row justify-between items-center bg-ui-muted px-3 rounded-lg border border-ui-border">
                               <View className="flex-row items-center flex-1 pr-3">
-                                <View className="h-7 w-7 rounded-lg bg-white border border-ui-border items-center justify-center mr-2">
-                                  <Text className="font-poppins-black text-[10px] text-teal-700">{j.name?.charAt(0)?.toUpperCase()}</Text>
+                                <View className="h-7 w-7 rounded-lg bg-core-surface-white border border-ui-border items-center justify-center mr-2">
+                                  <Text className="font-poppins-black text-[10px] text-core-primary-text-teal-700">{j.name?.charAt(0)?.toUpperCase()}</Text>
                                 </View>
                                 <Text className="font-poppins-bold text-xs text-ui-text">{j.name}</Text>
                               </View>
                               <View className="flex-row items-center gap-x-2">
                                 {existingToken ? (
                                   <>
-                                    <View className="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200">
-                                      <Text className="font-poppins-bold text-blue-700 text-[10px] tracking-wider">Code: {existingToken.token}</Text>
+                                    <View className="bg-core-info-soft-blue-50 px-2.5 py-1.5 rounded-lg border border-core-info-soft-blue-200">
+                                      <Text className="font-poppins-bold text-core-info-blue-700 text-[10px] tracking-wider">Code: {existingToken.token}</Text>
                                     </View>
                                     <TouchableOpacity
                                       onPress={() => openTokenModal(j, schedule.id)}
-                                      className="bg-white px-3 py-1.5 rounded-lg border border-ui-border"
+                                      className="bg-core-surface-white px-3 py-1.5 rounded-lg border border-ui-border"
                                       accessibilityRole="button"
                                       accessibilityLabel={`View or copy access code for ${j.name}`}
                                     >
-                                      <Text className="font-poppins-bold text-teal-700 text-[10px]">View / Copy</Text>
+                                      <Text className="font-poppins-bold text-core-primary-text-teal-700 text-[10px]">View / Copy</Text>
                                     </TouchableOpacity>
                                   </>
                                 ) : (
                                   <TouchableOpacity
                                     onPress={() => openTokenModal(j, schedule.id)}
-                                    className="bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200"
+                                    className="bg-core-primary-soft-teal-50 px-3 py-1.5 rounded-lg border border-core-primary-soft-teal-200"
                                     accessibilityRole="button"
                                     accessibilityLabel={`Generate access code for ${j.name}`}
                                   >
-                                    <Text className="font-poppins-bold text-teal-700 text-[10px]">Generate Code</Text>
+                                    <Text className="font-poppins-bold text-core-primary-text-teal-700 text-[10px]">Generate Code</Text>
                                   </TouchableOpacity>
                                 )}
                                 <TouchableOpacity
                                   onPress={() => handleQuickRemoveJudge(schedule, jid)}
-                                  className="bg-red-50 p-1.5 rounded-lg border border-red-100"
+                                  className="bg-core-danger-soft-red-50 p-1.5 rounded-lg border border-core-danger-soft-red-100"
                                   accessibilityRole="button"
                                   accessibilityLabel={`Remove ${j.name} from this event`}
                                 >
-                                  <Trash2 size={14} color="#EF4444" />
+                                  <Trash2 size={14} color={coreColor("#EF4444", 'danger')} />
                                 </TouchableOpacity>
                               </View>
                             </View>
                           );
                         })
                       ) : (
-                        <Text className="font-poppins text-xs text-gray-400 italic">No judges assigned.</Text>
+                        <Text className="font-poppins text-xs text-core-text-muted-gray-400 italic">No judges assigned.</Text>
                       )}
                       <TouchableOpacity 
                         className="self-start mt-1"
@@ -1025,7 +1024,7 @@ export default function JudgesPage() {
                         accessibilityRole="button"
                         accessibilityLabel={`Edit judge panel for ${schedule.items?.item_name_en || 'event'}`}
                       >
-                        <Text className="font-poppins-bold text-[10px] text-teal-700">+ Edit Panel</Text>
+                        <Text className="font-poppins-bold text-[10px] text-core-primary-text-teal-700">+ Edit Panel</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1039,8 +1038,8 @@ export default function JudgesPage() {
 
       {/* ── Add Judge Modal ── */}
       <Modal visible={isAddModalOpen} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white p-6 rounded-t-3xl">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-end">
+          <View className="bg-core-surface-white p-6 rounded-t-3xl">
             <Text className="text-xl font-poppins-black text-ssf-text mb-5">Add Judge</Text>
             <SsfInput label="Full Name *" placeholder="e.g., Abdul Rahman" value={form.name} onChangeText={v => setForm({ ...form, name: v })} className="mb-4" />
             <SsfInput label="Phone Number" placeholder="e.g., 9876543210" value={form.phone} onChangeText={v => setForm({ ...form, phone: v })} className="mb-4" />
@@ -1053,8 +1052,8 @@ export default function JudgesPage() {
 
       {/* ── Generate Token Modal ── */}
       <Modal visible={isTokenModalOpen} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 items-center justify-center p-4">
-          <View className="w-full max-w-3xl max-h-[90%] bg-white p-5 rounded-2xl border border-ui-border shadow-lg">
+        <View className="flex-1 bg-core-surface-strong-black/50 items-center justify-center p-4">
+          <View className="w-full max-w-3xl max-h-[90%] bg-core-surface-white p-5 rounded-2xl border border-ui-border shadow-lg">
             <View className="flex-row items-start justify-between mb-4">
               <View>
                 <Text className="text-xl font-poppins-black text-ui-text">Access Code</Text>
@@ -1062,7 +1061,7 @@ export default function JudgesPage() {
               </View>
               <TouchableOpacity
                 onPress={() => setIsTokenModalOpen(false)}
-                className="h-9 w-9 rounded-lg border border-ui-border bg-white items-center justify-center"
+                className="h-9 w-9 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
                 accessibilityLabel="Close access code dialog"
               >
                 <X size={17} color={ui.colors.textMuted} />
@@ -1073,8 +1072,8 @@ export default function JudgesPage() {
               <>
                 <Text className="font-poppins-bold text-xs text-ui-text mb-2">Select assigned event</Text>
                 
-                <View className="flex-row items-center bg-white rounded-lg px-3 h-10 border border-ui-border w-full mb-3">
-                  <Search size={16} color="#9CA3AF" />
+                <View className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border w-full mb-3">
+                  <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
                   <TextInput
                     className="flex-1 ml-2 font-poppins text-sm text-ssf-text h-full outline-none"
                     placeholder="Search by event name or code..."
@@ -1112,15 +1111,15 @@ export default function JudgesPage() {
                       }}
                       className={`px-4 min-h-14 justify-center border-b border-ui-border ${
                         selectedScheduleId === s.id
-                          ? 'bg-teal-50'
+                          ? 'bg-core-primary-soft-teal-50'
                           : isAssigned
-                            ? 'bg-white'
+                            ? 'bg-core-surface-white'
                             : 'bg-ui-muted opacity-50'
                       }`}
                     >
                       <View className="flex-row justify-between items-start">
                         <View className="flex-1 pr-2">
-                          <Text className={`font-poppins-bold text-sm ${selectedScheduleId === s.id ? 'text-ssf-primary' : 'text-ssf-text'}`}>
+                          <Text className={`font-poppins-bold text-sm ${selectedScheduleId === s.id ? 'text-ui-primary-text' : 'text-ssf-text'}`}>
                             {s.items?.item_name_ml ?? s.items?.item_name_en ?? 'Unknown'}
                             {s.items?.category_codes ? ` - ${(s.items.category_codes as string[]).join(', ')}` : ''}
                           </Text>
@@ -1130,18 +1129,18 @@ export default function JudgesPage() {
                         </View>
                         <View className="items-end gap-y-1">
                           {hasToken && (
-                            <View className="bg-green-100 px-2 py-0.5 rounded border border-green-200">
-                              <Text className="text-[10px] text-green-700 font-poppins-bold">Code Generated</Text>
+                            <View className="bg-core-success-soft-green-100 px-2 py-0.5 rounded border border-core-success-soft-green-200">
+                              <Text className="text-[10px] text-core-success-green-700 font-poppins-bold">Code Generated</Text>
                             </View>
                           )}
                           {isCompleted && (
-                            <View className="bg-red-100 px-2 py-0.5 rounded border border-red-200">
-                              <Text className="text-[10px] text-red-700 font-poppins-bold">Marks Entered</Text>
+                            <View className="bg-core-danger-soft-red-100 px-2 py-0.5 rounded border border-core-danger-soft-red-200">
+                              <Text className="text-[10px] text-core-danger-red-700 font-poppins-bold">Marks Entered</Text>
                             </View>
                           )}
                           {!isAssigned && (
-                            <View className="bg-gray-200 px-2 py-0.5 rounded border border-gray-300">
-                              <Text className="text-[10px] text-gray-600 font-poppins-bold">Not Assigned</Text>
+                            <View className="bg-core-surface-strong-gray-200 px-2 py-0.5 rounded border border-core-border-gray-300">
+                              <Text className="text-[10px] text-core-text-gray-600 font-poppins-bold">Not Assigned</Text>
                             </View>
                           )}
                         </View>
@@ -1155,9 +1154,9 @@ export default function JudgesPage() {
                   const selectedS = modalFilteredSchedules?.find((s: any) => s.id === selectedScheduleId);
                   if (selectedS && workflowStatusBySchedule[selectedS.id]?.marks_completed === true) {
                     return (
-                      <View className="bg-red-50 p-3 rounded-xl mb-3 border border-red-200 flex-row items-center">
-                        <Activity size={16} color="#DC2626" />
-                        <Text className="font-poppins-bold text-red-700 text-xs ml-2 flex-1 leading-relaxed">
+                      <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-200 flex-row items-center">
+                        <Activity size={16} color={coreColor("#DC2626", 'danger')} />
+                        <Text className="font-poppins-bold text-core-danger-red-700 text-xs ml-2 flex-1 leading-relaxed">
                           Strict Warning: Marks entry is already completed for this event. 
                         </Text>
                       </View>
@@ -1167,8 +1166,8 @@ export default function JudgesPage() {
                 })()}
 
                 {errorMessage && (
-                  <View className="bg-red-50 p-3 rounded-xl mb-3 border border-red-100">
-                    <Text className="font-poppins text-red-600 text-sm">{errorMessage}</Text>
+                  <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-100">
+                    <Text className="font-poppins text-core-danger-red-600 text-sm">{errorMessage}</Text>
                   </View>
                 )}
 
@@ -1185,21 +1184,21 @@ export default function JudgesPage() {
             ) : (
               <>
                 {errorMessage && (
-                  <View className="bg-red-50 p-3 rounded-lg mb-3 border border-red-200">
-                    <Text className="font-poppins text-red-700 text-xs">{errorMessage}</Text>
+                  <View className="bg-core-danger-soft-red-50 p-3 rounded-lg mb-3 border border-core-danger-soft-red-200">
+                    <Text className="font-poppins text-core-danger-red-700 text-xs">{errorMessage}</Text>
                   </View>
                 )}
                 <View className="bg-ui-muted rounded-xl p-4 items-center mb-4 border border-ui-border">
-                  <View className="bg-white p-2.5 rounded-xl mb-3 border border-ui-border">
+                  <View className="bg-core-surface-white p-2.5 rounded-xl mb-3 border border-ui-border">
                     <QRCode
                       value={typeof window !== 'undefined' ? `${window.location.origin}/judge?code=${generatedToken}` : `https://sahi-app.com/judge?code=${generatedToken}`}
                       size={150}
-                      color="#065F46"
+                      color={coreColor("#065F46", 'success')}
                       backgroundColor={ui.colors.surface}
                     />
                   </View>
                   <Text className="font-poppins text-ui-text-muted text-[10px] uppercase tracking-wider">6-character code</Text>
-                  <Text className="font-poppins-black text-2xl text-teal-700 tracking-widest mt-1">{generatedToken}</Text>
+                  <Text className="font-poppins-black text-2xl text-core-primary-text-teal-700 tracking-widest mt-1">{generatedToken}</Text>
                   <Text className="font-poppins text-ui-text-muted text-[10px] text-center mt-2 px-4">
                     Judge can scan this QR using their phone camera to instantly login, or type the code manually. Code expires after single use.
                   </Text>
@@ -1208,12 +1207,12 @@ export default function JudgesPage() {
                 <View className="flex-row gap-x-2 mb-3">
                   <TouchableOpacity
                     onPress={copyToken}
-                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-white border border-ui-border rounded-lg"
+                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-core-surface-white border border-ui-border rounded-lg"
                     accessibilityRole="button"
                     accessibilityLabel="Copy access code"
                   >
-                    <Copy size={16} color="#374151" />
-                    <Text className="font-poppins-bold text-gray-700 text-sm">Copy</Text>
+                    <Copy size={16} color={coreColor("#374151", 'text')} />
+                    <Text className="font-poppins-bold text-core-text-gray-700 text-sm">Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
@@ -1221,34 +1220,34 @@ export default function JudgesPage() {
                         setTimeout(() => window.print(), 100);
                       }
                     }}
-                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-indigo-600 rounded-lg"
+                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-core-primary-indigo-600 rounded-lg"
                     accessibilityRole="button"
                     accessibilityLabel="Print evaluation sheet"
                   >
-                    <Printer size={16} color={ui.colors.surface} />
-                    <Text className="font-poppins-bold text-white text-sm">Print</Text>
+                    <Printer size={16} color={ui.colors.onPrimary} />
+                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">Print</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={shareToken}
-                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-teal-700 rounded-lg"
+                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-core-primary-teal-700 rounded-lg"
                     accessibilityRole="button"
                     accessibilityLabel="Share access code and judge portal link"
                   >
-                    <Share2 size={16} color={ui.colors.surface} />
-                    <Text className="font-poppins-bold text-white text-sm">Share</Text>
+                    <Share2 size={16} color={ui.colors.onPrimary} />
+                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">Share</Text>
                   </TouchableOpacity>
                 </View>
 
                 <TouchableOpacity
                   onPress={() => handleGenerateToken(true)}
                   disabled={isGenerating}
-                  className="h-10 flex-row items-center justify-center gap-x-2 bg-amber-50 border border-amber-200 rounded-lg mb-3 active:opacity-80"
+                  className="h-10 flex-row items-center justify-center gap-x-2 bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-lg mb-3 active:opacity-80"
                   accessibilityRole="button"
                   accessibilityLabel="Regenerate access code and QR code"
                   accessibilityState={{ disabled: isGenerating, busy: isGenerating }}
                 >
-                  <RefreshCw size={15} color="#B45309" />
-                  <Text className="font-poppins-bold text-amber-700 text-xs">
+                  <RefreshCw size={15} color={coreColor("#B45309", 'warning')} />
+                  <Text className="font-poppins-bold text-core-warning-amber-700 text-xs">
                     {isGenerating ? 'Regenerating...' : 'Regenerate Code & QR'}
                   </Text>
                 </TouchableOpacity>
@@ -1262,24 +1261,24 @@ export default function JudgesPage() {
 
       {/* ── Manage Panel Modal ── */}
       <Modal visible={isPanelEditModalOpen} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white p-6 rounded-t-3xl max-h-[85%]">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-end">
+          <View className="bg-core-surface-white p-6 rounded-t-3xl max-h-[85%]">
             <View className="flex-row justify-between items-start mb-3">
               <View className="flex-1 pr-3">
                 <Text className="text-xl font-poppins-black text-ssf-text">Manage Judge Panel</Text>
-                <Text className="font-poppins-bold text-sm text-ssf-primary mt-1">
+                <Text className="font-poppins-bold text-sm text-ui-primary-text mt-1">
                   {selectedScheduleForPanel?.items?.item_name_ml || selectedScheduleForPanel?.items?.item_name_en}
                   {selectedScheduleForPanel?.items?.item_code ? ` (${selectedScheduleForPanel.items.item_code})` : ''}
                 </Text>
-                <Text className="font-poppins text-xs text-gray-500 mt-0.5">
+                <Text className="font-poppins text-xs text-core-text-muted-gray-500 mt-0.5">
                   Venue: {selectedScheduleForPanel?.venues?.name || 'N/A'}
                 </Text>
               </View>
               <View className="bg-ssf-primary/10 px-3 py-1.5 rounded-full border border-ssf-primary/20">
-                <Text className="font-poppins-bold text-ssf-primary text-xs">
+                <Text className="font-poppins-bold text-ui-primary-text text-xs">
                   {selectedJudgeIdsForPanel.length} / {selectedScheduleForPanel?.expected_judge_count || 3} Selected
                 </Text>
-                <Text className="font-poppins-bold text-ssf-primary text-[9px] text-center mt-0.5">
+                <Text className="font-poppins-bold text-ui-primary-text text-[9px] text-center mt-0.5">
                   {Math.max(
                     (selectedScheduleForPanel?.expected_judge_count || 3) - selectedJudgeIdsForPanel.length,
                     0
@@ -1289,8 +1288,8 @@ export default function JudgesPage() {
             </View>
 
             {selectedJudgeIdsForPanel.length > (selectedScheduleForPanel?.expected_judge_count || 3) && (
-              <View className="bg-red-50 p-3 rounded-xl mb-3 border border-red-200">
-                <Text className="font-poppins-bold text-red-700 text-xs">
+              <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-200">
+                <Text className="font-poppins-bold text-core-danger-red-700 text-xs">
                   {selectedJudgeIdsForPanel.length - (selectedScheduleForPanel?.expected_judge_count || 3)}
                   {' '}extra judge(s) assigned. Remove the extra judge(s) before saving.
                 </Text>
@@ -1298,13 +1297,13 @@ export default function JudgesPage() {
             )}
 
             {panelErrorMessage && (
-              <View className="bg-red-50 p-3 rounded-xl mb-3 border border-red-200">
-                <Text className="font-poppins-bold text-red-700 text-xs">{panelErrorMessage}</Text>
+              <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-200">
+                <Text className="font-poppins-bold text-core-danger-red-700 text-xs">{panelErrorMessage}</Text>
               </View>
             )}
 
-            <View className="flex-row items-center bg-gray-50 rounded-lg px-3 h-10 border border-gray-200 w-full mb-3">
-              <Search size={16} color="#9CA3AF" />
+            <View className="flex-row items-center bg-core-surface-muted-gray-50 rounded-lg px-3 h-10 border border-core-border-gray-200 w-full mb-3">
+              <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
               <TextInput
                 className="flex-1 ml-2 font-poppins text-sm text-ssf-text h-full outline-none"
                 placeholder="Search judge by name or spec..."
@@ -1333,29 +1332,29 @@ export default function JudgesPage() {
                         isSelected
                           ? 'bg-ssf-primary/10 border-ssf-primary'
                           : isDisabled
-                            ? 'bg-gray-100 border-gray-200 opacity-40'
-                            : 'bg-gray-50 border-gray-200'
+                            ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-40'
+                            : 'bg-core-surface-muted-gray-50 border-core-border-gray-200'
                       }`}
                     >
                       <View className="flex-row items-center flex-1 pr-2">
-                        <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${isSelected ? 'bg-ssf-primary' : 'bg-gray-200'}`}>
-                          <Text className={`font-poppins-bold text-xs ${isSelected ? 'text-white' : 'text-gray-600'}`}>{j.name.charAt(0)}</Text>
+                        <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${isSelected ? 'bg-ssf-primary' : 'bg-core-surface-strong-gray-200'}`}>
+                          <Text className={`font-poppins-bold text-xs ${isSelected ? 'text-core-on-primary-white' : 'text-core-text-gray-600'}`}>{j.name.charAt(0)}</Text>
                         </View>
                         <View className="flex-1">
-                          <Text className={`font-poppins-bold text-sm ${isSelected ? 'text-ssf-primary' : 'text-ssf-text'}`}>{j.name}</Text>
+                          <Text className={`font-poppins-bold text-sm ${isSelected ? 'text-ui-primary-text' : 'text-ssf-text'}`}>{j.name}</Text>
                           {j.specialization && j.specialization.length > 0 && (
-                            <Text className="font-poppins text-xs text-gray-500">{Array.isArray(j.specialization) ? j.specialization.join(', ') : j.specialization}</Text>
+                            <Text className="font-poppins text-xs text-core-text-muted-gray-500">{Array.isArray(j.specialization) ? j.specialization.join(', ') : j.specialization}</Text>
                           )}
                         </View>
                       </View>
-                      <View className={`w-6 h-6 rounded-md items-center justify-center border ${isSelected ? 'bg-ssf-primary border-ssf-primary' : 'border-gray-300 bg-white'}`}>
-                        {isSelected && <Text className="font-poppins-bold text-white text-xs">✓</Text>}
+                      <View className={`w-6 h-6 rounded-md items-center justify-center border ${isSelected ? 'bg-ssf-primary border-ssf-primary' : 'border-core-border-gray-300 bg-core-surface-white'}`}>
+                        {isSelected && <Text className="font-poppins-bold text-core-on-primary-white text-xs">✓</Text>}
                       </View>
                     </TouchableOpacity>
                   );
                 })
               ) : (
-                <Text className="font-poppins text-xs text-gray-400 italic text-center py-4">No judges found matching search.</Text>
+                <Text className="font-poppins text-xs text-core-text-muted-gray-400 italic text-center py-4">No judges found matching search.</Text>
               )}
             </ScrollView>
 
@@ -1404,7 +1403,7 @@ export default function JudgesPage() {
             }
           }
         `}} />
-        <View id="print-evaluation-sheet" style={{ display: 'none' }}>
+        <View id="print-evaluation-sheet" style={{ ...fixedCoreOutputVariables, display: 'none' }}>
           <View style={{ width: '210mm', minHeight: '297mm', backgroundColor: 'white', padding: '10mm', position: 'relative' }}>
           {/* Header (Increased to ~7cm = 265px) */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#000080', paddingBottom: 24, marginBottom: 16, maxHeight: 265 }}>
@@ -1413,7 +1412,7 @@ export default function JudgesPage() {
               <Text style={{ fontSize: 26, fontFamily: 'Poppins_900Black', color: '#000080', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
                 ALVIORA 2K26
               </Text>
-              <Text style={{ fontSize: 16, fontFamily: 'Poppins_700Bold', color: ui.colors.text, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+              <Text style={{ fontSize: 16, fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.text, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
                 OFFICIAL EVALUATION SHEET
               </Text>
               
@@ -1429,7 +1428,7 @@ export default function JudgesPage() {
                     <Text style={{ fontSize: 24, fontFamily: 'Poppins_900Black', color: '#000080' }}>
                       {selectedS?.items?.item_name_ml || selectedS?.items?.item_name_en}
                     </Text>
-                    <Text style={{ fontSize: 15, fontFamily: 'Poppins_700Bold', color: ui.colors.text, marginTop: 2 }}>
+                    <Text style={{ fontSize: 15, fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.text, marginTop: 2 }}>
                       Category: {selectedS?.items?.category || (selectedS?.items?.category_codes ? (selectedS.items.category_codes as string[]).join(', ') : '-')}
                     </Text>
                   </View>
@@ -1443,7 +1442,7 @@ export default function JudgesPage() {
                 value={typeof window !== 'undefined' ? `${window.location.origin}/judge?code=${generatedToken}` : `https://sahi-app.com/judge?code=${generatedToken}`}
                 size={140}
                 color="#000080"
-                backgroundColor={ui.colors.surface}
+                backgroundColor={legacyCoreOutputColors.surface}
               />
               <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 24, color: '#000080', letterSpacing: 4, marginTop: 12 }}>
                 {generatedToken}

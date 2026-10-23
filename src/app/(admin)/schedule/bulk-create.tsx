@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
 import {
@@ -401,14 +402,14 @@ export default function BulkCreateSchedule() {
   };
 
   if (isLoading) {
-    return <ActivityIndicator color="#0F766E" style={{ marginTop: 48 }} />;
+    return <ActivityIndicator color={coreColor("#0F766E", 'primaryText')} style={{ marginTop: 48 }} />;
   }
 
   if (Platform.OS !== 'web' || width < 768) {
     return (
       <View className="flex-1 bg-ui-bg items-center justify-center px-6">
-        <View className="w-full max-w-md rounded-xl border border-ui-border bg-white p-6 items-center">
-          <WandSparkles size={28} color="#0F766E" />
+        <View className="w-full max-w-md rounded-xl border border-ui-border bg-core-surface-white p-6 items-center">
+          <WandSparkles size={28} color={coreColor("#0F766E", 'primaryText')} />
           <Text className="mt-3 text-lg font-poppins-bold text-ui-text">Desktop feature</Text>
           <Text className="mt-1 text-center font-poppins text-sm text-ui-text-muted">
             Bulk Schedule Builder is available on desktop. Use Add New to create a schedule on this device.
@@ -423,8 +424,8 @@ export default function BulkCreateSchedule() {
     <ScrollView className="flex-1 bg-ui-bg px-3 py-3">
       <View className="flex-row items-center justify-between mb-5">
         <View className="flex-row items-center">
-          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 rounded-xl bg-white border border-ui-border items-center justify-center mr-3">
-            <ArrowLeft size={19} color="#334155" />
+          <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 rounded-xl bg-core-surface-white border border-ui-border items-center justify-center mr-3">
+            <ArrowLeft size={19} color={coreColor("#334155", 'text')} />
           </TouchableOpacity>
           <View>
             <Text className="text-2xl font-poppins-black text-ui-text">Bulk Schedule Builder</Text>
@@ -433,7 +434,7 @@ export default function BulkCreateSchedule() {
         </View>
       </View>
 
-      <View className="bg-white border border-ui-border rounded-xl p-4 mb-4">
+      <View className="bg-core-surface-white border border-ui-border rounded-xl p-4 mb-4">
         <View className="flex-row flex-wrap gap-3">
           <View className="min-w-[210px] flex-1">
             <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted mb-1.5">Stage</Text>
@@ -474,11 +475,11 @@ export default function BulkCreateSchedule() {
         </View>
       </View>
 
-      <View className="bg-white border border-ui-border rounded-xl p-4 mb-4">
+      <View className="bg-core-surface-white border border-ui-border rounded-xl p-4 mb-4">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
-            <View className="h-9 w-9 rounded-xl bg-amber-50 items-center justify-center mr-3">
-              <Coffee size={17} color="#B45309" />
+            <View className="h-9 w-9 rounded-xl bg-core-warning-soft-amber-50 items-center justify-center mr-3">
+              <Coffee size={17} color={coreColor("#B45309", 'warning')} />
             </View>
             <View>
               <Text className="font-poppins-bold text-sm text-ui-text">Breaks</Text>
@@ -489,10 +490,10 @@ export default function BulkCreateSchedule() {
           </View>
           <TouchableOpacity
             onPress={addBreak}
-            className="h-9 px-3 rounded-lg border border-amber-200 bg-amber-50 flex-row items-center justify-center"
+            className="h-9 px-3 rounded-lg border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 flex-row items-center justify-center"
           >
-            <Plus size={14} color="#B45309" />
-            <Text className="ml-1.5 font-poppins-bold text-[11px] text-amber-700">Add Break</Text>
+            <Plus size={14} color={coreColor("#B45309", 'warning')} />
+            <Text className="ml-1.5 font-poppins-bold text-[11px] text-core-warning-amber-700">Add Break</Text>
           </TouchableOpacity>
         </View>
 
@@ -507,12 +508,12 @@ export default function BulkCreateSchedule() {
             {breaks.map((entry) => {
               const error = getBreakTimeError(entry);
               return (
-                <View key={entry.id} className={`flex-row items-center gap-x-2 rounded-xl border p-2 ${error ? 'border-red-200 bg-red-50' : 'border-ui-border bg-ui-muted'}`}>
+                <View key={entry.id} className={`flex-row items-center gap-x-2 rounded-xl border p-2 ${error ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-ui-border bg-ui-muted'}`}>
                   <TextInput
                     value={entry.title}
                     onChangeText={(title) => updateBreak(entry.id, { title })}
                     placeholder="Break title"
-                    className="h-10 min-w-[180px] flex-1 rounded-lg border border-ui-border bg-white px-3 font-poppins text-xs outline-none"
+                    className="h-10 min-w-[180px] flex-1 rounded-lg border border-ui-border bg-core-surface-white px-3 font-poppins text-xs outline-none"
                   />
                   <TimePicker
                     value={entry.startTime}
@@ -525,13 +526,13 @@ export default function BulkCreateSchedule() {
                     onChange={(endTime) => updateBreak(entry.id, { endTime })}
                     ariaLabel={`${entry.title || 'Break'} end time`}
                   />
-                  {error && <Text className="font-poppins-bold text-[10px] text-red-600">{error}</Text>}
+                  {error && <Text className="font-poppins-bold text-[10px] text-core-danger-red-600">{error}</Text>}
                   <TouchableOpacity
                     onPress={() => removeBreak(entry.id)}
                     accessibilityLabel={`Remove ${entry.title || 'break'}`}
-                    className="h-10 w-10 rounded-lg border border-red-100 bg-white items-center justify-center"
+                    className="h-10 w-10 rounded-lg border border-core-danger-soft-red-100 bg-core-surface-white items-center justify-center"
                   >
-                    <Trash2 size={15} color="#DC2626" />
+                    <Trash2 size={15} color={coreColor("#DC2626", 'danger')} />
                   </TouchableOpacity>
                 </View>
               );
@@ -541,15 +542,15 @@ export default function BulkCreateSchedule() {
       </View>
 
       {selectedItems.length > 0 && preview.length === 0 && (
-        <View className="bg-white border border-amber-200 rounded-xl p-4 mb-4">
+        <View className="bg-core-surface-white border border-core-warning-soft-amber-200 rounded-xl p-4 mb-4">
           <Text className="font-poppins-bold text-sm text-ui-text">Schedule Preview</Text>
-          <Text className="font-poppins text-xs text-amber-700 mt-1">
+          <Text className="font-poppins text-xs text-core-warning-amber-700 mt-1">
             {selectedItems.length} item{selectedItems.length === 1 ? '' : 's'} selected. Select a stage, date, and complete start time to show the generated schedule here.
           </Text>
         </View>
       )}
 
-      <View className="bg-white border border-ui-border rounded-xl overflow-hidden mb-4">
+      <View className="bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-4">
         <View className="p-3 border-b border-ui-border">
           <View className="flex-row items-center gap-x-2">
             <View className="flex-1 h-10 px-3 rounded-xl border border-ui-border flex-row items-center">
@@ -583,9 +584,9 @@ export default function BulkCreateSchedule() {
                 <TouchableOpacity
                   key={option.value}
                   onPress={() => setScheduleFilter(option.value)}
-                  className={`h-8 px-3 rounded-lg border items-center justify-center mr-2 ${active ? 'bg-teal-50 border-teal-200' : 'bg-white border-ui-border'}`}
+                  className={`h-8 px-3 rounded-lg border items-center justify-center mr-2 ${active ? 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200' : 'bg-core-surface-white border-ui-border'}`}
                 >
-                  <Text className={`font-poppins-bold text-[10px] ${active ? 'text-teal-700' : 'text-ui-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-[10px] ${active ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>
                     {option.label}
                   </Text>
                 </TouchableOpacity>
@@ -599,7 +600,7 @@ export default function BulkCreateSchedule() {
           <View style={{ minWidth: 900, width: '100%' }}>
             <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
               <TouchableOpacity onPress={toggleVisible} style={{ width: 42 }}>
-                {allVisibleSelected ? <CheckSquare size={18} color="#0F766E" /> : <Square size={18} color={ui.colors.textSubtle} />}
+                {allVisibleSelected ? <CheckSquare size={18} color={coreColor("#0F766E", 'primaryText')} /> : <Square size={18} color={ui.colors.textSubtle} />}
               </TouchableOpacity>
               <Text style={{ flex: 0.8 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Code</Text>
               <Text style={{ flex: 2.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Item</Text>
@@ -621,10 +622,10 @@ export default function BulkCreateSchedule() {
                   key={item.id}
                   onPress={() => toggleItem(item.id)}
                   disabled={isAlreadyScheduled}
-                  className={`min-h-14 px-4 flex-row items-center border-b border-ui-border ${selected ? 'bg-teal-50' : 'bg-white'} ${isAlreadyScheduled ? 'opacity-70' : ''}`}
+                  className={`min-h-14 px-4 flex-row items-center border-b border-ui-border ${selected ? 'bg-core-primary-soft-teal-50' : 'bg-core-surface-white'} ${isAlreadyScheduled ? 'opacity-70' : ''}`}
                 >
                   <View style={{ width: 42 }}>
-                    {selected ? <CheckSquare size={18} color="#0F766E" /> : <Square size={18} color={ui.colors.textSubtle} />}
+                    {selected ? <CheckSquare size={18} color={coreColor("#0F766E", 'primaryText')} /> : <Square size={18} color={ui.colors.textSubtle} />}
                   </View>
                   <Text style={{ flex: 0.8 }} className="font-poppins-bold text-xs text-ui-text">{item.item_code || '—'}</Text>
                   <Text style={{ flex: 2.4 }} numberOfLines={1} className="font-poppins text-xs text-ui-text pr-3">
@@ -637,7 +638,7 @@ export default function BulkCreateSchedule() {
                       onChangeText={(value) => setDurationOverrides((current) => ({ ...current, [item.id]: value }))}
                       onPressIn={(event) => event.stopPropagation()}
                       keyboardType="numeric"
-                      className="h-8 px-2 rounded-lg border border-ui-border bg-white font-poppins text-xs"
+                      className="h-8 px-2 rounded-lg border border-ui-border bg-core-surface-white font-poppins text-xs"
                     />
                   </View>
                   <Text style={{ flex: 1.2 }} className="font-poppins text-xs text-ui-text">
@@ -652,7 +653,7 @@ export default function BulkCreateSchedule() {
                       <>
                         {`${row.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${row.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                         {!!row.shiftedBy.length && (
-                          <Text className="font-poppins-bold text-[9px] text-amber-700">{`\nAfter ${row.shiftedBy.join(', ')}`}</Text>
+                          <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700">{`\nAfter ${row.shiftedBy.join(', ')}`}</Text>
                         )}
                       </>
                     ) : '—'}
@@ -671,7 +672,7 @@ export default function BulkCreateSchedule() {
       </View>
 
       {selectedItems.length > 0 && preview.length > 0 && (
-        <View className="bg-white border border-ui-border rounded-xl overflow-hidden mb-4">
+        <View className="bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-4">
           <View className="p-4 border-b border-ui-border flex-row items-center justify-between">
             <View>
               <Text className="font-poppins-bold text-sm text-ui-text">Schedule Preview</Text>
@@ -679,8 +680,8 @@ export default function BulkCreateSchedule() {
                 Review the selected items and generated timings before creating schedules.
               </Text>
             </View>
-            <View className={`px-2.5 py-1 rounded-full border ${preview.length === selectedItems.length ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-              <Text className={`font-poppins-bold text-[10px] ${preview.length === selectedItems.length ? 'text-emerald-700' : 'text-amber-700'}`}>
+            <View className={`px-2.5 py-1 rounded-full border ${preview.length === selectedItems.length ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200'}`}>
+              <Text className={`font-poppins-bold text-[10px] ${preview.length === selectedItems.length ? 'text-core-success-emerald-700' : 'text-core-warning-amber-700'}`}>
                 {preview.length}/{selectedItems.length} ready
               </Text>
             </View>
@@ -688,7 +689,7 @@ export default function BulkCreateSchedule() {
 
           {preview.length === 0 ? (
             <View className="px-4 py-5">
-              <Text className="font-poppins text-xs text-amber-700">
+              <Text className="font-poppins text-xs text-core-warning-amber-700">
                 Select a stage, date, and complete start time to generate the preview.
               </Text>
             </View>
@@ -705,7 +706,7 @@ export default function BulkCreateSchedule() {
                   <Text style={{ width: 105 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Status</Text>
                 </View>
                 {preview.map((row) => (
-                  <View key={row.item.id} className="min-h-14 px-4 flex-row items-center border-b border-ui-border bg-white">
+                  <View key={row.item.id} className="min-h-14 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
                     <Text style={{ width: 110 }} className="font-poppins-bold text-xs text-ui-text">
                       {row.item.item_code || '—'}
                     </Text>
@@ -715,7 +716,7 @@ export default function BulkCreateSchedule() {
                     <Text style={{ width: 125 }} className="font-poppins text-xs text-ui-text-muted">
                       {row.start.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
                     </Text>
-                    <Text style={{ width: 180 }} className="font-poppins-bold text-xs text-teal-700">
+                    <Text style={{ width: 180 }} className="font-poppins-bold text-xs text-core-primary-text-teal-700">
                       {row.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                       {' – '}
                       {row.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
@@ -723,7 +724,7 @@ export default function BulkCreateSchedule() {
                     <Text style={{ width: 100 }} className="font-poppins text-xs text-ui-text-muted">
                       {row.duration} min
                     </Text>
-                    <Text style={{ flex: 1.2 }} numberOfLines={1} className="font-poppins text-xs text-amber-700">
+                    <Text style={{ flex: 1.2 }} numberOfLines={1} className="font-poppins text-xs text-core-warning-amber-700">
                       {row.shiftedBy.length ? `After ${row.shiftedBy.join(', ')}` : '—'}
                     </Text>
                     <View style={{ width: 105 }}>
@@ -740,9 +741,9 @@ export default function BulkCreateSchedule() {
       )}
 
       {(hasConflicts || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) && (
-        <View className={`mb-4 p-3 rounded-xl border flex-row items-start gap-x-2 ${(hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
-          <AlertTriangle size={17} color={(hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) ? '#DC2626' : '#B45309'} />
-          <Text className={`flex-1 font-poppins text-xs ${hasDuplicates ? 'text-red-700' : 'text-amber-700'}`}>
+        <View className={`mb-4 p-3 rounded-xl border flex-row items-start gap-x-2 ${(hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50'}`}>
+          <AlertTriangle size={17} color={(hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) ? coreColor('#DC2626', 'danger') : coreColor('#B45309', 'warning')} />
+          <Text className={`flex-1 font-poppins text-xs ${hasDuplicates ? 'text-core-danger-red-700' : 'text-core-warning-amber-700'}`}>
             {hasInvalidBreaks || hasOverlappingBreaks
               ? 'Complete each break with hour, minute, and AM/PM. Breaks must be ordered without overlap.'
               : hasDuplicates
@@ -752,7 +753,7 @@ export default function BulkCreateSchedule() {
         </View>
       )}
 
-      <View className="bg-white border border-ui-border rounded-xl p-4 flex-row items-center justify-between gap-4 mb-16">
+      <View className="bg-core-surface-white border border-ui-border rounded-xl p-4 flex-row items-center justify-between gap-4 mb-16">
         <View>
           <Text className="font-poppins-black text-ui-text">{selectedItems.length} items selected</Text>
           <View className="flex-row items-center gap-x-1 mt-1">
@@ -764,7 +765,7 @@ export default function BulkCreateSchedule() {
         </View>
         <SsfButton
           label={isSaving ? 'Creating...' : `Create ${selectedItems.length} Schedules`}
-          icon={isSaving ? undefined : <WandSparkles size={15} color={ui.colors.surface} />}
+          icon={isSaving ? undefined : <WandSparkles size={15} color={ui.colors.onPrimary} />}
           onPress={handleCreateAll}
           disabled={isSaving || selectedItems.length === 0 || !venueId || !to24Hour(startTime) || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks}
         />
@@ -775,12 +776,12 @@ export default function BulkCreateSchedule() {
 
 function StatusBadge({ label, tone }: { label: string; tone: 'green' | 'red' | 'gray' | 'blue' }) {
   const classes = tone === 'green'
-    ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+    ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
     : tone === 'red'
-      ? 'bg-red-50 border-red-200 text-red-700'
+      ? 'bg-core-danger-soft-red-50 border-core-danger-soft-red-200 text-core-danger-red-700'
       : tone === 'blue'
-        ? 'bg-blue-50 border-blue-200 text-blue-700'
-      : 'bg-slate-50 border-slate-200 text-slate-600';
+        ? 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200 text-core-info-blue-700'
+      : 'bg-core-surface-muted-slate-50 border-core-border-slate-200 text-core-text-slate-600';
   const [, border, text] = classes.split(' ');
   return (
     <View className={`px-2 py-1 rounded-full border ${classes.split(' ')[0]} ${border}`}>
@@ -794,7 +795,7 @@ const inputStyle: React.CSSProperties = {
   height: 44,
   padding: '0 12px',
   borderRadius: 12,
-  border: '1px solid #D8E0EA',
+  border: `1px solid ${coreColor('#D8E0EA', 'border')}`,
   background: ui.colors.surface,
   color: ui.colors.text,
   fontFamily: 'Poppins_400Regular',
@@ -805,7 +806,7 @@ const timeSelectStyle: React.CSSProperties = {
   height: 44,
   padding: '0 8px',
   borderRadius: 12,
-  border: '1px solid #D8E0EA',
+  border: `1px solid ${coreColor('#D8E0EA', 'border')}`,
   background: ui.colors.surface,
   color: ui.colors.text,
   fontFamily: 'Poppins_400Regular',

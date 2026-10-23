@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useRef } from 'react';
 import {
@@ -264,7 +265,7 @@ export function SsfDashboardSkeleton() {
 
 const styles = StyleSheet.create({
   bone: {
-    backgroundColor: '#E5EAF0',
+    backgroundColor: coreColor('#E5EAF0', 'surface'),
   },
   cardList: {
     gap: 10,
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
     borderRadius: 10,
   },
   listCopy: {
@@ -290,23 +291,23 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
     borderRadius: 10,
   },
   tableHeader: {
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: coreColor('#E2E8F0', 'border'),
   },
   tableRow: {
     minHeight: 58,
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: coreColor('#E2E8F0', 'border'),
   },
   cell: {
     flex: 1,
@@ -316,7 +317,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 18,
     padding: 20,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: coreColor('#F5F7FA', 'surface'),
   },
   profileHeader: {
     flexDirection: 'row',
@@ -328,7 +329,7 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
     borderRadius: 10,
   },
   profileIdentity: {
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
   },
   mobileProfilePage: {
     flex: 1,
-    backgroundColor: '#F4F7F6',
+    backgroundColor: coreColor('#F4F7F6', 'surface'),
   },
   mobileProfileContent: {
     gap: 12,
@@ -365,12 +366,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#DDE7E4',
+    borderColor: coreColor('#DDE7E4', 'border'),
     borderRadius: 10,
   },
   mobileHeroCover: {
     height: 82,
-    backgroundColor: '#DDF2ED',
+    backgroundColor: coreColor('#DDF2ED', 'surface'),
   },
   mobileHeroBody: {
     gap: 12,
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#DDE7E4',
+    borderColor: coreColor('#DDE7E4', 'border'),
     borderRadius: 10,
   },
   mobileSummarySkeleton: {
@@ -414,14 +415,14 @@ const styles = StyleSheet.create({
     padding: 13,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#DDE7E4',
+    borderColor: coreColor('#DDE7E4', 'border'),
     borderRadius: 10,
   },
   dashboardPage: {
     flex: 1,
     gap: 20,
     padding: 22,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: coreColor('#F5F7FA', 'surface'),
   },
   dashboardHeading: {
     flexDirection: 'row',
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     padding: 18,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
     borderRadius: 10,
   },
 });

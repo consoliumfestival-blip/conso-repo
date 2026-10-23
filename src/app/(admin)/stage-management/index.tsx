@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -31,21 +32,21 @@ function ScheduleWorkflowBadges({ registrations = [], status, isShuffleLocked }:
 
   // Check-in status (Malayalam highlighted text as requested)
   if (checkinDone && codesShuffled) {
-    badges.push({ label: 'Ready to start', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
+    badges.push({ label: 'Ready to start', bg: 'bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-200', text: 'text-core-success-emerald-700' });
   } else if (checkinPending) {
-    badges.push({ label: 'Check-in Pending', bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-700' });
+    badges.push({ label: 'Check-in Pending', bg: 'bg-core-warning-soft-amber-100 border border-core-warning-soft-amber-200', text: 'text-core-warning-amber-700' });
   }
 
   // Code Letter status
   if (!codesShuffled && codesPending) {
-    badges.push({ label: 'Codes Pending', bg: 'bg-gray-100 border border-gray-200', text: 'text-gray-500' });
+    badges.push({ label: 'Codes Pending', bg: 'bg-core-surface-muted-gray-100 border border-core-border-gray-200', text: 'text-core-text-muted-gray-500' });
   }
 
   if (!badges.length && !status) return null;
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {status ? <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-slate-100 border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}><Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-emerald-700' : 'text-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text></View> : null}
+      {status ? <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}><Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-core-text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-core-success-emerald-700' : 'text-core-info-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text></View> : null}
       {badges.map((badge) => (
         <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
           <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
@@ -230,8 +231,8 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
     return (
       <View className="flex-1 bg-ssf-bg justify-center items-center px-4">
         <SsfCard className="w-full max-w-sm p-6 items-center">
-          <View className="w-16 h-16 bg-green-50 rounded-full items-center justify-center mb-4">
-            <Lock size={32} color="#1B6B3A" />
+          <View className="w-16 h-16 bg-core-success-soft-green-50 rounded-full items-center justify-center mb-4">
+            <Lock size={32} color={coreColor("#1B6B3A", 'primaryText')} />
           </View>
           <Text className="text-xl font-poppins-black text-ssf-text text-center mb-2">Stage Management</Text>
           <Text className="font-poppins text-ssf-text-muted text-center mb-6 text-sm">
@@ -262,7 +263,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
         <SsfCard className="w-full max-w-lg p-6 items-center">
           <Text className="font-poppins-bold text-lg text-ui-text text-center mb-2">Unable to load Stage Management</Text>
           <Text className="font-poppins text-sm text-ui-text-muted text-center mb-5">{(stageError as any)?.message || 'Please retry the tenant-scoped stage data request.'}</Text>
-          <SsfButton label="Retry" onPress={onRefresh} icon={<RefreshCw size={15} color="#FFFFFF" />} />
+          <SsfButton label="Retry" onPress={onRefresh} icon={<RefreshCw size={15} color={coreColor("#FFFFFF", 'onPrimary')} />} />
         </SsfCard>
       </View>
     );
@@ -272,7 +273,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
     return (
       <View className="flex-1 bg-ssf-bg justify-center items-center px-4">
         <SsfCard className="w-full max-w-lg p-6 items-center">
-          <Calendar size={42} color="#94A3B8" />
+          <Calendar size={42} color={coreColor("#94A3B8", 'textSubtle')} />
           <Text className="font-poppins-bold text-lg text-ui-text text-center mt-3 mb-2">
             No active festival for this tenant
           </Text>
@@ -301,14 +302,14 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               {venues.length} stages available
             </Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stages" onPress={onRefresh} disabled={refreshing} className={`${isMobile ? 'h-11 w-11' : 'p-2'} items-center justify-center bg-white border border-ssf-border rounded-xl`}>
-            <RefreshCw size={18} color="#475569" />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stages" onPress={onRefresh} disabled={refreshing} className={`${isMobile ? 'h-11 w-11' : 'p-2'} items-center justify-center bg-core-surface-white border border-ssf-border rounded-xl`}>
+            <RefreshCw size={18} color={coreColor("#475569", 'text')} />
           </TouchableOpacity>
         </View>
 
         {venues.length === 0 ? (
           <SsfCard className="items-center py-10">
-            <MapPin size={42} color="#94A3B8" />
+            <MapPin size={42} color={coreColor("#94A3B8", 'textSubtle')} />
             <Text className="font-poppins-bold text-ssf-text mt-3">No stages available</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">Create venues from Schedule Management first.</Text>
           </SsfCard>
@@ -324,27 +325,27 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               return (
                 <SsfCard key={venue.id} className="p-3">
                   <View className="flex-row items-start gap-3">
-                    <View className="h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50">
-                      <MapPin size={18} color="#047857" />
+                    <View className="h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-core-success-soft-emerald-50">
+                      <MapPin size={18} color={coreColor("#047857", 'success')} />
                     </View>
                     <View className="min-w-0 flex-1">
                       <Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{venue.name}</Text>
                       <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Independent check-in and code-letter workspace</Text>
-                      <View className="mt-2 self-start rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
-                        <Text className="font-poppins-bold text-[10px] text-slate-600">{stageSchedules.length} events</Text>
+                      <View className="mt-2 self-start rounded-full border border-core-border-slate-200 bg-core-surface-muted-slate-50 px-2.5 py-1">
+                        <Text className="font-poppins-bold text-[10px] text-core-text-slate-600">{stageSchedules.length} events</Text>
                       </View>
                     </View>
                   </View>
 
-                  <View className="mt-3 flex-row items-center justify-between rounded-lg border border-amber-200 bg-amber-50 pl-3">
-                    <Text className="font-poppins-bold text-xs text-amber-900">PIN {venue.pin || '—'}</Text>
+                  <View className="mt-3 flex-row items-center justify-between rounded-lg border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 pl-3">
+                    <Text className="font-poppins-bold text-xs text-core-warning-amber-900">PIN {venue.pin || '—'}</Text>
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Copy PIN for ${venue.name}`}
                       onPress={() => copyStagePin(venue.id, venue.pin)}
-                      className={`h-11 min-w-11 items-center justify-center rounded-r-lg px-3 ${copiedPin ? 'bg-emerald-50' : 'bg-white/60'}`}
+                      className={`h-11 min-w-11 items-center justify-center rounded-r-lg px-3 ${copiedPin ? 'bg-core-success-soft-emerald-50' : 'bg-core-surface-white/60'}`}
                     >
-                      {copiedPin ? <Check size={16} color="#047857" /> : <Copy size={16} color="#92400E" />}
+                      {copiedPin ? <Check size={16} color={coreColor("#047857", 'success')} /> : <Copy size={16} color={coreColor("#92400E", 'warning')} />}
                     </TouchableOpacity>
                   </View>
 
@@ -352,19 +353,19 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                     <TouchableOpacity
                       accessibilityRole="button"
                       onPress={() => openStagePortal(venue.id)}
-                      className="h-11 flex-1 flex-row items-center justify-center rounded-lg bg-teal-700 px-2"
+                      className="h-11 flex-1 flex-row items-center justify-center rounded-lg bg-core-primary-teal-700 px-2"
                     >
-                      <ExternalLink size={15} color="#FFFFFF" />
-                      <Text className="ml-1.5 font-poppins-bold text-xs text-white">Open Stage</Text>
+                      <ExternalLink size={15} color={coreColor("#FFFFFF", 'onPrimary')} />
+                      <Text className="ml-1.5 font-poppins-bold text-xs text-core-on-primary-white">Open Stage</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Copy stage link for ${venue.name}`}
                       onPress={() => copyStageLink(venue.id)}
-                      className={`h-11 flex-1 flex-row items-center justify-center rounded-lg border px-2 ${copied ? 'border-emerald-200 bg-emerald-50' : 'border-ui-border bg-white'}`}
+                      className={`h-11 flex-1 flex-row items-center justify-center rounded-lg border px-2 ${copied ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50' : 'border-ui-border bg-core-surface-white'}`}
                     >
-                      {copied ? <Check size={15} color="#047857" /> : <Copy size={15} color="#475569" />}
-                      <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-emerald-700' : 'text-slate-700'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
+                      {copied ? <Check size={15} color={coreColor("#047857", 'success')} /> : <Copy size={15} color={coreColor("#475569", 'text')} />}
+                      <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-core-success-emerald-700' : 'text-core-text-slate-700'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
                     </TouchableOpacity>
                   </View>
                 </SsfCard>
@@ -373,7 +374,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-            <View className="flex-1 bg-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 820 }}>
+            <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 820 }}>
               <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
                 <Text style={{ flex: 1.2 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Stage</Text>
                 <Text style={{ flex: 1.8 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workspace</Text>
@@ -386,10 +387,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 );
                 const copied = copiedVenueId === venue.id;
                 return (
-                  <View key={venue.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-white">
+                  <View key={venue.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
                     <View style={{ flex: 1.2 }} className="flex-row items-center pr-4">
-                      <View className="h-8 w-8 rounded-lg bg-emerald-50 items-center justify-center mr-2.5">
-                        <MapPin size={15} color="#047857" />
+                      <View className="h-8 w-8 rounded-lg bg-core-success-soft-emerald-50 items-center justify-center mr-2.5">
+                        <MapPin size={15} color={coreColor("#047857", 'success')} />
                       </View>
                       <Text numberOfLines={1} className="flex-1 font-poppins-bold text-xs text-ui-text">{venue.name}</Text>
                     </View>
@@ -397,8 +398,8 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                       Independent check-in and code-letter workspace
                     </Text>
                     <View style={{ width: 120, alignItems: 'flex-start' }}>
-                      <View className="px-2.5 py-1 rounded-full bg-slate-50 border border-slate-200">
-                        <Text className="font-poppins-bold text-[9px] text-slate-600">{stageSchedules.length} events</Text>
+                      <View className="px-2.5 py-1 rounded-full bg-core-surface-muted-slate-50 border border-core-border-slate-200">
+                        <Text className="font-poppins-bold text-[9px] text-core-text-slate-600">{stageSchedules.length} events</Text>
                       </View>
                     </View>
                     <View style={{ width: 385 }} className="flex-row items-center justify-end gap-x-2">
@@ -406,28 +407,28 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                         accessibilityRole="button"
                         accessibilityLabel={`Copy PIN for ${venue.name}`}
                         onPress={() => copyStagePin(venue.id, venue.pin)}
-                        className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${copiedPinVenueId === venue.id ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}
+                        className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${copiedPinVenueId === venue.id ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200'}`}
                       >
-                        <Text className="font-poppins-bold text-[10px] text-amber-800 mr-1.5">PIN {venue.pin || '—'}</Text>
-                        {copiedPinVenueId === venue.id ? <Check size={13} color="#047857" /> : <Copy size={13} color="#92400E" />}
+                        <Text className="font-poppins-bold text-[10px] text-core-warning-amber-800 mr-1.5">PIN {venue.pin || '—'}</Text>
+                        {copiedPinVenueId === venue.id ? <Check size={13} color={coreColor("#047857", 'success')} /> : <Copy size={13} color={coreColor("#92400E", 'warning')} />}
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => openStagePortal(venue.id)}
-                        className="h-8 px-3 rounded-lg bg-teal-700 flex-row items-center justify-center"
+                        className="h-8 px-3 rounded-lg bg-core-primary-teal-700 flex-row items-center justify-center"
                       >
-                        <ExternalLink size={13} color="#FFFFFF" />
-                        <Text className="ml-1.5 font-poppins-bold text-[10px] text-white">Open Stage</Text>
+                        <ExternalLink size={13} color={coreColor("#FFFFFF", 'onPrimary')} />
+                        <Text className="ml-1.5 font-poppins-bold text-[10px] text-core-on-primary-white">Open Stage</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         accessibilityRole="button"
                         accessibilityLabel={`Copy stage link for ${venue.name}`}
                         onPress={() => copyStageLink(venue.id)}
                         className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${
-                          copied ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-ui-border'
+                          copied ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-surface-white border-ui-border'
                         }`}
                       >
-                        {copied ? <Check size={13} color="#047857" /> : <Copy size={13} color="#475569" />}
-                        <Text className={`ml-1.5 font-poppins-bold text-[10px] ${copied ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        {copied ? <Check size={13} color={coreColor("#047857", 'success')} /> : <Copy size={13} color={coreColor("#475569", 'text')} />}
+                        <Text className={`ml-1.5 font-poppins-bold text-[10px] ${copied ? 'text-core-success-emerald-700' : 'text-core-text-slate-600'}`}>
                           {copied ? 'Copied' : 'Copy Link'}
                         </Text>
                       </TouchableOpacity>
@@ -456,40 +457,40 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
           <TouchableOpacity
             onPress={onRefresh}
             disabled={refreshing}
-            className="h-9 w-9 bg-white border border-ui-border rounded-lg items-center justify-center"
+            className="h-9 w-9 bg-core-surface-white border border-ui-border rounded-lg items-center justify-center"
           >
-            <RefreshCw size={16} color="#475569" />
+            <RefreshCw size={16} color={coreColor("#475569", 'text')} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/notifications' as any)}
-            className="h-9 w-9 bg-white border border-ui-border rounded-lg items-center justify-center"
+            className="h-9 w-9 bg-core-surface-white border border-ui-border rounded-lg items-center justify-center"
           >
-            <Bell size={16} color="#475569" />
+            <Bell size={16} color={coreColor("#475569", 'text')} />
           </TouchableOpacity>
         </View>
       </View>
       
       <View className="flex-row flex-wrap gap-3 mb-5">
-        <View className="flex-1 min-w-[140px] bg-white border border-ui-border p-3 rounded-xl flex-row items-center justify-between">
+        <View className="flex-1 min-w-[140px] bg-core-surface-white border border-ui-border p-3 rounded-xl flex-row items-center justify-between">
           <View>
             <Text className="font-poppins-black text-ui-text text-lg">{selectedVenue === 'All' ? venues.length : 1}</Text>
             <Text className="font-poppins text-ui-text-muted text-xs">Venues</Text>
           </View>
-          <MapPin color="#0F766E" size={22} />
+          <MapPin color={coreColor("#0F766E", 'primaryText')} size={22} />
         </View>
 
-        <View className="flex-1 min-w-[140px] bg-white border border-ui-border p-3 rounded-xl flex-row items-center justify-between">
+        <View className="flex-1 min-w-[140px] bg-core-surface-white border border-ui-border p-3 rounded-xl flex-row items-center justify-between">
           <View>
             <Text className="font-poppins-black text-ui-text text-lg">{filteredSchedules.length}</Text>
             <Text className="font-poppins text-ui-text-muted text-xs">Scheduled Events</Text>
           </View>
-          <Calendar color="#0F766E" size={22} />
+          <Calendar color={coreColor("#0F766E", 'primaryText')} size={22} />
         </View>
       </View>
 
       {/* Search Bar */}
-      <View className="flex-row items-center bg-white border border-ui-border rounded-xl px-4 h-11 mb-3">
-        <Search size={18} color="#9CA3AF" />
+      <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-4 h-11 mb-3">
+        <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
         <TextInput
           className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
           placeholder="Search by item name or category (e.g. LP, UP)..."
@@ -498,13 +499,13 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <X size={16} color="#9CA3AF" />
+            <X size={16} color={coreColor("#9CA3AF", 'textMuted')} />
           </TouchableOpacity>
         )}
       </View>
 
       {isMobile || !isMobile ? (
-        <View className="bg-white border border-ui-border rounded-xl p-3 mb-5">
+        <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-5">
           <View className="flex-row flex-wrap items-center gap-2">
             <SsfSelectMenu
               value={selectedCategory}
@@ -551,9 +552,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   setSelectedVenue(venueIdOverride || 'All');
                   setSelectedStatus('All');
                 }}
-                className="h-9 px-3 rounded-lg border border-ui-border bg-white flex-row items-center justify-center"
+                className="h-9 px-3 rounded-lg border border-ui-border bg-core-surface-white flex-row items-center justify-center"
               >
-                <RotateCcw size={13} color="#64748B" />
+                <RotateCcw size={13} color={coreColor("#64748B", 'textMuted')} />
                 <Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">Reset</Text>
               </TouchableOpacity>
             )}
@@ -573,13 +574,13 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 style={{
                   width: '100%',
-                  backgroundColor: '#FFF',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: coreColor('#FFF', 'surface'),
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -598,9 +599,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   <TouchableOpacity
                     key={item}
                     onPress={() => setSelectedCategory(item)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-white' : 'text-ssf-text-muted'}`}>{item}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -616,13 +617,13 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 onChange={(e) => setSelectedVenue(e.target.value)}
                 style={{
                   width: '100%',
-                  backgroundColor: '#FFF',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: coreColor('#FFF', 'surface'),
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -641,9 +642,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedVenue(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id ? 'bg-ssf-secondary border-ssf-secondary' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id ? 'bg-ssf-secondary border-ssf-secondary' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -659,13 +660,13 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 onChange={(e) => setSelectedStatus(e.target.value)}
                 style={{
                   width: '100%',
-                  backgroundColor: '#FFF',
-                  border: '1px solid #E2E8F0',
+                  backgroundColor: coreColor('#FFF', 'surface'),
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -684,9 +685,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedStatus(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -706,10 +707,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   onPress={() => setSelectedCategory(item)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item
                       ? 'bg-ssf-primary border-ssf-primary'
-                      : 'bg-white border-ssf-border'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -727,10 +728,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   onPress={() => setSelectedVenue(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id
                       ? 'bg-ssf-secondary border-ssf-secondary'
-                      : 'bg-white border-ssf-border'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -747,11 +748,11 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   key={item.id}
                   onPress={() => setSelectedStatus(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id
-                      ? 'bg-blue-600 border-blue-600'
-                      : 'bg-white border-ssf-border'
+                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -763,12 +764,12 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
 
       {schedules.length === 0 ? (
         <SsfCard className="items-center py-10">
-          <Calendar size={48} color="#D1D5DB" className="mb-4" />
+          <Calendar size={48} color={coreColor("#D1D5DB", 'textMuted')} className="mb-4" />
           <Text className="font-poppins text-ssf-text-muted text-center">No schedules created yet.</Text>
         </SsfCard>
       ) : filteredSchedules.length === 0 ? (
         <SsfCard className="items-center py-10">
-          <Search size={48} color="#D1D5DB" className="mb-4" />
+          <Search size={48} color={coreColor("#D1D5DB", 'textMuted')} className="mb-4" />
           <Text className="font-poppins text-ssf-text-muted text-center">
             No scheduled events found matching your search or filters.
           </Text>
@@ -781,12 +782,12 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
             }} 
             className="mt-4"
           >
-            <Text className="font-poppins-bold text-ssf-primary text-sm">Reset All Filters</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-sm">Reset All Filters</Text>
           </TouchableOpacity>
         </SsfCard>
       ) : (
         !isMobile ? (
-        <View className="w-full bg-white border border-ui-border rounded-xl overflow-hidden">
+        <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
           <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
             <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
             <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
@@ -795,26 +796,26 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
             <Text style={{ width: 235 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
           </View>
           {filteredSchedules.map((schedule: any) => (
-            <View key={schedule.id} className="min-h-16 px-4 py-2 flex-row items-center border-b border-ui-border bg-white">
+            <View key={schedule.id} className="min-h-16 px-4 py-2 flex-row items-center border-b border-ui-border bg-core-surface-white">
               <View style={{ flex: 1.4 }} className="pr-3">
                 <Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{schedule.items?.item_name_en || 'Unknown Event'}</Text>
                 <Text numberOfLines={1} className="font-poppins text-[10px] text-ui-text-muted mt-0.5">{schedule.items?.item_name_ml || schedule.items?.item_code || '—'}</Text>
               </View>
               <View style={{ flex: 1 }} className="pr-3 items-start">
-                <View className="bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md">
-                  <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-emerald-700">{schedule.venues?.name || 'Unknown Venue'}</Text>
+                <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-md">
+                  <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-core-success-emerald-700">{schedule.venues?.name || 'Unknown Venue'}</Text>
                 </View>
                 {!!schedule.items?.category_codes?.length && (
-                  <Text className="font-poppins-bold text-[9px] text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
+                  <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
                 )}
               </View>
               <View style={{ flex: 1 }} className="pr-3">
                 <View className="flex-row items-center">
-                  <Calendar size={12} color="#64748B" />
+                  <Calendar size={12} color={coreColor("#64748B", 'textMuted')} />
                   <Text className="font-poppins text-[10px] text-ui-text-muted ml-1.5">{new Date(schedule.start_time).toLocaleDateString()}</Text>
                 </View>
                 <View className="flex-row items-center mt-1">
-                  <Clock size={12} color="#64748B" />
+                  <Clock size={12} color={coreColor("#64748B", 'textMuted')} />
                   <Text className="font-poppins text-[10px] text-ui-text-muted ml-1.5">
                     {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
@@ -826,15 +827,15 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               <View style={{ width: 235 }} className="flex-row justify-end gap-x-2">
                 <TouchableOpacity
                   onPress={() => router.push(`/stage-management/${schedule.id}/checkin` as any)}
-                  className="h-8 px-3 rounded-lg border border-ui-border bg-white items-center justify-center"
+                  className="h-8 px-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
                 >
                   <Text className="font-poppins-bold text-[9px] text-ui-text">Check-in</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push(`/stage-management/${schedule.id}/code-letter` as any)}
-                  className="h-8 px-3 rounded-lg bg-teal-700 items-center justify-center"
+                  className="h-8 px-3 rounded-lg bg-core-primary-teal-700 items-center justify-center"
                 >
-                  <Text className="font-poppins-bold text-[9px] text-white">Code Letters</Text>
+                  <Text className="font-poppins-bold text-[9px] text-core-on-primary-white">Code Letters</Text>
                 </TouchableOpacity>
                 <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
               </View>
@@ -860,8 +861,8 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
 
                 {/* Venue badge — below title row on all sizes */}
                 <View className="mt-2 self-start">
-                  <View className="bg-green-100 px-2 py-1 rounded">
-                    <Text className="font-poppins-bold text-xs text-green-800">{schedule.venues?.name || 'Unknown Venue'}</Text>
+                  <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
+                    <Text className="font-poppins-bold text-xs text-core-success-green-800">{schedule.venues?.name || 'Unknown Venue'}</Text>
                   </View>
                 </View>
 
@@ -870,7 +871,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                   <View className="flex-row flex-wrap gap-1 mt-2">
                     {(schedule.items.category_codes as string[]).map((code: string) => (
                       <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
-                        <Text className="font-poppins-bold text-[10px] text-ssf-primary">{code}</Text>
+                        <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
                       </View>
                     ))}
                   </View>
@@ -880,14 +881,14 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               {/* Time & Date row */}
               <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mb-3">
                 <View className="flex-row items-center gap-x-1">
-                  <Clock size={13} color="#6B7280" />
-                  <Text className="font-poppins text-xs text-gray-600">
+                  <Clock size={13} color={coreColor("#6B7280", 'text')} />
+                  <Text className="font-poppins text-xs text-core-text-gray-600">
                     {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-x-1">
-                  <Calendar size={13} color="#6B7280" />
-                  <Text className="font-poppins text-xs text-gray-600">
+                  <Calendar size={13} color={coreColor("#6B7280", 'text')} />
+                  <Text className="font-poppins text-xs text-core-text-gray-600">
                     {new Date(schedule.start_time).toLocaleDateString()}
                   </Text>
                 </View>
@@ -900,7 +901,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               />
 
               {/* Action buttons — 2×2 grid on mobile */}
-              <View className="flex-row flex-wrap gap-2 border-t border-gray-100 pt-3 mt-3">
+              <View className="flex-row flex-wrap gap-2 border-t border-core-border-gray-100 pt-3 mt-3">
                 <View className="flex-row gap-x-2 w-full">
                   <SsfButton 
                     label="Check-In" 

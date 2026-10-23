@@ -1,4 +1,3 @@
-import { ui } from '@/constants/designSystem';
 import React, { createContext, useContext } from 'react';
 import { View, ViewProps } from 'react-native';
 
@@ -21,6 +20,7 @@ export const SsfCard: React.FC<SsfCardProps> = ({
   return (
     <CardDepthContext.Provider value={depth + 1}>
       <View
+        {...(!isFlat ? { dataSet: { coreGlass: 'surface' } } as any : {})}
         className={
           isFlat
             ? `bg-transparent rounded-none border-0 border-b border-ui-border px-0 py-3 ${className}`
@@ -30,7 +30,7 @@ export const SsfCard: React.FC<SsfCardProps> = ({
           isFlat
             ? { shadowOpacity: 0, elevation: 0 }
             : {
-                shadowColor: ui.colors.text,
+                shadowColor: "#111827",
                 shadowOpacity: 0.025,
                 shadowRadius: 10,
                 shadowOffset: { width: 0, height: 4 },

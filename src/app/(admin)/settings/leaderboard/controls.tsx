@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
 import React, { useState } from 'react';
 import {
@@ -206,7 +207,7 @@ export default function LeaderboardControlsPage() {
           {!canEditSettings && (
             <View style={styles.loadNotice}>
               {activeFestivalQuery.isLoading || settingsQuery.isLoading ? (
-                <ActivityIndicator size="small" color={colors.teal} />
+                <ActivityIndicator size="small" color={coreColor(colors.teal, 'primaryText')} />
               ) : null}
               <Text style={styles.loadNoticeText}>
             {activeFestivalQuery.isError
@@ -249,7 +250,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setIsPublicVisible(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#99F6E4' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={isPublicVisible ? colors.teal : ui.colors.surface}
               />
             </View>
@@ -268,7 +269,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setShowIndividualRankings(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#BAE6FD' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#BAE6FD', 'primarySoft') }}
                 thumbColor={showIndividualRankings ? colors.cyan : ui.colors.surface}
               />
             </View>
@@ -286,7 +287,7 @@ export default function LeaderboardControlsPage() {
                   style={[styles.copyLinkAction, !publicLeaderboardUrl && { opacity: 0.5 }]}
                   accessibilityLabel="Copy tenant public leaderboard link"
                 >
-                  <Copy size={16} color={colors.teal} />
+                  <Copy size={16} color={coreColor(colors.teal, 'primaryText')} />
                   <Text style={styles.copyLinkText}>{publicLinkCopied ? 'Copied' : 'Copy'}</Text>
                 </TouchableOpacity>
               </View>
@@ -460,7 +461,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setAutoRefreshEnabled(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#BAE6FD' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#BAE6FD', 'primarySoft') }}
                 thumbColor={autoRefreshEnabled ? colors.cyan : ui.colors.surface}
               />
             </View>
@@ -497,8 +498,8 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setIsFrozen(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#FCA5A5' }}
-                thumbColor={isFrozen ? '#EF4444' : ui.colors.surface}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#FCA5A5', 'primarySoft') }}
+                thumbColor={isFrozen ? coreColor('#EF4444', 'primary') : ui.colors.surface}
               />
             </View>
 
@@ -529,7 +530,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setShowTimestamps(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#99F6E4' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={showTimestamps ? colors.teal : ui.colors.surface}
               />
             </View>
@@ -548,7 +549,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setShowGradeSummary(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#99F6E4' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={showGradeSummary ? colors.teal : ui.colors.surface}
               />
             </View>
@@ -567,7 +568,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setPosterEnabled(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#99F6E4' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={posterEnabled ? colors.teal : ui.colors.surface}
               />
             </View>
@@ -602,7 +603,7 @@ export default function LeaderboardControlsPage() {
                   if (!saved) setCertificateEnabled(previous);
                 }}
                 disabled={updateSettingsMutation.isPending}
-                trackColor={{ false: '#CBD5E1', true: '#99F6E4' }}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={certificateEnabled ? colors.teal : ui.colors.surface}
               />
             </View>
@@ -615,7 +616,7 @@ export default function LeaderboardControlsPage() {
               style={[styles.primaryAction, updateSettingsMutation.isPending && { opacity: 0.7 }]}
               disabled={updateSettingsMutation.isPending || !canEditSettings}
             >
-              <Rocket size={17} color={ui.colors.surface} />
+              <Rocket size={17} color={ui.colors.onPrimary} />
               <Text style={styles.primaryActionText}>
                 {updateSettingsMutation.isPending ? 'Applying...' : 'Apply Settings'}
               </Text>
@@ -627,7 +628,7 @@ export default function LeaderboardControlsPage() {
               style={styles.outlineAction}
               disabled={isRefetching || !festivalId || !tenant_id}
             >
-              <RefreshCw size={17} color={colors.teal} />
+              <RefreshCw size={17} color={coreColor(colors.teal, 'primaryText')} />
               <Text style={styles.outlineActionText}>
                 {isRefetching ? 'Recalculating...' : 'Recalculate Rankings'}
               </Text>
@@ -655,7 +656,7 @@ export default function LeaderboardControlsPage() {
         <View style={[styles.controlPanel, isDesktop ? styles.previewPanelDesktop : styles.panelStacked]}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <Text style={styles.controlTitle}>Live Points Preview</Text>
-            {isPreviewFetching && <RefreshCw size={16} color={colors.teal} />}
+            {isPreviewFetching && <RefreshCw size={16} color={coreColor(colors.teal, 'primaryText')} />}
           </View>
           <Text style={styles.controlSub}>
             Current {rankingMode === 'LIMITED' ? `(Limited to ${itemLimit || '0'} items)` : '(All Items)'} standings.
@@ -686,7 +687,7 @@ export default function LeaderboardControlsPage() {
 
       <View style={styles.infoStrip}>
         <View style={styles.infoIcon}>
-          <ShieldCheck size={18} color={colors.teal} />
+          <ShieldCheck size={18} color={coreColor(colors.teal, 'primaryText')} />
         </View>
         <Text style={styles.infoText}>
           Leaderboard management displays unit/team rankings only. Individual participant
@@ -830,7 +831,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   retryActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -904,7 +905,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   copyLinkText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
   },
@@ -937,7 +938,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   primaryActionText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
@@ -953,7 +954,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   outlineActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
@@ -1011,7 +1012,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.soft,
   },
   previewRankText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -1021,7 +1022,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   previewPoints: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
@@ -1036,9 +1037,9 @@ const styles = StyleSheet.create({
     marginTop: 20,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: 'rgba(15, 118, 110, 0.06)',
+    backgroundColor: coreAlpha(coreColor('#0f766e', 'overlay'), 0.06),
     borderWidth: 1,
-    borderColor: 'rgba(15, 118, 110, 0.12)',
+    borderColor: coreAlpha(coreColor('#0f766e', 'border'), 0.12),
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
@@ -1051,11 +1052,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(15, 118, 110, 0.15)',
+    borderColor: coreAlpha(coreColor('#0f766e', 'border'), 0.15),
   },
   infoText: {
     flex: 1,
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_500Medium',
     fontSize: 12,
     lineHeight: 18,

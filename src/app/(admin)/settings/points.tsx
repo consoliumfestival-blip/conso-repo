@@ -136,14 +136,14 @@ export default function PointsSettings() {
       ? `${panelSelectedIds.length} competitions selected for ${competitionPanel.boost === 'gradeBoostItemIds' ? 'Grade Boost' : 'Rank Boost'} · Section ${(assignments(competitionPanel.boost!).findIndex(section => section.id === competitionPanel.sectionId) + 1) || ''}.`
       : 'Choose enabled, single-category competitions that receive this boost.';
   const renderItems = (kind: 'gradeBoostItemIds' | 'rankBoostItemIds', sectionId: string) => <View className="mt-3">
-    {competitionOptionsError ? <Text className="font-poppins text-xs text-red-700 mb-2">Could not load enabled competitions or categories. Reload before editing assignments.</Text> : <>
+    {competitionOptionsError ? <Text className="font-poppins text-xs text-core-danger-red-700 mb-2">Could not load enabled competitions or categories. Reload before editing assignments.</Text> : <>
       <View className="flex-row flex-wrap items-end gap-2">
-        <SsfButton size="sm" variant="outline" label="Select Competitions" icon={<ListChecks size={16} color={ui.colors.primary} />}
+        <SsfButton size="sm" variant="outline" label="Select Competitions" icon={<ListChecks size={16} color={ui.colors.primaryText} />}
           disabled={competitionOptionsLoading || !(kind === 'gradeBoostItemIds' ? form.gradeBoostEnabled : form.rankBoostEnabled)}
           onPress={() => { setSearch(''); setCompetitionPanel({ mode: 'select', boost: kind, sectionId }); }} />
         <View className="items-start">
           <Text className="font-poppins-bold text-[10px] text-ui-text-muted mb-1">{assignments(kind).find(section => section.id === sectionId)?.itemIds.length ?? 0} selected</Text>
-          <SsfButton size="sm" variant="ghost" label="Selected Competitions" icon={<Eye size={15} color={ui.colors.primary} />}
+          <SsfButton size="sm" variant="ghost" label="Selected Competitions" icon={<Eye size={15} color={ui.colors.primaryText} />}
             onPress={() => setCompetitionPanel({ mode: 'preview', boost: kind, sectionId })} />
         </View>
       </View>
@@ -153,11 +153,11 @@ export default function PointsSettings() {
   const renderBoostValues = (section: GradeBoostSection, group: boolean) => {
     const pointsMap = group ? section.groupPoints : section.points;
     const bracket = defaultBracket(group);
-    if (!bracket) return <View className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-      <Text className="font-poppins-bold text-xs text-amber-900">
+    if (!bracket) return <View className="mb-3 rounded-lg border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 p-3">
+      <Text className="font-poppins-bold text-xs text-core-warning-amber-900">
         {group ? 'Group' : 'Participant'} Grade Boost points need default grade points first.
       </Text>
-      <Text className="font-poppins text-xs text-amber-800 mt-1 mb-2">
+      <Text className="font-poppins text-xs text-core-warning-amber-800 mt-1 mb-2">
         Enter the default A+, A, B and C points in Baseline grade points first. Nothing is prefilled.
       </Text>
     </View>;
@@ -184,11 +184,11 @@ export default function PointsSettings() {
   if (isFestivalLoading || isLoading || (!!festival?.id && hydratedFestivalId !== festival.id && !error))
     return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
   if (role !== 'admin' && !is_superadmin) return <View className="p-5"><Text>Administrator access is required.</Text></View>;
-  if (error) return <View className="p-5"><Text className="text-red-700">Could not load points configuration.</Text><SsfButton label="Retry" onPress={() => refetch()} /></View>;
+  if (error) return <View className="p-5"><Text className="text-core-danger-red-700">Could not load points configuration.</Text><SsfButton label="Retry" onPress={() => refetch()} /></View>;
   return <ScrollView className="flex-1 bg-ssf-bg px-4 py-5" contentContainerStyle={{ paddingBottom: 36 }}>
     <View className="mb-5"><Text className="font-poppins-black text-2xl text-ui-text">Points Configuration</Text>
       <Text className="font-poppins text-xs text-ui-text-muted mt-1">Version {form.version || 'not configured'} · Baseline, grade boost, rank boost and grace fields</Text></View>
-    {!!notice && <Text accessibilityRole="alert" className="font-poppins text-green-800 mb-4">{notice}</Text>}
+    {!!notice && <Text accessibilityRole="alert" className="font-poppins text-core-success-green-800 mb-4">{notice}</Text>}
     {!record && <Text className="font-poppins text-ui-text-muted mb-4">Enter the baseline rules to enable scoring. No scoring values are filled automatically.</Text>}
     <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-3">Baseline points</Text>
       <Text className="font-poppins-bold text-sm text-ui-text mb-2">Rank points</Text>
@@ -221,7 +221,7 @@ export default function PointsSettings() {
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove unavailable competition from Section ${index + 1}`} onPress={() => toggleSectionItem(id, 'gradeBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>
           </View>)}</View>}
       </View>)}
-      <SsfButton size="sm" variant="outline" label="Add Grade Boost section" icon={<Plus size={15} color={ui.colors.primary} />} onPress={addGradeSection} />
+      <SsfButton size="sm" variant="outline" label="Add Grade Boost section" icon={<Plus size={15} color={ui.colors.primaryText} />} onPress={addGradeSection} />
     </SsfCard>
     <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-3"><Text className="font-poppins-bold text-lg text-ui-text">Rank boost</Text>
       <Switch accessibilityLabel="Rank boost enabled" value={form.rankBoostEnabled} disabled /></View>
@@ -241,12 +241,12 @@ export default function PointsSettings() {
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove unavailable competition from Section ${index + 1}`} onPress={() => toggleSectionItem(id, 'rankBoostItemIds', section.id)} className="p-2"><Trash2 size={16} color={ui.colors.textMuted} /></TouchableOpacity>
           </View>)}</View>}
       </View>)}
-      <SsfButton size="sm" variant="outline" label="Add Rank Boost section" icon={<Plus size={15} color={ui.colors.primary} />} onPress={addRankSection} />
+      <SsfButton size="sm" variant="outline" label="Add Rank Boost section" icon={<Plus size={15} color={ui.colors.primaryText} />} onPress={addRankSection} />
       <Text className="font-poppins text-xs text-ui-text-muted mt-3">Neither list: baseline. Both lists: boosted grade and rank components.</Text></SsfCard>
     <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-2">Both Boosting</Text>
       <Text className="font-poppins text-xs text-ui-text-muted mb-3">Competitions selected in both enabled lists receive both configured boost components. There is no separate switch or point value.</Text>
       <Text className="font-poppins-bold text-xs text-ui-text mb-2">{bothBoostIds.length} competitions selected in both</Text>
-      <SsfButton size="sm" variant="outline" label="View Both Boosting Competitions" icon={<Eye size={15} color={ui.colors.primary} />}
+      <SsfButton size="sm" variant="outline" label="View Both Boosting Competitions" icon={<Eye size={15} color={ui.colors.primaryText} />}
         onPress={() => setCompetitionPanel({ mode: 'both' })} />
     </SsfCard>
     <SsfCard className="mb-4"><View className="flex-row items-center justify-between mb-3"><Text className="font-poppins-bold text-lg text-ui-text">Minimum-team rule</Text>
@@ -264,11 +264,11 @@ export default function PointsSettings() {
         <TouchableOpacity className="p-3" accessibilityRole="button" accessibilityLabel="Remove grace field" onPress={() => patch({ graceFields: form.graceFields.filter(f => f.id !== field.id) })}><Trash2 size={17} color={ui.colors.textMuted} /></TouchableOpacity>
       </View>)}
       {!form.graceFields.length && <Text className="font-poppins text-xs text-ui-text-muted mb-3">Add the fields needed for this festival.</Text>}
-      <SsfButton size="sm" variant="outline" label="Add field" icon={<Plus size={16} color={ui.colors.primary} />}
+      <SsfButton size="sm" variant="outline" label="Add field" icon={<Plus size={16} color={ui.colors.primaryText} />}
         onPress={() => patch({ graceFields: [...form.graceFields, { id: createRequestId(), name: '', maxMarks: NaN }] })} />
       <SsfButton size="sm" variant="ghost" label="Open Grace Marks entry" onPress={() => router.push('/(admin)/grace-marks' as any)} className="mt-3" />
     </SsfCard>
-    {!!errors.length && <View className="mb-4">{errors.map(message => <Text key={message} className="font-poppins text-xs text-red-700 mb-1">{message}</Text>)}</View>}
+    {!!errors.length && <View className="mb-4">{errors.map(message => <Text key={message} className="font-poppins text-xs text-core-danger-red-700 mb-1">{message}</Text>)}</View>}
     <SsfInput label="Change reason" value={reason} onChangeText={setReason} style={{ minHeight: 40, minWidth: 0, width: 0 }} />
     <View className="flex-row flex-wrap gap-3 mb-4"><SsfButton label="Save configuration" onPress={save} isLoading={update.isPending} disabled={!festival || !!errors.length || !!itemsError} />
       <SsfButton label="Cancel" variant="ghost" onPress={() => router.back()} /></View>
@@ -279,7 +279,7 @@ export default function PointsSettings() {
       {competitionPanel?.mode === 'select' && <SsfInput label="Find competitions" value={search} onChangeText={setSearch}
         placeholder="Name, code or category" autoCapitalize="none" style={{ minHeight: 40, minWidth: 0, width: 0 }} />}
       {competitionOptionsLoading ? <ActivityIndicator className="py-5" /> : competitionOptionsError
-        ? <Text className="font-poppins text-sm text-red-700">Could not load enabled competitions or categories. Close and reload before editing assignments.</Text>
+        ? <Text className="font-poppins text-sm text-core-danger-red-700">Could not load enabled competitions or categories. Close and reload before editing assignments.</Text>
         : <>
           {competitionPanel?.mode === 'select' && <Text className="font-poppins-bold text-xs text-ui-text mb-2">{panelSelectedIds.length} competitions selected</Text>}
           {panelItems.map((item: any) => {
@@ -289,7 +289,7 @@ export default function PointsSettings() {
             const unavailableCategory = isCollegeFest && !enabledCategoryCodes.has(String(item.category_codes?.[0] ?? '').trim().toUpperCase());
             const row = <>
               {selected || competitionPanel?.mode !== 'select'
-                ? <CheckCircle2 size={18} color={ui.colors.primary} />
+                ? <CheckCircle2 size={18} color={ui.colors.primaryText} />
                 : <Circle size={18} color={ui.colors.textMuted} />}
               <View className="flex-1">
                 <Text className="font-poppins text-sm text-ui-text">{item.item_name_en || item.item_name_ml}</Text>

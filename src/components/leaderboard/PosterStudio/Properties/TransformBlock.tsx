@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useCallback } from 'react';
 import NumericField from './fields/NumericField';
 import Accordion from './Accordion';
@@ -88,7 +89,7 @@ export default function TransformBlock({ layer }: TransformBlockProps) {
           <NumericField label="Height" value={layer.height} onChange={handleHeightChange} min={10} max={4000} />
           <button
             onClick={() => setAspectLocked((v) => !v)}
-            style={{ ...styles.lockBtn, color: aspectLocked ? '#0F766E' : '#94A3B8' }}
+            style={{ ...styles.lockBtn, color: aspectLocked ? coreColor('#0F766E', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}
             title={aspectLocked ? 'Unlock aspect ratio' : 'Lock aspect ratio'}
           >
             {aspectLocked ? '🔗' : '⛓️'}
@@ -122,15 +123,15 @@ const styles: Record<string, React.CSSProperties> = {
   heightRow: { display: 'flex', alignItems: 'flex-end', gap: 4 },
   lockBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', paddingBottom: 4 },
   resetRow: { display: 'flex', justifyContent: 'flex-end' },
-  resetBtn: { fontSize: 10, padding: '4px 8px', borderRadius: 6, border: '1px solid #2a2a2a', background: '#1f1f1f', cursor: 'pointer', fontFamily: 'Inter, sans-serif', color: '#94A3B8' },
+  resetBtn: { fontSize: 10, padding: '4px 8px', borderRadius: 6, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, background: coreColor('#1f1f1f', 'surfaceStrong'), cursor: 'pointer', fontFamily: 'Inter, sans-serif', color: coreColor('#94A3B8', 'textSubtle') },
   flipRow: { display: 'flex', gap: 6, marginTop: 8 },
-  flipBtn: { flex: 1, padding: '6px 0', borderRadius: 8, border: '1px solid #2a2a2a', backgroundColor: '#171717', cursor: 'pointer', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 600, color: '#E2E8F0' },
+  flipBtn: { flex: 1, padding: '6px 0', borderRadius: 8, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, backgroundColor: coreColor('#171717', 'surfaceStrong'), cursor: 'pointer', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 600, color: coreColor('#E2E8F0', 'text') },
 };
 
 const locked: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 2 },
-  label: { fontSize: 10, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 600, textTransform: 'uppercase' },
-  valueRow: { display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', backgroundColor: '#1f1f1f', borderRadius: 8, border: '1px solid #2a2a2a' },
-  value: { fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#E2E8F0', flex: 1 },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 600, textTransform: 'uppercase' },
+  valueRow: { display: 'flex', alignItems: 'center', gap: 4, padding: '5px 8px', backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), borderRadius: 8, border: `1px solid ${coreColor('#2a2a2a', 'border')}` },
+  value: { fontSize: 12, fontFamily: 'Inter, sans-serif', color: coreColor('#E2E8F0', 'text'), flex: 1 },
   icon: { fontSize: 10 },
 };

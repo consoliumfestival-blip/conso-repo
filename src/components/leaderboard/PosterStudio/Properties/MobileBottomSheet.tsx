@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import TransformBlock from './TransformBlock';
 import TypographyBlock from './TypographyBlock';
@@ -85,7 +86,7 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
           bottom: 0,
           height: `${sheetHeight}vh`,
           zIndex: 9001,
-          backgroundColor: '#FFFFFF',
+          backgroundColor: coreColor('#FFFFFF', 'surface'),
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
           boxShadow: '0 -8px 40px rgba(0,0,0,0.15)',
@@ -117,8 +118,8 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
               onClick={() => setActiveTab(tab)}
               style={{
                 ...styles.tab,
-                borderBottom: activeTab === tab ? '2px solid #0F766E' : '2px solid transparent',
-                color: activeTab === tab ? '#0F766E' : '#64748B',
+                borderBottom: activeTab === tab ? `2px solid ${coreColor('#0F766E', 'border')}` : '2px solid transparent',
+                color: activeTab === tab ? coreColor('#0F766E', 'primaryText') : coreColor('#64748B', 'textMuted'),
               }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -143,13 +144,13 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
 
 const styles: Record<string, React.CSSProperties> = {
   handle: { display: 'flex', justifyContent: 'center', paddingTop: 10, paddingBottom: 6, cursor: 'grab' },
-  handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1' },
+  handleBar: { width: 40, height: 4, borderRadius: 2, backgroundColor: coreColor('#CBD5E1', 'borderStrong') },
   headerRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px 8px' },
-  layerName: { fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: '#0F172A' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  tabRow: { display: 'flex', borderBottom: '1px solid #DDEAF1', paddingLeft: 8 },
+  layerName: { fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: coreColor('#0F172A', 'overlay') },
+  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: coreColor('#64748B', 'textMuted'), minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  tabRow: { display: 'flex', borderBottom: `1px solid ${coreColor('#DDEAF1', 'border')}`, paddingLeft: 8 },
   tab: { padding: '10px 14px', minHeight: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: 'Inter, sans-serif', fontWeight: 600, transition: 'all 0.15s' },
   content: { flex: 1, overflowY: 'auto', padding: '12px 16px' },
   variablePlaceholder: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120 },
-  variablePlaceholderText: { color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontSize: 13, textAlign: 'center' },
+  variablePlaceholderText: { color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontSize: 13, textAlign: 'center' },
 };

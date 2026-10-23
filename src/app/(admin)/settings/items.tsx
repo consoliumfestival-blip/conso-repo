@@ -1,7 +1,9 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity, Modal, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
 import { useAuthStore } from '../../../core/store/authStore';
@@ -296,7 +298,7 @@ export default function ItemActivationSettings() {
 
         {/* Search + Actions Bar */}
         <View className="flex-row items-center gap-3 mb-4">
-          <View className="flex-1 flex-row items-center bg-white border border-ui-border rounded-lg px-3 h-10">
+          <View className="flex-1 flex-row items-center bg-core-surface-white border border-ui-border rounded-lg px-3 h-10">
             <Search size={16} color={ui.colors.textSubtle} />
             <TextInput
               className="flex-1 ml-2 font-poppins text-sm text-ui-text"
@@ -315,12 +317,12 @@ export default function ItemActivationSettings() {
         </View>
 
         <TouchableOpacity
-          className="mb-4 flex-row items-center gap-2 self-start rounded-lg border border-ui-border bg-white px-3 py-2"
+          className="mb-4 flex-row items-center gap-2 self-start rounded-lg border border-ui-border bg-core-surface-white px-3 py-2"
           onPress={() => setShowTenantItemsOnly(current => !current)}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: showTenantItemsOnly }}
         >
-          {showTenantItemsOnly ? <CheckCircle size={17} color="#0F766E" /> : <Circle size={17} color={ui.colors.textSubtle} />}
+          {showTenantItemsOnly ? <CheckCircle size={17} color={coreColor("#0F766E", 'primaryText')} /> : <Circle size={17} color={ui.colors.textSubtle} />}
           <Text className="font-poppins text-xs text-ui-text">
             Show this tenant&apos;s competitions only
           </Text>
@@ -360,7 +362,7 @@ export default function ItemActivationSettings() {
                   <View
                     key={item.item_code}
                     className={`flex-row items-center px-4 py-3 border-b border-ui-border ${
-                      isSelected ? 'bg-green-50' : idx % 2 === 0 ? 'bg-white' : 'bg-ui-muted/30'
+                      isSelected ? 'bg-core-success-soft-green-50' : idx % 2 === 0 ? 'bg-core-surface-white' : 'bg-ui-muted/30'
                     }`}
                   >
                     <TouchableOpacity
@@ -371,20 +373,20 @@ export default function ItemActivationSettings() {
                     >
                       <View className="w-10">
                         {isSelected ? (
-                          <CheckCircle size={18} color="#0F766E" />
+                          <CheckCircle size={18} color={coreColor("#0F766E", 'primaryText')} />
                         ) : (
-                          <Circle size={18} color="#CBD5E1" />
+                          <Circle size={18} color={coreColor("#CBD5E1", 'text')} />
                         )}
                       </View>
                       <View className="flex-1">
-                        <Text className="font-poppins-bold text-xs text-ui-primary">{item.item_code}</Text>
+                        <Text className="font-poppins-bold text-xs text-ui-primary-text">{item.item_code}</Text>
                       </View>
                       <View className="flex-[2]">
                         <Text className="font-poppins text-sm text-ui-text">{item.item_name_ml}</Text>
                       </View>
                       <View className="w-24">
                         <View className="bg-ui-primary/10 px-2 py-0.5 rounded self-start">
-                          <Text className="font-poppins-bold text-[10px] text-ui-primary">
+                          <Text className="font-poppins-bold text-[10px] text-ui-primary-text">
                             {(item.category_codes || []).join(', ') || 'GN'}
                           </Text>
                         </View>
@@ -398,7 +400,7 @@ export default function ItemActivationSettings() {
                     <View className="w-10 items-end">
                       {canEditItem(item) && (
                         <TouchableOpacity
-                          className="h-9 w-9 items-center justify-center rounded-md border border-ui-border bg-white"
+                          className="h-9 w-9 items-center justify-center rounded-md border border-ui-border bg-core-surface-white"
                           onPress={() => beginEditItem(item)}
                           accessibilityRole="button"
                           accessibilityLabel={`Edit ${item.item_name_ml}`}
@@ -424,13 +426,13 @@ export default function ItemActivationSettings() {
             {Object.entries(groupedItems).map(([category, items]) => (
               <View key={category} className="mb-4">
                 <View className="bg-ui-primary/10 py-1 px-3 rounded self-start mb-3">
-                  <Text className="font-poppins-bold text-ui-primary text-sm">{category} Category</Text>
+                  <Text className="font-poppins-bold text-ui-primary-text text-sm">{category} Category</Text>
                 </View>
 
                 {items.map((item) => {
                   const isSelected = selectedCodes.includes(item.item_code);
                   return (
-                    <Card key={item.item_code} className={`mb-2 ${isSelected ? 'border-ui-primary/30 bg-green-50' : ''}`}>
+                    <Card key={item.item_code} className={`mb-2 ${isSelected ? 'border-ui-primary/30 bg-core-success-soft-green-50' : ''}`}>
                       <CardContent className="p-0 flex-row items-center">
                         <TouchableOpacity
                           className="flex-1 flex-row items-center p-4"
@@ -439,21 +441,21 @@ export default function ItemActivationSettings() {
                           accessibilityState={{ checked: isSelected }}
                         >
                           <View className="flex-1">
-                            <Text className="text-xs font-poppins-bold text-ui-primary mb-1">{item.item_code}</Text>
+                            <Text className="text-xs font-poppins-bold text-ui-primary-text mb-1">{item.item_code}</Text>
                             <Text className="text-base font-poppins-bold text-ui-text">{item.item_name_ml}</Text>
                             <Text className="text-xs text-ui-text-muted mt-1">
                               {item.participation_type === 'individual' ? 'Individual match' : `Group match · ${getGroupMemberLabel(item)}`}
                             </Text>
                           </View>
                           {isSelected ? (
-                            <CheckCircle size={22} color="#0F766E" />
+                            <CheckCircle size={22} color={coreColor("#0F766E", 'primaryText')} />
                           ) : (
-                            <Circle size={22} color="#CBD5E1" />
+                            <Circle size={22} color={coreColor("#CBD5E1", 'text')} />
                           )}
                         </TouchableOpacity>
                         {canEditItem(item) && (
                           <TouchableOpacity
-                            className="h-11 w-11 mr-2 items-center justify-center rounded-md border border-ui-border bg-white"
+                            className="h-11 w-11 mr-2 items-center justify-center rounded-md border border-ui-border bg-core-surface-white"
                             onPress={() => beginEditItem(item)}
                             accessibilityRole="button"
                             accessibilityLabel={`Edit ${item.item_name_ml}`}
@@ -480,8 +482,8 @@ export default function ItemActivationSettings() {
 
       {/* Add Custom Item Modal */}
       <Modal visible={isAddModalOpen} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white p-6 rounded-t-3xl min-h-[50%]">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-end">
+          <View className="bg-core-surface-white p-6 rounded-t-3xl min-h-[50%]">
             <Text className="text-xl font-poppins-bold text-ui-text mb-4">Add Custom Item</Text>
 
             <View className="mb-4">
@@ -498,7 +500,7 @@ export default function ItemActivationSettings() {
               {isCollegeFest ? (
                 <View>
                   <TouchableOpacity
-                    className="h-10 justify-center rounded-md border border-ui-border bg-white px-3"
+                    className="h-10 justify-center rounded-md border border-ui-border bg-core-surface-white px-3"
                     onPress={() => setCategoryMenuOpen(current => !current)}
                     accessibilityRole="button"
                     accessibilityLabel="Select item category"
@@ -508,7 +510,7 @@ export default function ItemActivationSettings() {
                     </Text>
                   </TouchableOpacity>
                   {categoryMenuOpen && (
-                    <View className="mt-1 rounded-md border border-ui-border bg-white">
+                    <View className="mt-1 rounded-md border border-ui-border bg-core-surface-white">
                       {itemCategoryOptions.map(category => (
                         <TouchableOpacity
                           key={category.id}
@@ -576,8 +578,8 @@ export default function ItemActivationSettings() {
         animationType="slide"
         onRequestClose={() => setEditingItem(null)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white p-6 rounded-t-3xl max-h-[90%]">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-end">
+          <View className="bg-core-surface-white p-6 rounded-t-3xl max-h-[90%]">
             <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }}>
               <Text className="text-xl font-poppins-bold text-ui-text mb-1">Edit Competition</Text>
               <Text className="text-xs font-poppins text-ui-text-muted mb-5">{editingItem?.item_code}</Text>
@@ -594,7 +596,7 @@ export default function ItemActivationSettings() {
               <View className="mb-4">
                 <Label>Category</Label>
                 {isCollegeFest ? (
-                  <View className="mt-2 rounded-md border border-ui-border bg-white">
+                  <View className="mt-2 rounded-md border border-ui-border bg-core-surface-white">
                     {[
                       ...itemCategoryOptions,
                       ...(Array.isArray(editingItem?.category_codes) ? editingItem.category_codes : [])

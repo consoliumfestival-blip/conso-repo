@@ -1,16 +1,8 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from "@/constants/designSystem";
 import React, { useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
   CheckCircle2,
   Eye,
@@ -42,11 +34,11 @@ const colors = {
 };
 
 const STATUS_CONFIG: Record<ResultStatus, { label: string; bg: string; text: string }> = {
-  draft:     { label: 'Draft',     bg: '#F1F5F9', text: ui.colors.textMuted },
-  ready:     { label: 'Ready',     bg: '#EFF6FF', text: ui.colors.info },
-  published: { label: 'Published', bg: ui.colors.successSoft, text: '#15803D' },
+  draft:     { label: 'Draft',     bg: coreColor('#F1F5F9', 'background'), text: ui.colors.textMuted },
+  ready:     { label: 'Ready',     bg: coreColor('#EFF6FF', 'background'), text: ui.colors.info },
+  published: { label: 'Published', bg: ui.colors.successSoft, text: coreColor('#15803D', 'text') },
   hidden:    { label: 'Hidden',    bg: ui.colors.dangerSoft, text: ui.colors.danger },
-  archived:  { label: 'Archived',  bg: ui.colors.surfaceMuted, text: '#374151' },
+  archived:  { label: 'Archived',  bg: ui.colors.surfaceMuted, text: coreColor('#374151', 'text') },
 };
 
 const ResultStatusBadge = ({ status }: { status: ResultStatus }) => {
@@ -60,14 +52,14 @@ const ResultStatusBadge = ({ status }: { status: ResultStatus }) => {
 
 const PublicVisibilityBadge = ({ visible }: { visible: boolean }) => (
   <View style={{
-    backgroundColor: visible ? ui.colors.successSoft : '#F1F5F9',
+    backgroundColor: visible ? ui.colors.successSoft : coreColor('#F1F5F9', 'surface'),
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
     alignSelf: 'flex-start',
   }}>
     <Text style={{
-      color: visible ? '#15803D' : ui.colors.textMuted,
+      color: visible ? coreColor('#15803D', 'success') : ui.colors.textMuted,
       fontFamily: 'Montserrat_700Bold',
       fontSize: 11,
     }}>
@@ -253,7 +245,7 @@ export default function ItemResultsPage() {
           <Text style={styles.cardSubTitle}>Manage public visibility of results grouped by item.</Text>
         </View>
         <TouchableOpacity onPress={() => refetchResults()} style={styles.secondaryAction}>
-          <RefreshCw size={16} color={colors.teal} />
+          <RefreshCw size={16} color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.secondaryActionText}>{isResultsRefetching ? 'Refreshing' : 'Refresh'}</Text>
         </TouchableOpacity>
       </View>
@@ -330,7 +322,7 @@ export default function ItemResultsPage() {
       {/* Item Groups */}
       {isResultsLoading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.teal} />
+          <ActivityIndicator color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.loadingText}>Loading item results...</Text>
         </View>
       ) : resultsError ? (
@@ -351,13 +343,13 @@ export default function ItemResultsPage() {
             const isAllReady = group.status_summary.ready === group.status_summary.total;
             
             let groupStatusText = 'Mixed Status';
-            let groupStatusColor = '#F59E0B'; // Amber
-            let groupStatusBg = '#FEF3C7';
+            let groupStatusColor = coreColor('#F59E0B', 'warning');
+            let groupStatusBg = coreColor('#FEF3C7', 'warningSoft');
             
-            if (isAllPublished && isAllPublic) { groupStatusText = 'Public'; groupStatusColor = '#15803D'; groupStatusBg = ui.colors.successSoft; }
+            if (isAllPublished && isAllPublic) { groupStatusText = 'Public'; groupStatusColor = coreColor('#15803D', 'success'); groupStatusBg = ui.colors.successSoft; }
             else if (isAllPublished && isAllPublicHidden) { groupStatusText = 'Admin Published'; groupStatusColor = ui.colors.info; groupStatusBg = ui.colors.infoSoft; }
             else if (isAllReady) { groupStatusText = 'All Ready'; groupStatusColor = ui.colors.info; groupStatusBg = ui.colors.infoSoft; }
-            else if (group.status_summary.draft === group.status_summary.total) { groupStatusText = 'All Draft'; groupStatusColor = ui.colors.textMuted; groupStatusBg = '#F1F5F9'; }
+            else if (group.status_summary.draft === group.status_summary.total) { groupStatusText = 'All Draft'; groupStatusColor = ui.colors.textMuted; groupStatusBg = coreColor('#F1F5F9', 'surfaceMuted'); }
 
             return (
               <View key={group.item_id} style={styles.itemGroupCard}>
@@ -365,14 +357,14 @@ export default function ItemResultsPage() {
                 <View style={styles.itemGroupHeader}>
                   <View style={{ flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                     {publicOrderMap.has(group.item_id) && (
-                      <View style={{ backgroundColor: '#0F766E', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, minWidth: 32, alignItems: 'center' }}>
-                        <Text style={{ color: '#FFFFFF', fontFamily: 'Montserrat_700Bold', fontSize: 12 }}>#{publicOrderMap.get(group.item_id)}</Text>
+                      <View style={{ backgroundColor: coreColor('#0F766E', 'primary'), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, minWidth: 32, alignItems: 'center' }}>
+                        <Text style={{ color: coreColor('#FFFFFF', 'onPrimary'), fontFamily: 'Montserrat_700Bold', fontSize: 12 }}>#{publicOrderMap.get(group.item_id)}</Text>
                       </View>
                     )}
                     <Text style={styles.itemGroupTitle}>{group.item_name_ml || group.item_name}</Text>
                       {itemDetailsMap.get(group.item_id)?.item_code && (
-                        <View style={[styles.itemTypeBadge, { backgroundColor: '#f3f4f6', borderColor: '#e5e7eb', borderWidth: 1 }]}>
-                          <Text style={[styles.itemTypeBadgeText, { color: '#4b5563' }]}>{itemDetailsMap.get(group.item_id).item_code}</Text>
+                        <View style={[styles.itemTypeBadge, { backgroundColor: coreColor('#f3f4f6', 'surface'), borderColor: coreColor('#e5e7eb', 'border'), borderWidth: 1 }]}>
+                          <Text style={[styles.itemTypeBadgeText, { color: coreColor('#4b5563', 'text') }]}>{itemDetailsMap.get(group.item_id).item_code}</Text>
                         </View>
                       )}
                       {(itemDetailsMap.get(group.item_id)?.category_codes || []).map((code: string) => {
@@ -386,7 +378,7 @@ export default function ItemResultsPage() {
                       })}
                     
                     <View style={styles.itemTypeBadge}>
-                      {group.is_group ? <Users size={12} color={colors.navy} style={{ marginRight: 4 }} /> : <UserIcon size={12} color={colors.navy} style={{ marginRight: 4 }} />}
+                      {group.is_group ? <Users size={12} color={coreColor(colors.navy, 'primaryText')} style={{ marginRight: 4 }} /> : <UserIcon size={12} color={coreColor(colors.navy, 'primaryText')} style={{ marginRight: 4 }} />}
                       <Text style={styles.itemTypeBadgeText}>{group.is_group ? 'Group' : 'Individual'}</Text>
                     </View>
                     <View style={[styles.itemGroupStatusBadge, { backgroundColor: groupStatusBg }]}>
@@ -397,18 +389,18 @@ export default function ItemResultsPage() {
                   {/* Bulk Actions for Item */}
                   <View style={styles.itemGroupActions}>
                     <TouchableOpacity onPress={() => setPreviewGroup(group)} style={styles.bulkActionBtn}>
-                      <Eye size={16} color={colors.navy} />
+                      <Eye size={16} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.bulkActionBtnText}>Preview</Text>
                     </TouchableOpacity>
                     
                     {!isAllPublic && (
-                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'published')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.successSoft, borderColor: '#BBF7D0' }]}>
-                        <CheckCircle2 size={16} color="#15803D" />
-                        <Text style={[styles.bulkActionBtnText, { color: '#15803D' }]}>Show Public</Text>
+                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'published')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.successSoft, borderColor: coreColor('#BBF7D0', 'border') }]}>
+                        <CheckCircle2 size={16} color={coreColor("#15803D", 'success')} />
+                        <Text style={[styles.bulkActionBtnText, { color: coreColor('#15803D', 'success') }]}>Show Public</Text>
                       </TouchableOpacity>
                     )}
                     {!isAllPublicHidden && (
-                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'hidden')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.dangerSoft, borderColor: '#FECACA' }]}>
+                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'hidden')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.dangerSoft, borderColor: coreColor('#FECACA', 'border') }]}>
                         <EyeOff size={16} color={ui.colors.danger} />
                         <Text style={[styles.bulkActionBtnText, { color: ui.colors.danger }]}>Hide Public</Text>
                       </TouchableOpacity>
@@ -422,7 +414,7 @@ export default function ItemResultsPage() {
                     const status = (r.result_status ?? 'draft') as ResultStatus;
                     const isLast = i === group.results.length - 1;
                     return (
-                        <View key={r.result_id} style={[styles.nestedResultRow, !isLast && { borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }]}>
+                        <View key={r.result_id} style={[styles.nestedResultRow, !isLast && { borderBottomWidth: 1, borderBottomColor: coreColor('#F1F5F9', 'border') }]}>
                           <View style={{ flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                             <View style={{ width: 28, alignItems: 'center', marginTop: 2 }}>
                               {r.rank ? <Text style={styles.nestedRankText}>#{r.rank}</Text> : <Text style={styles.nestedRankText}>-</Text>}
@@ -437,8 +429,8 @@ export default function ItemResultsPage() {
                               </View>
                               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                                 <Text style={styles.nestedMeta}>{r.organisation_name}</Text>
-                                {r.grade && <Text style={[styles.nestedMeta, { color: '#0F172A', fontWeight: '700' }]}>• Grade {r.grade}</Text>}
-                                <Text style={[styles.nestedMeta, { color: '#0F766E', fontWeight: '700' }]}>• {r.points_awarded} pts</Text>
+                                {r.grade && <Text style={[styles.nestedMeta, { color: coreColor('#0F172A', 'overlay'), fontWeight: '700' }]}>• Grade {r.grade}</Text>}
+                                <Text style={[styles.nestedMeta, { color: coreColor('#0F766E', 'primaryText'), fontWeight: '700' }]}>• {r.points_awarded} pts</Text>
                               </View>
                             </View>
                           </View>
@@ -446,7 +438,7 @@ export default function ItemResultsPage() {
                           <View style={[styles.nestedActions, { flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 4 }]}>
                            {r.public_visible !== true && (
                               <TouchableOpacity onPress={() => handleSingleVisibility(r.result_id, 'published')} style={[styles.nestedActionBtn, { backgroundColor: ui.colors.successSoft }]}>
-                                <CheckCircle2 size={14} color="#15803D" />
+                                <CheckCircle2 size={14} color={coreColor("#15803D", 'success')} />
                               </TouchableOpacity>
                             )}
                             {status !== 'ready' && status !== 'published' && (
@@ -490,8 +482,8 @@ export default function ItemResultsPage() {
                    <Text style={styles.previewItemName}>{previewGroup.item_name_ml || previewGroup.item_name}</Text>
                    <View style={{ flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
                      {itemDetailsMap.get(previewGroup.item_id)?.item_code && (
-                        <View style={[styles.itemTypeBadge, { backgroundColor: '#f3f4f6', borderColor: '#e5e7eb', borderWidth: 1 }]}>
-                          <Text style={[styles.itemTypeBadgeText, { color: '#4b5563' }]}>{itemDetailsMap.get(previewGroup.item_id).item_code}</Text>
+                        <View style={[styles.itemTypeBadge, { backgroundColor: coreColor('#f3f4f6', 'surface'), borderColor: coreColor('#e5e7eb', 'border'), borderWidth: 1 }]}>
+                          <Text style={[styles.itemTypeBadgeText, { color: coreColor('#4b5563', 'text') }]}>{itemDetailsMap.get(previewGroup.item_id).item_code}</Text>
                         </View>
                      )}
                      {(itemDetailsMap.get(previewGroup.item_id)?.category_codes || []).map((code: string) => {
@@ -511,7 +503,7 @@ export default function ItemResultsPage() {
                   {previewGroup.results.sort((a,b) => (a.rank||99) - (b.rank||99)).map(r => (
                     <View key={r.result_id} style={[styles.previewResultRow, { flexWrap: 'wrap', gap: 8, alignItems: 'flex-start' }]}>
                        <View style={{ width: 28, alignItems: 'center', marginTop: 2 }}>
-                         <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 13, color: colors.navy }}>
+                         <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 13, color: coreColor(colors.navy, 'primaryText') }}>
                            {r.rank ? `#${r.rank}` : '-'}
                          </Text>
                        </View>
@@ -524,8 +516,8 @@ export default function ItemResultsPage() {
                          </Text>
                        </View>
                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                         {r.grade && <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 12, color: colors.navy }}>Grade {r.grade}</Text>}
-                         <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 13, color: colors.teal }}>• {r.points_awarded} pts</Text>
+                         {r.grade && <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 12, color: coreColor(colors.navy, 'primaryText') }}>Grade {r.grade}</Text>}
+                         <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 13, color: coreColor(colors.teal, 'primaryText') }}>• {r.points_awarded} pts</Text>
                        </View>
                     </View>
                   ))}
@@ -536,7 +528,7 @@ export default function ItemResultsPage() {
                     style={[styles.primaryAction, { flex: 1 }]}
                     onPress={() => { handleItemBulkAction(previewGroup, 'published'); setPreviewGroup(null); }}
                   >
-                    <CheckCircle2 size={16} color={ui.colors.surface} />
+                    <CheckCircle2 size={16} color={ui.colors.onPrimary} />
                     <Text style={styles.primaryActionText}>Show Public</Text>
                   </TouchableOpacity>
                   
@@ -602,7 +594,7 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.background,
   },
   secondaryActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Montserrat_700Bold',
     fontSize: 12,
   },
@@ -662,7 +654,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   filterChipTextActive: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
   },
   filterDivider: {
     width: 1.5,
@@ -694,14 +686,14 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surface,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
     overflow: 'hidden',
   },
   itemGroupHeader: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: coreColor('#E2E8F0', 'border'),
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -709,22 +701,22 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   itemGroupTitle: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Montserrat_700Bold',
     fontSize: 16,
   },
   itemTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
   },
   itemTypeBadgeText: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 11,
   },
@@ -752,10 +744,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
   },
   bulkActionBtnText: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Montserrat_600SemiBold',
     fontSize: 12,
   },
@@ -818,14 +810,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 16 },
   },
   previewHeaderCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
   },
   previewItemName: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Montserrat_700Bold',
     fontSize: 16,
   },
@@ -840,7 +832,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: coreColor('#F1F5F9', 'border'),
     gap: 12,
   },
   primaryAction: {
@@ -853,7 +845,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryActionText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Montserrat_700Bold',
     fontSize: 13,
   },
@@ -861,8 +853,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#FECACA',
-    backgroundColor: '#FEF2F2',
+    borderColor: coreColor('#FECACA', 'border'),
+    backgroundColor: coreColor('#FEF2F2', 'dangerSoft'),
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React from 'react';
 import { useLayerStore, LayerData } from '../Stores/layerStore';
 import { useHistoryStore } from '../Stores/historyStore';
@@ -82,7 +83,7 @@ export default function TextToolbar({ onOpenProperties }: TextToolbarProps = {})
 
       {/* 4. Font Weight (Bold toggle simulation) */}
       <button 
-        style={{...styles.iconBtn, backgroundColor: layer.fontWeight === 700 ? 'rgba(255,255,255,0.1)' : 'transparent'}}
+        style={{...styles.iconBtn, backgroundColor: layer.fontWeight === 700 ? coreAlpha(coreColor('#ffffff', 'overlay'), 0.1) : 'transparent'}}
         onClick={() => commit({ fontWeight: layer.fontWeight === 700 ? 400 : 700 })}
         title="Bold"
       >
@@ -146,7 +147,7 @@ const styles: Record<string, React.CSSProperties> = {
   divider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.15),
     margin: '0 8px',
   },
   iconBtn: {
@@ -155,7 +156,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     border: 'none',
     backgroundColor: 'transparent',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -169,7 +170,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 4,
     border: 'none',
     backgroundColor: 'transparent',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     cursor: 'pointer',
     fontSize: 13,
     fontWeight: 600,
@@ -190,7 +191,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderLeft: '1px solid rgba(255,255,255,0.2)',
     borderRight: '1px solid rgba(255,255,255,0.2)',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     textAlign: 'center',
     fontSize: 13,
     fontWeight: 600,

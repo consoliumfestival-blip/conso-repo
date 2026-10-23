@@ -1,12 +1,13 @@
+import { coreColor } from '@/constants/coreTheme';
 import * as React from "react";
 import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { cn } from "../../../lib/utils";
 
 const variantStyles = {
-  default: "bg-[#0F766E]",
+  default: "bg-core-primary-hex-0f766e",
   destructive: "bg-destructive",
-  outline: "border border-[#B7D9D3] bg-[#E7F6F3]",
-  secondary: "bg-[#E7F6F3]",
+  outline: `border border-core-border-hex-b7d9d3 bg-core-primary-soft-hex-e7f6f3`,
+  secondary: "bg-core-primary-soft-hex-e7f6f3",
   ghost: "bg-transparent",
   link: "bg-transparent",
 };
@@ -19,10 +20,10 @@ const sizeStyles = {
 };
 
 const textVariantStyles = {
-  default: "text-white",
+  default: "text-core-on-primary-white",
   destructive: "text-destructive-foreground",
-  outline: "text-[#0F172A]",
-  secondary: "text-[#0F766E]",
+  outline: `text-core-text-hex-0f172a`,
+  secondary: "text-core-primary-text-hex-0f766e",
   ghost: "text-foreground",
   link: "text-primary",
 };
@@ -55,7 +56,7 @@ const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>, Butto
         {...props}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={variant === "default" ? "white" : "#0F766E"} />
+          <ActivityIndicator size="small" color={variant === "default" ? coreColor("white", 'onPrimary') : coreColor("#0F766E", 'primaryText')} />
         ) : (
           <Text className={cn("text-sm font-medium", textVariantStyles[variant])}>
             {children}

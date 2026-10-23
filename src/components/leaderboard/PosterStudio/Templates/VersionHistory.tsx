@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState } from 'react';
 import { useTemplateStore } from '../Stores/templateStore';
 import { useLayerStore } from '../Stores/layerStore';
@@ -32,8 +33,8 @@ export default function VersionHistory() {
               key={v.id} 
               style={{
                 ...styles.versionCard,
-                borderColor: selectedVersion === v.id ? '#0284C7' : '#E2E8F0',
-                backgroundColor: selectedVersion === v.id ? '#F0F9FF' : '#FFFFFF',
+                borderColor: selectedVersion === v.id ? coreColor('#0284C7', 'border') : coreColor('#E2E8F0', 'border'),
+                backgroundColor: selectedVersion === v.id ? coreColor('#F0F9FF', 'infoSoft') : coreColor('#FFFFFF', 'surface'),
               }}
               onClick={() => setSelectedVersion(v.id)}
             >
@@ -59,13 +60,13 @@ export default function VersionHistory() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     padding: 16,
-    backgroundColor: '#F8FAFC',
-    borderTop: '1px solid #E2E8F0',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
+    borderTop: `1px solid ${coreColor('#E2E8F0', 'border')}`,
     maxHeight: 300,
     overflowY: 'auto',
   },
-  title: { margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, color: '#0F172A' },
-  empty: { fontSize: 12, color: '#64748B', textAlign: 'center', padding: '12px 0' },
+  title: { margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, color: coreColor('#0F172A', 'overlay') },
+  empty: { fontSize: 12, color: coreColor('#64748B', 'textMuted'), textAlign: 'center', padding: '12px 0' },
   list: { display: 'flex', flexDirection: 'column', gap: 8 },
   versionCard: {
     padding: 12,
@@ -75,14 +76,14 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'all 0.2s',
   },
   vHeader: { display: 'flex', justifyContent: 'space-between', marginBottom: 4 },
-  vNum: { fontSize: 12, fontWeight: 700, color: '#0F172A' },
-  vDate: { fontSize: 10, color: '#64748B' },
-  vLabel: { fontSize: 11, color: '#475569', fontStyle: 'italic', marginBottom: 8 },
+  vNum: { fontSize: 12, fontWeight: 700, color: coreColor('#0F172A', 'overlay') },
+  vDate: { fontSize: 10, color: coreColor('#64748B', 'textMuted') },
+  vLabel: { fontSize: 11, color: coreColor('#475569', 'text'), fontStyle: 'italic', marginBottom: 8 },
   restoreBtn: {
     width: '100%',
     padding: '6px',
-    backgroundColor: '#0284C7',
-    color: '#FFFFFF',
+    backgroundColor: coreColor('#0284C7', 'infoAction'),
+    color: coreColor('#FFFFFF', 'text'),
     border: 'none',
     borderRadius: 4,
     fontSize: 11,

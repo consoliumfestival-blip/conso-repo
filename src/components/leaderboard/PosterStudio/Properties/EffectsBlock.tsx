@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import Accordion from './Accordion';
 import SliderField from './fields/SliderField';
@@ -90,7 +91,7 @@ export default function EffectsBlock({ layer }: EffectsBlockProps) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  divider: { height: 1, backgroundColor: '#2a2a2a', margin: '8px 0' },
-  sectionTitle: { fontSize: 10, fontWeight: 700, color: '#E2E8F0', textTransform: 'uppercase', letterSpacing: '0.05em' },
+  divider: { height: 1, backgroundColor: coreColor('#2a2a2a', 'surfaceStrong'), margin: '8px 0' },
+  sectionTitle: { fontSize: 10, fontWeight: 700, color: coreColor('#E2E8F0', 'text'), textTransform: 'uppercase', letterSpacing: '0.05em' },
   row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 },
 };

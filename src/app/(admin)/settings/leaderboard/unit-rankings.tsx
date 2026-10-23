@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
 import React, { useMemo, useState } from 'react';
 import {
@@ -105,7 +106,7 @@ export default function UnitRankingsPage() {
     if (isLoading) {
       return (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.teal} />
+          <ActivityIndicator color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.loadingText}>Loading leaderboard control data</Text>
         </View>
       );
@@ -178,7 +179,7 @@ export default function UnitRankingsPage() {
             </Text>
           </View>
           <TouchableOpacity onPress={() => refetch()} style={styles.secondaryAction}>
-            <RefreshCw size={16} color={colors.teal} />
+            <RefreshCw size={16} color={coreColor(colors.teal, 'primaryText')} />
             {!isMobile && (
               <Text style={styles.secondaryActionText}>
                 {isRefetching ? 'Refreshing' : 'Refresh'}
@@ -256,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.background,
   },
   secondaryActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankBadgeText: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Poppins_900Black',
     fontSize: 13,
   },
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   pointsValue: {
-    color: colors.blue,
+    color: coreColor(colors.blue, 'primaryText'),
     fontFamily: 'Poppins_900Black',
     fontSize: 18,
   },
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   primaryActionText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
@@ -487,7 +488,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   outlineActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
@@ -520,7 +521,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: colors.soft,
     borderWidth: 1,
-    borderColor: 'rgba(22,184,217,0.18)',
+    borderColor: coreAlpha(coreColor('#16b8d9', 'border'), 0.18),
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
@@ -535,7 +536,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    color: '#0F5868',
+    color: coreColor('#0F5868', 'info'),
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
     lineHeight: 18,

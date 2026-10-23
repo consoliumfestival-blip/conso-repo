@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../../../core/config/supabase';
@@ -146,11 +147,11 @@ export default function ApiKeysSettingsScreen() {
       <Text className="font-poppins-bold text-ui-text text-lg mb-3">Manage Active Keys</Text>
 
       {loading ? (
-        <ActivityIndicator color="#0F766E" style={{ marginTop: 40 }} />
+        <ActivityIndicator color={coreColor("#0F766E", 'primaryText')} style={{ marginTop: 40 }} />
       ) : apiKeys.length === 0 ? (
         <Card>
           <CardContent className="p-6 items-center">
-            <Key size={40} color="#CBD5E1" />
+            <Key size={40} color={coreColor("#CBD5E1", 'text')} />
             <Text className="font-poppins text-ui-text-muted mt-3 text-center">
               No API Keys found. The system is using fallback .env keys.
             </Text>
@@ -165,8 +166,8 @@ export default function ApiKeysSettingsScreen() {
                   <Text className="font-poppins-bold text-ui-text text-base capitalize">
                     {key.provider === 'llama' ? 'Llama (Groq)' : key.provider}
                   </Text>
-                  <View className={`ml-2 px-2 py-0.5 rounded ${key.is_active ? 'bg-green-100' : 'bg-ui-muted'}`}>
-                    <Text className={`font-poppins-bold text-[10px] ${key.is_active ? 'text-green-700' : 'text-ui-text-muted'}`}>
+                  <View className={`ml-2 px-2 py-0.5 rounded ${key.is_active ? 'bg-core-success-soft-green-100' : 'bg-ui-muted'}`}>
+                    <Text className={`font-poppins-bold text-[10px] ${key.is_active ? 'text-core-success-green-700' : 'text-ui-text-muted'}`}>
                       {key.is_active ? 'ACTIVE' : 'INACTIVE'}
                     </Text>
                   </View>

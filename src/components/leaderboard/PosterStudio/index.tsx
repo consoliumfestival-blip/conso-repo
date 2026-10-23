@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useWindowDimensions } from 'react-native';
 import StudioCanvas from './Canvas/StudioCanvas';
@@ -507,7 +508,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
           <span>🗂 Unsaved draft found from a previous session.</span>
           <div style={styles.draftActions}>
             <button onClick={() => restoreDraft()} style={styles.draftBtn}>Restore Draft</button>
-            <button onClick={() => clearDraft()} style={{ ...styles.draftBtn, backgroundColor: 'transparent', color: '#64748B' }}>Discard</button>
+            <button onClick={() => clearDraft()} style={{ ...styles.draftBtn, backgroundColor: 'transparent', color: coreColor('#64748B', 'textMuted') }}>Discard</button>
           </div>
         </div>
       )}
@@ -529,7 +530,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#94A3B8',
+                color: coreColor('#94A3B8', 'textSubtle'),
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -539,14 +540,14 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 padding: '6px 8px',
                 borderRadius: '4px'
               }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#2a2a2a')}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = coreColor('#2a2a2a', 'surfaceMuted'))}
               onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
             >
               <ArrowLeft size={14} /> Back
             </button>
-            <span style={{ width: 1, height: 16, backgroundColor: '#2a2a2a', margin: '0 4px' }} />
+            <span style={{ width: 1, height: 16, backgroundColor: coreColor('#2a2a2a', 'surfaceStrong'), margin: '0 4px' }} />
             <span style={{ ...styles.studioTitle, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Palette size={16} color="#38BDF8" /> Poster Studio
+              <Palette size={16} color={coreColor("#38BDF8", 'info')} /> Poster Studio
             </span>
             {/* Template selector has been moved to the Templates Panel in the Right Control Dock */}
             {/* Change Background Button replacing the old status pill */}
@@ -559,8 +560,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 borderRadius: '4px',
                 fontSize: '12px',
                 fontWeight: 'bold',
-                backgroundColor: currentResultId ? '#8B5CF6' : '#3B82F6',
-                color: 'white',
+                backgroundColor: currentResultId ? coreColor('#8B5CF6', 'infoAction') : coreColor('#3B82F6', 'infoAction'),
+                color: coreColor('white', 'onPrimary'),
                 border: 'none',
                 display: 'flex',
                 alignItems: 'center',
@@ -585,8 +586,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                  style={{
                    marginLeft: '8px',
                    padding: '6px 12px',
-                   backgroundColor: '#475569',
-                   color: 'white',
+                   backgroundColor: coreColor('#475569', 'surfaceStrong'),
+                   color: coreColor('white', 'text'),
                    border: 'none',
                    borderRadius: '6px',
                    fontSize: '12px',
@@ -597,8 +598,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                    alignItems: 'center',
                    gap: '6px'
                  }}
-                 onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#334155')}
-                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = '#475569')}
+                 onMouseOver={(e) => (e.currentTarget.style.backgroundColor = coreColor('#334155', 'surfaceMuted'))}
+                 onMouseOut={(e) => (e.currentTarget.style.backgroundColor = coreColor('#475569', 'surfaceMuted'))}
                >
                  <Undo size={14} /> Back to Base Template
                </button>
@@ -612,9 +613,9 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   style={{
                     marginLeft: '8px',
                     padding: '4px 10px',
-                    backgroundColor: showResizePopover ? '#334155' : 'transparent',
-                    color: '#E2E8F0',
-                    border: '1px solid #475569',
+                    backgroundColor: showResizePopover ? coreColor('#334155', 'surfaceStrong') : 'transparent',
+                    color: coreColor('#E2E8F0', 'text'),
+                    border: `1px solid ${coreColor('#475569', 'border')}`,
                     borderRadius: '6px',
                     fontSize: '12px',
                     fontWeight: 'bold',
@@ -632,11 +633,11 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                     top: '100%',
                     left: 0,
                     marginTop: 8,
-                    background: '#F8FAFC',
+                    background: coreColor('#F8FAFC', 'surfaceStrong'),
                     borderRadius: 8,
                     boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
                     zIndex: 1000,
-                    border: '1px solid #CBD5E1',
+                    border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
                     width: 320
                   }}>
                     <CanvasSizeBlock />
@@ -657,11 +658,11 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               >
                 <Eye size={14} /> View <ChevronDown size={12} />
               </button>
-              <div id="view-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#171717', border: '1px solid #2a2a2a', borderRadius: 6, padding: 8, zIndex: 100, minWidth: 140 }}>
-                <button onClick={() => setGridVisible(!gridVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridVisible ? '#5EEAD4' : '#94A3B8' }}><Grid size={14} /> Grid</button>
-                <button onClick={() => setGridSnap(!gridSnap)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridSnap ? '#5EEAD4' : '#94A3B8' }}><Magnet size={14} /> Snap</button>
-                <button onClick={() => setSafeZoneVisible(!safeZoneVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: safeZoneVisible ? '#5EEAD4' : '#94A3B8' }}><Square size={14} /> Safe Zones</button>
-                <button onClick={() => setRulerVisible(!rulerVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: rulerVisible ? '#5EEAD4' : '#94A3B8' }}><Ruler size={14} /> Ruler</button>
+              <div id="view-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, padding: 8, zIndex: 100, minWidth: 140 }}>
+                <button onClick={() => setGridVisible(!gridVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Grid size={14} /> Grid</button>
+                <button onClick={() => setGridSnap(!gridSnap)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridSnap ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Magnet size={14} /> Snap</button>
+                <button onClick={() => setSafeZoneVisible(!safeZoneVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: safeZoneVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Square size={14} /> Safe Zones</button>
+                <button onClick={() => setRulerVisible(!rulerVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: rulerVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Ruler size={14} /> Ruler</button>
               </div>
             </div>
 
@@ -723,7 +724,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   setIsSaving(false);
                 }}
                 disabled={isSaving}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#3B82F6', color: '#FFFFFF', borderColor: '#3B82F6' }}
+                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#3B82F6', 'infoAction'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#3B82F6', 'border') }}
               >
                 <Save size={14} /> {isSaving ? 'Saving...' : 'Save'}
               </button>
@@ -736,7 +737,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   setIsSaving(false);
                 }}
                 disabled={isSaving}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#8B5CF6', color: '#FFFFFF', borderColor: '#8B5CF6' }}
+                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#8B5CF6', 'infoAction'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#8B5CF6', 'border') }}
               >
                 <Save size={14} /> {isSaving ? 'Saving...' : 'Save Edit'}
               </button>
@@ -745,7 +746,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               <button 
                 onClick={() => setIsGenerating(true)} 
                 disabled={isGenerating}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: '#0F766E', color: '#FFFFFF', borderColor: '#0F766E' }}
+                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#0F766E', 'primary'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#0F766E', 'border') }}
               >
                 <Zap size={14} /> {isGenerating ? 'Generating...' : 'Generate'}
               </button>
@@ -753,7 +754,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
             {!currentResultId && (
               <button 
                 onClick={() => setShowPublish(true)} 
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', backgroundColor: '#0F766E', color: '#FFFFFF', borderColor: '#0F766E' }}
+                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', backgroundColor: coreColor('#0F766E', 'primary'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#0F766E', 'border') }}
               >
                 <Send size={14} /> Publish
               </button>
@@ -770,12 +771,12 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               >
                 More <ChevronDown size={12} />
               </button>
-              <div id="more-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#171717', border: '1px solid #2a2a2a', borderRadius: 6, padding: 8, zIndex: 100, minWidth: 180 }}>
+              <div id="more-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, padding: 8, zIndex: 100, minWidth: 180 }}>
                 {/* ── Typography Mode Toggle ── */}
                 <button
                   onClick={toggleTypographyMode}
                   title={`Typography Mode: ${typographyMode === 'A' ? 'BIG first / small second' : 'small first / BIG second'}. Click to swap.`}
-                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: typographyMode === 'A' ? '#818CF8' : '#A78BFA' }}
+                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: typographyMode === 'A' ? coreColor('#818CF8', 'info') : coreColor('#A78BFA', 'info') }}
                 >
                   <Type size={14} /> {typographyMode === 'A' ? 'Font: BIG/small' : 'Font: small/BIG'}
                 </button>
@@ -783,7 +784,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 <button
                   onClick={handleResultModeSwitch}
                   title={`Result Number Mode: ${resultNumberMode}. Click to cycle presets.`}
-                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: '#F472B6' }}
+                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: coreColor('#F472B6', 'info') }}
                 >
                   <Maximize2 size={14} /> Size: {resultNumberMode}
                 </button>
@@ -791,7 +792,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 <button
                   onClick={insertEventNameLayers}
                   title="Insert pre-styled Event Name Primary + Secondary layers"
-                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: '#38BDF8' }}
+                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: coreColor('#38BDF8', 'info') }}
                 >
                   <Sparkles size={14} /> Insert Events
                 </button>
@@ -809,7 +810,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                     }
                     useTemplateStore.getState().markSaved();
                   }}
-                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: '#F87171' }}
+                  style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: coreColor('#F87171', 'danger') }}
                 >
                   <RotateCcw size={14} /> Reset Canvas
                 </button>
@@ -923,7 +924,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   + Create Database Template
                 </button>
                 {isDebug && (
-                  <p style={{ color: '#475569', fontSize: 11, marginTop: 12 }}>
+                  <p style={{ color: coreColor('#475569', 'text'), fontSize: 11, marginTop: 12 }}>
                     Debug mode: Use the dropdown above to load a local demo template.
                   </p>
                 )}
@@ -1007,13 +1008,13 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
           <div style={styles.modalBox} onClick={(e) => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Health Report</h3>
             {validationIssues.length === 0 ? (
-              <p style={{ color: '#0F766E', fontSize: 13, margin: '16px 0' }}>✓ Template is perfectly healthy.</p>
+              <p style={{ color: coreColor('#0F766E', 'primaryText'), fontSize: 13, margin: '16px 0' }}>✓ Template is perfectly healthy.</p>
             ) : (
               <div style={{ maxHeight: 300, overflowY: 'auto', margin: '16px 0' }}>
                 {validationIssues.map((iss, i) => (
-                  <div key={i} style={{ ...styles.issueRow, backgroundColor: iss.type === 'error' ? '#FEF2F2' : '#FFFBEB', borderColor: iss.type === 'error' ? '#FECACA' : '#FDE68A' }}>
+                  <div key={i} style={{ ...styles.issueRow, backgroundColor: iss.type === 'error' ? coreColor('#FEF2F2', 'dangerSoft') : coreColor('#FFFBEB', 'warningSoft'), borderColor: iss.type === 'error' ? coreColor('#FECACA', 'border') : coreColor('#FDE68A', 'border') }}>
                     <span style={{ fontSize: 16 }}>{iss.type === 'error' ? '❌' : '⚠️'}</span>
-                    <span style={{ fontSize: 12, color: '#0F172A' }}>{iss.message}</span>
+                    <span style={{ fontSize: 12, color: coreColor('#0F172A', 'overlay') }}>{iss.message}</span>
                   </div>
                 ))}
               </div>
@@ -1089,58 +1090,58 @@ function formatRelativeTime(date: Date): string {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  root: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#0f0f0f', fontFamily: 'Inter, sans-serif' },
-  offlineBanner: { backgroundColor: '#FEF3C7', color: '#92400E', padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center' },
-  draftBanner: { backgroundColor: '#1E3A8A', color: '#DBEAFE', padding: '10px 16px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  root: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: coreColor('#0f0f0f', 'surfaceStrong'), fontFamily: 'Inter, sans-serif' },
+  offlineBanner: { backgroundColor: coreColor('#FEF3C7', 'warningSoft'), color: coreColor('#92400E', 'warning'), padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center' },
+  draftBanner: { backgroundColor: coreColor('#1E3A8A', 'infoAction'), color: coreColor('#DBEAFE', 'infoSoft'), padding: '10px 16px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   draftActions: { display: 'flex', gap: 8 },
-  draftBtn: { padding: '6px 14px', borderRadius: 8, border: '1px solid #3B82F6', backgroundColor: '#2563EB', color: '#FFFFFF', cursor: 'pointer', fontSize: 12, fontWeight: 700 },
-  fontWarning: { backgroundColor: '#713F12', color: '#FEF9C3', padding: '8px 16px', fontSize: 12, borderBottom: '1px solid #854D0E' },
+  draftBtn: { padding: '6px 14px', borderRadius: 8, border: `1px solid ${coreColor('#3B82F6', 'border')}`, backgroundColor: coreColor('#2563EB', 'infoAction'), color: coreColor('#FFFFFF', 'text'), cursor: 'pointer', fontSize: 12, fontWeight: 700 },
+  fontWarning: { backgroundColor: coreColor('#713F12', 'warningAction'), color: coreColor('#FEF9C3', 'warning'), padding: '8px 16px', fontSize: 12, borderBottom: `1px solid ${coreColor('#854D0E', 'border')}` },
   // Topbar — two-row professional toolbar
-  topbar: { display: 'flex', flexDirection: 'column', backgroundColor: '#1f1f1f', borderBottom: '1px solid #2a2a2a', flexShrink: 0, userSelect: 'none' },
-  topbarRow1: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #2a2a2a' },
+  topbar: { display: 'flex', flexDirection: 'column', backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`, flexShrink: 0, userSelect: 'none' },
+  topbarRow1: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}` },
   topbarRow2: { display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', overflowX: 'auto' },
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 6 },
-  studioTitle: { fontSize: 15, fontWeight: 800, color: '#E2E8F0', letterSpacing: '0.02em' },
-  templateName: { fontSize: 12, color: '#94A3B8', backgroundColor: 'rgba(255,255,255,0.08)', padding: '4px 10px', borderRadius: 6, fontWeight: 500 },
-  saveStatus: { fontSize: 11, color: '#94A3B8', fontFamily: 'monospace' },
+  studioTitle: { fontSize: 15, fontWeight: 800, color: coreColor('#E2E8F0', 'text'), letterSpacing: '0.02em' },
+  templateName: { fontSize: 12, color: coreColor('#94A3B8', 'textSubtle'), backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.08), padding: '4px 10px', borderRadius: 6, fontWeight: 500 },
+  saveStatus: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'monospace' },
   // Professional tool buttons
-  topBtn: { padding: '6px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#CBD5E1', touchAction: 'manipulation', whiteSpace: 'nowrap', transition: 'all 0.12s' },
+  topBtn: { padding: '6px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: coreColor('#CBD5E1', 'text'), touchAction: 'manipulation', whiteSpace: 'nowrap', transition: 'all 0.12s' },
   toolGroup: { display: 'flex', alignItems: 'center', gap: 2 },
-  toolDivider: { width: 1, height: 22, backgroundColor: '#2a2a2a', margin: '0 8px', flexShrink: 0 },
-  toolBtn: { padding: '7px 11px', borderRadius: 4, border: '1px solid transparent', backgroundColor: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: '#94A3B8', touchAction: 'manipulation', whiteSpace: 'nowrap', transition: 'all 0.12s' },
-  zoomLabel: { fontSize: 12, color: '#CBD5E1', width: 46, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
-  topSelect: { height: 32, borderRadius: 4, border: '1px solid #2a2a2a', backgroundColor: '#171717', color: '#94A3B8', fontSize: 12, fontWeight: 600, padding: '0 4px' },
+  toolDivider: { width: 1, height: 22, backgroundColor: coreColor('#2a2a2a', 'surfaceStrong'), margin: '0 8px', flexShrink: 0 },
+  toolBtn: { padding: '7px 11px', borderRadius: 4, border: '1px solid transparent', backgroundColor: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: coreColor('#94A3B8', 'textSubtle'), touchAction: 'manipulation', whiteSpace: 'nowrap', transition: 'all 0.12s' },
+  zoomLabel: { fontSize: 12, color: coreColor('#CBD5E1', 'text'), width: 46, textAlign: 'center', fontVariantNumeric: 'tabular-nums' },
+  topSelect: { height: 32, borderRadius: 4, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, backgroundColor: coreColor('#171717', 'surfaceStrong'), color: coreColor('#94A3B8', 'textSubtle'), fontSize: 12, fontWeight: 600, padding: '0 4px' },
   workspace: { display: 'flex', flex: 1, overflow: 'hidden' },
-  leftRibbon: { width: 72, flexShrink: 0, backgroundColor: '#18191B', display: 'flex', flexDirection: 'column', padding: '16px 0', zIndex: 40 },
-  ribbonBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 0', gap: 4, cursor: 'pointer', background: 'transparent', border: 'none', color: '#94A3B8', transition: 'color 0.15s' },
-  ribbonBtnActive: { color: '#FFFFFF', backgroundColor: 'rgba(255,255,255,0.05)' },
+  leftRibbon: { width: 72, flexShrink: 0, backgroundColor: coreColor('#18191B', 'surfaceStrong'), display: 'flex', flexDirection: 'column', padding: '16px 0', zIndex: 40 },
+  ribbonBtn: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '12px 0', gap: 4, cursor: 'pointer', background: 'transparent', border: 'none', color: coreColor('#94A3B8', 'textSubtle'), transition: 'color 0.15s' },
+  ribbonBtnActive: { color: coreColor('#FFFFFF', 'text'), backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05) },
   ribbonIcon: { fontSize: 20 },
   ribbonLabel: { fontSize: 10, fontWeight: 500 },
-  leftFlyout: { width: 320, flexShrink: 0, backgroundColor: '#171717', borderRight: '1px solid #2a2a2a', overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, zIndex: 30, position: 'relative' },
-  canvasArea: { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', zIndex: 10, backgroundColor: '#e5e7eb', backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)', backgroundSize: '24px 24px' },
-  contextToolbarPill: { backgroundColor: '#2B2D31', borderRadius: 8, margin: '12px auto 0 auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 50 },
+  leftFlyout: { width: 320, flexShrink: 0, backgroundColor: coreColor('#171717', 'surfaceStrong'), borderRight: `1px solid ${coreColor('#2a2a2a', 'border')}`, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 12, zIndex: 30, position: 'relative' },
+  canvasArea: { flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', zIndex: 10, backgroundColor: coreColor('#e5e7eb', 'surface'), backgroundImage: 'radial-gradient(#d1d5db 1px, transparent 1px)', backgroundSize: '24px 24px' },
+  contextToolbarPill: { backgroundColor: coreColor('#2B2D31', 'surfaceStrong'), borderRadius: 8, margin: '12px auto 0 auto', padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 50 },
   canvasWrapper: { flex: 1, position: 'relative', overflow: 'hidden' },
   emptyStateCenter: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  emptyStateCard: { textAlign: 'center', maxWidth: 440, padding: 40, backgroundColor: '#171717', borderRadius: 6, border: '1px solid #2a2a2a', boxShadow: '0 4px 32px rgba(0,0,0,0.4)' },
-  emptyStateTitle: { fontSize: 22, fontWeight: 800, color: '#E2E8F0', marginBottom: 12, marginTop: 0 },
-  emptyStateMsg: { fontSize: 14, color: '#94A3B8', lineHeight: '1.6', marginBottom: 24 },
-  emptyStateCta: { padding: '12px 28px', borderRadius: 6, border: 'none', backgroundColor: '#0F766E', color: '#FFFFFF', fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em' },
+  emptyStateCard: { textAlign: 'center', maxWidth: 440, padding: 40, backgroundColor: coreColor('#171717', 'surfaceStrong'), borderRadius: 6, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, boxShadow: '0 4px 32px rgba(0,0,0,0.4)' },
+  emptyStateTitle: { fontSize: 22, fontWeight: 800, color: coreColor('#E2E8F0', 'text'), marginBottom: 12, marginTop: 0 },
+  emptyStateMsg: { fontSize: 14, color: coreColor('#94A3B8', 'textSubtle'), lineHeight: '1.6', marginBottom: 24 },
+  emptyStateCta: { padding: '12px 28px', borderRadius: 6, border: 'none', backgroundColor: coreColor('#0F766E', 'primary'), color: coreColor('#FFFFFF', 'onPrimary'), fontSize: 14, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.02em' },
   panelSection: { display: 'flex', flexDirection: 'column', gap: 8 },
-  panelTitle: { fontSize: 11, fontWeight: 700, color: '#E2E8F0', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, margin: '0 0 8px' },
-  emptyMsg: { fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '20px 0' },
+  panelTitle: { fontSize: 11, fontWeight: 700, color: coreColor('#E2E8F0', 'text'), textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, margin: '0 0 8px' },
+  emptyMsg: { fontSize: 12, color: coreColor('#94A3B8', 'textSubtle'), textAlign: 'center', padding: '20px 0' },
   layerItem: { display: 'flex', alignItems: 'center', gap: 6, padding: '9px 10px', borderRadius: 4, border: '1px solid', cursor: 'pointer', transition: 'all 0.15s' },
-  layerIcon: { fontSize: 13, flexShrink: 0, width: 22, textAlign: 'center', color: '#94A3B8' },
-  layerName: { flex: 1, fontSize: 12, fontWeight: 500, color: '#E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  layerIcon: { fontSize: 13, flexShrink: 0, width: 22, textAlign: 'center', color: coreColor('#94A3B8', 'textSubtle') },
+  layerName: { flex: 1, fontSize: 12, fontWeight: 500, color: coreColor('#E2E8F0', 'text'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   layerActions: { display: 'flex', gap: 4 },
-  bottomBar: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', backgroundColor: '#1f1f1f', borderTop: '1px solid #2a2a2a', padding: '6px 16px', zIndex: 40 },
-  bottomZoomGroup: { display: 'flex', alignItems: 'center', gap: 4, backgroundColor: '#171717', borderRadius: 6, padding: '4px', border: '1px solid #2a2a2a' },
-  bottomToolBtn: { padding: '4px 8px', background: 'transparent', border: 'none', color: '#94A3B8', fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4 },
-  bottomZoomLabel: { fontSize: 12, color: '#E2E8F0', fontVariantNumeric: 'tabular-nums', width: 44, textAlign: 'center' },
-  modalBackdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modalBox: { backgroundColor: '#171717', borderRadius: 6, padding: 20, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', border: '1px solid #2a2a2a' },
-  modalTitle: { fontSize: 16, fontWeight: 700, color: '#E2E8F0', borderBottom: '1px solid #2a2a2a', paddingBottom: 8, margin: 0 },
+  bottomBar: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), borderTop: `1px solid ${coreColor('#2a2a2a', 'border')}`, padding: '6px 16px', zIndex: 40 },
+  bottomZoomGroup: { display: 'flex', alignItems: 'center', gap: 4, backgroundColor: coreColor('#171717', 'surfaceStrong'), borderRadius: 6, padding: '4px', border: `1px solid ${coreColor('#2a2a2a', 'border')}` },
+  bottomToolBtn: { padding: '4px 8px', background: 'transparent', border: 'none', color: coreColor('#94A3B8', 'textSubtle'), fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4 },
+  bottomZoomLabel: { fontSize: 12, color: coreColor('#E2E8F0', 'text'), fontVariantNumeric: 'tabular-nums', width: 44, textAlign: 'center' },
+  modalBackdrop: { position: 'fixed', inset: 0, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.8), zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  modalBox: { backgroundColor: coreColor('#171717', 'surfaceStrong'), borderRadius: 6, padding: 20, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', border: `1px solid ${coreColor('#2a2a2a', 'border')}` },
+  modalTitle: { fontSize: 16, fontWeight: 700, color: coreColor('#E2E8F0', 'text'), borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`, paddingBottom: 8, margin: 0 },
   issueRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 4, border: '1px solid', marginBottom: 8 },
-  modalBtn: { padding: '8px 16px', backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a', borderRadius: 4, fontSize: 13, fontWeight: 600, color: '#E2E8F0', cursor: 'pointer' },
+  modalBtn: { padding: '8px 16px', backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 4, fontSize: 13, fontWeight: 600, color: coreColor('#E2E8F0', 'text'), cursor: 'pointer' },
 };
 

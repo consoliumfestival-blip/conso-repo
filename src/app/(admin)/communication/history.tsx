@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity } from 'react-native';
@@ -50,19 +51,19 @@ export default function CommunicationHistory() {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return 'bg-red-100 text-red-800';
-      case 'HIGH': return 'bg-amber-100 text-amber-800';
-      case 'LOW': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-blue-100 text-blue-800';
+      case 'URGENT': return 'bg-core-danger-soft-red-100 text-core-danger-red-800';
+      case 'HIGH': return 'bg-core-warning-soft-amber-100 text-core-warning-amber-800';
+      case 'LOW': return 'bg-core-surface-muted-gray-100 text-core-text-gray-800';
+      default: return 'bg-core-info-soft-blue-100 text-core-info-blue-800';
     }
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <View className="bg-white p-4 rounded-xl border border-gray-200 mb-3 shadow-sm">
+    <View className="bg-core-surface-white p-4 rounded-xl border border-core-border-gray-200 mb-3 shadow-sm">
       <View className="flex-row justify-between items-start mb-2">
         <View className="flex-1">
-          <Text className="text-base font-bold text-gray-900">{item.title}</Text>
-          <Text className="text-xs text-gray-500 mt-0.5">
+          <Text className="text-base font-bold text-core-text-gray-900">{item.title}</Text>
+          <Text className="text-xs text-core-text-muted-gray-500 mt-0.5">
             {new Date(item.created_at).toLocaleString()}
           </Text>
         </View>
@@ -71,33 +72,33 @@ export default function CommunicationHistory() {
         </View>
       </View>
       
-      <Text className="text-gray-700 mb-4">{item.message}</Text>
+      <Text className="text-core-text-gray-700 mb-4">{item.message}</Text>
       
-      <View className="flex-row items-center border-t border-gray-100 pt-3">
+      <View className="flex-row items-center border-t border-core-border-gray-100 pt-3">
         <View className="flex-row items-center mr-4">
-          <CheckCircle2 size={16} color="#10B981" />
-          <Text className="text-sm text-gray-600 ml-1">Sent: {item.stats.delivered}</Text>
+          <CheckCircle2 size={16} color={coreColor("#10B981", 'success')} />
+          <Text className="text-sm text-core-text-gray-600 ml-1">Sent: {item.stats.delivered}</Text>
         </View>
         <View className="flex-row items-center">
-          <XCircle size={16} color="#EF4444" />
-          <Text className="text-sm text-gray-600 ml-1">Failed: {item.stats.failed}</Text>
+          <XCircle size={16} color={coreColor("#EF4444", 'danger')} />
+          <Text className="text-sm text-core-text-gray-600 ml-1">Failed: {item.stats.failed}</Text>
         </View>
         <View className="flex-1" />
-        <View className="bg-gray-100 px-2 py-1 rounded">
-          <Text className="text-xs text-gray-600 uppercase">{item.type}</Text>
+        <View className="bg-core-surface-muted-gray-100 px-2 py-1 rounded">
+          <Text className="text-xs text-core-text-gray-600 uppercase">{item.type}</Text>
         </View>
       </View>
     </View>
   );
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-core-surface-muted-gray-50">
       <PageHeader
         title="Notification History"
         subtitle="Recent broadcasts and automated alerts"
         leftComponent={
           <TouchableOpacity onPress={() => router.back()} className="p-2 mr-2">
-            <ArrowLeft size={24} color="#111827" />
+            <ArrowLeft size={24} color={coreColor("#111827", 'text')} />
           </TouchableOpacity>
         }
       />
@@ -115,7 +116,7 @@ export default function CommunicationHistory() {
           ListEmptyComponent={
             <View className="py-10 items-center">
               <Clock size={48} color={ui.colors.border} className="mb-4" />
-              <Text className="text-gray-500 text-base">No notifications sent yet.</Text>
+              <Text className="text-core-text-muted-gray-500 text-base">No notifications sent yet.</Text>
             </View>
           }
         />

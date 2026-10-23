@@ -1,15 +1,7 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Platform,
-  ActivityIndicator,
-  Modal,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
@@ -32,19 +24,19 @@ import {
 
 // ─── Theme tokens ────────────────────────────────────────────────────
 const C = {
-  bg: '#0B1524',
-  surface: '#111E35',
-  border: '#1E3A5F',
-  accent: '#FBBF24',
-  accentBg: 'rgba(251,191,36,0.10)',
-  text: '#E2E8F0',
-  muted: '#475569',
-  danger: '#F87171',
-  dangerBg: 'rgba(239,68,68,0.10)',
-  green: '#34D399',
-  greenBg: 'rgba(52,211,153,0.10)',
-  purple: '#818CF8',
-  purpleBg: 'rgba(129,140,248,0.10)',
+  bg: coreColor('#0B1524', 'background'),
+  surface: coreColor('#111E35', 'surface'),
+  border: `${coreColor('#1E3A5F', 'border')}`,
+  accent: coreColor('#FBBF24', 'primary'),
+  accentBg: coreColor('rgba(251,191,36,0.10)', 'primarySoft'),
+  text: coreColor('#E2E8F0', 'text'),
+  muted: coreColor('#475569', 'textMuted'),
+  danger: coreColor('#F87171', 'danger'),
+  dangerBg: coreColor('rgba(239,68,68,0.10)', 'dangerSoft'),
+  green: coreColor('#34D399', 'success'),
+  greenBg: coreColor('rgba(52,211,153,0.10)', 'successSoft'),
+  purple: coreColor('#818CF8', 'info'),
+  purpleBg: coreColor('rgba(129,140,248,0.10)', 'infoSoft'),
 };
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -63,37 +55,37 @@ interface Org {
 const ORG_TYPE_CONFIG: Record<OrgType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
   unit: {
     label: 'Unit',
-    icon: <Building2 size={16} color="#FBBF24" />,
-    color: '#FBBF24',
-    bg: 'rgba(251,191,36,0.10)',
+    icon: <Building2 size={16} color={coreColor("#FBBF24", 'warning')} />,
+    color: coreColor('#FBBF24', 'warning'),
+    bg: coreColor('rgba(251,191,36,0.10)', 'background'),
   },
   sector: {
     label: 'Sector',
-    icon: <Map size={16} color="#34D399" />,
-    color: '#34D399',
-    bg: 'rgba(52,211,153,0.10)',
+    icon: <Map size={16} color={coreColor("#34D399", 'success')} />,
+    color: coreColor('#34D399', 'success'),
+    bg: coreColor('rgba(52,211,153,0.10)', 'background'),
   },
   division: {
     label: 'Division',
-    icon: <GitBranch size={16} color="#818CF8" />,
-    color: '#818CF8',
-    bg: 'rgba(129,140,248,0.10)',
+    icon: <GitBranch size={16} color={coreColor("#818CF8", 'info')} />,
+    color: coreColor('#818CF8', 'info'),
+    bg: coreColor('rgba(129,140,248,0.10)', 'background'),
   },
   district: {
     label: 'District',
-    icon: <Landmark size={16} color="#EC4899" />,
-    color: '#EC4899',
-    bg: 'rgba(236,72,153,0.10)',
+    icon: <Landmark size={16} color={coreColor("#EC4899", 'info')} />,
+    color: coreColor('#EC4899', 'info'),
+    bg: coreColor('rgba(236,72,153,0.10)', 'background'),
   },
   state: {
     label: 'State',
-    icon: <Flag size={16} color="#A855F7" />,
-    color: '#A855F7',
-    bg: 'rgba(168,85,247,0.10)',
+    icon: <Flag size={16} color={coreColor("#A855F7", 'info')} />,
+    color: coreColor('#A855F7', 'info'),
+    bg: coreColor('rgba(168,85,247,0.10)', 'background'),
   },
 } as const;
 
-const DEFAULT_ORG_CONFIG = { label: 'Other', icon: <Layers size={16} color="#94A3B8" />, color: '#94A3B8', bg: 'rgba(148,163,184,0.10)' };
+const DEFAULT_ORG_CONFIG = { label: 'Other', icon: <Layers size={16} color={coreColor("#94A3B8", 'textSubtle')} />, color: coreColor('#94A3B8', 'textSubtle'), bg: coreColor('rgba(148,163,184,0.10)', 'background') };
 
 const getOrgConfig = (type: string) =>
   ORG_TYPE_CONFIG[type as OrgType] ?? DEFAULT_ORG_CONFIG;
@@ -169,7 +161,7 @@ function AddOrgModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
         <Animated.View
           entering={FadeInUp.duration(300)}
           style={{
@@ -641,7 +633,7 @@ export default function OrganisationsManager() {
                       <TouchableOpacity onPress={() => handleRestore(org)} disabled={isDeleting} accessibilityLabel={`Reactivate ${org.name}`} style={{ padding: 8, backgroundColor: C.greenBg, borderRadius: 10, borderWidth: 1, borderColor: C.green + '55', opacity: isDeleting ? 0.5 : 1 }}>
                         {isDeleting ? <ActivityIndicator size="small" color={C.green} /> : <RotateCcw size={16} color={C.green} />}
                       </TouchableOpacity>
-                      <TouchableOpacity onPress={() => handleDelete(org)} disabled={isDeleting} accessibilityLabel={`Permanently delete ${org.name}`} style={{ padding: 8, backgroundColor: C.dangerBg, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', opacity: isDeleting ? 0.5 : 1 }}>
+                      <TouchableOpacity onPress={() => handleDelete(org)} disabled={isDeleting} accessibilityLabel={`Permanently delete ${org.name}`} style={{ padding: 8, backgroundColor: C.dangerBg, borderRadius: 10, borderWidth: 1, borderColor: coreAlpha(coreColor('#ef4444', 'border'), 0.2), opacity: isDeleting ? 0.5 : 1 }}>
                         {isDeleting ? <ActivityIndicator size="small" color={C.danger} /> : <Trash2 size={16} color={C.danger} />}
                       </TouchableOpacity>
                     </View>

@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useMemo } from 'react';
 import { useLayerStore } from '../Stores/layerStore';
 import { useTemplateStore } from '../Stores/templateStore';
@@ -68,8 +69,8 @@ export default function VariableBindingPanel({ variables = {} }: { variables?: R
 const styles: Record<string, React.CSSProperties> = {
   container: {
     padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderTop: '1px solid #E2E8F0',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
+    borderTop: `1px solid ${coreColor('#E2E8F0', 'border')}`,
     display: 'flex',
     flexDirection: 'column',
     gap: 12,
@@ -83,11 +84,11 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     fontSize: 14,
     fontWeight: 700,
-    color: '#0F172A',
+    color: coreColor('#0F172A', 'overlay'),
   },
   modeToggle: {
     display: 'flex',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
     borderRadius: 6,
     padding: 2,
   },
@@ -97,18 +98,18 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 12px',
     fontSize: 12,
     fontWeight: 600,
-    color: '#64748B',
+    color: coreColor('#64748B', 'textMuted'),
     cursor: 'pointer',
     borderRadius: 4,
   },
   activeBtn: {
-    backgroundColor: '#FFFFFF',
-    color: '#0F172A',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
+    color: coreColor('#0F172A', 'overlay'),
     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
   },
   empty: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     textAlign: 'center',
     padding: '24px 0',
   },
@@ -126,19 +127,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: 600,
-    color: '#0284C7',
+    color: coreColor('#0284C7', 'info'),
   },
   input: {
     padding: '6px 8px',
-    border: '1px solid #CBD5E1',
+    border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
     borderRadius: 6,
     fontSize: 13,
     fontFamily: 'Inter, sans-serif',
   },
   chip: {
     fontSize: 11,
-    color: '#475569',
-    backgroundColor: '#F1F5F9',
+    color: coreColor('#475569', 'text'),
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
     padding: '4px 8px',
     borderRadius: 4,
     display: 'inline-block',

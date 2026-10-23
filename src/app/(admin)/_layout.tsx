@@ -2,6 +2,7 @@ import React from 'react';
 import { Stack, usePathname } from 'expo-router';
 import BackgroundExportEngine from '@/components/leaderboard/BackgroundExportEngine';
 import { AdminAppShell } from '@/components/layout/AdminAppShell';
+import { CoreAppearanceProvider } from '@/core/contexts/CoreAppearanceContext';
 
 export default function AdminLayout() {
   const pathname = usePathname();
@@ -32,17 +33,18 @@ export default function AdminLayout() {
       <Stack.Screen name="organisations/index" />
       <Stack.Screen name="settings/leaderboard" />
       <Stack.Screen name="settings/index" />
+      <Stack.Screen name="settings/appearance" />
       <Stack.Screen name="settings/categories" />
       <Stack.Screen name="settings/team-leader-portal" />
       <Stack.Screen name="grace-marks/index" />
       <Stack.Screen name="smart-announcer/index" />
     </Stack>
   );
-  if (isStandaloneStagePortal) return stack;
+  if (isStandaloneStagePortal) return <CoreAppearanceProvider>{stack}</CoreAppearanceProvider>;
   return (
-    <AdminAppShell>
+    <CoreAppearanceProvider><AdminAppShell>
       {stack}
       <BackgroundExportEngine />
-    </AdminAppShell>
+    </AdminAppShell></CoreAppearanceProvider>
   );
 }

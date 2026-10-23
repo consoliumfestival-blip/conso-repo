@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
@@ -107,21 +108,21 @@ function ScheduleWorkflowBadges({
 
   // Check-in status (Malayalam highlighted text as requested)
   if (checkinDone && codesShuffled) {
-    badges.push({ label: 'Ready to start', bg: 'bg-emerald-50 border border-emerald-200', text: 'text-emerald-700' });
+    badges.push({ label: 'Ready to start', bg: 'bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-200', text: 'text-core-success-emerald-700' });
   } else if (checkinPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
-    badges.push({ label: 'Check-in Pending', bg: 'bg-amber-100 border border-amber-200', text: 'text-amber-700' });
+    badges.push({ label: 'Check-in Pending', bg: 'bg-core-warning-soft-amber-100 border border-core-warning-soft-amber-200', text: 'text-core-warning-amber-700' });
   }
 
   // Code Letter status
   if (!codesShuffled && codesPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
-    badges.push({ label: 'Codes Pending', bg: 'bg-gray-100 border border-gray-200', text: 'text-gray-500' });
+    badges.push({ label: 'Codes Pending', bg: 'bg-core-surface-muted-gray-100 border border-core-border-gray-200', text: 'text-core-text-muted-gray-500' });
   }
 
   if (hasManualSubmitted) {
-    badges.push({ label: 'Mark Submitted (Manual)', bg: 'bg-green-100 border border-green-200', text: 'text-green-700' });
+    badges.push({ label: 'Mark Submitted (Manual)', bg: 'bg-core-success-soft-green-100 border border-core-success-soft-green-200', text: 'text-core-success-green-700' });
   }
   if (hasInternalPublished) {
-    badges.push({ label: 'Published to Admin Leaderboard', bg: 'bg-blue-100 border border-blue-200', text: 'text-blue-700' });
+    badges.push({ label: 'Published to Admin Leaderboard', bg: 'bg-core-info-soft-blue-100 border border-core-info-soft-blue-200', text: 'text-core-info-blue-700' });
   }
 
   if (!badges.length && !rows.length && !status) return null;
@@ -141,8 +142,8 @@ function ScheduleWorkflowBadges({
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-slate-100 border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-emerald-50 border-emerald-200' : 'bg-blue-50 border-blue-200'}`}>
-        <Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-emerald-700' : 'text-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text>
+      <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}>
+        <Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-core-text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-core-success-emerald-700' : 'text-core-info-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text>
       </View>
       {badges.map((badge) => (
         <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
@@ -151,10 +152,10 @@ function ScheduleWorkflowBadges({
       ))}
       {rows.length > 0 && (
         <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${
-          allDone ? 'bg-emerald-50 border-emerald-200' : totalSubmitted > 0 ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'
+          allDone ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : totalSubmitted > 0 ? 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200' : 'bg-core-surface-muted-slate-50 border-core-border-slate-200'
         }`}>
           <Text className={`font-poppins-bold text-[9px] ${
-            allDone ? 'text-emerald-700' : totalSubmitted > 0 ? 'text-amber-700' : 'text-slate-500'
+            allDone ? 'text-core-success-emerald-700' : totalSubmitted > 0 ? 'text-core-warning-amber-700' : 'text-core-text-muted-slate-500'
           }`}>
             {`Marks: ${totalSubmitted}/${totalExpected} judges submitted`}
           </Text>
@@ -441,7 +442,7 @@ export default function ScheduleDashboard() {
         <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{filteredSchedules.length} showing</Text>
       </View>
 
-      <View className="bg-white border border-ui-border rounded-xl p-3 mb-6">
+      <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
         <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>
         <View className="flex-row flex-wrap gap-2">
           {([
@@ -453,7 +454,7 @@ export default function ScheduleDashboard() {
               key={mode}
               onPress={() => exportSchedulePdf(mode)}
               disabled={isExportingSchedule}
-              className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-gray-100 border-gray-200' : 'bg-white border-ui-border'}`}
+              className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
             >
               <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : label}</Text>
             </TouchableOpacity>
@@ -463,7 +464,7 @@ export default function ScheduleDashboard() {
             disabled={isExportingSchedule}
             className="px-3 py-2 rounded-lg border border-ui-primary bg-ui-primary"
           >
-            <Text className="font-poppins-bold text-[10px] text-white">Blank Schedule PDF</Text>
+            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Blank Schedule PDF</Text>
           </TouchableOpacity>
         </View>
         <Text className="font-poppins text-[10px] text-ui-text-muted mt-2">
@@ -473,56 +474,56 @@ export default function ScheduleDashboard() {
       
       <View className="flex-row flex-wrap gap-3 mb-6">
         <TouchableOpacity 
-          className="flex-1 min-w-[140px] bg-emerald-50 border border-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
+          className="flex-1 min-w-[140px] bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
           onPress={() => router.push('/(admin)/schedule/venues')}
           accessibilityRole="button"
           accessibilityLabel="Manage venues"
           accessibilityHint="Opens venue management"
         >
           <View>
-            <Text className="font-poppins-black text-emerald-950 text-lg">{venues.length}</Text>
-            <Text className="font-poppins text-emerald-800 text-xs">Venues</Text>
+            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{venues.length}</Text>
+            <Text className="font-poppins text-core-success-emerald-800 text-xs">Venues</Text>
           </View>
-          <MapPin color="#047857" size={22} />
+          <MapPin color={coreColor("#047857", 'success')} size={22} />
         </TouchableOpacity>
 
         <TouchableOpacity 
-          className="flex-1 min-w-[140px] bg-emerald-50 border border-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
+          className="flex-1 min-w-[140px] bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
           onPress={() => router.push('/(admin)/schedule/create')}
           accessibilityRole="button"
           accessibilityLabel="Manage scheduled events"
           accessibilityHint="Opens schedule creation"
         >
           <View>
-            <Text className="font-poppins-black text-emerald-950 text-lg">{schedules.length}</Text>
-            <Text className="font-poppins text-emerald-800 text-xs">Scheduled Events</Text>
+            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{schedules.length}</Text>
+            <Text className="font-poppins text-core-success-emerald-800 text-xs">Scheduled Events</Text>
           </View>
-          <Calendar color="#047857" size={22} />
+          <Calendar color={coreColor("#047857", 'success')} size={22} />
         </TouchableOpacity>
       </View>
 
       {false && (<>
       {/* Judges quick card */}
       <TouchableOpacity
-        className="bg-white border border-ssf-border rounded-xl p-4 mb-6 flex-row items-center justify-between"
+        className="bg-core-surface-white border border-ssf-border rounded-xl p-4 mb-6 flex-row items-center justify-between"
         onPress={() => router.push('/(admin)/judges' as any)}
       >
         <View className="flex-row items-center gap-x-3 flex-1 mr-2">
           <View className="w-10 h-10 rounded-full bg-ssf-primary/10 items-center justify-center shrink-0">
-            <UserCheck size={20} color="#1B6B3A" />
+            <UserCheck size={20} color={coreColor("#1B6B3A", 'primaryText')} />
           </View>
           <View className="flex-1">
             <Text className="font-poppins-bold text-ssf-text">Judge Panel</Text>
             <Text className="font-poppins text-xs text-ssf-text-muted" numberOfLines={1}>Manage judges & assign to events</Text>
           </View>
         </View>
-        <Text className="font-poppins-bold text-ssf-primary text-xs shrink-0">Manage →</Text>
+        <Text className="font-poppins-bold text-ui-primary-text text-xs shrink-0">Manage →</Text>
       </TouchableOpacity>
       </>)}
 
       {/* Search Bar */}
-      <View className="flex-row items-center bg-white border border-ui-border rounded-xl px-4 h-11 mb-3">
-        <Search size={18} color="#9CA3AF" />
+      <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-4 h-11 mb-3">
+        <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
         <TextInput
           className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
           placeholder="Search by item name or category (e.g. LP, UP)..."
@@ -531,13 +532,13 @@ export default function ScheduleDashboard() {
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <X size={16} color="#9CA3AF" />
+            <X size={16} color={coreColor("#9CA3AF", 'textMuted')} />
           </TouchableOpacity>
         )}
       </View>
 
       {isMobile || !isMobile ? (
-        <View className="bg-white border border-ui-border rounded-xl p-3 mb-6">
+        <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
           <View className="flex-row flex-wrap items-center gap-2">
             <SsfSelectMenu
               value={selectedItem}
@@ -599,7 +600,7 @@ export default function ScheduleDashboard() {
                   setSelectedVenue('All');
                   setSelectedStatus('All');
                 }}
-                className="h-9 px-3 rounded-lg border border-ui-border bg-white flex-row items-center justify-center"
+                className="h-9 px-3 rounded-lg border border-ui-border bg-core-surface-white flex-row items-center justify-center"
               >
                 <RotateCcw size={13} color={ui.colors.textMuted} />
                 <Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">Reset</Text>
@@ -622,12 +623,12 @@ export default function ScheduleDashboard() {
                 style={{
                   width: '100%',
                   backgroundColor: ui.colors.surface,
-                  border: '1px solid #E2E8F0',
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -646,9 +647,9 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     key={item}
                     onPress={() => setSelectedCategory(item)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-white' : 'text-ssf-text-muted'}`}>{item}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -665,12 +666,12 @@ export default function ScheduleDashboard() {
                 style={{
                   width: '100%',
                   backgroundColor: ui.colors.surface,
-                  border: '1px solid #E2E8F0',
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -689,9 +690,9 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedVenue(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id ? 'bg-ssf-secondary border-ssf-secondary' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id ? 'bg-ssf-secondary border-ssf-secondary' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -708,12 +709,12 @@ export default function ScheduleDashboard() {
                 style={{
                   width: '100%',
                   backgroundColor: ui.colors.surface,
-                  border: '1px solid #E2E8F0',
+                  border: `1px solid ${coreColor('#E2E8F0', 'border')}`,
                   padding: '12px',
                   borderRadius: '12px',
                   fontFamily: 'Poppins_400Regular',
                   fontSize: '14px',
-                  color: '#334155',
+                  color: coreColor('#334155', 'text'),
                   outline: 'none',
                   WebkitAppearance: 'none',
                   appearance: 'none',
@@ -732,9 +733,9 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedStatus(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -754,10 +755,10 @@ export default function ScheduleDashboard() {
                   onPress={() => setSelectedCategory(item)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item
                       ? 'bg-ssf-primary border-ssf-primary'
-                      : 'bg-white border-ssf-border'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -775,10 +776,10 @@ export default function ScheduleDashboard() {
                   onPress={() => setSelectedVenue(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedVenue === item.id
                       ? 'bg-ssf-secondary border-ssf-secondary'
-                      : 'bg-white border-ssf-border'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedVenue === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -795,11 +796,11 @@ export default function ScheduleDashboard() {
                   key={item.id}
                   onPress={() => setSelectedStatus(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id
-                      ? 'bg-blue-600 border-blue-600'
-                      : 'bg-white border-ssf-border'
+                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
+                      : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -813,26 +814,26 @@ export default function ScheduleDashboard() {
         <Text className="font-poppins-bold text-lg text-ssf-text">Upcoming Schedule</Text>
         <View className="flex-row gap-x-2">
           <TouchableOpacity 
-            className="flex-row items-center gap-x-1 bg-blue-50 px-3 py-2 rounded-lg border border-blue-100"
+            className="flex-row items-center gap-x-1 bg-core-info-soft-blue-50 px-3 py-2 rounded-lg border border-core-info-soft-blue-100"
             onPress={() => router.push('/(admin)/schedule/import-json' as any)}
           >
-            <Text className="font-poppins-bold text-blue-700 text-xs">Import JSON</Text>
+            <Text className="font-poppins-bold text-core-info-blue-700 text-xs">Import JSON</Text>
           </TouchableOpacity>
           {!isMobile && Platform.OS === 'web' && (
             <TouchableOpacity
-              className="flex-row items-center gap-x-1 bg-white px-3 py-2 rounded-lg border border-ui-border"
+              className="flex-row items-center gap-x-1 bg-core-surface-white px-3 py-2 rounded-lg border border-ui-border"
               onPress={() => router.push('/(admin)/schedule/bulk-create' as any)}
             >
-              <Plus size={14} color="#0F766E" />
-              <Text className="font-poppins-bold text-xs text-teal-700">Bulk Create</Text>
+              <Plus size={14} color={coreColor("#0F766E", 'primaryText')} />
+              <Text className="font-poppins-bold text-xs text-core-primary-text-teal-700">Bulk Create</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity 
             className="flex-row items-center gap-x-1 bg-ssf-primary/10 px-3 py-2 rounded-lg border border-ssf-primary/20"
             onPress={() => router.push('/(admin)/schedule/create')}
           >
-            <Plus size={14} color="#1B6B3A" />
-            <Text className="font-poppins-bold text-xs text-ssf-primary">Add New</Text>
+            <Plus size={14} color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add New</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -862,12 +863,12 @@ export default function ScheduleDashboard() {
             }} 
             className="mt-4"
           >
-            <Text className="font-poppins-bold text-ssf-primary text-sm">Reset All Filters</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-sm">Reset All Filters</Text>
           </TouchableOpacity>
         </SsfCard>
       ) : (
         !isMobile ? (
-        <View className="w-full bg-white border border-ui-border rounded-xl overflow-hidden">
+        <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
             <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
               <Text style={{ flex: 1.25 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
               <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
@@ -876,17 +877,17 @@ export default function ScheduleDashboard() {
               <Text style={{ flex: 2.1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
             </View>
             {filteredSchedules.map((schedule: any) => (
-              <View key={schedule.id} className="min-h-16 px-3 py-2 flex-row items-center border-b border-ui-border bg-white">
+              <View key={schedule.id} className="min-h-16 px-3 py-2 flex-row items-center border-b border-ui-border bg-core-surface-white">
                 <View style={{ flex: 1.25 }} className="pr-3">
                   <Text className="font-poppins-bold text-xs text-ui-text" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
                   <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5" numberOfLines={1}>{schedule.items?.item_name_ml || schedule.items?.item_code || '—'}</Text>
                 </View>
                 <View style={{ flex: 0.9 }} className="pr-3 items-start">
-                  <View className="bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-lg">
-                    <Text className="font-poppins-bold text-[9px] text-emerald-700" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
+                  <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-lg">
+                    <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
                   </View>
                   {!!schedule.items?.category_codes?.length && (
-                    <Text className="font-poppins-bold text-[9px] text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
+                    <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
                   )}
                 </View>
                 <View style={{ flex: 1 }} className="pr-3">
@@ -919,13 +920,13 @@ export default function ScheduleDashboard() {
                     <TouchableOpacity
                       key={action.path}
                       onPress={() => router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
-                      className={`h-8 px-2.5 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-teal-700 border-teal-700' : 'bg-white border-ui-border'}`}
+                      className={`h-8 px-2.5 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
                     >
-                      <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-white' : 'text-ui-text'}`}>{action.label}</Text>
+                      <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
-                    className={`h-8 w-8 rounded-lg border border-ui-border bg-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
+                    className={`h-8 w-8 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
                     onPress={() => {
                       if (schedule.is_shuffle_locked) {
                         if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
@@ -938,10 +939,10 @@ export default function ScheduleDashboard() {
                     <Edit size={13} color={ui.colors.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity
-                    className="h-8 w-8 rounded-lg border border-red-200 bg-white items-center justify-center"
+                    className="h-8 w-8 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white items-center justify-center"
                     onPress={() => handleDelete(schedule.id, schedule.items?.item_name_en || 'Unknown Event')}
                   >
-                    <Trash2 size={13} color="#DC2626" />
+                    <Trash2 size={13} color={coreColor("#DC2626", 'danger')} />
                   </TouchableOpacity>
                   <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })} />
                 </View>
@@ -994,7 +995,7 @@ export default function ScheduleDashboard() {
                       },
                       {
                         label: 'Results',
-                        icon: <Trophy size={15} color="#0F766E" />,
+                        icon: <Trophy size={15} color={coreColor("#0F766E", 'primaryText')} />,
                         onPress: () => router.push(`/(admin)/schedule/${schedule.id}/results` as any),
                       },
                       {
@@ -1013,7 +1014,7 @@ export default function ScheduleDashboard() {
                       {
                         label: 'Delete schedule',
                         destructive: true,
-                        icon: <Trash2 size={15} color="#DC2626" />,
+                        icon: <Trash2 size={15} color={coreColor("#DC2626", 'danger')} />,
                         onPress: () => handleDelete(schedule.id, schedule.items?.item_name_en || 'Unknown Event'),
                       },
                     ]}
@@ -1022,8 +1023,8 @@ export default function ScheduleDashboard() {
 
                 {/* Venue badge — below title row on all sizes */}
                 <View className="mt-1.5 self-start">
-                  <View className="bg-green-100 px-2 py-1 rounded">
-                    <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-green-800">
+                  <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
+                    <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-core-success-green-800">
                       {schedule.venues?.name || 'Unknown Venue'}
                       {schedule.items?.category_codes?.length ? ` / ${schedule.items.category_codes.join(', ')}` : ''}
                     </Text>
@@ -1035,7 +1036,7 @@ export default function ScheduleDashboard() {
                   <View className="mt-1.5 flex-row flex-wrap gap-1">
                     {(schedule.items.category_codes as string[]).map((code: string) => (
                       <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
-                        <Text className="font-poppins-bold text-[10px] text-ssf-primary">{code}</Text>
+                        <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
                       </View>
                     ))}
                   </View>
@@ -1045,14 +1046,14 @@ export default function ScheduleDashboard() {
               {/* Time & Date row */}
               <View className="mb-2 flex-row flex-wrap items-center gap-x-3 gap-y-1">
                 <View className="flex-row items-center gap-x-1">
-                  <Clock size={13} color="#6B7280" />
-                  <Text className="font-poppins text-[10px] text-gray-600">
+                  <Clock size={13} color={coreColor("#6B7280", 'text')} />
+                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
                     {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-x-1">
-                  <Calendar size={13} color="#6B7280" />
-                  <Text className="font-poppins text-[10px] text-gray-600">
+                  <Calendar size={13} color={coreColor("#6B7280", 'text')} />
+                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
                     {new Date(schedule.start_time).toLocaleDateString()}
                   </Text>
                 </View>

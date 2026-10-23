@@ -1,6 +1,8 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking, Platform, TextInput, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking, Platform, TextInput, Pressable } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus } from 'lucide-react-native';
 import { supabase } from '@/core/config/supabase';
@@ -15,8 +17,8 @@ const colors = {
   navy: ui.colors.primaryHover,
   blue: ui.colors.primary,
   cyan: ui.colors.info,
-  teal: '#0F766E',
-  green: '#22C55E',
+  teal: coreColor('#0F766E', 'primary'),
+  green: coreColor('#22C55E', 'success'),
   bg: ui.colors.background,
   card: ui.colors.surface,
   border: ui.colors.border,
@@ -342,20 +344,20 @@ export default function MediaCenterPage() {
         <View style={styles.headerActions}>
           {isProcessing && (
             <View style={styles.queueBadge}>
-              <ActivityIndicator size="small" color={colors.navy} />
+              <ActivityIndicator size="small" color={coreColor(colors.navy, 'primaryText')} />
               <Text style={styles.queueText}>{jobs.length} Jobs Queued</Text>
             </View>
           )}
           <TouchableOpacity style={styles.btnSecondary} onPress={() => refetch()}>
-            <RefreshCw size={16} color={colors.navy} />
+            <RefreshCw size={16} color={coreColor(colors.navy, 'primaryText')} />
             <Text style={styles.btnSecondaryText}>Refresh</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnPrimary}>
-            <Archive size={16} color={ui.colors.surface} />
+            <Archive size={16} color={ui.colors.onPrimary} />
             <Text style={styles.btnPrimaryText}>Batch Export (ZIP)</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: '#0F766E' }]} onPress={() => setShowUploadModal(true)}>
-            <Upload size={16} color={ui.colors.surface} />
+          <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }]} onPress={() => setShowUploadModal(true)}>
+            <Upload size={16} color={ui.colors.onPrimary} />
             <Text style={styles.btnPrimaryText}>Upload Poster</Text>
           </TouchableOpacity>
         </View>
@@ -363,7 +365,7 @@ export default function MediaCenterPage() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {isLoading ? (
-          <ActivityIndicator size="large" color={colors.navy} style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color={coreColor(colors.navy, 'primaryText')} style={{ marginTop: 40 }} />
         ) : assets.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🗂️</Text>
@@ -375,7 +377,7 @@ export default function MediaCenterPage() {
             <View style={{ marginBottom: 20, padding: 16, backgroundColor: colors.card, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                 <View style={{ flex: 1, minWidth: 250 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>WhatsApp Target Number</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: coreColor(colors.navy, 'primaryText') }}>WhatsApp Target Number</Text>
                   <Text style={{ fontSize: 12, color: colors.muted, marginTop: 4 }}>Enter the phone number (with country code).</Text>
                 </View>
                 <TextInput 
@@ -389,15 +391,15 @@ export default function MediaCenterPage() {
               
               <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 16, marginTop: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.navy }}>WhatsApp Image Caption Template</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: coreColor(colors.navy, 'primaryText') }}>WhatsApp Image Caption Template</Text>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' *bold text*')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F1F5F9', borderRadius: 4 }}>
+                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' *bold text*')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: coreColor('#F1F5F9', 'surface'), borderRadius: 4 }}>
                       <Text style={{ fontSize: 12, fontWeight: 'bold' }}>B</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' _italic text_')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F1F5F9', borderRadius: 4 }}>
+                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' _italic text_')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: coreColor('#F1F5F9', 'surface'), borderRadius: 4 }}>
                       <Text style={{ fontSize: 12, fontStyle: 'italic' }}>I</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' ~strikethrough~')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#F1F5F9', borderRadius: 4 }}>
+                    <TouchableOpacity onPress={() => saveWaCaption(waCaption + ' ~strikethrough~')} style={{ paddingHorizontal: 12, paddingVertical: 4, backgroundColor: coreColor('#F1F5F9', 'surface'), borderRadius: 4 }}>
                       <Text style={{ fontSize: 12, textDecorationLine: 'line-through' }}>S</Text>
                     </TouchableOpacity>
                   </View>
@@ -445,7 +447,7 @@ export default function MediaCenterPage() {
                       onPress={() => asset.resolutions?.hd && openUrl(asset.resolutions.hd)}
                       disabled={!asset.resolutions?.hd}
                     >
-                      <Download size={14} color={colors.navy} />
+                      <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.actionText}>HD PNG</Text>
                     </TouchableOpacity>
                     
@@ -454,7 +456,7 @@ export default function MediaCenterPage() {
                       onPress={() => asset.resolutions?.print && openUrl(asset.resolutions.print)}
                       disabled={!asset.resolutions?.print}
                     >
-                      <Download size={14} color={colors.navy} />
+                      <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.actionText}>PDF</Text>
                     </TouchableOpacity>
                     
@@ -468,7 +470,7 @@ export default function MediaCenterPage() {
                         }
                       }}
                     >
-                      <Share2 size={14} color={colors.navy} />
+                      <Share2 size={14} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.actionText}>Link</Text>
                     </TouchableOpacity>
                     
@@ -476,7 +478,7 @@ export default function MediaCenterPage() {
                       style={[styles.actionBtn, styles.actionBtnWhatsApp]}
                       onPress={() => handleWhatsAppShare(asset)}
                     >
-                      <Share2 size={14} color={ui.colors.surface} />
+                      <Share2 size={14} color={ui.colors.onPrimary} />
                       <Text style={styles.actionTextWhatsApp}>Share</Text>
                     </TouchableOpacity>
                     
@@ -558,11 +560,11 @@ export default function MediaCenterPage() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.btnPrimary, { backgroundColor: '#0F766E' }, (!selectedFile || !uploadEventName.trim() || isUploading) && styles.btnDisabled]}
+                style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }, (!selectedFile || !uploadEventName.trim() || isUploading) && styles.btnDisabled]}
                 onPress={handleUploadPoster}
                 disabled={!selectedFile || !uploadEventName.trim() || isUploading}
               >
-                {isUploading ? <ActivityIndicator size="small" color="#fff" /> : <Upload size={16} color="#fff" />}
+                {isUploading ? <ActivityIndicator size="small" color={coreColor("#fff", 'onPrimary')} /> : <Upload size={16} color={coreColor("#fff", 'onPrimary')} />}
                 <Text style={styles.btnPrimaryText}>{isUploading ? 'Uploading...' : 'Upload Poster'}</Text>
               </TouchableOpacity>
             </View>
@@ -590,7 +592,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     marginBottom: 4,
   },
   subtitle: {
@@ -614,7 +616,7 @@ const styles = StyleSheet.create({
   queueText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
   },
   btnSecondary: {
     flexDirection: 'row',
@@ -630,7 +632,7 @@ const styles = StyleSheet.create({
   btnSecondaryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
   },
   btnPrimary: {
     flexDirection: 'row',
@@ -644,7 +646,7 @@ const styles = StyleSheet.create({
   btnPrimaryText: {
     fontSize: 14,
     fontWeight: '600',
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
   },
   scrollContent: {
     padding: 24,
@@ -661,7 +663,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     marginBottom: 8,
   },
   emptySub: {
@@ -700,14 +702,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(11, 31, 58, 0.8)',
+    backgroundColor: coreAlpha(coreColor('#0b1f3a', 'surface'), 0.8),
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     backdropFilter: 'blur(4px)',
   },
   qualityText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -718,7 +720,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     marginBottom: 4,
   },
   metaText: {
@@ -748,7 +750,7 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
   },
   actionBtnWhatsApp: {
     backgroundColor: colors.whatsapp,
@@ -756,11 +758,11 @@ const styles = StyleSheet.create({
   actionTextWhatsApp: {
     fontSize: 12,
     fontWeight: '600',
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.5),
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -777,7 +779,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     marginBottom: 20,
   },
   formGroup: {
@@ -786,7 +788,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     marginBottom: 8,
   },
   input: {
@@ -830,7 +832,7 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#0F766E',
+    backgroundColor: coreColor('#0F766E', 'primary'),
   },
   progressText: {
     position: 'absolute',

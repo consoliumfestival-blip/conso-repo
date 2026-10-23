@@ -5,6 +5,9 @@
   "scripts": {
     "start": "expo start",
     "build:web": "expo export --platform web",
+    "audit:appearance": "node scripts/audit-core-theme.cjs",
+    "test:appearance": "node --test scripts/test-core-theme.cjs",
+    "preview:appearance": "node scripts/preview-core-theme.cjs",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",

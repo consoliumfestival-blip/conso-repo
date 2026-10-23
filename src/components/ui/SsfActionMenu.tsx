@@ -1,14 +1,7 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Modal,
-  GestureResponderEvent,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { GestureResponderEvent, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { MoreHorizontal } from 'lucide-react-native';
 
 import { ui } from '@/constants/designSystem';
@@ -104,7 +97,7 @@ export function SsfActionMenu({
         <View style={StyleSheet.absoluteFill}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
           {anchor ? (
-            <View accessibilityRole="menu" style={[styles.menu, { left, top, width: menuWidth }]}>
+            <View accessibilityRole="menu" {...{ dataSet: { coreGlass: 'surface' } } as any} style={[styles.menu, { left, top, width: menuWidth }]}>
               {items.map((item) => (
                 <React.Fragment key={item.label}>
                   {item.separatorBefore ? <View style={styles.separator} /> : null}
@@ -160,7 +153,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ui.colors.border,
     backgroundColor: ui.colors.surface,
-    shadowColor: ui.colors.text,
+    shadowColor: "#111827",
     shadowOpacity: 0.16,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
@@ -185,7 +178,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   destructive: {
-    color: '#DC2626',
+    color: coreColor('#DC2626', 'danger'),
   },
   disabled: {
     color: ui.colors.textSubtle,

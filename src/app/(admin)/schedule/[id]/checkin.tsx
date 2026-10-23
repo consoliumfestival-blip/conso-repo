@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { findParticipantQrEntry } from '../../../../core/utils/checkInIdentity';
 import { GroupEntryRoster } from '../../../../components/stage/GroupEntryRoster';
 import { ui } from '@/constants/designSystem';
@@ -192,7 +193,8 @@ export default function CheckIn() {
       Alert.alert('Error', error.message || 'Failed to unverify participant');
     } finally {
       setIsUpdating(false);
-    }});
+    }
+});
   };
 
   const handleReject = async (regId: string) => {
@@ -207,7 +209,8 @@ export default function CheckIn() {
       else Alert.alert('Error', error.message || 'Failed to reject participant');
     } finally {
       setIsUpdating(false);
-    }});
+    }
+});
   };
 
   const handleRestore = async (regId: string) => {
@@ -221,7 +224,8 @@ export default function CheckIn() {
       else Alert.alert('Error', error.message || 'Failed to restore participant');
     } finally {
       setIsUpdating(false);
-    }});
+    }
+});
   };
 
   const handleRejectAllUnverified = async () => {
@@ -262,7 +266,7 @@ export default function CheckIn() {
   const allVerified = totalCount > 0 && verifiedCount === totalCount;
 
   if (isLoadingSchedules || isLoadingRegs) {
-    return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 40 }} />;
+    return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
   }
 
   const goBackSafely = () => {
@@ -292,7 +296,7 @@ export default function CheckIn() {
       >
         {/* Header */}
         <View className="flex-row items-center mb-3">
-          <TouchableOpacity onPress={goBackSafely} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-white">
+          <TouchableOpacity onPress={goBackSafely} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
             <ArrowLeft size={18} color={ui.colors.text} />
           </TouchableOpacity>
           <View className="flex-1">
@@ -303,9 +307,9 @@ export default function CheckIn() {
         </View>
 
         {isShuffleLocked && (
-          <View className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 flex-row items-center gap-x-3">
-            <Lock size={20} color="#B45309" />
-            <Text className="font-poppins-bold text-amber-700 flex-1">
+          <View className="bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-lg p-3 mb-3 flex-row items-center gap-x-3">
+            <Lock size={20} color={coreColor("#B45309", 'warning')} />
+            <Text className="font-poppins-bold text-core-warning-amber-700 flex-1">
               🔒 Event is locked by Stage Portal. Check-in is now read-only.
             </Text>
           </View>
@@ -315,12 +319,12 @@ export default function CheckIn() {
         <SsfCard className="mb-3 p-3">
           <View className="flex-row justify-between items-center mb-2">
             <View className="flex-row items-center gap-x-2">
-              <Users size={18} color="#1B6B3A" />
+              <Users size={18} color={coreColor("#1B6B3A", 'primaryText')} />
               <Text className="font-poppins-bold text-ssf-text">Verified</Text>
             </View>
-            <Text className="font-poppins-bold text-ssf-primary text-lg">{verifiedCount}/{totalCount}</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-lg">{verifiedCount}/{totalCount}</Text>
           </View>
-          <View className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <View className="w-full h-2 bg-core-surface-muted-gray-100 rounded-full overflow-hidden">
             <View
               className="h-2 bg-ssf-primary rounded-full"
               style={{ width: totalCount > 0 ? `${(verifiedCount / totalCount) * 100}%` : '0%' }}
@@ -329,8 +333,8 @@ export default function CheckIn() {
           {allVerified ? (
             <View className="mt-3 flex-row justify-between items-center">
               <View className="flex-row items-center gap-x-1">
-                <ShieldCheck size={16} color="#16A34A" />
-                <Text className="font-poppins-bold text-green-700 text-sm">All Participants Verified!</Text>
+                <ShieldCheck size={16} color={coreColor("#16A34A", 'success')} />
+                <Text className="font-poppins-bold text-core-success-green-700 text-sm">All Participants Verified!</Text>
               </View>
               <SsfButton
                 label="Start Draw →"
@@ -340,15 +344,15 @@ export default function CheckIn() {
             </View>
           ) : (
             totalCount > 0 && verifiedCount < totalCount && !isShuffleLocked && (
-              <View className="mt-3 flex-row justify-between items-center bg-amber-50 border border-amber-200 p-2.5 rounded-lg">
-                <Text className="font-poppins-bold text-amber-700 text-xs">
+              <View className="mt-3 flex-row justify-between items-center bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 p-2.5 rounded-lg">
+                <Text className="font-poppins-bold text-core-warning-amber-700 text-xs">
                   {totalCount - verifiedCount} participants remaining unverified.
                 </Text>
                 <SsfButton
                   label="Reject Unverified"
                   size="sm"
                   onPress={handleRejectAllUnverified}
-                  className="bg-red-600 border-red-600"
+                  className="bg-core-danger-action-red-600 border-core-danger-red-600"
                 />
               </View>
             )
@@ -359,16 +363,16 @@ export default function CheckIn() {
         {!isShuffleLocked && (
           <TouchableOpacity
             onPress={startWebScanner}
-            className="h-11 rounded-lg border border-emerald-200 bg-white mb-3 flex-row justify-center items-center gap-x-2"
+            className="h-11 rounded-lg border border-core-success-soft-emerald-200 bg-core-surface-white mb-3 flex-row justify-center items-center gap-x-2"
           >
-            <QrCode size={18} color="#0F766E" />
-            <Text className="font-poppins-bold text-emerald-700 text-sm">Scan Chest Card QR</Text>
+            <QrCode size={18} color={coreColor("#0F766E", 'primaryText')} />
+            <Text className="font-poppins-bold text-core-success-emerald-700 text-sm">Scan Chest Card QR</Text>
           </TouchableOpacity>
         )}
 
         {/* Search */}
-        <View className="h-10 border border-ssf-border rounded-lg bg-white px-3 flex-row items-center mb-3">
-          <Search size={16} color="#9CA3AF" className="mr-2" />
+        <View className="h-10 border border-ssf-border rounded-lg bg-core-surface-white px-3 flex-row items-center mb-3">
+          <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} className="mr-2" />
           <input
             style={{ flex: 1, border: 'none', outline: 'none', fontFamily: 'inherit', fontSize: 14, color: ui.colors.text, background: 'transparent' }}
             placeholder="Search by name or chest number..."
@@ -389,7 +393,7 @@ export default function CheckIn() {
                 return (
                   <View
                     key={reg.id}
-                    className={`min-h-[64px] flex-row items-center justify-between px-3 py-2 border-b border-gray-100 last:border-0 ${
+                    className={`min-h-[64px] flex-row items-center justify-between px-3 py-2 border-b border-core-border-gray-100 last:border-0 ${
                       isRejected ? 'opacity-60' : ''
                     }`}
                   >
@@ -403,24 +407,24 @@ export default function CheckIn() {
                           borderRadius: 18,
                           backgroundColor: isRejected ? ui.colors.destructiveSoft : reg.is_verified ? ui.colors.successSoft : ui.colors.surfaceMuted,
                           borderWidth: 2,
-                          borderColor: isRejected ? '#EF4444' : reg.is_verified ? '#16A34A' : ui.colors.border,
+                          borderColor: isRejected ? coreColor('#EF4444', 'border') : reg.is_verified ? coreColor('#16A34A', 'border') : ui.colors.border,
                           alignItems: 'center',
                           justifyContent: 'center',
                           marginRight: 10,
                         }}
                       >
-                        <Text style={{ fontWeight: '900', fontSize: 11, color: isRejected ? '#EF4444' : reg.is_verified ? '#16A34A' : '#6B7280' }}>
+                        <Text style={{ fontWeight: '900', fontSize: 11, color: isRejected ? coreColor('#EF4444', 'danger') : reg.is_verified ? coreColor('#16A34A', 'success') : coreColor('#6B7280', 'text') }}>
                           {reg.participants?.chest_number || '?'}
                         </Text>
                       </View>
                       <View className="min-w-0 flex-1">
                         <View className="flex-row items-center gap-x-2">
-                          <Text numberOfLines={1} className={`font-poppins-bold text-[12px] ${isRejected ? 'text-slate-400 line-through' : 'text-ssf-text'}`}>
+                          <Text numberOfLines={1} className={`font-poppins-bold text-[12px] ${isRejected ? 'text-core-text-muted-slate-400 line-through' : 'text-ssf-text'}`}>
                             {reg.participants?.name}
                           </Text>
                           {isRejected && (
-                            <View className="bg-red-100 border border-red-200 px-1.5 py-0.5 rounded">
-                              <Text className="text-[8px] font-poppins-bold text-red-600 uppercase">Rejected</Text>
+                            <View className="bg-core-danger-soft-red-100 border border-core-danger-soft-red-200 px-1.5 py-0.5 rounded">
+                              <Text className="text-[8px] font-poppins-bold text-core-danger-red-600 uppercase">Rejected</Text>
                             </View>
                           )}
                         </View>
@@ -430,8 +434,8 @@ export default function CheckIn() {
                         <GroupEntryRoster entry={reg} />
                         {reg.participants?.organisations?.name ? (
                           <View className="flex-row items-center mt-0.5">
-                            <View className="bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded-full">
-                              <Text className="font-poppins-bold text-[10px] text-blue-700">
+                            <View className="bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 px-1.5 py-0.5 rounded-full">
+                              <Text className="font-poppins-bold text-[10px] text-core-info-blue-700">
                                 🏫 {reg.participants.organisations.name}
                               </Text>
                             </View>
@@ -445,9 +449,9 @@ export default function CheckIn() {
                       <TouchableOpacity
                         disabled={isUpdating || isShuffleLocked}
                         onPress={() => handleRestore(reg.id)}
-                        className={`flex-row items-center gap-x-1 px-3 py-1.5 rounded-full border bg-slate-50 border-slate-200 ${isShuffleLocked ? 'opacity-50' : ''}`}
+                        className={`flex-row items-center gap-x-1 px-3 py-1.5 rounded-full border bg-core-surface-muted-slate-50 border-core-border-slate-200 ${isShuffleLocked ? 'opacity-50' : ''}`}
                       >
-                        <Text className="font-poppins-bold text-xs text-slate-600">Restore</Text>
+                        <Text className="font-poppins-bold text-xs text-core-text-slate-600">Restore</Text>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
@@ -462,16 +466,16 @@ export default function CheckIn() {
                         }}
                         className={`flex-row items-center gap-x-1 px-3 py-1.5 rounded-full border ${
                           reg.is_verified
-                            ? 'bg-green-50 border-green-200'
-                            : 'bg-gray-50 border-gray-200'
+                            ? 'bg-core-success-soft-green-50 border-core-success-soft-green-200'
+                            : 'bg-core-surface-muted-gray-50 border-core-border-gray-200'
                         } ${isShuffleLocked ? 'opacity-50' : ''}`}
                       >
                         {reg.is_verified ? (
-                          <CheckCircle2 size={16} color="#16A34A" />
+                          <CheckCircle2 size={16} color={coreColor("#16A34A", 'success')} />
                         ) : (
-                          <Camera size={16} color="#9CA3AF" />
+                          <Camera size={16} color={coreColor("#9CA3AF", 'textMuted')} />
                         )}
-                        <Text className={`font-poppins-bold text-xs ${reg.is_verified ? 'text-green-700' : 'text-gray-500'}`}>
+                        <Text className={`font-poppins-bold text-xs ${reg.is_verified ? 'text-core-success-green-700' : 'text-core-text-muted-gray-500'}`}>
                           {reg.is_verified ? 'Verified' : 'Verify'}
                         </Text>
                       </TouchableOpacity>
@@ -489,15 +493,15 @@ export default function CheckIn() {
         <View
           style={{
             position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-            backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center', zIndex: 100,
+            backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.92), justifyContent: 'center', alignItems: 'center', zIndex: 100,
           }}
         >
-          <View style={{ width: '90%', maxWidth: 380, backgroundColor: '#111', borderRadius: 20, overflow: 'hidden' }}>
+          <View style={{ width: '90%', maxWidth: 380, backgroundColor: coreColor('#111', 'surfaceStrong'), borderRadius: 20, overflow: 'hidden' }}>
             {/* Title bar */}
-            <View style={{ backgroundColor: '#1B6B3A', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ color: ui.colors.surface, fontWeight: '900', fontSize: 16 }}>📷 Scan Chest Card</Text>
+            <View style={{ backgroundColor: coreColor('#1B6B3A', 'primary'), padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: ui.colors.onPrimary, fontWeight: '900', fontSize: 16 }}>📷 Scan Chest Card</Text>
               <TouchableOpacity onPress={stopWebScanner}>
-                <XCircle size={24} color={ui.colors.surface} />
+                <XCircle size={24} color={ui.colors.onPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -512,30 +516,30 @@ export default function CheckIn() {
                   muted
                 />
               ) : (
-                <Text style={{ color: ui.colors.surface }}>Camera not supported on this platform</Text>
+                <Text style={{ color: ui.colors.onPrimary }}>Camera not supported on this platform</Text>
               )}
               {/* Scan overlay corners */}
               <View style={{ position: 'absolute', top: 60, left: 60, width: 180, height: 180, pointerEvents: 'none' }}>
                 {/* TL */}
-                <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 4, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
-                <View style={{ position: 'absolute', top: 0, left: 0, width: 4, height: 30, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
+                <View style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 4, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
+                <View style={{ position: 'absolute', top: 0, left: 0, width: 4, height: 30, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
                 {/* TR */}
-                <View style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 4, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
-                <View style={{ position: 'absolute', top: 0, right: 0, width: 4, height: 30, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
+                <View style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 4, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
+                <View style={{ position: 'absolute', top: 0, right: 0, width: 4, height: 30, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
                 {/* BL */}
-                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 4, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
-                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 4, height: 30, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
+                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 4, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
+                <View style={{ position: 'absolute', bottom: 0, left: 0, width: 4, height: 30, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
                 {/* BR */}
-                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 4, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
-                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 4, height: 30, backgroundColor: '#1B6B3A', borderRadius: 2 }} />
+                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 4, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
+                <View style={{ position: 'absolute', bottom: 0, right: 0, width: 4, height: 30, backgroundColor: coreColor('#1B6B3A', 'primary'), borderRadius: 2 }} />
               </View>
             </View>
 
             <View style={{ padding: 16, alignItems: 'center' }}>
               {scannerError ? (
-                <Text style={{ color: '#F87171', fontSize: 13, textAlign: 'center' }}>{scannerError}</Text>
+                <Text style={{ color: coreColor('#F87171', 'danger'), fontSize: 13, textAlign: 'center' }}>{scannerError}</Text>
               ) : (
-                <Text style={{ color: '#9CA3AF', fontSize: 13 }}>Point camera at the chest card QR code</Text>
+                <Text style={{ color: coreColor('#9CA3AF', 'textMuted'), fontSize: 13 }}>Point camera at the chest card QR code</Text>
               )}
             </View>
           </View>
@@ -547,14 +551,14 @@ export default function CheckIn() {
         <View
           style={{
             position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-            backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 20,
+            backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'center', alignItems: 'center', zIndex: 200, padding: 20,
           }}
         >
           <ScrollView style={{ backgroundColor: ui.colors.surface, borderRadius: 20, width: '100%', maxWidth: 360, overflow: 'hidden', maxHeight: '95%', flexGrow: 0 }}>
             {/* Green header */}
-            <View style={{ backgroundColor: '#1B6B3A', padding: 16, alignItems: 'center' }}>
-              <Text style={{ color: ui.colors.surface, fontWeight: '900', fontSize: 18 }}>Identity Verification</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 }}>
+            <View style={{ backgroundColor: coreColor('#1B6B3A', 'primary'), padding: 16, alignItems: 'center' }}>
+              <Text style={{ color: ui.colors.onPrimary, fontWeight: '900', fontSize: 18 }}>Identity Verification</Text>
+              <Text style={{ color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.7), fontSize: 12, marginTop: 2 }}>
                 {verifyModal.reg.entry_kind === 'general_team' ? 'Confirm this group entry' : 'Confirm this is the right participant'}
               </Text>
             </View>
@@ -563,11 +567,11 @@ export default function CheckIn() {
               {/* Large Photo — shown ONLY to coordinator, not printed on card */}
               <View style={{
                 width: 120, height: 120, borderRadius: 60, overflow: 'hidden',
-                borderWidth: 4, borderColor: '#1B6B3A',
+                borderWidth: 4, borderColor: coreColor('#1B6B3A', 'border'),
                 backgroundColor: ui.colors.surfaceMuted, marginBottom: 16,
                 alignItems: 'center', justifyContent: 'center',
               }}>
-                {verifyModal.reg.entry_kind === 'general_team' ? <Users size={48} color="#1B6B3A" /> : verifyModal.reg.participants?.photo_url ? (
+                {verifyModal.reg.entry_kind === 'general_team' ? <Users size={48} color={coreColor("#1B6B3A", 'primaryText')} /> : verifyModal.reg.participants?.photo_url ? (
                   <Image
                     source={{ uri: verifyModal.reg.participants.photo_url }}
                     style={{ width: '100%', height: '100%' }}
@@ -579,18 +583,18 @@ export default function CheckIn() {
               </View>
 
               {/* Name & Details */}
-              <Text style={{ fontSize: 22, fontWeight: '900', color: '#111827', marginBottom: 4 }}>
+              <Text style={{ fontSize: 22, fontWeight: '900', color: coreColor('#111827', 'text'), marginBottom: 4 }}>
                 {verifyModal.reg.participants?.name}
               </Text>
               <View style={{
-                backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0',
+                backgroundColor: coreColor('#F0FDF4', 'successSoft'), borderWidth: 1, borderColor: coreColor('#BBF7D0', 'border'),
                 borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 8,
               }}>
-                <Text style={{ color: '#16A34A', fontWeight: '700', fontSize: 16 }}>
+                <Text style={{ color: coreColor('#16A34A', 'success'), fontWeight: '700', fontSize: 16 }}>
                   Chest #{verifyModal.reg.participants?.chest_number}
                 </Text>
               </View>
-              <Text style={{ color: '#6B7280', fontSize: 13 }}>
+              <Text style={{ color: coreColor('#6B7280', 'text'), fontSize: 13 }}>
                 {verifyModal.reg.participants?.category_code}
                 {verifyModal.reg.participants?.organisations?.name
                   ? ` · 🏫 ${verifyModal.reg.participants.organisations.name}`
@@ -599,8 +603,8 @@ export default function CheckIn() {
                         <GroupEntryRoster entry={verifyModal.reg} />
 
               {/* Instruction */}
-              <View style={{ backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, width: '100%', marginTop: 16, marginBottom: 20 }}>
-                <Text style={{ color: '#92400E', fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
+              <View style={{ backgroundColor: coreColor('#FEF3C7', 'warningSoft'), borderRadius: 10, padding: 12, width: '100%', marginTop: 16, marginBottom: 20 }}>
+                <Text style={{ color: coreColor('#92400E', 'warning'), fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
                   {verifyModal.reg.entry_kind === 'general_team' ? 'Confirm the group chest number, program and team. One representative can check in this entry.' : '⚠️ Compare the photo above with the person standing in front of you before approving.'}
                 </Text>
               </View>
@@ -611,23 +615,23 @@ export default function CheckIn() {
                   disabled={isUpdating}
                   onPress={() => handleReject(verifyModal.reg.id)}
                   style={{
-                    flex: 1, borderWidth: 2, borderColor: '#EF4444',
+                    flex: 1, borderWidth: 2, borderColor: coreColor('#EF4444', 'border'),
                     borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                   }}
                 >
-                  <XCircle size={18} color="#EF4444" />
-                  <Text style={{ color: '#EF4444', fontWeight: '700' }}>Reject</Text>
+                  <XCircle size={18} color={coreColor("#EF4444", 'danger')} />
+                  <Text style={{ color: coreColor('#EF4444', 'danger'), fontWeight: '700' }}>Reject</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   disabled={isUpdating}
                   onPress={() => handleVerify(verifyModal.reg.id)}
                   style={{
-                    flex: 1, backgroundColor: '#1B6B3A',
+                    flex: 1, backgroundColor: coreColor('#1B6B3A', 'primary'),
                     borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                   }}
                 >
-                  <CheckCircle2 size={18} color={ui.colors.surface} />
-                  <Text style={{ color: ui.colors.surface, fontWeight: '700' }}>
+                  <CheckCircle2 size={18} color={ui.colors.onPrimary} />
+                  <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>
                     {isUpdating ? 'Saving...' : 'Verify'}
                   </Text>
                 </TouchableOpacity>
@@ -642,15 +646,15 @@ export default function CheckIn() {
         <View
           style={{
             position: 'absolute', top: 0, bottom: 0, left: 0, right: 0,
-            backgroundColor: 'rgba(220, 38, 38, 0.95)', justifyContent: 'center', alignItems: 'center', zIndex: 999,
+            backgroundColor: coreAlpha(coreColor('#dc2626', 'surface'), 0.95), justifyContent: 'center', alignItems: 'center', zIndex: 999,
           }}
         >
-          <View style={{ width: '90%', maxWidth: 400, backgroundColor: '#FEF2F2', borderRadius: 20, padding: 24, alignItems: 'center' }}>
-            <XCircle size={48} color="#DC2626" style={{ marginBottom: 16 }} />
-            <Text style={{ fontSize: 22, fontWeight: '900', color: '#991B1B', textAlign: 'center', marginBottom: 12 }}>
+          <View style={{ width: '90%', maxWidth: 400, backgroundColor: coreColor('#FEF2F2', 'dangerSoft'), borderRadius: 20, padding: 24, alignItems: 'center' }}>
+            <XCircle size={48} color={coreColor("#DC2626", 'danger')} style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 22, fontWeight: '900', color: coreColor('#991B1B', 'danger'), textAlign: 'center', marginBottom: 12 }}>
               {warningModal.title}
             </Text>
-            <Text style={{ fontSize: 16, color: '#7F1D1D', textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
+            <Text style={{ fontSize: 16, color: coreColor('#7F1D1D', 'danger'), textAlign: 'center', marginBottom: 24, lineHeight: 24 }}>
               {warningModal.message}
             </Text>
             
@@ -660,9 +664,9 @@ export default function CheckIn() {
                   setWarningModal({ visible: false, title: '', message: '', action: null });
                   setWarningCountdown(0);
                 }}
-                style={{ backgroundColor: '#EF4444', padding: 16, borderRadius: 12, alignItems: 'center' }}
+                style={{ backgroundColor: coreColor('#EF4444', 'dangerAction'), padding: 16, borderRadius: 12, alignItems: 'center' }}
               >
-                <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>Cancel (Safe)</Text>
+                <Text style={{ color: coreColor('white', 'onPrimary'), fontWeight: 'bold', fontSize: 16 }}>Cancel (Safe)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -673,12 +677,12 @@ export default function CheckIn() {
                   setWarningCountdown(0);
                 }}
                 style={{ 
-                  backgroundColor: warningCountdown > 5 ? '#FECACA' : '#991B1B', 
+                  backgroundColor: warningCountdown > 5 ? coreColor('#FECACA', 'dangerSoft') : coreColor('#991B1B', 'dangerAction'),
                   padding: 16, borderRadius: 12, alignItems: 'center',
-                  borderWidth: 2, borderColor: '#7F1D1D'
+                  borderWidth: 2, borderColor: coreColor('#7F1D1D', 'border')
                 }}
               >
-                <Text style={{ color: warningCountdown > 5 ? '#F87171' : 'white', fontWeight: 'bold', fontSize: 16 }}>
+                <Text style={{ color: warningCountdown > 5 ? coreColor('#F87171', 'danger') : coreColor('white', 'onPrimary'), fontWeight: 'bold', fontSize: 16 }}>
                   {warningCountdown > 5 ? `Wait ${warningCountdown - 5}s...` : 'Skip & Proceed'}
                 </Text>
               </TouchableOpacity>

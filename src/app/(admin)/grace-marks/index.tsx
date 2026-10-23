@@ -76,7 +76,7 @@ export default function GraceMarksScreen() {
   };
   if (festivalLoading || query.isLoading) return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
   if (role !== 'admin' && !is_superadmin) return <View className="p-5"><Text>Administrator access is required.</Text></View>;
-  if (query.error) return <View className="p-5"><Text className="font-poppins text-red-700">{query.error.message}</Text>
+  if (query.error) return <View className="p-5"><Text className="font-poppins text-core-danger-red-700">{query.error.message}</Text>
     <SsfButton label="Retry" onPress={() => query.refetch()} className="mt-3" />
     <SsfButton label="Points Configuration" variant="outline" onPress={() => router.push('/(admin)/settings/points' as any)} className="mt-3" /></View>;
   return <ScrollView className="flex-1 bg-ssf-bg p-4" contentContainerStyle={{ paddingBottom: 36 }}>
@@ -88,8 +88,8 @@ export default function GraceMarksScreen() {
     </SsfCard> : <>
       <View className="flex-row flex-wrap gap-2 mb-4">{teams.map(team =>
         <TouchableOpacity key={team.id} onPress={() => setSelected(team.id)} accessibilityRole="button"
-          accessibilityState={{ selected: currentTeam?.id === team.id }} className={'rounded-lg border px-3 py-2 ' + (currentTeam?.id === team.id ? 'bg-ui-primary border-ui-primary' : 'bg-white border-ui-border')}>
-          <Text className={'font-poppins-bold text-xs ' + (currentTeam?.id === team.id ? 'text-white' : 'text-ui-text')}>{team.name}</Text>
+          accessibilityState={{ selected: currentTeam?.id === team.id }} className={'rounded-lg border px-3 py-2 ' + (currentTeam?.id === team.id ? 'bg-ui-primary border-ui-primary' : 'bg-core-surface-white border-ui-border')}>
+          <Text className={'font-poppins-bold text-xs ' + (currentTeam?.id === team.id ? 'text-core-on-primary-white' : 'text-ui-text')}>{team.name}</Text>
         </TouchableOpacity>)}</View>
       {!teams.length && <Text className="font-poppins text-ui-text-muted mb-4">No participating teams are available.</Text>}
       {currentTeam && <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-4">{currentTeam.name}</Text>
@@ -112,11 +112,11 @@ export default function GraceMarksScreen() {
             ? fields.reduce((total, field) => total + Number(inputs[team.id][field.id]), 0) + ' draft points' : 'Pending'}</Text>
         </View>)}
         {workspace.draft_config_version !== workspace.config_version && workspace.revision > 0 &&
-          <Text className="font-poppins text-xs text-amber-800 mt-3">Configuration changed. Review the fields and save the draft again before submission.</Text>}
+          <Text className="font-poppins text-xs text-core-warning-amber-800 mt-3">Configuration changed. Review the fields and save the draft again before submission.</Text>}
         {!!workspace.last_submission && <Text className="font-poppins text-xs text-ui-text-muted mt-3">Last final submission: {new Date(workspace.last_submission.created_at).toLocaleString()}</Text>}
       </SsfCard>
-      {!!failure && <Text accessibilityRole="alert" className="font-poppins text-sm text-red-700 mb-3">{failure}</Text>}
-      {!!message && <Text accessibilityRole="alert" className="font-poppins text-sm text-green-800 mb-3">{message}</Text>}
+      {!!failure && <Text accessibilityRole="alert" className="font-poppins text-sm text-core-danger-red-700 mb-3">{failure}</Text>}
+      {!!message && <Text accessibilityRole="alert" className="font-poppins text-sm text-core-success-green-800 mb-3">{message}</Text>}
       <View className="flex-row flex-wrap gap-3">
         <SsfButton label="Save draft" variant="outline" onPress={() => save(false)} disabled={working || !local || !teams.length} />
         <SsfButton label={alreadySubmitted ? 'All submitted' : 'All Submit'} onPress={() => save(true)}

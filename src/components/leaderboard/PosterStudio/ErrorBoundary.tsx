@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { useTemplateStore } from './Stores/templateStore';
 
@@ -77,11 +78,11 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     height: '100%',
     width: '100%',
-    backgroundColor: '#F3F8FB',
+    backgroundColor: coreColor('#F3F8FB', 'surface'),
     padding: 24,
   },
   box: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
     padding: 32,
     borderRadius: 16,
     boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
@@ -91,13 +92,13 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 20,
     fontWeight: 700,
-    color: '#0F172A',
+    color: coreColor('#0F172A', 'overlay'),
     marginBottom: 12,
     fontFamily: 'Inter, sans-serif',
   },
   message: {
     fontSize: 14,
-    color: '#475569',
+    color: coreColor('#475569', 'text'),
     marginBottom: 24,
     lineHeight: 1.5,
     fontFamily: 'Inter, sans-serif',
@@ -109,8 +110,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   primaryBtn: {
     padding: '10px 16px',
-    backgroundColor: '#0F766E',
-    color: '#FFFFFF',
+    backgroundColor: coreColor('#0F766E', 'primary'),
+    color: coreColor('#FFFFFF', 'onPrimary'),
     border: 'none',
     borderRadius: 8,
     fontSize: 14,
@@ -120,9 +121,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   secondaryBtn: {
     padding: '10px 16px',
-    backgroundColor: '#F1F5F9',
-    color: '#0F172A',
-    border: '1px solid #CBD5E1',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
+    color: coreColor('#0F172A', 'overlay'),
+    border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
     borderRadius: 8,
     fontSize: 14,
     fontWeight: 600,
@@ -130,13 +131,13 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'Inter, sans-serif',
   },
   errorText: {
-    backgroundColor: '#FEF2F2',
-    color: '#991B1B',
+    backgroundColor: coreColor('#FEF2F2', 'dangerSoft'),
+    color: coreColor('#991B1B', 'danger'),
     padding: 12,
     borderRadius: 8,
     fontSize: 12,
     overflowX: 'auto',
     fontFamily: 'monospace',
-    border: '1px solid #FECACA',
+    border: `1px solid ${coreColor('#FECACA', 'border')}`,
   },
 };

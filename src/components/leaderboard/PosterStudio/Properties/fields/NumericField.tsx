@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useDebounce } from '../../Hooks/useDebounce';
 
@@ -86,8 +87,8 @@ export default function NumericField({
 
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 10, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  inputRow: { display: 'flex', border: '1px solid #2a2a2a', borderRadius: 8, overflow: 'hidden', height: 42 },
-  input: { flex: 1, padding: '0 8px', fontSize: 13, fontFamily: 'Inter, sans-serif', border: 'none', outline: 'none', color: '#E2E8F0', backgroundColor: '#171717', minWidth: 60 },
-  unitBtn: { padding: '0 10px', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 700, backgroundColor: '#1f1f1f', border: 'none', borderLeft: '1px solid #2a2a2a', cursor: 'pointer', color: '#38bdf8' },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  inputRow: { display: 'flex', border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 8, overflow: 'hidden', height: 42 },
+  input: { flex: 1, padding: '0 8px', fontSize: 13, fontFamily: 'Inter, sans-serif', border: 'none', outline: 'none', color: coreColor('#E2E8F0', 'text'), backgroundColor: coreColor('#171717', 'surfaceStrong'), minWidth: 60 },
+  unitBtn: { padding: '0 10px', fontSize: 11, fontFamily: 'Inter, sans-serif', fontWeight: 700, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), border: 'none', borderLeft: `1px solid ${coreColor('#2a2a2a', 'border')}`, cursor: 'pointer', color: coreColor('#38bdf8', 'info') },
 };

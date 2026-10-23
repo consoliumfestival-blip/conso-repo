@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
@@ -240,9 +241,9 @@ export default function ParticipantsList() {
 
   const getStatusColor = (status: string) => {
     switch ((status || 'pending').toLowerCase()) {
-      case 'approved': return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' };
-      case 'rejected': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' };
-      default: return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' };
+      case 'approved': return { bg: 'bg-core-success-soft-green-100', text: 'text-core-success-green-700', border: 'border-core-success-soft-green-200' };
+      case 'rejected': return { bg: 'bg-core-danger-soft-red-100', text: 'text-core-danger-red-700', border: 'border-core-danger-soft-red-200' };
+      default: return { bg: 'bg-core-warning-soft-yellow-100', text: 'text-core-warning-yellow-700', border: 'border-core-warning-soft-yellow-200' };
     }
   };
 
@@ -354,40 +355,40 @@ export default function ParticipantsList() {
           style={{ flexShrink: 1, marginLeft: 12 }}
           contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: 2 }}
         >
-          <TouchableOpacity onPress={() => router.push('/(admin)/participants/chest-numbers')} className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-1">
-            <Text className="font-poppins-bold text-ssf-primary text-xs hidden sm:flex">Numbers</Text>
+          <TouchableOpacity onPress={() => router.push('/(admin)/participants/chest-numbers')} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1">
+            <Text className="font-poppins-bold text-ui-primary-text text-xs hidden sm:flex">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
           >
-            <Text className="font-poppins-bold text-ssf-primary text-xs">🪪 Cards</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">🪪 Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/(admin)/participants/manage-units' as any)}
-            className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
           >
-            <GitCompare size={14} color="#1B6B3A" />
-            <Text className="font-poppins-bold text-ssf-primary text-xs">Reassign</Text>
+            <GitCompare size={14} color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Reassign</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={exportToExcel} className="p-2 bg-white border border-ssf-border rounded-lg">
-            <FileDown size={20} color="#1B6B3A" />
+          <TouchableOpacity onPress={exportToExcel} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg">
+            <FileDown size={20} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => exportItemsPdf(false)}
             disabled={isExportingItemsPdf}
-            className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
           >
-            <FileDown size={18} color={ui.colors.primary} />
-            <Text className="font-poppins-bold text-xs text-ui-primary">Item PDF</Text>
+            <FileDown size={18} color={ui.colors.primaryText} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Item PDF</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => exportParticipantPdf(false)}
             disabled={isExportingItemsPdf}
-            className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
           >
-            <FileDown size={18} color={ui.colors.primary} />
-            <Text className="font-poppins-bold text-xs text-ui-primary">Participant PDF</Text>
+            <FileDown size={18} color={ui.colors.primaryText} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Participant PDF</Text>
           </TouchableOpacity>
           {isSuperadmin && (
             <TouchableOpacity
@@ -395,8 +396,8 @@ export default function ParticipantsList() {
               disabled={isExportingItemsPdf}
               className="p-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1"
             >
-              <FileDown size={18} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-xs text-white">All-Tenant PDF</Text>
+              <FileDown size={18} color={ui.colors.onPrimary} />
+              <Text className="font-poppins-bold text-xs text-core-on-primary-white">All-Tenant PDF</Text>
             </TouchableOpacity>
           )}
           {isSuperadmin && (
@@ -405,34 +406,34 @@ export default function ParticipantsList() {
               disabled={isExportingItemsPdf}
               className="p-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1"
             >
-              <FileDown size={18} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-xs text-white">All-Tenant Participant PDF</Text>
+              <FileDown size={18} color={ui.colors.onPrimary} />
+              <Text className="font-poppins-bold text-xs text-core-on-primary-white">All-Tenant Participant PDF</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity onPress={() => router.push('/(admin)/participants/import')} className="p-2 bg-white border border-ssf-border rounded-lg">
-            <Upload size={20} color="#1B6B3A" />
+          <TouchableOpacity onPress={() => router.push('/(admin)/participants/import')} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg">
+            <Upload size={20} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/(admin)/participants/programs' as any)}
-            className="p-2 bg-white border border-ssf-border rounded-lg flex-row items-center gap-x-2"
+            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-2"
             accessibilityRole="button"
             accessibilityLabel="Manage programs"
           >
-            <Trophy size={16} color="#1B6B3A" />
-            <Text className="font-poppins-bold text-ssf-primary text-xs">Programs</Text>
+            <Trophy size={16} color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Programs</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(admin)/participants/add')} className="p-2 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center gap-x-2">
-            <UserPlus size={20} color="white" />
-            <Text className="font-poppins-bold text-white text-xs hidden sm:flex">Add New</Text>
+            <UserPlus size={20} color={coreColor("white", 'onPrimary')} />
+            <Text className="font-poppins-bold text-core-on-primary-white text-xs hidden sm:flex">Add New</Text>
           </TouchableOpacity>
         </ScrollView>
       </View>
 
       {/* Sticky Filters & Search */}
       <View className="bg-ui-bg pb-4 z-10">
-        <View className="bg-white border border-ui-border rounded-xl p-3">
-        <View className="flex-row items-center bg-white border border-ui-border rounded-xl px-4 h-11">
-          <Search size={18} color="#9CA3AF" />
+        <View className="bg-core-surface-white border border-ui-border rounded-xl p-3">
+        <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-4 h-11">
+          <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
           <TextInput
             className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
             placeholder="Search by name or chest number..."
@@ -441,7 +442,7 @@ export default function ParticipantsList() {
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color="#9CA3AF" />
+              <X size={16} color={coreColor("#9CA3AF", 'textMuted')} />
             </TouchableOpacity>
           )}
         </View>
@@ -481,7 +482,7 @@ export default function ParticipantsList() {
           {hasActiveFilters && (
             <TouchableOpacity
               onPress={clearFilters}
-              className="h-9 px-3 rounded-lg border border-ui-border bg-white flex-row items-center justify-center"
+              className="h-9 px-3 rounded-lg border border-ui-border bg-core-surface-white flex-row items-center justify-center"
             >
               <RotateCcw size={13} color={ui.colors.textMuted} />
               <Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">Reset</Text>
@@ -499,28 +500,28 @@ export default function ParticipantsList() {
       {/* Bulk action bar */}
       <View className="flex-row items-center justify-between mb-4 mt-2">
         {!selectMode ? (
-          <TouchableOpacity onPress={toggleSelectMode} className="flex-row items-center gap-x-2 px-3 py-2 bg-white border border-ssf-border rounded-lg">
-            <CheckSquare size={16} color="#1B6B3A" />
-            <Text className="font-poppins-bold text-xs text-ssf-primary">Select Multiple</Text>
+          <TouchableOpacity onPress={toggleSelectMode} className="flex-row items-center gap-x-2 px-3 py-2 bg-core-surface-white border border-ssf-border rounded-lg">
+            <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
           </TouchableOpacity>
         ) : (
-          <View className="flex-1 flex-row items-center justify-between bg-white px-3 py-2 border border-ssf-border rounded-lg">
+          <View className="flex-1 flex-row items-center justify-between bg-core-surface-white px-3 py-2 border border-ssf-border rounded-lg">
             <View className="flex-row items-center gap-x-3">
               <TouchableOpacity onPress={toggleSelectMode} className="p-1">
                 <X size={18} color={ui.colors.textMuted} />
               </TouchableOpacity>
               <Text className="font-poppins-bold text-ssf-text">{selected.size} selected</Text>
               <TouchableOpacity onPress={selectAll}>
-                <Text className="font-poppins text-xs text-ssf-primary">All</Text>
+                <Text className="font-poppins text-xs text-ui-primary-text">All</Text>
               </TouchableOpacity>
             </View>
             <View className="flex-row gap-x-2">
-              <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-red-100' : 'bg-gray-100'}`}>
-                <Trash2 size={16} color={selected.size > 0 ? '#DC2626' : '#9CA3AF'} />
+              <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-core-danger-soft-red-100' : 'bg-core-surface-muted-gray-100'}`}>
+                <Trash2 size={16} color={selected.size > 0 ? coreColor('#DC2626', 'danger') : coreColor('#9CA3AF', 'textMuted')} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || selected.size === 0} className={`flex-row items-center gap-x-1 px-3 py-2 rounded-lg ${selected.size > 0 ? 'bg-ssf-primary' : 'bg-gray-200'}`}>
-                {processingBulk ? <ActivityIndicator color="white" size="small" /> : <CheckCircle size={16} color={selected.size > 0 ? 'white' : '#9CA3AF'} />}
-                <Text className={`font-poppins-bold text-xs ${selected.size > 0 ? 'text-white' : 'text-gray-400'}`}>Approve</Text>
+              <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || selected.size === 0} className={`flex-row items-center gap-x-1 px-3 py-2 rounded-lg ${selected.size > 0 ? 'bg-ssf-primary' : 'bg-core-surface-strong-gray-200'}`}>
+                {processingBulk ? <ActivityIndicator color={coreColor("white", 'onPrimary')} size="small" /> : <CheckCircle size={16} color={selected.size > 0 ? coreColor('white', 'onPrimary') : coreColor('#9CA3AF', 'textMuted')} />}
+                <Text className={`font-poppins-bold text-xs ${selected.size > 0 ? 'text-core-on-primary-white' : 'text-core-text-muted-gray-400'}`}>Approve</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -571,7 +572,7 @@ export default function ParticipantsList() {
                   key={p.id}
                   activeOpacity={0.72}
                   className={`min-h-16 px-4 flex-row items-center border-b border-ui-border ${
-                    isSelected ? 'bg-teal-50' : 'bg-white'
+                    isSelected ? 'bg-core-primary-soft-teal-50' : 'bg-core-surface-white'
                   }`}
                   onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
                   onLongPress={() => {
@@ -582,7 +583,7 @@ export default function ParticipantsList() {
                   {selectMode && (
                     <View style={{ width: 42 }}>
                       {isSelected
-                        ? <CheckSquare size={18} color="#0F766E" />
+                        ? <CheckSquare size={18} color={coreColor("#0F766E", 'primaryText')} />
                         : <Square size={18} color={ui.colors.textSubtle} />}
                     </View>
                   )}
@@ -633,9 +634,9 @@ export default function ParticipantsList() {
                           event.stopPropagation();
                           router.push(`/candidate/${p.profile_slug}` as any);
                         }}
-                        className="h-8 px-2.5 rounded-lg border border-emerald-200 bg-emerald-50 items-center justify-center"
+                        className="h-8 px-2.5 rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 items-center justify-center"
                       >
-                        <Text className="font-poppins-bold text-[9px] text-emerald-700">Public Profile</Text>
+                        <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700">Public Profile</Text>
                       </TouchableOpacity>
                     )}
                     {!selectMode && <ChevronRight size={17} color={ui.colors.textSubtle} />}
@@ -653,7 +654,7 @@ export default function ParticipantsList() {
               return (
                 <Animated.View key={p.id} entering={FadeInUp.delay((index % 10) * 50)}>
                   <TouchableOpacity
-                    className={`min-h-[72px] flex-row items-center justify-between border-b border-ssf-border px-3 py-2 ${isSelected ? 'bg-green-50' : 'bg-ssf-surface'
+                    className={`min-h-[72px] flex-row items-center justify-between border-b border-ssf-border px-3 py-2 ${isSelected ? 'bg-core-success-soft-green-50' : 'bg-ssf-surface'
                       }`}
                     onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => {
@@ -663,7 +664,7 @@ export default function ParticipantsList() {
                   >
                     {selectMode && (
                       <View className="mr-3">
-                        {isSelected ? <CheckSquare size={20} color="#1B6B3A" /> : <Square size={20} color="#9CA3AF" />}
+                        {isSelected ? <CheckSquare size={20} color={coreColor("#1B6B3A", 'primaryText')} /> : <Square size={20} color={coreColor("#9CA3AF", 'textMuted')} />}
                       </View>
                     )}
 
@@ -680,7 +681,7 @@ export default function ParticipantsList() {
                         {p.chest_number ? `No: ${p.chest_number}` : 'No Chest No.'} • Cat: {p.category_code} {p.gender ? `• ${p.gender === 'boys' ? 'B' : 'G'}` : ''}
                       </Text>
                       {p.organisations && (
-                        <Text numberOfLines={1} className="mt-0.5 font-poppins text-[9px] text-blue-600">
+                        <Text numberOfLines={1} className="mt-0.5 font-poppins text-[9px] text-core-info-blue-600">
                           🏠 {p.organisations.name} ({p.organisations.org_type})
                         </Text>
                       )}
@@ -694,12 +695,12 @@ export default function ParticipantsList() {
                               e.stopPropagation();
                               router.push(`/candidate/${p.profile_slug}` as any);
                             }}
-                            className="rounded-md bg-emerald-50 px-2 py-1"
+                            className="rounded-md bg-core-success-soft-emerald-50 px-2 py-1"
                           >
-                            <Text className="font-poppins-bold text-[8px] text-emerald-700">Public</Text>
+                            <Text className="font-poppins-bold text-[8px] text-core-success-emerald-700">Public</Text>
                           </TouchableOpacity>
                         )}
-                        <ChevronRight size={16} color="#9CA3AF" />
+                        <ChevronRight size={16} color={coreColor("#9CA3AF", 'textMuted')} />
                       </View>
                     )}
                   </TouchableOpacity>

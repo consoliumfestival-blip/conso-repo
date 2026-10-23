@@ -1,3 +1,5 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { useCoreOverlayScope } from '@/core/contexts/CoreAppearanceContext';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
@@ -29,6 +31,7 @@ const NotificationContext = createContext<NotificationContextType>({
 export const useNotification = () => useContext(NotificationContext);
 
 export const NotificationProvider = ({ children }: { children: React.ReactNode }) => {
+  const { style: themeStyle, ...themeProps } = useCoreOverlayScope();
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const notificationListener = useRef<Notifications.Subscription>();
@@ -179,7 +182,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
       
       {/* Toast Popup */}
       {toast && toast.visible && (
-        <View style={{
+        <View {...themeProps} style={[themeStyle, {
           position: 'absolute',
           top: Platform.OS === 'web' ? 30 : 60,
           left: 0,
@@ -187,7 +190,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
           alignItems: 'center',
           zIndex: 9999,
           pointerEvents: 'none'
-        }}>
+        }]}>
           <Animated.View style={{
             opacity: fadeAnim,
             transform: [{
@@ -196,9 +199,9 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
                 outputRange: [-30, 0]
               })
             }],
-            backgroundColor: 'rgba(30, 41, 59, 0.94)',
+            backgroundColor: coreAlpha(coreColor('#1e293b', 'surface'), 0.94),
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.16)',
+            borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.16),
             borderRadius: 18,
             padding: 14,
             paddingHorizontal: 16,
@@ -220,12 +223,12 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
               default: {}
             })
           }}>
-            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.15), alignItems: 'center', justifyContent: 'center', marginRight: 16 }}>
               <Text style={{ fontSize: 20 }}>🔔</Text>
             </View>
             <View style={{ flex: 1, paddingRight: 8 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 15, marginBottom: 2, fontWeight: '600', letterSpacing: -0.2 }}>{toast.title}</Text>
-              <Text style={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: 13, lineHeight: 18 }} numberOfLines={2}>{toast.message}</Text>
+              <Text style={{ color: coreColor('#FFFFFF', 'text'), fontSize: 15, marginBottom: 2, fontWeight: '600', letterSpacing: -0.2 }}>{toast.title}</Text>
+              <Text style={{ color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.85), fontSize: 13, lineHeight: 18 }} numberOfLines={2}>{toast.message}</Text>
             </View>
           </Animated.View>
         </View>

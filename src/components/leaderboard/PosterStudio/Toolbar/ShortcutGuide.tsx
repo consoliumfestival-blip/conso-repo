@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React from 'react';
 
 interface ShortcutGuideProps {
@@ -52,7 +53,7 @@ const styles: Record<string, React.CSSProperties> = {
   overlay: {
     position: 'fixed',
     inset: 0,
-    backgroundColor: 'rgba(15,23,42,0.6)',
+    backgroundColor: coreAlpha(coreColor('#0f172a', 'overlay'), 0.6),
     zIndex: 99999,
     display: 'flex',
     alignItems: 'center',
@@ -60,7 +61,7 @@ const styles: Record<string, React.CSSProperties> = {
     backdropFilter: 'blur(4px)',
   },
   modal: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
     borderRadius: 12,
     padding: 24,
     width: 400,
@@ -72,20 +73,20 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    borderBottom: '1px solid #E2E8F0',
+    borderBottom: `1px solid ${coreColor('#E2E8F0', 'border')}`,
     paddingBottom: 12,
   },
   title: {
     margin: 0,
     fontSize: 18,
     fontWeight: 700,
-    color: '#0F172A',
+    color: coreColor('#0F172A', 'overlay'),
   },
   closeBtn: {
     background: 'none',
     border: 'none',
     fontSize: 24,
-    color: '#64748B',
+    color: coreColor('#64748B', 'textMuted'),
     cursor: 'pointer',
     lineHeight: 1,
   },
@@ -103,17 +104,17 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
   },
   keyBadge: {
-    backgroundColor: '#F1F5F9',
-    border: '1px solid #CBD5E1',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
+    border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
     borderRadius: 6,
     padding: '4px 8px',
     fontSize: 12,
     fontFamily: 'monospace',
     fontWeight: 600,
-    color: '#475569',
+    color: coreColor('#475569', 'text'),
   },
   action: {
     fontSize: 14,
-    color: '#334155',
+    color: coreColor('#334155', 'text'),
   },
 };

@@ -28,8 +28,8 @@ export const SsfInput: React.FC<SsfInputProps> = ({
       )}
       <View style={{ position: 'relative', flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
-          className={`flex-1 bg-white border ${
-            error ? 'border-red-500' : 'border-ui-border'
+          className={`flex-1 bg-core-surface-white border ${
+            error ? 'border-core-danger-red-500' : 'border-ui-border'
           } rounded-xl px-4 text-ui-text font-poppins`}
           style={{ paddingRight: showToggle ? 48 : 16, minHeight: 46 }}
           placeholderTextColor={ui.colors.textSubtle}
@@ -54,7 +54,7 @@ export const SsfInput: React.FC<SsfInputProps> = ({
         )}
       </View>
       {error && (
-        <Text className="text-red-600 font-poppins text-xs mt-1.5">{error}</Text>
+        <Text className="text-core-danger-red-600 font-poppins text-xs mt-1.5">{error}</Text>
       )}
     </View>
   );

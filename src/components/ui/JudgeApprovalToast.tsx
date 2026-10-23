@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
@@ -124,14 +125,14 @@ export const JudgeApprovalToast = () => {
   return (
     <Animated.View
       style={[styles.container, { opacity: fadeAnim, transform: [{ translateY }] }]}
-      className={`absolute top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto sm:w-96 z-[9999] flex-row items-center p-4 rounded-xl border shadow-lg ${isAuto ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}
+      className={`absolute top-4 left-4 right-4 sm:top-6 sm:right-6 sm:left-auto sm:w-96 z-[9999] flex-row items-center p-4 rounded-xl border shadow-lg ${isAuto ? 'bg-core-success-soft-green-50 border-core-success-soft-green-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}
     >
-      <View className={`mr-3 p-2 rounded-full ${isAuto ? 'bg-green-100' : 'bg-blue-100'}`}>
-        {isAuto ? <CheckCircle2 size={24} color="#16A34A" /> : <ShieldCheck size={24} color={ui.colors.info} />}
+      <View className={`mr-3 p-2 rounded-full ${isAuto ? 'bg-core-success-soft-green-100' : 'bg-core-info-soft-blue-100'}`}>
+        {isAuto ? <CheckCircle2 size={24} color={coreColor("#16A34A", 'success')} /> : <ShieldCheck size={24} color={ui.colors.info} />}
       </View>
       <View className="flex-1">
-        <Text className={`font-poppins-bold text-sm ${isAuto ? 'text-green-900' : 'text-blue-900'}`}>{currentNotif.title}</Text>
-        <Text className={`font-poppins-regular text-xs mt-0.5 ${isAuto ? 'text-green-800' : 'text-blue-800'}`}>{currentNotif.body}</Text>
+        <Text className={`font-poppins-bold text-sm ${isAuto ? 'text-core-success-green-900' : 'text-core-info-blue-900'}`}>{currentNotif.title}</Text>
+        <Text className={`font-poppins-regular text-xs mt-0.5 ${isAuto ? 'text-core-success-green-800' : 'text-core-info-blue-800'}`}>{currentNotif.body}</Text>
       </View>
       
       {!isAuto && (
@@ -140,14 +141,14 @@ export const JudgeApprovalToast = () => {
             hideToast();
             router.push('/(admin)/judges');
           }} 
-          className="bg-blue-600 px-3 py-1.5 rounded-lg ml-2"
+          className="bg-core-primary-blue-600 px-3 py-1.5 rounded-lg ml-2"
         >
-          <Text className="font-poppins-semibold text-white text-xs">View</Text>
+          <Text className="font-poppins-semibold text-core-on-primary-white text-xs">View</Text>
         </TouchableOpacity>
       )}
 
       <TouchableOpacity onPress={hideToast} className="p-2 ml-1">
-        <X size={18} color={isAuto ? "#166534" : ui.colors.info} />
+        <X size={18} color={isAuto ? coreColor("#166534", 'success') : ui.colors.info} />
       </TouchableOpacity>
     </Animated.View>
   );

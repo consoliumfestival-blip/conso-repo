@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
@@ -273,9 +274,9 @@ export default function ImportJuniorDataset() {
         <SsfButton label="Choose JSON file" onPress={handleChooseFile} disabled={isProcessing} />
       </SsfCard>
 
-      <SsfCard className="mb-6 bg-yellow-50 border border-yellow-200">
-        <Text className="font-poppins-bold text-yellow-800 mb-2">Production Safety Rules</Text>
-        <Text className="font-poppins text-xs text-yellow-700 leading-5">
+      <SsfCard className="mb-6 bg-core-warning-soft-yellow-50 border border-core-warning-soft-yellow-200">
+        <Text className="font-poppins-bold text-core-warning-yellow-800 mb-2">Production Safety Rules</Text>
+        <Text className="font-poppins text-xs text-core-warning-yellow-700 leading-5">
           • All names are normalized to FULL CAPITALS.{'\n'}
           • Chest number conflicts block import if names mismatch.{'\n'}
           • Valid items are imported; invalid items are skipped without dropping the participant.{'\n'}
@@ -285,12 +286,12 @@ export default function ImportJuniorDataset() {
 
       <View className="flex-row gap-4 mb-6">
         <SsfCard className="flex-1 items-center py-4">
-          <FileText size={24} color="#1B6B3A" className="mb-2" />
+          <FileText size={24} color={coreColor("#1B6B3A", 'primaryText')} className="mb-2" />
           <Text className="font-poppins-bold text-2xl">{dataset.length}</Text>
           <Text className="font-poppins text-xs text-ssf-text-muted">Total Participants</Text>
         </SsfCard>
         <SsfCard className="flex-1 items-center py-4">
-          <Database size={24} color="#1B6B3A" className="mb-2" />
+          <Database size={24} color={coreColor("#1B6B3A", 'primaryText')} className="mb-2" />
           <Text className="font-poppins-bold text-2xl">
             {dataset.reduce((acc, curr) => acc + (curr.items?.length || 0), 0)}
           </Text>
@@ -300,29 +301,29 @@ export default function ImportJuniorDataset() {
 
       {/* Internal JSON Validation */}
       {internalValidation && !internalValidation.isValid && (
-        <SsfCard className="mb-6 bg-red-50 border border-red-300">
+        <SsfCard className="mb-6 bg-core-danger-soft-red-50 border border-core-danger-soft-red-300">
           <View className="flex-row items-center mb-2">
-            <AlertCircle color="#DC2626" size={20} className="mr-2" />
-            <Text className="font-poppins-bold text-red-700">Internal JSON Duplication Detected</Text>
+            <AlertCircle color={coreColor("#DC2626", 'danger')} size={20} className="mr-2" />
+            <Text className="font-poppins-bold text-core-danger-red-700">Internal JSON Duplication Detected</Text>
           </View>
           {internalValidation.errors.map((e, i) => (
-            <Text key={i} className="font-poppins text-xs text-red-600 mb-1">• {e}</Text>
+            <Text key={i} className="font-poppins text-xs text-core-danger-red-600 mb-1">• {e}</Text>
           ))}
         </SsfCard>
       )}
 
       {/* Database Validation Warnings */}
       {dbConflicts.size > 0 && (
-        <SsfCard className="mb-6 border border-orange-300 bg-orange-50">
-          <Text className="font-poppins-bold text-orange-800 mb-2">Database Duplicates Detected</Text>
-          <Text className="font-poppins text-xs text-orange-700 mb-4">
+        <SsfCard className="mb-6 border border-core-warning-soft-orange-300 bg-core-warning-soft-orange-50">
+          <Text className="font-poppins-bold text-core-warning-orange-800 mb-2">Database Duplicates Detected</Text>
+          <Text className="font-poppins text-xs text-core-warning-orange-700 mb-4">
             The following chest numbers already exist. If names mismatch, import will be blocked.
           </Text>
           {Array.from(dbConflicts.entries()).map(([chest, conflict]) => (
-            <View key={chest} className={`mb-2 p-2 rounded-lg border ${conflict.isMismatch ? 'bg-red-100 border-red-300' : 'bg-green-50 border-green-200'}`}>
-              <Text className={`font-poppins-bold ${conflict.isMismatch ? 'text-red-800' : 'text-green-800'}`}>Chest: {chest}</Text>
+            <View key={chest} className={`mb-2 p-2 rounded-lg border ${conflict.isMismatch ? 'bg-core-danger-soft-red-100 border-core-danger-soft-red-300' : 'bg-core-success-soft-green-50 border-core-success-soft-green-200'}`}>
+              <Text className={`font-poppins-bold ${conflict.isMismatch ? 'text-core-danger-red-800' : 'text-core-success-green-800'}`}>Chest: {chest}</Text>
               <Text className="font-poppins text-xs">DB Name: {conflict.name}</Text>
-              {conflict.isMismatch && <Text className="font-poppins-bold text-xs text-red-600 mt-1">MISMATCH! Execution blocked.</Text>}
+              {conflict.isMismatch && <Text className="font-poppins-bold text-xs text-core-danger-red-600 mt-1">MISMATCH! Execution blocked.</Text>}
             </View>
           ))}
         </SsfCard>
@@ -333,14 +334,14 @@ export default function ImportJuniorDataset() {
         <View className="flex-row justify-between items-center mb-4">
           <Text className="font-poppins-bold text-lg">Execution Panel</Text>
           {isReady ? (
-            <View className="bg-green-100 px-3 py-1 rounded-full border border-green-300 flex-row items-center">
-              <CheckCircle size={14} color="#16A34A" className="mr-1" />
-              <Text className="font-poppins-bold text-green-700 text-xs">Ready for Import</Text>
+            <View className="bg-core-success-soft-green-100 px-3 py-1 rounded-full border border-core-success-soft-green-300 flex-row items-center">
+              <CheckCircle size={14} color={coreColor("#16A34A", 'success')} className="mr-1" />
+              <Text className="font-poppins-bold text-core-success-green-700 text-xs">Ready for Import</Text>
             </View>
           ) : (
-            <View className="bg-red-100 px-3 py-1 rounded-full border border-red-300 flex-row items-center">
-              <AlertCircle size={14} color="#DC2626" className="mr-1" />
-              <Text className="font-poppins-bold text-red-700 text-xs">Validation Failed</Text>
+            <View className="bg-core-danger-soft-red-100 px-3 py-1 rounded-full border border-core-danger-soft-red-300 flex-row items-center">
+              <AlertCircle size={14} color={coreColor("#DC2626", 'danger')} className="mr-1" />
+              <Text className="font-poppins-bold text-core-danger-red-700 text-xs">Validation Failed</Text>
             </View>
           )}
         </View>
@@ -348,7 +349,7 @@ export default function ImportJuniorDataset() {
         {isProcessing && (
           <View className="mb-4">
             <Text className="font-poppins text-xs text-ssf-text-muted mb-1">Importing Data... {progress}%</Text>
-            <View className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <View className="h-2 w-full bg-core-surface-strong-gray-200 rounded-full overflow-hidden">
               <View className="h-full bg-ssf-primary" style={{ width: `${progress}%` }} />
             </View>
           </View>
@@ -360,20 +361,20 @@ export default function ImportJuniorDataset() {
             onPress={executeImport} 
             isLoading={isProcessing} 
             disabled={!isReady || isProcessing}
-            icon={<Play size={16} color="white" />}
+            icon={<Play size={16} color={coreColor("white", 'onPrimary')} />}
           />
         ) : (
-          <View className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200">
+          <View className="mt-4 p-4 rounded-xl bg-core-surface-muted-gray-50 border border-core-border-gray-200">
             <Text className="font-poppins-bold text-lg mb-2">Import Report</Text>
-            <Text className="font-poppins text-sm mb-1 text-green-700">âœ… Imported Participants: {importReport.imported_participants}</Text>
-            <Text className="font-poppins text-sm mb-1 text-green-700">âœ… Imported Registrations: {importReport.imported_registrations}</Text>
-            <Text className="font-poppins text-sm mb-1 text-gray-500">â­ï¸ Skipped Participants: {importReport.skipped_participants}</Text>
-            <Text className="font-poppins text-sm mb-1 text-gray-500">â­ï¸ Skipped Registrations: {importReport.skipped_registrations}</Text>
+            <Text className="font-poppins text-sm mb-1 text-core-success-green-700">âœ… Imported Participants: {importReport.imported_participants}</Text>
+            <Text className="font-poppins text-sm mb-1 text-core-success-green-700">âœ… Imported Registrations: {importReport.imported_registrations}</Text>
+            <Text className="font-poppins text-sm mb-1 text-core-text-muted-gray-500">â­ï¸ Skipped Participants: {importReport.skipped_participants}</Text>
+            <Text className="font-poppins text-sm mb-1 text-core-text-muted-gray-500">â­ï¸ Skipped Registrations: {importReport.skipped_registrations}</Text>
             {importReport.invalid_items?.length > 0 && (
-              <Text className="font-poppins text-sm mb-1 text-orange-600">âš ï¸ Invalid Items Skipped: {importReport.invalid_items.length}</Text>
+              <Text className="font-poppins text-sm mb-1 text-core-warning-orange-600">âš ï¸ Invalid Items Skipped: {importReport.invalid_items.length}</Text>
             )}
             {importReport.errors?.length > 0 && (
-              <Text className="font-poppins text-sm mb-3 text-red-600">âŒ Errors: {importReport.errors.length}</Text>
+              <Text className="font-poppins text-sm mb-3 text-core-danger-red-600">âŒ Errors: {importReport.errors.length}</Text>
             )}
             <SsfButton 
               label="Download JSON Report" 
@@ -388,23 +389,23 @@ export default function ImportJuniorDataset() {
       {/* Dataset Preview */}
       <Text className="font-poppins-bold text-lg mb-4 text-ssf-text">Dataset Preview (Normalized)</Text>
       {dataset.map((row, idx) => (
-        <View key={idx} className="mb-3 p-3 rounded-xl border border-gray-200 bg-white shadow-sm shadow-black/5">
+        <View key={idx} className="mb-3 p-3 rounded-xl border border-core-border-gray-200 bg-core-surface-white shadow-sm shadow-black/5">
           <View className="flex-row justify-between mb-2">
             <View className="flex-1 mr-2">
-              <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase">Chest No</Text>
+              <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase">Chest No</Text>
               <Text className="font-poppins-bold text-ssf-text">{row.chest_number || row.chest_no}</Text>
             </View>
             <View className="flex-2 flex-grow">
-              <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase">Participant Name</Text>
+              <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase">Participant Name</Text>
               <Text className="font-poppins-bold text-ssf-text">{row.name}</Text>
             </View>
           </View>
           <View>
-            <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase mb-1">Items ({row.items?.length || 0})</Text>
+            <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase mb-1">Items ({row.items?.length || 0})</Text>
             <View className="flex-row flex-wrap gap-1">
               {row.items?.map(item => (
-                <View key={item} className="bg-gray-100 px-2 py-1 rounded border border-gray-200">
-                  <Text className="font-poppins text-xs text-gray-700">{item}</Text>
+                <View key={item} className="bg-core-surface-muted-gray-100 px-2 py-1 rounded border border-core-border-gray-200">
+                  <Text className="font-poppins text-xs text-core-text-gray-700">{item}</Text>
                 </View>
               ))}
             </View>

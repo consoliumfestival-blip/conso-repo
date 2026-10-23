@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
@@ -134,7 +135,7 @@ export default function EditSchedule() {
     }
   };
 
-  if (isLoadingItems || isLoadingSchedules) return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 40 }} />;
+  if (isLoadingItems || isLoadingSchedules) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
 
   if (!schedule) {
     return (
@@ -150,8 +151,8 @@ export default function EditSchedule() {
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-3 px-3">
       <View className="flex-row items-center mb-4">
-        <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 bg-white border border-ui-border rounded-lg items-center justify-center">
-          <ArrowLeft size={18} color="#334155" />
+        <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 bg-core-surface-white border border-ui-border rounded-lg items-center justify-center">
+          <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
         </TouchableOpacity>
         <View>
           <Text className="text-xl font-poppins-black text-ui-text">Edit Schedule</Text>
@@ -228,18 +229,18 @@ export default function EditSchedule() {
                 className={`h-10 flex-1 rounded-lg border items-center justify-center ${
                   judgeCount === n
                     ? 'bg-ssf-primary border-ssf-primary'
-                    : 'bg-white border-ssf-border'
+                    : 'bg-core-surface-white border-ssf-border'
                 }`}
               >
                 <Text className={`font-poppins-bold text-xs ${
-                  judgeCount === n ? 'text-white' : 'text-ssf-text'
+                  judgeCount === n ? 'text-core-on-primary-white' : 'text-ssf-text'
                 }`}>{n}</Text>
               </TouchableOpacity>
             ))}
           </View>
           {schedule?.assigned_judge_ids?.length > judgeCount && (
-            <View className="bg-red-50 border border-red-200 p-3 rounded-xl mt-3">
-              <Text className="font-poppins-bold text-red-700 text-xs">
+            <View className="bg-core-danger-soft-red-50 border border-core-danger-soft-red-200 p-3 rounded-xl mt-3">
+              <Text className="font-poppins-bold text-core-danger-red-700 text-xs">
                 {schedule.assigned_judge_ids.length} judges are currently assigned, but the new requirement is {judgeCount}.
                 {' '}Remove {schedule.assigned_judge_ids.length - judgeCount} extra judge(s) from Judge Panel.
               </Text>
@@ -248,11 +249,11 @@ export default function EditSchedule() {
         </View>
 
         {conflicts && conflicts.length > 0 && (
-          <View className="bg-red-50 border border-red-200 p-3 rounded-xl flex-row items-start gap-x-2 mt-2">
-            <AlertTriangle size={18} color="#DC2626" className="mt-0.5" />
+          <View className="bg-core-danger-soft-red-50 border border-core-danger-soft-red-200 p-3 rounded-xl flex-row items-start gap-x-2 mt-2">
+            <AlertTriangle size={18} color={coreColor("#DC2626", 'danger')} className="mt-0.5" />
             <View className="flex-1">
-              <Text className="font-poppins-bold text-red-700 text-sm">Venue Conflict Detected</Text>
-              <Text className="font-poppins text-red-600 text-xs">
+              <Text className="font-poppins-bold text-core-danger-red-700 text-sm">Venue Conflict Detected</Text>
+              <Text className="font-poppins text-core-danger-red-600 text-xs">
                 This venue is already booked for {conflicts.map((c: any) => c.items?.item_name_en).join(', ')} during this time.
               </Text>
             </View>

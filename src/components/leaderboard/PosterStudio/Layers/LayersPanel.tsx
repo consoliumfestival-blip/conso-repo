@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState } from 'react';
 import { useLayerStore } from '../Stores/layerStore';
 import { useHistoryStore } from '../Stores/historyStore';
@@ -81,11 +82,11 @@ export default function LayersPanel() {
             onClick={() => setSelectedIds([l.id])}
             style={{
               ...styles.layerItem,
-              backgroundColor: selectedIds.includes(l.id) ? '#2a2a2a' : 'transparent',
-              borderColor: selectedIds.includes(l.id) ? '#38bdf8' : '#2a2a2a',
+              backgroundColor: selectedIds.includes(l.id) ? coreColor('#2a2a2a', 'surfaceStrong') : 'transparent',
+              borderColor: selectedIds.includes(l.id) ? coreColor('#38bdf8', 'border') : coreColor('#2a2a2a', 'border'),
               opacity: isDragged ? 0.4 : l.isVisible ? 1 : 0.45,
-              borderTop: isDropTarget && dropIsAboveVisually ? '2px solid #38bdf8' : '1px solid ' + (selectedIds.includes(l.id) ? '#38bdf8' : '#2a2a2a'),
-              borderBottom: isDropTarget && !dropIsAboveVisually ? '2px solid #38bdf8' : '1px solid ' + (selectedIds.includes(l.id) ? '#38bdf8' : '#2a2a2a'),
+              borderTop: isDropTarget && dropIsAboveVisually ? `2px solid ${coreColor('#38bdf8', 'border')}` : '1px solid ' + (selectedIds.includes(l.id) ? coreColor('#38bdf8', 'border') : coreColor('#2a2a2a', 'border')),
+              borderBottom: isDropTarget && !dropIsAboveVisually ? `2px solid ${coreColor('#38bdf8', 'border')}` : '1px solid ' + (selectedIds.includes(l.id) ? coreColor('#38bdf8', 'border') : coreColor('#2a2a2a', 'border')),
             }}
           >
             <div style={styles.dragHandle}>
@@ -120,7 +121,7 @@ export default function LayersPanel() {
 
 const styles: Record<string, React.CSSProperties> = {
   panelSection: { display: 'flex', flexDirection: 'column', gap: 6, padding: '16px 16px 80px 16px', overflowY: 'auto', height: '100%' },
-  emptyMsg: { fontSize: 13, color: '#94A3B8', textAlign: 'center', padding: '20px 0' },
+  emptyMsg: { fontSize: 13, color: coreColor('#94A3B8', 'textSubtle'), textAlign: 'center', padding: '20px 0' },
   layerItem: { 
     display: 'flex', 
     alignItems: 'center', 
@@ -131,9 +132,9 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'background-color 0.15s',
     userSelect: 'none'
   },
-  dragHandle: { display: 'flex', alignItems: 'center', color: '#64748B', cursor: 'grab' },
-  layerIcon: { flexShrink: 0, width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' },
-  layerName: { flex: 1, fontSize: 13, fontWeight: 500, color: '#E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  dragHandle: { display: 'flex', alignItems: 'center', color: coreColor('#64748B', 'textMuted'), cursor: 'grab' },
+  layerIcon: { flexShrink: 0, width: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', color: coreColor('#94A3B8', 'textSubtle') },
+  layerName: { flex: 1, fontSize: 13, fontWeight: 500, color: coreColor('#E2E8F0', 'text'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   layerActions: { display: 'flex', gap: 4 },
   miniBtn: { 
     background: 'none', 
@@ -144,7 +145,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     transition: 'color 0.1s, background-color 0.1s' 
   },
 };

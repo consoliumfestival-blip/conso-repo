@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React from 'react';
 import { useLayerStore, LayerData } from '../Stores/layerStore';
 import { Square, Circle, Image as ImageIcon, Type } from 'lucide-react';
@@ -93,19 +94,19 @@ export default function AssetsPanel() {
         <h3 style={styles.sectionTitle}>Basic Elements</h3>
         <div style={styles.grid}>
           <button style={styles.assetBtn} onClick={handleAddText}>
-            <Type size={24} color="#94A3B8" />
+            <Type size={24} color={coreColor("#94A3B8", 'textSubtle')} />
             <span style={styles.assetLabel}>Text</span>
           </button>
           <button style={styles.assetBtn} onClick={() => handleAddShape('rect')}>
-            <Square size={24} color="#94A3B8" />
+            <Square size={24} color={coreColor("#94A3B8", 'textSubtle')} />
             <span style={styles.assetLabel}>Rectangle</span>
           </button>
           <button style={styles.assetBtn} onClick={() => handleAddShape('circle')}>
-            <Circle size={24} color="#94A3B8" />
+            <Circle size={24} color={coreColor("#94A3B8", 'textSubtle')} />
             <span style={styles.assetLabel}>Circle</span>
           </button>
           <button style={styles.assetBtn} onClick={handleAddImagePlaceholder}>
-            <ImageIcon size={24} color="#94A3B8" />
+            <ImageIcon size={24} color={coreColor("#94A3B8", 'textSubtle')} />
             <span style={styles.assetLabel}>Image</span>
           </button>
         </div>
@@ -137,7 +138,7 @@ const styles: Record<string, React.CSSProperties> = {
   sectionTitle: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
@@ -153,26 +154,26 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 8,
     padding: '24px 12px',
-    backgroundColor: '#1f1f1f',
-    border: '1px solid #2a2a2a',
+    backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'),
+    border: `1px solid ${coreColor('#2a2a2a', 'border')}`,
     borderRadius: 8,
     cursor: 'pointer',
     transition: 'all 0.15s ease',
   },
   assetLabel: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     fontWeight: 500,
   },
   infoBox: {
     padding: '16px',
-    backgroundColor: 'rgba(56, 189, 248, 0.05)',
+    backgroundColor: coreAlpha(coreColor('#38bdf8', 'overlay'), 0.05),
     border: '1px solid rgba(56, 189, 248, 0.1)',
     borderRadius: 8,
   },
   infoText: {
     fontSize: 12,
-    color: '#38bdf8',
+    color: coreColor('#38bdf8', 'info'),
     lineHeight: 1.5,
     textAlign: 'center',
   }

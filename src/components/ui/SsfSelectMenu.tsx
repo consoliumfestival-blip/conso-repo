@@ -1,16 +1,7 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-  ViewStyle,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Check, ChevronDown, Search, X } from 'lucide-react-native';
 
 import { ui } from '@/constants/designSystem';
@@ -128,7 +119,7 @@ export function SsfSelectMenu({
         >
           {selectedOption?.label || placeholder}
         </Text>
-        <ChevronDown size={15} color={active ? ui.colors.primary : ui.colors.textMuted} />
+        <ChevronDown size={15} color={active ? ui.colors.primaryText : ui.colors.textMuted} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -137,6 +128,7 @@ export function SsfSelectMenu({
           {anchor && (
             <View
               accessibilityRole="menu"
+              {...{ dataSet: { coreGlass: 'surface' } } as any}
               style={[
                 styles.menu,
                 {
@@ -198,7 +190,7 @@ export function SsfSelectMenu({
                         >
                           {option.label}
                         </Text>
-                        {selected && <Check size={15} color={ui.colors.primary} strokeWidth={2.5} />}
+                        {selected && <Check size={15} color={ui.colors.primaryText} strokeWidth={2.5} />}
                       </TouchableOpacity>
                     </React.Fragment>
                   );
@@ -235,17 +227,17 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surfaceMuted,
   },
   triggerActive: {
-    borderColor: '#99DDD3',
+    borderColor: coreColor('#99DDD3', 'border'),
     backgroundColor: ui.colors.primarySoft,
   },
   triggerText: {
     flex: 1,
-    color: '#334155',
+    color: coreColor('#334155', 'text'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
   },
   triggerTextActive: {
-    color: ui.colors.primary,
+    color: ui.colors.primaryText,
   },
   menu: {
     position: 'absolute',
@@ -255,7 +247,7 @@ const styles = StyleSheet.create({
     borderColor: ui.colors.border,
     backgroundColor: ui.colors.surface,
     overflow: 'hidden',
-    shadowColor: ui.colors.text,
+    shadowColor: "#111827",
     shadowOpacity: 0.16,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
@@ -313,7 +305,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   itemTextSelected: {
-    color: ui.colors.primary,
+    color: ui.colors.primaryText,
     fontFamily: 'Poppins_700Bold',
   },
   itemTextDisabled: {

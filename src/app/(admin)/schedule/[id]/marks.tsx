@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import {
@@ -130,15 +131,15 @@ export default function MarkEntryPage() {
     );
   const visibleRegistrationIds = new Set(registrations.map((registration: any) => registration.id));
 
-  if (loadingRegs) return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 60 }} />;
+  if (loadingRegs) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 60 }} />;
 
   return (
     <View className="flex-1 bg-ssf-bg">
-      {!!ruleError && <Text className="p-3 text-red-700 font-poppins text-xs">{ruleError}</Text>}
+      {!!ruleError && <Text className="p-3 text-core-danger-red-700 font-poppins text-xs">{ruleError}</Text>}
       {/* Header */}
-      <View className="border-b border-ui-border bg-white px-4 py-3">
+      <View className="border-b border-ui-border bg-core-surface-white px-4 py-3">
         <View className="flex-row items-center mb-2">
-          <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-white">
+          <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
             <ArrowLeft size={18} color={ui.colors.text} />
           </TouchableOpacity>
           <Text className="text-lg font-poppins-black text-ssf-text flex-1" numberOfLines={1}>
@@ -168,10 +169,10 @@ export default function MarkEntryPage() {
                     {idx + 1}. {j.judge_name}
                   </Text>
                   <View className={`px-2 py-0.5 rounded-full ${
-                    allDone ? 'bg-green-100' : partial ? 'bg-yellow-100' : 'bg-slate-100'
+                    allDone ? 'bg-core-success-soft-green-100' : partial ? 'bg-core-warning-soft-yellow-100' : 'bg-core-surface-muted-slate-100'
                   }`}>
                     <Text className={`font-poppins-bold text-xs ${
-                      allDone ? 'text-green-700' : partial ? 'text-yellow-700' : 'text-slate-500'
+                      allDone ? 'text-core-success-green-700' : partial ? 'text-core-warning-yellow-700' : 'text-core-text-muted-slate-500'
                     }`}>
                       {allDone ? `✅ Submitted (${submitted}/${total})` :
                        partial ? `⏳ Partial (${submitted}/${total})` :
@@ -193,11 +194,11 @@ export default function MarkEntryPage() {
               className={`mx-1 px-3 py-1.5 rounded-full border ${
                 selectedJudge === j.id
                   ? 'bg-ssf-primary border-ssf-primary'
-                  : 'border-ui-border bg-white'
+                  : 'border-ui-border bg-core-surface-white'
               }`}
             >
               <Text className={`font-poppins-bold text-xs ${
-                selectedJudge === j.id ? 'text-white' : 'text-ssf-text'
+                selectedJudge === j.id ? 'text-core-on-primary-white' : 'text-ssf-text'
               }`}>
                 {j.name}
               </Text>
@@ -208,7 +209,7 @@ export default function MarkEntryPage() {
 
       {!selectedJudge ? (
         <View className="flex-1 items-center justify-center px-6">
-          <UserCheck size={48} color="#9CA3AF" />
+          <UserCheck size={48} color={coreColor("#9CA3AF", 'textMuted')} />
           <Text className="font-poppins-bold text-ssf-text-muted mt-3 text-center">
             Select a judge above to start entering marks
           </Text>
@@ -217,7 +218,7 @@ export default function MarkEntryPage() {
         <ScrollView className="flex-1 px-4 pt-4">
           {(!registrations || registrations.length === 0) ? (
             <SsfCard className="items-center py-8">
-              <AlertCircle size={36} color="#9CA3AF" />
+              <AlertCircle size={36} color={coreColor("#9CA3AF", 'textMuted')} />
               <Text className="font-poppins text-ssf-text-muted mt-2 text-center">
                 No participants with code letters found.{'\n'}Complete the Code Letter Draw first.
               </Text>
@@ -234,10 +235,10 @@ export default function MarkEntryPage() {
               return (
                 <SsfCard key={reg.id} className="mb-4">
                   {/* Code Letter header — judge sees CODE not name */}
-                  <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100">
+                  <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-core-border-gray-100">
                     <View className="flex-row items-center gap-x-2">
                       <View className="w-10 h-10 rounded-full bg-ssf-primary items-center justify-center">
-                        <Text className="font-poppins-black text-white text-lg">
+                        <Text className="font-poppins-black text-core-on-primary-white text-lg">
                           {reg.code_letter}
                         </Text>
                       </View>
@@ -253,16 +254,16 @@ export default function MarkEntryPage() {
                     </View>
                     {/* Grade badge */}
                     <View className={`px-3 py-1 rounded-full ${
-                      grade === 'A+' ? 'bg-green-100' :
-                      grade === 'A' ? 'bg-blue-50' :
-                      grade === 'B' ? 'bg-yellow-50' :
-                      grade === 'C' ? 'bg-orange-50' : 'bg-gray-50'
+                      grade === 'A+' ? 'bg-core-success-soft-green-100' :
+                      grade === 'A' ? 'bg-core-info-soft-blue-50' :
+                      grade === 'B' ? 'bg-core-warning-soft-yellow-50' :
+                      grade === 'C' ? 'bg-core-warning-soft-orange-50' : 'bg-core-surface-muted-gray-50'
                     }`}>
                       <Text className={`font-poppins-black text-lg ${
-                        grade === 'A+' ? 'text-green-700' :
-                        grade === 'A' ? 'text-blue-700' :
-                        grade === 'B' ? 'text-yellow-700' :
-                        grade === 'C' ? 'text-orange-700' : 'text-gray-400'
+                        grade === 'A+' ? 'text-core-success-green-700' :
+                        grade === 'A' ? 'text-core-info-blue-700' :
+                        grade === 'B' ? 'text-core-warning-yellow-700' :
+                        grade === 'C' ? 'text-core-warning-orange-700' : 'text-core-text-muted-gray-400'
                       }`}>{entry?.total_mark != null ? grade : '—'}</Text>
                     </View>
                   </View>
@@ -272,7 +273,7 @@ export default function MarkEntryPage() {
                     <View key={c.key} className="mb-3">
                       <View className="flex-row justify-between mb-1">
                         <Text className="font-poppins text-ssf-text text-sm">{c.label}</Text>
-                        <Text className="font-poppins-bold text-ssf-primary text-sm">
+                        <Text className="font-poppins-bold text-ui-primary-text text-sm">
                           {marks[reg.id]?.[selectedJudge]?.[c.key] ?? 0} / {c.max}
                         </Text>
                       </View>
@@ -284,12 +285,12 @@ export default function MarkEntryPage() {
                             className={`px-2.5 py-1 rounded-lg mb-1 border ${
                               (marks[reg.id]?.[selectedJudge]?.[c.key] ?? -1) === val
                                 ? 'bg-ssf-primary border-ssf-primary'
-                                : 'bg-gray-100 border-gray-200 opacity-80'
+                                : 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-80'
                             }`}
                           >
                             <Text className={`font-poppins-bold text-xs ${
                               (marks[reg.id]?.[selectedJudge]?.[c.key] ?? -1) === val
-                                ? 'text-white' : 'text-gray-600'
+                                ? 'text-core-on-primary-white' : 'text-core-text-gray-600'
                             }`}>{val}</Text>
                           </TouchableOpacity>
                         ))}
@@ -298,18 +299,18 @@ export default function MarkEntryPage() {
                   ))}
 
                   {/* Total */}
-                  <View className="bg-gray-50 rounded-xl p-3 mb-3 flex-row justify-between">
+                  <View className="bg-core-surface-muted-gray-50 rounded-xl p-3 mb-3 flex-row justify-between">
                     <Text className="font-poppins-bold text-ssf-text">Total Mark</Text>
-                    <Text className="font-poppins-black text-ssf-primary text-lg">{total} / {Number.isFinite(maximum) ? maximum : '—'}</Text>
+                    <Text className="font-poppins-black text-ui-primary-text text-lg">{total} / {Number.isFinite(maximum) ? maximum : '—'}</Text>
                   </View>
 
                   {/* Status indicator */}
                   {entry && (
                     <View className={`flex-row items-center gap-x-2 mb-3 px-3 py-2 rounded-lg ${
-                      entry.is_final ? 'bg-green-50' : 'bg-yellow-50'
+                      entry.is_final ? 'bg-core-success-soft-green-50' : 'bg-core-warning-soft-yellow-50'
                     }`}>
-                      <CheckCircle2 size={14} color={entry.is_final ? '#16A34A' : ui.colors.warning} />
-                      <Text className={`font-poppins text-xs ${entry.is_final ? 'text-green-700' : 'text-yellow-700'}`}>
+                      <CheckCircle2 size={14} color={entry.is_final ? coreColor('#16A34A', 'success') : ui.colors.warning} />
+                      <Text className={`font-poppins text-xs ${entry.is_final ? 'text-core-success-green-700' : 'text-core-warning-yellow-700'}`}>
                         {entry.is_final ? 'Finalized' : 'Draft saved'}
                       </Text>
                     </View>

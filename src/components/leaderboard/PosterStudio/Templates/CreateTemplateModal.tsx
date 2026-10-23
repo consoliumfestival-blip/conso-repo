@@ -1,15 +1,7 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useCallback } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-  Pressable,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Pressable } from 'react-native';
 import { X, UploadCloud, CheckCircle, Image as ImageIcon } from 'lucide-react-native';
 import { supabase } from '../../../../core/config/supabase';
 import { uploadService } from '../../../../services/storage/uploadService';
@@ -19,19 +11,19 @@ import { DEFAULT_STARTER_TEMPLATE } from '../Stores/templateStore';
 import { useQueryClient } from '@tanstack/react-query';
 
 const colors = {
-  navy: '#0B1F3A',
-  blue: '#123B73',
-  cyan: '#16B8D9',
-  teal: '#0F766E',
-  green: '#22C55E',
-  bg: '#F3F8FB',
-  card: '#FFFFFF',
-  border: '#DDEAF1',
-  text: '#0F172A',
-  muted: '#64748B',
-  soft: '#EAF7FA',
-  red: '#EF4444',
-  orange: '#F97316',
+  navy: coreColor('#0B1F3A', 'primaryHover'),
+  blue: coreColor('#123B73', 'primary'),
+  cyan: coreColor('#16B8D9', 'info'),
+  teal: coreColor('#0F766E', 'primary'),
+  green: coreColor('#22C55E', 'success'),
+  bg: coreColor('#F3F8FB', 'background'),
+  card: coreColor('#FFFFFF', 'surface'),
+  border: `${coreColor('#DDEAF1', 'border')}`,
+  text: coreColor('#0F172A', 'text'),
+  muted: coreColor('#64748B', 'textMuted'),
+  soft: coreColor('#EAF7FA', 'primarySoft'),
+  red: coreColor('#EF4444', 'danger'),
+  orange: coreColor('#F97316', 'warning'),
 };
 
 const ASPECT_OPTIONS = [
@@ -252,7 +244,7 @@ export default function CreateTemplateModal({
             {/* ── UPLOADING / SAVING STATE ── */}
             {(step === 'uploading' || step === 'saving') && (
               <View style={styles.progressCard}>
-                <ActivityIndicator size="large" color={colors.teal} />
+                <ActivityIndicator size="large" color={coreColor(colors.teal, 'primaryText')} />
                 <Text style={styles.progressTitle}>
                   {step === 'uploading'
                     ? `Uploading to Cloudflare R2… ${uploadProgress}%`
@@ -332,7 +324,7 @@ export default function CreateTemplateModal({
                       <Text style={[styles.aspectBtnText, aspectRatio === opt.value && styles.aspectBtnTextActive]}>
                         {opt.label}
                       </Text>
-                      <Text style={[styles.aspectDims, aspectRatio === opt.value && { color: colors.teal }]}>
+                      <Text style={[styles.aspectDims, aspectRatio === opt.value && { color: coreColor(colors.teal, 'primaryText') }]}>
                         {opt.width}×{opt.height}
                       </Text>
                     </TouchableOpacity>
@@ -368,7 +360,7 @@ export default function CreateTemplateModal({
 
                 {/* Actions */}
                 <TouchableOpacity style={styles.btnPrimary} onPress={handleCreate}>
-                  <UploadCloud size={18} color="#fff" />
+                  <UploadCloud size={18} color={coreColor("#fff", 'onPrimary')} />
                   <Text style={[styles.btnPrimaryText, { marginLeft: 8 }]}>
                     Create Database Template
                   </Text>
@@ -388,7 +380,7 @@ export default function CreateTemplateModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(11,31,58,0.55)',
+    backgroundColor: coreAlpha(coreColor('#0b1f3a', 'overlay'), 0.55),
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
@@ -417,7 +409,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 17,
     fontWeight: '800',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
   },
   headerSub: {
@@ -437,9 +429,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   errorBanner: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: coreColor('#FEF2F2', 'dangerSoft'),
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: coreColor('#FECACA', 'border'),
     borderRadius: 10,
     padding: 12,
     marginBottom: 12,
@@ -475,12 +467,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.45),
     padding: 8,
     alignItems: 'center',
   },
   previewChangeText: {
-    color: '#fff',
+    color: coreColor('#fff', 'onPrimary'),
     fontSize: 12,
     fontFamily: 'Poppins_700Bold',
   },
@@ -497,7 +489,7 @@ const styles = StyleSheet.create({
   },
   imagePlaceholderSub: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     fontFamily: 'Poppins_400Regular',
   },
   fileName: {
@@ -514,7 +506,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 14,
     color: colors.text,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
     fontFamily: 'Poppins_400Regular',
   },
   aspectRow: {
@@ -530,12 +522,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
     alignItems: 'center',
   },
   aspectBtnActive: {
     borderColor: colors.teal,
-    backgroundColor: `${colors.teal}14`,
+    backgroundColor: `${coreAlpha(colors.teal, 0.0784313725490196)}`,
   },
   aspectBtnText: {
     fontSize: 12,
@@ -544,18 +536,18 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold',
   },
   aspectBtnTextActive: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
   },
   aspectDims: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     fontFamily: 'Poppins_400Regular',
     marginTop: 2,
   },
   flowSummary: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: coreColor('#F0FDF4', 'successSoft'),
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: coreColor('#BBF7D0', 'border'),
     borderRadius: 10,
     padding: 14,
     marginTop: 12,
@@ -565,13 +557,13 @@ const styles = StyleSheet.create({
   flowTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     marginBottom: 4,
   },
   flowLine: {
     fontSize: 11,
-    color: '#166534',
+    color: coreColor('#166534', 'success'),
     fontFamily: 'Poppins_400Regular',
     lineHeight: 18,
   },
@@ -585,7 +577,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   btnPrimaryText: {
-    color: '#FFFFFF',
+    color: coreColor('#FFFFFF', 'onPrimary'),
     fontSize: 14,
     fontWeight: '700',
     fontFamily: 'Poppins_700Bold',
@@ -642,7 +634,7 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Poppins_900Black',
   },
   successSub: {
@@ -675,7 +667,7 @@ const styles = StyleSheet.create({
   },
   idValue: {
     fontSize: 11,
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_400Regular',
     letterSpacing: 0.5,
   },

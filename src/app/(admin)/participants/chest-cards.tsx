@@ -1,3 +1,5 @@
+import { fixedCoreOutputVariables, legacyCoreOutputColors } from '@/constants/coreThemeOutput';
+import { coreColor } from '@/constants/coreTheme';
 import { useQuery } from '@tanstack/react-query';
 import { generalEntryService } from '../../../services/generalEntryService';
 import { ui } from '@/constants/designSystem';
@@ -96,8 +98,8 @@ const defaultTemplate = (): ChestTemplate => ({
   updatedAt: new Date().toISOString(),
   fields: {
     chest: { x: 38, y: 96, width: 172, height: 56, fontSize: 38, color: '#EAB308' },
-    name: { x: 38, y: 160, width: 172, height: 24, fontSize: 16, color: ui.colors.surface },
-    unit: { x: 38, y: 190, width: 172, height: 18, fontSize: 12, color: ui.colors.surface },
+    name: { x: 38, y: 160, width: 172, height: 24, fontSize: 16, color: legacyCoreOutputColors.surface },
+    unit: { x: 38, y: 190, width: 172, height: 18, fontSize: 12, color: legacyCoreOutputColors.surface },
     qr: { x: 74, y: 220, width: 100, height: 100, borderRadius: 8, padding: 6 },
   },
 });
@@ -124,8 +126,8 @@ const readTemplates = () => {
     fields: {
       ...t.fields,
       chest: { ...t.fields.chest, color: t.fields.chest.color || '#EAB308' },
-      name: t.fields.name || { x: 38, y: 160, width: 172, height: 24, fontSize: 16, color: ui.colors.surface },
-      unit: t.fields.unit || { x: 38, y: 190, width: 172, height: 18, fontSize: 12, color: ui.colors.surface },
+      name: t.fields.name || { x: 38, y: 160, width: 172, height: 24, fontSize: 16, color: legacyCoreOutputColors.surface },
+      unit: t.fields.unit || { x: 38, y: 190, width: 172, height: 18, fontSize: 12, color: legacyCoreOutputColors.surface },
       qr: { ...t.fields.qr, borderRadius: t.fields.qr.borderRadius ?? 8, padding: t.fields.qr.padding ?? 6 },
     }
   }));
@@ -268,7 +270,7 @@ const FieldBox = ({
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: selected ? 1 : 0,
-        borderColor: selected ? ui.colors.info : 'transparent',
+        borderColor: selected ? legacyCoreOutputColors.info : 'transparent',
         borderStyle: 'dashed',
         borderRadius: (field.borderRadius ?? 0) * printScale,
         cursor: editable ? 'move' : 'default',
@@ -290,7 +292,7 @@ const FieldBox = ({
             bottom: -6,
             width: 12,
             height: 12,
-            backgroundColor: ui.colors.info,
+            backgroundColor: legacyCoreOutputColors.info,
             borderRadius: 6,
             cursor: 'nwse-resize',
           } as any}
@@ -332,14 +334,14 @@ const ChestCard = ({
   return (
     <View
       className="chest-card-wrapper"
-      style={{
+      style={{ ...fixedCoreOutputVariables,
         width: TEMPLATE_WIDTH * scale,
         height: TEMPLATE_HEIGHT * scale,
         borderRadius: 0,
         overflow: 'hidden',
-        backgroundColor: ui.colors.surface,
+        backgroundColor: legacyCoreOutputColors.surface,
         borderWidth: 1,
-        borderColor: ui.colors.border,
+        borderColor: legacyCoreOutputColors.border,
         position: 'relative',
       }}
     >
@@ -367,7 +369,7 @@ const ChestCard = ({
             padding: 18,
           }}
         >
-          <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.textMuted, fontSize: 12, textAlign: 'center' }}>
+          <Text style={{ fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.textMuted, fontSize: 12, textAlign: 'center' }}>
             {isPlainGroup ? 'GENERAL GROUP' : 'Upload an A6 PNG/JPG background template'}
           </Text>
         </View>
@@ -385,7 +387,7 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_700Bold',
-            color: isPlainGroup ? ui.colors.primary : template.fields.chest.color || '#EAB308',
+            color: isPlainGroup ? legacyCoreOutputColors.primary : template.fields.chest.color || '#EAB308',
             fontSize: (template.fields.chest.fontSize ?? 38) * scale,
             lineHeight: (template.fields.chest.height - 2) * scale,
             textAlign: 'center',
@@ -408,7 +410,7 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_300Light',
-            color: isPlainGroup ? ui.colors.text : template.fields.name.color || ui.colors.surface,
+            color: isPlainGroup ? legacyCoreOutputColors.text : template.fields.name.color || legacyCoreOutputColors.surface,
             fontSize: (participant.entry_kind === 'general_team'
               ? Math.min(template.fields.name.fontSize ?? 16, template.fields.name.height / 2)
               : template.fields.name.fontSize ?? 16) * scale,
@@ -434,7 +436,7 @@ const ChestCard = ({
         <Text
           style={{
             fontFamily: 'Montserrat_300Light',
-            color: isPlainGroup ? ui.colors.textMuted : template.fields.unit.color || ui.colors.surface,
+            color: isPlainGroup ? legacyCoreOutputColors.textMuted : template.fields.unit.color || legacyCoreOutputColors.surface,
             fontSize: (template.fields.unit.fontSize ?? 12) * scale,
             lineHeight: (template.fields.unit.height - 2) * scale,
             textAlign: 'center',
@@ -467,7 +469,7 @@ const ChestCard = ({
           style={{
             width: template.fields.qr.width * scale,
             height: template.fields.qr.height * scale,
-            backgroundColor: template.fields.qr.backgroundColor || ui.colors.surface,
+            backgroundColor: template.fields.qr.backgroundColor || legacyCoreOutputColors.surface,
             padding: (template.fields.qr.padding ?? 6) * scale,
             borderRadius: (template.fields.qr.borderRadius ?? 8) * scale,
             overflow: 'hidden',
@@ -853,8 +855,8 @@ export default function ChestCardsPage() {
       <View className="no-print">
         <View className="flex-row items-center justify-between mb-6">
           <View className="flex-row items-center flex-1">
-            <TouchableOpacity onPress={goBack} className="mr-3 p-2 bg-white border border-ssf-border rounded-full">
-              <ArrowLeft size={22} color="#07143D" />
+            <TouchableOpacity onPress={goBack} className="mr-3 p-2 bg-core-surface-white border border-ssf-border rounded-full">
+              <ArrowLeft size={22} color={coreColor("#07143D", 'info')} />
             </TouchableOpacity>
             <View className="flex-1">
               <Text className="text-2xl font-poppins-black text-ssf-text">Chest Card Templates</Text>
@@ -867,7 +869,7 @@ export default function ChestCardsPage() {
 
         <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
           <View style={{ flex: isDesktop ? 0.9 : undefined, gap: 12 }}>
-            <View className="bg-white border border-ssf-border rounded-xl p-4">
+            <View className="bg-core-surface-white border border-ssf-border rounded-xl p-4">
               <Text className="font-poppins-black text-ssf-text text-base mb-1">Template Library</Text>
               <Text className="font-poppins text-ssf-text-muted text-xs mb-3">
                 Upload PNG/JPG artwork. Recommended: 1240x1748 A6 portrait, 300 DPI.
@@ -877,28 +879,28 @@ export default function ChestCardsPage() {
                   <TouchableOpacity
                     key={template.id}
                     onPress={() => setSelectedTemplateId(template.id)}
-                    className={`px-3 py-2 rounded-xl border ${selectedTemplateId === template.id ? 'bg-blue-600 border-blue-600' : 'bg-white border-ssf-border'}`}
+                    className={`px-3 py-2 rounded-xl border ${selectedTemplateId === template.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedTemplateId === template.id ? 'text-white' : 'text-ssf-text'}`}>
+                    <Text className={`font-poppins-bold text-xs ${selectedTemplateId === template.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                       {template.active ? 'Active · ' : ''}{template.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
               <View className="flex-row flex-wrap gap-2">
-                <TouchableOpacity onPress={uploadBackground} disabled={isUploadingBackground} className="bg-emerald-600 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
-                  {isUploadingBackground ? <ActivityIndicator size="small" color={ui.colors.surface} /> : <ImagePlus size={15} color={ui.colors.surface} />}
-                  <Text className="font-poppins-bold text-white text-xs">{isUploadingBackground ? 'Uploading...' : 'Upload / Replace'}</Text>
+                <TouchableOpacity onPress={uploadBackground} disabled={isUploadingBackground} className="bg-core-primary-emerald-600 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
+                  {isUploadingBackground ? <ActivityIndicator size="small" color={ui.colors.onPrimary} /> : <ImagePlus size={15} color={ui.colors.onPrimary} />}
+                  <Text className="font-poppins-bold text-core-on-primary-white text-xs">{isUploadingBackground ? 'Uploading...' : 'Upload / Replace'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={localUploadBackground} disabled={isUploadingBackground} className="bg-emerald-100 border border-emerald-300 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
+                <TouchableOpacity onPress={localUploadBackground} disabled={isUploadingBackground} className="bg-core-success-soft-emerald-100 border border-core-success-soft-emerald-300 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
                   <ImagePlus size={15} color={ui.colors.success} />
-                  <Text className="font-poppins-bold text-emerald-700 text-xs">Local Image</Text>
+                  <Text className="font-poppins-bold text-core-success-emerald-700 text-xs">Local Image</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={createTemplate} className="bg-white border border-ssf-border px-3 py-2 rounded-xl flex-row items-center gap-x-2">
-                  <Copy size={15} color="#07143D" />
+                <TouchableOpacity onPress={createTemplate} className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-xl flex-row items-center gap-x-2">
+                  <Copy size={15} color={coreColor("#07143D", 'info')} />
                   <Text className="font-poppins-bold text-ssf-text text-xs">New Template</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => activateTemplate(activeTemplate.id)} className="bg-white border border-ssf-border px-3 py-2 rounded-xl flex-row items-center gap-x-2">
+                <TouchableOpacity onPress={() => activateTemplate(activeTemplate.id)} className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-xl flex-row items-center gap-x-2">
                   <Check size={15} color={ui.colors.success} />
                   <Text className="font-poppins-bold text-ssf-text text-xs">Set Active</Text>
                 </TouchableOpacity>
@@ -906,16 +908,16 @@ export default function ChestCardsPage() {
             </View>
 
             {!isMobile && (
-              <View className="bg-white border border-ssf-border rounded-xl p-4">
+              <View className="bg-core-surface-white border border-ssf-border rounded-xl p-4">
                 <Text className="font-poppins-black text-ssf-text text-base mb-3">Overlay Position Editor</Text>
                 <View className="flex-row flex-wrap gap-2 mb-4">
                   {(['chest', 'name', 'unit', 'qr'] as const).map(field => (
                     <TouchableOpacity
                       key={field}
                       onPress={() => setSelectedField(field)}
-                      className={`px-3 py-2 rounded-xl border ${selectedField === field ? 'bg-ssf-primary border-ssf-primary' : 'bg-white border-ssf-border'}`}
+                      className={`px-3 py-2 rounded-xl border ${selectedField === field ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
                     >
-                      <Text className={`font-poppins-bold text-xs ${selectedField === field ? 'text-white' : 'text-ssf-text'}`}>
+                      <Text className={`font-poppins-bold text-xs ${selectedField === field ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                         {field}
                       </Text>
                     </TouchableOpacity>
@@ -926,7 +928,7 @@ export default function ChestCardsPage() {
                   {(['x', 'y', 'width', 'height', 'fontSize', 'color', 'backgroundColor', 'borderRadius', 'padding'] as const).map(key => {
                     if (key === 'fontSize' && selectedField === 'qr') return null;
                     if ((key === 'borderRadius' || key === 'padding') && selectedField !== 'qr') return null;
-                    const value = activeTemplate.fields[selectedField][key as keyof OverlayField] ?? (key === 'color' ? '#000000' : (key === 'backgroundColor' ? ui.colors.surface : (key === 'borderRadius' ? 8 : (key === 'padding' ? 6 : 12))));
+                    const value = activeTemplate.fields[selectedField][key as keyof OverlayField] ?? (key === 'color' ? '#000000' : (key === 'backgroundColor' ? legacyCoreOutputColors.surface : (key === 'borderRadius' ? 8 : (key === 'padding' ? 6 : 12))));
                     
                     if (key === 'color' || key === 'backgroundColor') {
                       const label = key === 'color' ? (selectedField === 'qr' ? 'QR Code Color (Hex)' : 'Text Color (Hex)') : 'Background Color (Hex)';
@@ -936,7 +938,7 @@ export default function ChestCardsPage() {
                           <TextInput
                             value={String(value)}
                             onChangeText={(val) => updateField(selectedField, { [key]: val })}
-                            className="bg-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-ssf-text"
+                            className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-ssf-text"
                             placeholder={key === 'backgroundColor' ? 'transparent or #FFFFFF' : '#000000'}
                           />
                         </View>
@@ -956,7 +958,7 @@ export default function ChestCardsPage() {
                                 updateField(selectedField, { [key]: num });
                               }
                             }}
-                            className="bg-gray-100 px-3 py-2 rounded-lg"
+                            className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                           >
                             <Text className="font-poppins-black">-</Text>
                           </TouchableOpacity>
@@ -981,7 +983,7 @@ export default function ChestCardsPage() {
                                 }
                               }
                             }}
-                            className="bg-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
+                            className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
                           />
                           <TouchableOpacity
                             onPress={() => {
@@ -992,7 +994,7 @@ export default function ChestCardsPage() {
                                 updateField(selectedField, { [key]: num });
                               }
                             }}
-                            className="bg-gray-100 px-3 py-2 rounded-lg"
+                            className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                           >
                             <Text className="font-poppins-black">+</Text>
                           </TouchableOpacity>
@@ -1001,15 +1003,15 @@ export default function ChestCardsPage() {
                     );
                   })}
                 </View>
-                <TouchableOpacity onPress={() => saveTemplates(templates)} className="mt-4 bg-blue-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
-                  <Save size={16} color={ui.colors.surface} />
-                  <Text className="font-poppins-bold text-white">Save Layout Preset</Text>
+                <TouchableOpacity onPress={() => saveTemplates(templates)} className="mt-4 bg-core-primary-blue-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
+                  <Save size={16} color={ui.colors.onPrimary} />
+                  <Text className="font-poppins-bold text-core-on-primary-white">Save Layout Preset</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             {!isMobile && activeTemplate.backgroundUri && (
-              <View className="mt-4 bg-white border border-ssf-border rounded-xl p-4">
+              <View className="mt-4 bg-core-surface-white border border-ssf-border rounded-xl p-4">
                 <Text className="font-poppins-black text-ssf-text text-base mb-3">Background Image Settings</Text>
                 
                 {/* Resize Mode Selector */}
@@ -1020,9 +1022,9 @@ export default function ChestCardsPage() {
                       <TouchableOpacity
                         key={mode}
                         onPress={() => updateTemplate(t => ({ ...t, backgroundResizeMode: mode }))}
-                        className={`px-3 py-2 rounded-xl border flex-1 items-center ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'bg-ssf-primary border-ssf-primary' : 'bg-white border-ssf-border'}`}
+                        className={`px-3 py-2 rounded-xl border flex-1 items-center ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
                       >
-                        <Text className={`font-poppins-bold text-xs ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'text-white' : 'text-ssf-text'}`}>
+                        <Text className={`font-poppins-bold text-xs ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                           {mode}
                         </Text>
                       </TouchableOpacity>
@@ -1036,7 +1038,7 @@ export default function ChestCardsPage() {
                   <View className="flex-row gap-x-2 items-center">
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundX: (t.backgroundX || 0) - 5 }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">-5</Text>
                     </TouchableOpacity>
@@ -1047,11 +1049,11 @@ export default function ChestCardsPage() {
                         const num = parseInt(val, 10);
                         updateTemplate(t => ({ ...t, backgroundX: isNaN(num) ? 0 : num }));
                       }}
-                      className="bg-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
+                      className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
                     />
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundX: (t.backgroundX || 0) + 5 }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">+5</Text>
                     </TouchableOpacity>
@@ -1064,7 +1066,7 @@ export default function ChestCardsPage() {
                   <View className="flex-row gap-x-2 items-center">
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundY: (t.backgroundY || 0) - 5 }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">-5</Text>
                     </TouchableOpacity>
@@ -1075,11 +1077,11 @@ export default function ChestCardsPage() {
                         const num = parseInt(val, 10);
                         updateTemplate(t => ({ ...t, backgroundY: isNaN(num) ? 0 : num }));
                       }}
-                      className="bg-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
+                      className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-16"
                     />
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundY: (t.backgroundY || 0) + 5 }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">+5</Text>
                     </TouchableOpacity>
@@ -1092,18 +1094,18 @@ export default function ChestCardsPage() {
                   <View className="flex-row gap-x-2 items-center">
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundScale: Math.max(0.1, parseFloat(((t.backgroundScale ?? 1) - 0.05).toFixed(2))) }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">-5%</Text>
                     </TouchableOpacity>
                     <TextInput
                       value={String(Math.round((activeTemplate.backgroundScale ?? 1) * 100)) + '%'}
                       editable={false}
-                      className="bg-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-20"
+                      className="bg-core-surface-white border border-ssf-border px-3 py-2 rounded-lg font-poppins text-xs text-center text-ssf-text w-20"
                     />
                     <TouchableOpacity
                       onPress={() => updateTemplate(t => ({ ...t, backgroundScale: parseFloat(((t.backgroundScale ?? 1) + 0.05).toFixed(2)) }))}
-                      className="bg-gray-100 px-3 py-2 rounded-lg"
+                      className="bg-core-surface-muted-gray-100 px-3 py-2 rounded-lg"
                     >
                       <Text className="font-poppins-black">+5%</Text>
                     </TouchableOpacity>
@@ -1112,7 +1114,7 @@ export default function ChestCardsPage() {
 
                 <TouchableOpacity
                   onPress={() => updateTemplate(t => ({ ...t, backgroundX: 0, backgroundY: 0, backgroundScale: 1, backgroundResizeMode: 'cover' }))}
-                  className="mt-2 bg-gray-100 px-4 py-2 rounded-xl flex-row items-center justify-center gap-x-1"
+                  className="mt-2 bg-core-surface-muted-gray-100 px-4 py-2 rounded-xl flex-row items-center justify-center gap-x-1"
                 >
                   <RotateCcw size={14} color={ui.colors.textMuted} />
                   <Text className="font-poppins-bold text-ssf-text-muted text-xs">Reset Background Adjustments</Text>
@@ -1122,7 +1124,7 @@ export default function ChestCardsPage() {
           </View>
 
           <View style={{ flex: 1.2 }}>
-            <View className="bg-white border border-ssf-border rounded-xl p-4">
+            <View className="bg-core-surface-white border border-ssf-border rounded-xl p-4">
               <Text className="font-poppins-black text-ssf-text text-base mb-3">Live Template Preview</Text>
               <View style={{ alignItems: 'center' }}>
                 <ChestCard
@@ -1140,8 +1142,8 @@ export default function ChestCardsPage() {
           </View>
         </View>
 
-        <View className="bg-white border border-ssf-border rounded-xl p-4 my-5">
-          <View className="flex-row items-center bg-slate-50 border border-ssf-border rounded-xl px-3 mb-4">
+        <View className="bg-core-surface-white border border-ssf-border rounded-xl p-4 my-5">
+          <View className="flex-row items-center bg-core-surface-muted-slate-50 border border-ssf-border rounded-xl px-3 mb-4">
             <Search size={17} color={ui.colors.textMuted} />
             <TextInput
               value={searchQuery}
@@ -1154,8 +1156,8 @@ export default function ChestCardsPage() {
 
           <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, alignItems: isMobile ? 'stretch' : 'center' }}>
             <TouchableOpacity onPress={() => { setPrintSize('auto'); setTimeout(handlePrint, 100); }} className="bg-ssf-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1">
-              <Printer size={16} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-white">Print Cards</Text>
+              <Printer size={16} color={ui.colors.onPrimary} />
+              <Text className="font-poppins-bold text-core-on-primary-white">Print Cards</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1166,10 +1168,10 @@ export default function ChestCardsPage() {
                   setTimeout(() => window.print(), 100);
                 }
               }} 
-              className="bg-emerald-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
+              className="bg-core-primary-emerald-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
             >
-              <Download size={16} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-white">A4 PDF (4)</Text>
+              <Download size={16} color={ui.colors.onPrimary} />
+              <Text className="font-poppins-bold text-core-on-primary-white">A4 PDF (4)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1183,14 +1185,14 @@ export default function ChestCardsPage() {
                   }, 100);
                 }
               }} 
-              className="bg-purple-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
+              className="bg-core-primary-purple-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
             >
-              <Download size={16} color={ui.colors.surface} />
-              <Text className="font-poppins-bold text-white">A3 PDF (20)</Text>
+              <Download size={16} color={ui.colors.onPrimary} />
+              <Text className="font-poppins-bold text-core-on-primary-white">A3 PDF (20)</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={confirmRegenerate} className="bg-white border border-ssf-border px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
-              <RotateCcw size={16} color="#07143D" />
+            <TouchableOpacity onPress={confirmRegenerate} className="bg-core-surface-white border border-ssf-border px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
+              <RotateCcw size={16} color={coreColor("#07143D", 'info')} />
               <Text className="font-poppins-bold text-ssf-text">Regenerate Check</Text>
             </TouchableOpacity>
           </View>
@@ -1207,17 +1209,17 @@ export default function ChestCardsPage() {
                 options={categories.map(c => ({ label: c === 'ALL' ? 'Category: All' : c, value: c }))}
                 onValueChange={setSelectedCategory}
                 compact
-                style={{ backgroundColor: '#F8FAFC', borderRadius: 8, minWidth: 140 }}
+                style={{ backgroundColor: coreColor('#F8FAFC', 'surface'), borderRadius: 8, minWidth: 140 }}
               />
               <SsfSelectMenu
                 value={selectedTeam}
                 options={teams.map(t => ({ label: t === 'ALL' ? 'Team: All' : t, value: t }))}
                 onValueChange={setSelectedTeam}
                 compact
-                style={{ backgroundColor: '#F8FAFC', borderRadius: 8, minWidth: 140 }}
+                style={{ backgroundColor: coreColor('#F8FAFC', 'surface'), borderRadius: 8, minWidth: 140 }}
               />
-              <View className="bg-slate-100 px-3 py-1.5 rounded-lg justify-center items-center h-9 ml-1">
-                <Text className="text-slate-600 font-poppins-medium text-xs">{filtered.length} results</Text>
+              <View className="bg-core-surface-muted-slate-100 px-3 py-1.5 rounded-lg justify-center items-center h-9 ml-1">
+                <Text className="text-core-text-slate-600 font-poppins-medium text-xs">{filtered.length} results</Text>
               </View>
             </View>
 
@@ -1233,9 +1235,9 @@ export default function ChestCardsPage() {
                   }
                   setLockedIds(next);
                 }}
-                className="bg-red-50 px-4 py-2 rounded-xl border border-red-200"
+                className="bg-core-danger-soft-red-50 px-4 py-2 rounded-xl border border-core-danger-soft-red-200"
               >
-                <Text className="font-poppins-bold text-red-700 text-xs">
+                <Text className="font-poppins-bold text-core-danger-red-700 text-xs">
                   {filtered.length > 0 && filtered.every(p => lockedIds[p.id]) ? 'Unlock All' : 'Lock All'}
                 </Text>
               </TouchableOpacity>
@@ -1251,9 +1253,9 @@ export default function ChestCardsPage() {
                   }
                   setSelectedIds(next);
                 }}
-                className="bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-200"
+                className="bg-core-info-soft-indigo-50 px-4 py-2 rounded-xl border border-core-info-soft-indigo-200"
               >
-                <Text className="font-poppins-bold text-indigo-700 text-xs">
+                <Text className="font-poppins-bold text-core-info-indigo-700 text-xs">
                   {filtered.length > 0 && filtered.every(p => selectedIds[p.id]) ? 'Deselect All' : 'Select All'}
                 </Text>
               </TouchableOpacity>
@@ -1261,7 +1263,7 @@ export default function ChestCardsPage() {
           </View>
         </View>
 
-        {cardMode === 'groups' && groupQuery.error && <Text className="mb-3 font-poppins text-sm text-red-700">{groupQuery.error.message}</Text>}
+        {cardMode === 'groups' && groupQuery.error && <Text className="mb-3 font-poppins text-sm text-core-danger-red-700">{groupQuery.error.message}</Text>}
         {cardMode === 'groups' && !groupQuery.error && !filtered.length && <Text className="mb-3 font-poppins text-sm text-ssf-text-muted">No General group entries match these filters.</Text>}
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
           {filtered.map((p: ChestCardParticipant) => {
@@ -1269,7 +1271,7 @@ export default function ChestCardsPage() {
             const locked = lockedIds[p.id] === true;
             const printed = printedIds[p.id] === true;
             return (
-              <View key={p.id} className="bg-white border border-ssf-border rounded-xl p-3">
+              <View key={p.id} className="bg-core-surface-white border border-ssf-border rounded-xl p-3">
                 <TouchableOpacity onPress={() => setSelectedIds(current => ({ ...current, [p.id]: !selected }))}>
                   <ChestCard participant={p} template={activeTemplate} scale={0.78} />
                 </TouchableOpacity>
@@ -1280,9 +1282,9 @@ export default function ChestCardsPage() {
                   </TouchableOpacity>
                 </View>
                 <View className="flex-row gap-x-1 mt-1">
-                  {selected && <Text className="font-poppins-bold text-blue-700 text-[10px]">Selected</Text>}
-                  {printed && <Text className="font-poppins-bold text-green-700 text-[10px]">Printed</Text>}
-                  {locked && <Text className="font-poppins-bold text-red-700 text-[10px]">Locked</Text>}
+                  {selected && <Text className="font-poppins-bold text-core-info-blue-700 text-[10px]">Selected</Text>}
+                  {printed && <Text className="font-poppins-bold text-core-success-green-700 text-[10px]">Printed</Text>}
+                  {locked && <Text className="font-poppins-bold text-core-danger-red-700 text-[10px]">Locked</Text>}
                 </View>
               </View>
             );
@@ -1290,7 +1292,7 @@ export default function ChestCardsPage() {
         </View>
       </View>
 
-      <View className="print-only" style={{ display: 'block', width: '100%', height: 'auto' } as any}>
+      <View className="print-only" style={{ ...fixedCoreOutputVariables, display: 'block', width: '100%', height: 'auto' } as any}>
         {printSize === 'A3' ? (
           chunkArray(printItems, 18).map((pageItems, pageIdx) => (
             <View 

@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { AdminMarkEntryModal } from '../../../../components/ui/AdminMarkEntryModal';
 import { DirectMarkEntryModal } from '../../../../components/ui/DirectMarkEntryModal';
 import React, { useState } from 'react';
@@ -295,7 +296,7 @@ export default function ResultsPage() {
 
   // Overall readiness banner for the schedule
   const overallReadiness = React.useMemo(() => {
-    if (published) return { label: '✅ Results Published', color: 'bg-green-100', textColor: 'text-green-800' };
+    if (published) return { label: '✅ Results Published', color: 'bg-core-success-soft-green-100', textColor: 'text-core-success-green-800' };
     
     const regs = (registrations as any[]) || [];
     if (!regs.length) return null;
@@ -316,12 +317,12 @@ export default function ResultsPage() {
     });
 
     if (fullyReadyCount === regs.length && regs.length > 0) {
-      return { label: '🟢 All judges submitted — Ready for Calculation', color: 'bg-green-50', textColor: 'text-green-700' };
+      return { label: '🟢 All judges submitted — Ready for Calculation', color: 'bg-core-success-soft-green-50', textColor: 'text-core-success-green-700' };
     }
     if (anySubmissions) {
-      return { label: `🟠 ${fullyReadyCount}/${regs.length} participants ready`, color: 'bg-orange-50', textColor: 'text-orange-700' };
+      return { label: `🟠 ${fullyReadyCount}/${regs.length} participants ready`, color: 'bg-core-warning-soft-orange-50', textColor: 'text-core-warning-orange-700' };
     }
-    return { label: '🟡 Waiting for judge submissions', color: 'bg-yellow-50', textColor: 'text-yellow-700' };
+    return { label: '🟡 Waiting for judge submissions', color: 'bg-core-warning-soft-yellow-50', textColor: 'text-core-warning-yellow-700' };
   }, [registrations, expectedJudges, published, getJudgeMarks, mode, directMarks]);
 
   const hasAtLeastOneResult = React.useMemo(() => {
@@ -514,16 +515,16 @@ export default function ResultsPage() {
   };
 
   // ── UI helpers ─────────────────────────────────────────────────────────────
-  if (isLoading) return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 60 }} />;
+  if (isLoading) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 60 }} />;
 
   // ── Mode selector screen ───────────────────────────────────────────────────
   if (mode === 'none') {
     return (
       <View className="flex-1 bg-ssf-bg">
-        <View className="border-b border-ui-border bg-white px-4 py-3">
+        <View className="border-b border-ui-border bg-core-surface-white px-4 py-3">
           <View className="flex-row items-center mb-2">
-            <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-white">
-              <ArrowLeft size={18} color="#0F172A" />
+            <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
+              <ArrowLeft size={18} color={coreColor("#0F172A", 'overlay')} />
             </TouchableOpacity>
             <Text className="text-lg font-poppins-black text-ssf-text flex-1" numberOfLines={1}>
               Result Entry
@@ -542,11 +543,11 @@ export default function ResultsPage() {
           {/* Mode A: Judges used the system */}
           <TouchableOpacity
             onPress={() => setMode('marks')}
-            className="bg-white border border-ssf-primary rounded-lg p-4"
+            className="bg-core-surface-white border border-ssf-primary rounded-lg p-4"
           >
             <View className="flex-row items-center gap-x-3 mb-2">
               <View className="w-10 h-10 rounded-full bg-ssf-primary/10 items-center justify-center">
-                <ClipboardList size={20} color="#1B6B3A" />
+                <ClipboardList size={20} color={coreColor("#1B6B3A", 'primaryText')} />
               </View>
               <Text className="font-poppins-black text-ssf-text text-base">
                 Judges Used the System
@@ -561,11 +562,11 @@ export default function ResultsPage() {
           {(!markEntries || (markEntries as any[]).length === 0) && (
             <TouchableOpacity
               onPress={() => setMode('direct')}
-              className="bg-white border border-gray-200 rounded-lg p-4"
+              className="bg-core-surface-white border border-core-border-gray-200 rounded-lg p-4"
             >
               <View className="flex-row items-center gap-x-3 mb-2">
-                <View className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center">
-                  <PenLine size={20} color="#6B7280" />
+                <View className="w-10 h-10 rounded-full bg-core-surface-muted-gray-100 items-center justify-center">
+                  <PenLine size={20} color={coreColor("#6B7280", 'text')} />
                 </View>
                 <Text className="font-poppins-black text-ssf-text text-base">
                   Direct Entry (Manual)
@@ -585,10 +586,10 @@ export default function ResultsPage() {
   return (
     <View className="flex-1 bg-ssf-bg">
       {/* Header */}
-      <View className="border-b border-ui-border bg-white px-4 py-3">
+      <View className="border-b border-ui-border bg-core-surface-white px-4 py-3">
         <View className="flex-row items-center mb-1">
-          <TouchableOpacity onPress={() => setMode('none')} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-white">
-            <ArrowLeft size={18} color="#0F172A" />
+          <TouchableOpacity onPress={() => setMode('none')} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
+            <ArrowLeft size={18} color={coreColor("#0F172A", 'overlay')} />
           </TouchableOpacity>
           <Text className="text-lg font-poppins-black text-ssf-text flex-1" numberOfLines={1}>
             {mode === 'marks' ? '📊 Mark-Based Result' : '✏️ Direct Entry'}
@@ -601,10 +602,10 @@ export default function ResultsPage() {
       </View>
 
       <ScrollView className="flex-1 px-3 pt-3" contentContainerStyle={{ width: '100%', maxWidth: 960, alignSelf: 'center' }}>
-        {(pointsConfigError || scoringErrors.length > 0) && <Text className="font-poppins text-red-700 mb-3">{pointsConfigError?.message || scoringErrors[0]}</Text>}
+        {(pointsConfigError || scoringErrors.length > 0) && <Text className="font-poppins text-core-danger-red-700 mb-3">{pointsConfigError?.message || scoringErrors[0]}</Text>}
         {/* Readiness Banner (marks mode only) */}
         {mode === 'marks' && overallReadiness && (
-          <View className={`${overallReadiness.color} border border-amber-200 rounded-lg px-3 py-2.5 mb-3`}>
+          <View className={`${overallReadiness.color} border border-core-warning-soft-amber-200 rounded-lg px-3 py-2.5 mb-3`}>
             <Text className={`font-poppins-bold text-[12px] ${overallReadiness.textColor}`}>
               {overallReadiness.label}
             </Text>
@@ -618,7 +619,7 @@ export default function ResultsPage() {
                     .map((entry: any) => entry.registration_id)).size;
                   const total = scoringRegistrationIds.length;
                   return (
-                    <Text key={j.judge_id} className="font-poppins text-[10px] text-gray-600">
+                    <Text key={j.judge_id} className="font-poppins text-[10px] text-core-text-gray-600">
                       {idx + 1}. {j.judge_name}:{' '}
                       {submitted >= total && total > 0 ? '✅ Submitted' : submitted > 0 ? `⏳ ${submitted}/${total}` : '❌ Pending'}
                     </Text>
@@ -631,23 +632,23 @@ export default function ResultsPage() {
 
           {/* General Item Member Slot & Warning */}
           {isGeneralItem && flexiblePointsConfig.memberBracketsEnabled && configuredGroupSize === null && (
-            <SsfCard className={`mb-3 p-3 ${!isGroupEvent ? 'border-amber-200 bg-amber-50' : 'border-blue-200 bg-blue-50'}`}>
+            <SsfCard className={`mb-3 p-3 ${!isGroupEvent ? 'border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50' : 'border-core-info-soft-blue-200 bg-core-info-soft-blue-50'}`}>
               {!isGroupEvent && (
                 <View className="mb-3">
-                  <Text className="font-poppins-bold text-amber-900 text-[12px] mb-1">
+                  <Text className="font-poppins-bold text-core-warning-amber-900 text-[12px] mb-1">
                     Warning: General Item Registered as Individual
                   </Text>
-                  <Text className="font-poppins text-[10px] text-amber-800 leading-4">
+                  <Text className="font-poppins text-[10px] text-core-warning-amber-800 leading-4">
                     ശ്രദ്ധിക്കുക: ഇതൊരു ജനറൽ ഐറ്റം ആണ്, എന്നാൽ സെറ്റിംഗ്സിൽ &apos;Individual&apos; എന്നാണ് കൊടുത്തിരിക്കുന്നത്. ശരിയായ ഗ്രേഡ് പോയിൻ്റ് ലഭിക്കുന്നതിന് ദയവായി Settings -&gt; Items പോയി ഇതിനെ &apos;Group&apos; ആക്കി മാറ്റുക.
                   </Text>
                 </View>
               )}
               
               <View>
-                <Text className="font-poppins-bold text-blue-900 text-[12px] mb-1">
+                <Text className="font-poppins-bold text-core-info-blue-900 text-[12px] mb-1">
                   General Item Members Count
                 </Text>
-                <Text className="font-poppins text-[10px] text-blue-800 mb-2 leading-4">
+                <Text className="font-poppins text-[10px] text-core-info-blue-800 mb-2 leading-4">
                   ഈ ജനറൽ ഐറ്റത്തിൽ എത്ര പേർ പങ്കെടുത്തു എന്ന് താഴെ നിന്ന് സെലക്ട് ചെയ്യുക. ഇതിനനുസരിച്ചായിരിക്കും ഗ്രേഡ് പോയിൻ്റ് കണക്കാക്കുക.
                 </Text>
                 <View className="flex-row flex-wrap gap-2">
@@ -656,9 +657,9 @@ export default function ResultsPage() {
                       key={num}
                       onPress={() => setManualGeneralSize(num)}
                       disabled={!isGroupEvent}
-                      className={`px-3 py-1.5 rounded-md border ${manualGeneralSize === num ? 'bg-ssf-primary border-ssf-primary' : 'bg-white border-ui-border'} ${!isGroupEvent ? 'opacity-50' : ''}`}
+                      className={`px-3 py-1.5 rounded-md border ${manualGeneralSize === num ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ui-border'} ${!isGroupEvent ? 'opacity-50' : ''}`}
                     >
-                      <Text className={`font-poppins-bold text-xs ${manualGeneralSize === num ? 'text-white' : 'text-ui-text'}`}>{num}</Text>
+                      <Text className={`font-poppins-bold text-xs ${manualGeneralSize === num ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{num}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -668,11 +669,11 @@ export default function ResultsPage() {
 
         {/* Official Participant Bracket Configuration */}
         {isGroupEvent && flexiblePointsConfig.memberBracketsEnabled && (
-        <SsfCard className="mb-3 border-blue-200 p-3">
-          <Text className="font-poppins-bold text-blue-900 text-[12px] mb-0.5">
+        <SsfCard className="mb-3 border-core-info-soft-blue-200 p-3">
+          <Text className="font-poppins-bold text-core-info-blue-900 text-[12px] mb-0.5">
             👥 ഈ മത്സരത്തിൽ ഒരു ടീമിൽ എത്ര കുട്ടികളുണ്ട്?
           </Text>
-          <Text className="font-poppins text-[10px] text-blue-700 mb-2 leading-4">
+          <Text className="font-poppins text-[10px] text-core-info-blue-700 mb-2 leading-4">
             {flexiblePointsConfig.autoBracketSelection && !bracketManuallyOverridden
               ? `${configuredGroupSize !== null ? 'Configured for this item' : 'Calculated from registrations'}: ${defaultGroupSize} members per entry → ${resolvedBracketKey} bracket selected automatically.`
               : 'Select the participant bracket for grade calculation. Manual overrides are stored with the result.'}
@@ -696,13 +697,13 @@ export default function ResultsPage() {
                   disabled={isDisabled}
                   className={`h-8 px-3 rounded-lg border items-center justify-center ${
                     isSelected 
-                      ? 'bg-blue-600 border-blue-600' 
+                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
                       : isDisabled 
-                        ? 'bg-gray-100 border-gray-200 opacity-50' 
-                        : 'bg-white border-blue-200'
+                        ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-50'
+                        : 'bg-core-surface-white border-core-info-soft-blue-200'
                   }`}
                 >
-                  <Text className={`font-poppins-bold text-[10px] ${isSelected ? 'text-white' : isDisabled ? 'text-gray-400' : 'text-blue-800'}`}>
+                  <Text className={`font-poppins-bold text-[10px] ${isSelected ? 'text-core-on-primary-white' : isDisabled ? 'text-core-text-muted-gray-400' : 'text-core-info-blue-800'}`}>
                     {bracket.label} {bracket.max === 1 ? 'Person' : 'People'}
                   </Text>
                 </TouchableOpacity>
@@ -721,12 +722,12 @@ export default function ResultsPage() {
           const directEntryMarksCount = directMarks[reg.id] ? Object.keys(directMarks[reg.id].marks).length : 0;
 
           return (
-            <SsfCard key={reg.id} className="mb-2.5 border-emerald-100 p-3">
+            <SsfCard key={reg.id} className="mb-2.5 border-core-success-soft-emerald-100 p-3">
               {/* Code Letter + avg (if marks mode) */}
-              <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-gray-100">
+              <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-core-border-gray-100">
                 <View className="flex-row items-center gap-x-2">
-                  <View className="w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-200 items-center justify-center">
-                    <Text className="font-poppins-black text-emerald-700 text-sm">
+                  <View className="w-9 h-9 rounded-lg bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-200 items-center justify-center">
+                    <Text className="font-poppins-black text-core-success-emerald-700 text-sm">
                       {reg.code_letter}
                     </Text>
                   </View>
@@ -740,8 +741,8 @@ export default function ResultsPage() {
 
                 {/* Show avg for both marks and direct mode */}
                 {(mode === 'marks' || mode === 'direct') && avg !== null && (
-                  <View className="bg-emerald-50 border border-emerald-100 px-2 py-1 rounded-md">
-                    <Text className="font-poppins-bold text-emerald-700 text-[10px]">
+                  <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-md">
+                    <Text className="font-poppins-bold text-core-success-emerald-700 text-[10px]">
                       {markSummary?.commonMaximum
                         ? `Avg: ${avg}/${markSummary.commonMaximum}`
                         : `Avg: ${markSummary?.percentageAverage}%`}
@@ -752,14 +753,14 @@ export default function ResultsPage() {
 
               {/* Judge marks breakdown — marks mode only */}
               {mode === 'marks' && (
-                <View className="border-l-2 border-blue-200 pl-3 py-1 mb-2">
+                <View className="border-l-2 border-core-info-soft-blue-200 pl-3 py-1 mb-2">
                   <View className="flex-row justify-between items-center mb-1">
                     <Text className="font-poppins-bold text-[10px] text-ssf-text-muted">
                     Judge Marks:
                     </Text>
                     {!published && (
-                      <TouchableOpacity onPress={() => setEditingRegistration(reg)} className="bg-blue-50 border border-blue-200 px-2 py-1 rounded shadow-sm">
-                        <Text className="text-blue-700 font-poppins-bold text-[10px]">?? Edit Marks</Text>
+                      <TouchableOpacity onPress={() => setEditingRegistration(reg)} className="bg-core-info-soft-blue-50 border border-core-info-soft-blue-200 px-2 py-1 rounded shadow-sm">
+                        <Text className="text-core-info-blue-700 font-poppins-bold text-[10px]">?? Edit Marks</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -768,16 +769,16 @@ export default function ResultsPage() {
                       <Text className="font-poppins text-[10px] text-ssf-text">
                         {m.judges?.name ?? `Judge ${i + 1}`}
                       </Text>
-                      <Text className="font-poppins-bold text-[10px] text-ssf-primary">
+                      <Text className="font-poppins-bold text-[10px] text-ui-primary-text">
                         {m.total_mark}/{m.max_mark_snapshot ?? '—'} {m.is_final ? '✓' : '(draft)'}
                       </Text>
                     </View>
                   ))}
                   {judgeMarks.length === 0 && (
-                     <Text className="font-poppins text-[10px] text-gray-500 italic mt-1">No marks submitted yet.</Text>
+                     <Text className="font-poppins text-[10px] text-core-text-muted-gray-500 italic mt-1">No marks submitted yet.</Text>
                   )}
                   {judgeMarks.length > 0 && judgeMarks.length < expectedJudges && (
-                    <Text className="font-poppins text-[10px] text-orange-600 mt-1">
+                    <Text className="font-poppins text-[10px] text-core-warning-orange-600 mt-1">
                       ?? Only {judgeMarks.length}/{expectedJudges} judges submitted
                     </Text>
                   )}
@@ -786,7 +787,7 @@ export default function ResultsPage() {
 
               {/* Direct Entry Marks breakdown */}
               {mode === 'direct' && (
-                <View className="border-l-2 border-purple-200 pl-3 py-1 mb-3">
+                <View className="border-l-2 border-core-info-soft-purple-200 pl-3 py-1 mb-3">
                   <View className="flex-row justify-between items-center mb-2">
                     <Text className="font-poppins-bold text-[10px] text-ssf-text-muted">
                       Enter Marks ({directEntryMarksCount}/{expectedJudges} Judges)
@@ -810,13 +811,13 @@ export default function ResultsPage() {
                             codeLetter: reg.code_letter,
                           })}
                           disabled={published}
-                          className={`flex-row items-center justify-between px-3 py-1.5 rounded-lg border ${hasMark ? 'bg-purple-50 border-purple-200' : 'bg-white border-dashed border-gray-300'} ${published ? 'opacity-70' : ''}`}
+                          className={`flex-row items-center justify-between px-3 py-1.5 rounded-lg border ${hasMark ? 'bg-core-info-soft-purple-50 border-core-info-soft-purple-200' : 'bg-core-surface-white border-dashed border-core-border-gray-300'} ${published ? 'opacity-70' : ''}`}
                         >
-                          <Text className={`font-poppins text-[10px] ${hasMark ? 'text-purple-800' : 'text-gray-500'}`}>
+                          <Text className={`font-poppins text-[10px] ${hasMark ? 'text-core-info-purple-800' : 'text-core-text-muted-gray-500'}`}>
                             Judge {judgeIndex}
                           </Text>
                           {hasMark && (
-                            <Text className="font-poppins-bold text-[10px] text-purple-900 ml-2">
+                            <Text className="font-poppins-bold text-[10px] text-core-info-purple-900 ml-2">
                               {markValue}/{maxVal}
                             </Text>
                           )}
@@ -833,11 +834,11 @@ export default function ResultsPage() {
                   🏆 Final Rank
                 </Text>
                 {(mode === 'marks' || mode === 'direct') ? (
-                  <View className="h-9 flex-row items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3">
-                    <Text className="font-poppins-bold text-[11px] text-emerald-800">
+                  <View className="h-9 flex-row items-center justify-between rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 px-3">
+                    <Text className="font-poppins-bold text-[11px] text-core-success-emerald-800">
                       {entry?.rank && entry.rank !== '-' ? entry.rank : 'No rank'}
                     </Text>
-                    <Text className="font-poppins text-[9px] text-emerald-700">Calculated from marks</Text>
+                    <Text className="font-poppins text-[9px] text-core-success-emerald-700">Calculated from marks</Text>
                   </View>
                 ) : (
                   <View />
@@ -850,11 +851,11 @@ export default function ResultsPage() {
                   📊 Final Grade
                 </Text>
                 {(mode === 'marks' || mode === 'direct') ? (
-                  <View className="h-9 flex-row items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3">
-                    <Text className="font-poppins-black text-[11px] text-blue-800">
+                  <View className="h-9 flex-row items-center justify-between rounded-lg border border-core-info-soft-blue-200 bg-core-info-soft-blue-50 px-3">
+                    <Text className="font-poppins-black text-[11px] text-core-info-blue-800">
                       {entry?.grade && entry.grade !== '-' ? entry.grade : 'No grade'}
                     </Text>
-                    <Text className="font-poppins text-[9px] text-blue-700">Calculated from marks</Text>
+                    <Text className="font-poppins text-[9px] text-core-info-blue-700">Calculated from marks</Text>
                   </View>
                 ) : (
                   <View />
@@ -862,29 +863,29 @@ export default function ResultsPage() {
               </View>
 
               {/* Point Preview per Participant for Audit Visibility */}
-              <View className="mt-3 pt-2 border-t border-gray-100 flex-row justify-between items-center">
+              <View className="mt-3 pt-2 border-t border-core-border-gray-100 flex-row justify-between items-center">
                 <Text className="font-poppins-bold text-[10px] text-ssf-text-muted">
                   Points Preview:
                 </Text>
                 <View className="flex-row items-center gap-x-2">
-                  <Text className="font-poppins text-[10px] text-gray-600">
+                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
                     Rnk: <Text className="font-poppins-bold">{ptsPreview.rankPts}</Text>
                   </Text>
-                  <Text className="font-poppins text-[10px] text-gray-400">+</Text>
-                  <Text className="font-poppins text-[10px] text-gray-600">
-                    Grd: <Text className="font-poppins-bold text-green-700">{ptsPreview.gradePts}</Text>
+                  <Text className="font-poppins text-[10px] text-core-text-muted-gray-400">+</Text>
+                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
+                    Grd: <Text className="font-poppins-bold text-core-success-green-700">{ptsPreview.gradePts}</Text>
                   </Text>
-                  <Text className="font-poppins text-[10px] text-gray-400">=</Text>
+                  <Text className="font-poppins text-[10px] text-core-text-muted-gray-400">=</Text>
                   <View className="bg-ssf-primary/10 px-2 py-0.5 rounded">
-                    <Text className="font-poppins-bold text-[11px] text-ssf-primary">
+                    <Text className="font-poppins-bold text-[11px] text-ui-primary-text">
                       {ptsPreview.total} pts
                     </Text>
                   </View>
                 </View>
               </View>
               {ptsPreview.rule12Applies && (
-                <View className="self-start bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg mt-2">
-                  <Text className="font-poppins-bold text-[10px] text-amber-700">
+                <View className="self-start bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 px-2 py-1 rounded-lg mt-2">
+                  <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">
                     Rule 12 applied · {flexiblePointsConfig.rule12Behavior === 'grade_only'
                       ? 'rank points removed'
                       : flexiblePointsConfig.rule12Behavior === 'no_points'
@@ -901,10 +902,10 @@ export default function ResultsPage() {
       </ScrollView>
 
       {/* Action buttons */}
-      <View className="border-t border-ui-border bg-white px-3 py-3">
+      <View className="border-t border-ui-border bg-core-surface-white px-3 py-3">
         {published && forceRepublishConfirmed && (
-          <View className="bg-red-50 border border-red-200 p-2 rounded-t-xl -mb-2 z-0 flex-row items-center justify-center">
-            <Text className="font-poppins-bold text-[10px] text-red-600 text-center">
+          <View className="bg-core-danger-soft-red-50 border border-core-danger-soft-red-200 p-2 rounded-t-xl -mb-2 z-0 flex-row items-center justify-center">
+            <Text className="font-poppins-bold text-[10px] text-core-danger-red-600 text-center">
               ⚠️ Republishing is unlocked. Points will be re-calculated with new bracket!
             </Text>
           </View>
@@ -932,9 +933,9 @@ export default function ResultsPage() {
                 }
               }}
               disabled={unlockScheduleMarks.isPending}
-              className={`h-12 px-4 rounded-xl items-center justify-center border border-red-200 bg-red-50 ${unlockScheduleMarks.isPending ? 'opacity-50' : ''}`}
+              className={`h-12 px-4 rounded-xl items-center justify-center border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 ${unlockScheduleMarks.isPending ? 'opacity-50' : ''}`}
             >
-              <Text className="font-poppins-bold text-red-700">🔓 Unlock Marks</Text>
+              <Text className="font-poppins-bold text-core-danger-red-700">🔓 Unlock Marks</Text>
             </TouchableOpacity>
           )}
           <View className="flex-1">

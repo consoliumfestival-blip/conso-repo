@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 ﻿import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
@@ -340,9 +341,9 @@ export default function ImportUpperPrimaryDataset() {
         <Text className="text-3xl font-poppins-black text-ssf-text">High School Import</Text>
       </View>
 
-      <SsfCard className="mb-6 bg-blue-50 border border-blue-200">
-        <Text className="font-poppins-bold text-blue-800 mb-2">High School Rules</Text>
-        <Text className="font-poppins text-xs text-blue-700 leading-5">
+      <SsfCard className="mb-6 bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
+        <Text className="font-poppins-bold text-core-info-blue-800 mb-2">High School Rules</Text>
+        <Text className="font-poppins text-xs text-core-info-blue-700 leading-5">
           • Auto-uppercase names. Prevents chest number duplication.{'\n'}
           • Auto-detects Girls from girls-only events without overwriting existing data.{'\n'}
           • Event Mapping: Converts event_name to UP-0XX item codes automatically.{'\n'}
@@ -366,8 +367,8 @@ export default function ImportUpperPrimaryDataset() {
               onChange={handleFileUpload} 
               style={{
                 fontFamily: 'Poppins_600SemiBold',
-                backgroundColor: ui.colors.info,
-                color: ui.colors.surface,
+                backgroundColor: ui.colors.infoAction,
+                color: ui.colors.onPrimary,
                 padding: '10px 20px',
                 borderRadius: '8px',
                 border: 'none',
@@ -375,7 +376,7 @@ export default function ImportUpperPrimaryDataset() {
               }}
             />
           ) : (
-            <Text className="text-xs text-red-500 font-poppins">Please import via web dashboard browser.</Text>
+            <Text className="text-xs text-core-danger-red-500 font-poppins">Please import via web dashboard browser.</Text>
           )}
         </SsfCard>
       ) : (
@@ -400,48 +401,48 @@ export default function ImportUpperPrimaryDataset() {
             <Text className="font-poppins-bold text-lg mb-4 text-ssf-text">Import Pre-Validation</Text>
             
             {headerMismatch && (
-               <View className="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-4">
+               <View className="bg-core-warning-soft-orange-50 p-4 rounded-xl border border-core-warning-soft-orange-200 mb-4">
                  <View className="flex-row items-center mb-2">
                    <AlertCircle size={20} color={ui.colors.warning} className="mr-3" />
-                   <Text className="font-poppins-bold text-orange-800">Header Count Mismatch</Text>
+                   <Text className="font-poppins-bold text-core-warning-orange-800">Header Count Mismatch</Text>
                  </View>
-                 <Text className="font-poppins text-xs text-orange-700">{headerMismatch}</Text>
+                 <Text className="font-poppins text-xs text-core-warning-orange-700">{headerMismatch}</Text>
                </View>
             )}
 
             {unmappedEvents.size > 0 && (
-               <View className="bg-orange-50 p-4 rounded-xl border border-orange-200 mb-4">
+               <View className="bg-core-warning-soft-orange-50 p-4 rounded-xl border border-core-warning-soft-orange-200 mb-4">
                  <View className="flex-row items-center mb-2">
                    <AlertCircle size={20} color={ui.colors.warning} className="mr-3" />
-                   <Text className="font-poppins-bold text-orange-800">Unmapped Events (Skipped)</Text>
+                   <Text className="font-poppins-bold text-core-warning-orange-800">Unmapped Events (Skipped)</Text>
                  </View>
                  {Array.from(unmappedEvents).map(ev => (
-                   <Text key={ev} className="font-poppins text-xs text-orange-700">• {ev}</Text>
+                   <Text key={ev} className="font-poppins text-xs text-core-warning-orange-700">• {ev}</Text>
                  ))}
                </View>
             )}
 
             {internalValidation?.isValid && mismatchCount === 0 ? (
-              <View className="flex-row items-center bg-green-50 p-4 rounded-xl border border-green-200 mb-4">
-                <CheckCircle size={24} color="#15803d" className="mr-3" />
+              <View className="flex-row items-center bg-core-success-soft-green-50 p-4 rounded-xl border border-core-success-soft-green-200 mb-4">
+                <CheckCircle size={24} color={coreColor("#15803d", 'success')} className="mr-3" />
                 <View className="flex-1">
-                  <Text className="font-poppins-bold text-green-800">Dataset Ready</Text>
-                  <Text className="font-poppins text-xs text-green-700">No fatal chest conflicts found. Safe to import!</Text>
+                  <Text className="font-poppins-bold text-core-success-green-800">Dataset Ready</Text>
+                  <Text className="font-poppins text-xs text-core-success-green-700">No fatal chest conflicts found. Safe to import!</Text>
                 </View>
               </View>
             ) : (
-              <View className="bg-red-50 p-4 rounded-xl border border-red-200 mb-4">
+              <View className="bg-core-danger-soft-red-50 p-4 rounded-xl border border-core-danger-soft-red-200 mb-4">
                 <View className="flex-row items-center mb-2">
                   <AlertCircle size={24} color={ui.colors.destructive} className="mr-3" />
-                  <Text className="font-poppins-bold text-red-800">Conflicts Detected</Text>
+                  <Text className="font-poppins-bold text-core-danger-red-800">Conflicts Detected</Text>
                 </View>
                 {internalValidation?.duplicateChests.length ? (
-                  <Text className="font-poppins text-xs text-red-700 mb-1">
+                  <Text className="font-poppins text-xs text-core-danger-red-700 mb-1">
                     • Duplicate Chest Numbers inside JSON: {internalValidation.duplicateChests.join(', ')}
                   </Text>
                 ) : null}
                 {mismatchCount > 0 ? (
-                  <Text className="font-poppins text-xs text-red-700">
+                  <Text className="font-poppins text-xs text-core-danger-red-700">
                     • Database Conflicts: {mismatchCount} chest numbers mismatch existing participants.
                   </Text>
                 ) : null}
@@ -452,9 +453,9 @@ export default function ImportUpperPrimaryDataset() {
               <View className="mt-2">
                 <Text className="font-poppins-bold text-xs text-ssf-text-muted mb-2">Matches in Database:</Text>
                 {conflictsList.map(c => (
-                  <View key={c.chest} className={`flex-row justify-between p-2 mb-1 rounded ${c.isMismatch ? 'bg-red-100 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                  <View key={c.chest} className={`flex-row justify-between p-2 mb-1 rounded ${c.isMismatch ? 'bg-core-danger-soft-red-100 border border-core-danger-soft-red-200' : 'bg-core-success-soft-green-50 border border-core-success-soft-green-200'}`}>
                     <Text className="font-poppins-bold text-xs text-ssf-text">Chest {c.chest}</Text>
-                    <Text className={`font-poppins text-xs ${c.isMismatch ? 'text-red-700 font-poppins-bold' : 'text-green-700'}`}>
+                    <Text className={`font-poppins text-xs ${c.isMismatch ? 'text-core-danger-red-700 font-poppins-bold' : 'text-core-success-green-700'}`}>
                       {c.isMismatch ? `Name Conflict! DB: ${c.name}` : `Matches Existing (Safe Skip)`}
                     </Text>
                   </View>
@@ -501,22 +502,22 @@ export default function ImportUpperPrimaryDataset() {
               <Text className="font-poppins text-sm text-ssf-text-muted">Skipped Registrations:</Text>
               <Text className="font-poppins-bold text-sm text-ssf-text">{importReport.skipped_registrations}</Text>
             </View>
-            <View className="flex-row justify-between border-b border-ssf-border pb-2 bg-pink-50 p-2 rounded">
-              <Text className="font-poppins text-sm text-pink-700">Girls Auto Assigned:</Text>
-              <Text className="font-poppins-bold text-sm text-pink-800">{importReport.girls_auto_assigned}</Text>
+            <View className="flex-row justify-between border-b border-ssf-border pb-2 bg-core-info-soft-pink-50 p-2 rounded">
+              <Text className="font-poppins text-sm text-core-info-pink-700">Girls Auto Assigned:</Text>
+              <Text className="font-poppins-bold text-sm text-core-info-pink-800">{importReport.girls_auto_assigned}</Text>
             </View>
             {importReport.gender_conflicts > 0 && (
-              <View className="flex-row justify-between border-b border-ssf-border pb-2 bg-red-50 p-2 rounded">
-                <Text className="font-poppins text-sm text-red-700">Gender Conflicts (Boys in Girls-only):</Text>
-                <Text className="font-poppins-bold text-sm text-red-800">{importReport.gender_conflicts}</Text>
+              <View className="flex-row justify-between border-b border-ssf-border pb-2 bg-core-danger-soft-red-50 p-2 rounded">
+                <Text className="font-poppins text-sm text-core-danger-red-700">Gender Conflicts (Boys in Girls-only):</Text>
+                <Text className="font-poppins-bold text-sm text-core-danger-red-800">{importReport.gender_conflicts}</Text>
               </View>
             )}
             
             {importReport.invalid_items?.length > 0 ? (
-              <View className="bg-orange-50 border border-orange-100 p-3 rounded-lg mt-2">
-                <Text className="font-poppins-bold text-orange-800 text-xs mb-1">Missing Item Mappings:</Text>
+              <View className="bg-core-warning-soft-orange-50 border border-core-warning-soft-orange-100 p-3 rounded-lg mt-2">
+                <Text className="font-poppins-bold text-core-warning-orange-800 text-xs mb-1">Missing Item Mappings:</Text>
                 {importReport.invalid_items.map((it: any, index: number) => (
-                  <Text key={index} className="font-poppins text-xs text-orange-700">
+                  <Text key={index} className="font-poppins text-xs text-core-warning-orange-700">
                     • Chest {it.chest_number}: Item {it.item_code}
                   </Text>
                 ))}
@@ -524,10 +525,10 @@ export default function ImportUpperPrimaryDataset() {
             ) : null}
 
             {importReport.errors?.length > 0 ? (
-              <View className="bg-red-50 border border-red-100 p-3 rounded-lg mt-2">
-                <Text className="font-poppins-bold text-red-800 text-xs mb-1">Errors Blocked:</Text>
+              <View className="bg-core-danger-soft-red-50 border border-core-danger-soft-red-100 p-3 rounded-lg mt-2">
+                <Text className="font-poppins-bold text-core-danger-red-800 text-xs mb-1">Errors Blocked:</Text>
                 {importReport.errors.map((err: any, index: number) => (
-                  <Text key={index} className="font-poppins text-xs text-red-700">
+                  <Text key={index} className="font-poppins text-xs text-core-danger-red-700">
                     • {typeof err === 'object' ? `Chest ${err.chest_number}: ${err.error} (DB: ${err.existing_name} vs JSON: ${err.import_name})` : err}
                   </Text>
                 ))}

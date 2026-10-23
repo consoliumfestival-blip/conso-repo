@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { teamLoginPath } from '@/core/utils/teamLoginPresentation';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
@@ -681,10 +682,10 @@ export default function TeamLeaderPortalAdmin() {
                       <Text className="font-semibold text-foreground">Team portal color</Text>
                       <Text className="text-xs text-muted-foreground mt-0.5">Fixed for the Team Leader Portal. Selection is disabled.</Text>
                     </View>
-                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#EC5E27', borderWidth: 3, borderColor: '#FDFDF1' }} />
+                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: coreColor('#EC5E27', 'dangerSoft'), borderWidth: 3, borderColor: coreColor('#FDFDF1', 'border') }} />
                   </View>
                   <TouchableOpacity disabled accessibilityState={{ disabled: true }} className="flex-row items-center px-3 py-2 rounded-full border border-border self-start opacity-50">
-                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#EC5E27', marginRight: 6 }} />
+                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: coreColor('#EC5E27', 'dangerSoft'), marginRight: 6 }} />
                     <Text className="text-xs text-foreground">Orange and Milk - Disabled</Text>
                   </TouchableOpacity>
                 </View>
@@ -699,13 +700,13 @@ export default function TeamLeaderPortalAdmin() {
                     <View className="flex-row items-center">
                       {participantProfile.role === 'team_leader' ? (
                         <>
-                          <Check size={16} className="text-green-600 mr-2" />
+                          <Check size={16} className="text-core-success-green-600 mr-2" />
                           <Text className="text-sm text-foreground">✓ Team Leader account linked</Text>
                         </>
                       ) : (
                         <>
-                          <AlertCircle size={16} className="text-amber-600 mr-2" />
-                          <Text className="text-sm text-amber-700 dark:text-amber-400">
+                          <AlertCircle size={16} className="text-core-warning-amber-600 mr-2" />
+                          <Text className="text-sm text-core-warning-amber-700 dark:text-core-warning-amber-400">
                             Linked to existing {participantProfile.role} account.
                           </Text>
                         </>
@@ -725,22 +726,22 @@ export default function TeamLeaderPortalAdmin() {
                     </View>
                   )}
                   {tempCredentials && (
-                    <View className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-                      <Text className="font-medium text-green-800 dark:text-green-300 mb-1">Account Created Successfully</Text>
+                    <View className="mt-4 p-3 bg-core-success-soft-green-50 dark:bg-core-success-action-green-900/20 border border-core-success-soft-green-200 dark:border-core-success-green-800 rounded-md">
+                      <Text className="font-medium text-core-success-green-800 dark:text-core-success-green-300 mb-1">Account Created Successfully</Text>
                       {tempCredentials.username && (
                         <View className="flex-row items-center justify-between py-1">
-                          <Text className="text-sm text-green-700 dark:text-green-400 flex-1">Username: {tempCredentials.username}</Text>
-                          <TouchableOpacity onPress={() => copyCredential(tempCredentials.username, 'Username')} className="flex-row items-center px-2 py-1 rounded border border-green-300">
-                            <Copy size={14} color="#15803d" />
-                            <Text className="text-xs text-green-700 ml-1">{copiedCredential === 'Username' ? 'Copied' : 'Copy username'}</Text>
+                          <Text className="text-sm text-core-success-green-700 dark:text-core-success-green-400 flex-1">Username: {tempCredentials.username}</Text>
+                          <TouchableOpacity onPress={() => copyCredential(tempCredentials.username, 'Username')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
+                            <Copy size={14} color={coreColor("#15803d", 'success')} />
+                            <Text className="text-xs text-core-success-green-700 ml-1">{copiedCredential === 'Username' ? 'Copied' : 'Copy username'}</Text>
                           </TouchableOpacity>
                         </View>
                       )}
                       <View className="flex-row items-center justify-between py-1">
-                        <Text className="text-sm text-green-700 dark:text-green-400 flex-1">Temporary Password: {tempCredentials.password}</Text>
-                        <TouchableOpacity onPress={() => copyCredential(tempCredentials.password, 'Password')} className="flex-row items-center px-2 py-1 rounded border border-green-300">
-                          <Copy size={14} color="#15803d" />
-                          <Text className="text-xs text-green-700 ml-1">{copiedCredential === 'Password' ? 'Copied' : 'Copy password'}</Text>
+                        <Text className="text-sm text-core-success-green-700 dark:text-core-success-green-400 flex-1">Temporary Password: {tempCredentials.password}</Text>
+                        <TouchableOpacity onPress={() => copyCredential(tempCredentials.password, 'Password')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
+                          <Copy size={14} color={coreColor("#15803d", 'success')} />
+                          <Text className="text-xs text-core-success-green-700 ml-1">{copiedCredential === 'Password' ? 'Copied' : 'Copy password'}</Text>
                         </TouchableOpacity>
                       </View>
                       <TouchableOpacity
@@ -749,10 +750,10 @@ export default function TeamLeaderPortalAdmin() {
                           const text = `Team: ${selectedTeam?.organisation_name || ''}\nUsername: ${tempCredentials.username}\nPassword: ${tempCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), selectedTeam?.organisation_name)}`;
                           copyCredential(text, 'All credentials');
                         }}
-                        className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-green-700"
+                        className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-core-primary-green-700"
                       >
-                        <Copy size={14} color="#ffffff" />
-                        <Text className="text-xs text-white font-medium ml-1">{copiedCredential === 'All credentials' ? 'Copied all details' : 'Copy login details'}</Text>
+                        <Copy size={14} color={coreColor("#ffffff", 'onPrimary')} />
+                        <Text className="text-xs text-core-on-primary-white font-medium ml-1">{copiedCredential === 'All credentials' ? 'Copied all details' : 'Copy login details'}</Text>
                       </TouchableOpacity>
                       <Text className="text-xs text-muted-foreground mt-2 italic">On first login, the leader will be required to set their own personal username and password.</Text>
                     </View>
@@ -816,7 +817,7 @@ export default function TeamLeaderPortalAdmin() {
               className="flex-1 ml-2 text-sm text-foreground"
               style={Platform.OS === 'web' ? { outlineStyle: 'solid', outlineWidth: 0 } : undefined}
               placeholder="Search teams or leaders..."
-              placeholderTextColor="#888"
+              placeholderTextColor={coreColor("#888", 'textSubtle')}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -868,7 +869,7 @@ export default function TeamLeaderPortalAdmin() {
                             disabled={resettingAssignmentId === assignment.id}
                             accessibilityLabel={`Reset password for ${assignment.leader_name}`}
                           >
-                            <Text className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                            <Text className="text-xs text-core-warning-amber-700 dark:text-core-warning-amber-400 font-medium">
                               {resettingAssignmentId === assignment.id ? 'Resetting...' : 'Reset password'}
                             </Text>
                           </TouchableOpacity>
@@ -889,7 +890,7 @@ export default function TeamLeaderPortalAdmin() {
                             disabled={resettingAssignmentId === assignment.id}
                             accessibilityLabel={`Reissue temporary password for ${assignment.leader_name}`}
                           >
-                            <Text className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                            <Text className="text-xs text-core-warning-amber-700 dark:text-core-warning-amber-400 font-medium">
                               {resettingAssignmentId === assignment.id ? 'Issuing...' : 'Reissue password'}
                             </Text>
                           </TouchableOpacity>
@@ -897,22 +898,22 @@ export default function TeamLeaderPortalAdmin() {
                       </View>
                     )}
                     {resetCredentials?.assignmentId === assignment.id && (
-                      <View className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                        <Text className="font-medium text-amber-900 mb-1">New temporary login credentials</Text>
+                      <View className="mt-2 p-3 bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-md">
+                        <Text className="font-medium text-core-warning-amber-900 mb-1">New temporary login credentials</Text>
                         <View className="flex-row items-center justify-between py-1">
-                          <Text className="text-xs text-amber-800 flex-1">Username: {resetCredentials.username}</Text>
-                          <TouchableOpacity onPress={() => copyCredential(resetCredentials.username, `Reset_Username_${assignment.id}`)} className="px-2 py-1 rounded border border-amber-300">
-                            <Text className="text-xs text-amber-800">{copiedCredential === `Reset_Username_${assignment.id}` ? 'Copied' : 'Copy username'}</Text>
+                          <Text className="text-xs text-core-warning-amber-800 flex-1">Username: {resetCredentials.username}</Text>
+                          <TouchableOpacity onPress={() => copyCredential(resetCredentials.username, `Reset_Username_${assignment.id}`)} className="px-2 py-1 rounded border border-core-warning-soft-amber-300">
+                            <Text className="text-xs text-core-warning-amber-800">{copiedCredential === `Reset_Username_${assignment.id}` ? 'Copied' : 'Copy username'}</Text>
                           </TouchableOpacity>
                         </View>
                         <View className="flex-row items-center justify-between py-1">
-                          <Text className="text-xs text-amber-800 flex-1">Temporary password: {resetCredentials.password}</Text>
+                          <Text className="text-xs text-core-warning-amber-800 flex-1">Temporary password: {resetCredentials.password}</Text>
                           <TouchableOpacity
                             onPress={() => copyCredential(resetCredentials.password, `Reset_Password_${assignment.id}`)}
-                            className="px-2 py-1 rounded border border-amber-300"
+                            className="px-2 py-1 rounded border border-core-warning-soft-amber-300"
                             accessibilityLabel={`Copy temporary password for ${assignment.leader_name}`}
                           >
-                            <Text className="text-xs text-amber-800">{copiedCredential === `Reset_Password_${assignment.id}` ? 'Copied' : 'Copy password'}</Text>
+                            <Text className="text-xs text-core-warning-amber-800">{copiedCredential === `Reset_Password_${assignment.id}` ? 'Copied' : 'Copy password'}</Text>
                           </TouchableOpacity>
                         </View>
                         <TouchableOpacity
@@ -921,12 +922,12 @@ export default function TeamLeaderPortalAdmin() {
                             const text = `Username: ${resetCredentials.username}\nPassword: ${resetCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), assignment.team_name)}`;
                             copyCredential(text, `Reset_Login_${assignment.id}`);
                           }}
-                          className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-amber-700"
+                          className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-core-warning-action-amber-700"
                         >
-                          <Copy size={14} color="#ffffff" />
-                          <Text className="text-xs text-white font-medium ml-1">{copiedCredential === `Reset_Login_${assignment.id}` ? 'Copied' : 'Copy login details'}</Text>
+                          <Copy size={14} color={coreColor("#ffffff", 'onPrimary')} />
+                          <Text className="text-xs text-core-on-primary-white font-medium ml-1">{copiedCredential === `Reset_Login_${assignment.id}` ? 'Copied' : 'Copy login details'}</Text>
                         </TouchableOpacity>
-                        <Text className="text-xs text-amber-700 mt-2">This temporary password replaces the previous one. The leader will be asked to change it after signing in.</Text>
+                        <Text className="text-xs text-core-warning-amber-700 mt-2">This temporary password replaces the previous one. The leader will be asked to change it after signing in.</Text>
                       </View>
                     )}
                   </View>

@@ -1,6 +1,8 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, KeyboardAvoidingView } from 'react-native';
 import { useGoBack } from '../../../core/hooks/useGoBack';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { useParticipants } from '../../../core/hooks/useParticipants';
@@ -130,17 +132,17 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
   return (
     <ScrollView scrollEnabled={!drag && !categoryDrag} className="flex-1 bg-ssf-bg" contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View className="flex-row items-center mb-5 gap-3">
-        <TouchableOpacity accessibilityLabel="Back to participants" onPress={goBack} className="p-2 bg-white rounded-full border border-ssf-border"><ArrowLeft size={20} color={ui.colors.text} /></TouchableOpacity>
+        <TouchableOpacity accessibilityLabel="Back to participants" onPress={goBack} className="p-2 bg-core-surface-white rounded-full border border-ssf-border"><ArrowLeft size={20} color={ui.colors.text} /></TouchableOpacity>
         <Text className="text-2xl font-poppins-black text-ssf-text flex-1">Chest Numbers</Text>
       </View>
       {query.isLoading ? <SsfTableSkeleton rows={4} columns={2} compact /> : query.error && !query.data ? (
-        <SsfCard><Text className="font-poppins text-red-700 mb-3">{query.error.message}</Text><Button variant="outline" onPress={() => { void query.refetch(); }}>Retry</Button></SsfCard>
+        <SsfCard><Text className="font-poppins text-core-danger-red-700 mb-3">{query.error.message}</Text><Button variant="outline" onPress={() => { void query.refetch(); }}>Retry</Button></SsfCard>
       ) : state ? (
         <>
-          <View className="bg-blue-50 border border-blue-200 p-3 rounded-xl mb-4 flex-row gap-3">
+          <View className="bg-core-info-soft-blue-50 border border-core-info-soft-blue-200 p-3 rounded-xl mb-4 flex-row gap-3">
             {locked ? <LockKeyhole size={20} color={ui.colors.info} /> : <AlertTriangle size={20} color={ui.colors.info} />}
-            <View className="flex-1"><Text className="font-poppins-bold text-blue-800">{locked ? 'Chest numbers locked' : 'Team number order'}</Text>
-              <Text className="font-poppins text-xs text-blue-700 mt-1">{locked ? 'Unlock with the tenant ID to change the order or regenerate numbers.' : `Drag a team or use the arrows. The first team gets ${state.range}–${state.range * 2 - 1}. Save before final locking.`}</Text>
+            <View className="flex-1"><Text className="font-poppins-bold text-core-info-blue-800">{locked ? 'Chest numbers locked' : 'Team number order'}</Text>
+              <Text className="font-poppins text-xs text-core-info-blue-700 mt-1">{locked ? 'Unlock with the tenant ID to change the order or regenerate numbers.' : `Drag a team or use the arrows. The first team gets ${state.range}–${state.range * 2 - 1}. Save before final locking.`}</Text>
             </View>
           </View>
           <View className="flex-row flex-wrap gap-2 mb-3">
@@ -156,7 +158,7 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
               </>
             )}
           </View>
-          {stale && <Text accessibilityRole="alert" className="font-poppins text-sm text-red-700 mb-3">Saved settings or teams changed. Discard changes to load the current order.</Text>}
+          {stale && <Text accessibilityRole="alert" className="font-poppins text-sm text-core-danger-red-700 mb-3">Saved settings or teams changed. Discard changes to load the current order.</Text>}
           {!!notice && <Text accessibilityRole="alert" className="font-poppins text-sm text-ssf-text mb-3">{notice}</Text>}
           {!!draft && <Text className="font-poppins text-xs text-ssf-text-muted mb-3">Preview only. Save order will reassign existing chest numbers.</Text>}
           {!ids.length ? <SsfCard><Text className="font-poppins text-ssf-text-muted">No teams found for this festival.</Text></SsfCard> : <View>
@@ -192,15 +194,15 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
         </>
       ) : null}
       <Modal visible={dialog !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) setDialog(null); }}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/40 items-center justify-center p-4">
-          <View accessibilityViewIsModal className="bg-white rounded-2xl p-5 w-full max-w-md">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-core-surface-strong-black/40 items-center justify-center p-4">
+          <View accessibilityViewIsModal className="bg-core-surface-white rounded-2xl p-5 w-full max-w-md">
             <Text className="font-poppins-bold text-lg text-ssf-text">{dialog === 'unlock' ? 'Unlock chest numbers' : dialog === 'lock' ? 'Final lock chest numbers?' : 'Regenerate all chest numbers?'}</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-2 mb-4">{dialog === 'unlock' ? 'Enter the tenant ID as the unlock code. Existing numbers will stay as they are.' : dialog === 'lock' ? `This prevents team/category reordering and regeneration until unlocked.${categoryEnabled ? ' Adding participants or changing their category/team will also require unlocking.' : ''}` : 'This reassigns all participant numbers using the saved team and category order.'}</Text>
             {dialog === 'unlock' && <TextInput accessibilityLabel="Unlock code (Tenant ID)" placeholder="Unlock code (Tenant ID)" secureTextEntry
               value={code} onChangeText={setCode} autoCapitalize="none" autoCorrect={false} editable={!busy}
               onSubmitEditing={() => { if (code.trim()) void confirm(); }}
               className="border border-ssf-border rounded-lg px-3 mb-3 font-poppins text-ssf-text" style={{ height: 40 }} />}
-            {!!dialogError && <Text accessibilityRole="alert" className="text-red-700 font-poppins text-sm mb-3">{dialogError}</Text>}
+            {!!dialogError && <Text accessibilityRole="alert" className="text-core-danger-red-700 font-poppins text-sm mb-3">{dialogError}</Text>}
             <View className="flex-row justify-end gap-2">
               <Button variant="ghost" disabled={busy} onPress={() => { setDialog(null); setCode(''); }}>Cancel</Button>
               <Button loading={busy} disabled={busy || (dialog === 'unlock' && !code.trim())} onPress={() => { void confirm(); }}>{dialog === 'unlock' ? 'Unlock' : dialog === 'lock' ? 'Final Lock' : 'Regenerate'}</Button>
@@ -260,17 +262,17 @@ function CategoryChestNumbers({ festival }: { festival: { id: string; chest_numb
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
       <View className="flex-row items-center mb-6">
-        <TouchableOpacity onPress={goBack} className="mr-3 p-2 bg-white rounded-full border border-ssf-border">
+        <TouchableOpacity onPress={goBack} className="mr-3 p-2 bg-core-surface-white rounded-full border border-ssf-border">
           <ArrowLeft size={20} color={ui.colors.text} />
         </TouchableOpacity>
         <Text className="text-2xl font-poppins-black text-ssf-text">Chest Numbers</Text>
       </View>
 
-      <View className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-4 flex-row gap-x-3">
+      <View className="bg-core-info-soft-blue-50 border border-core-info-soft-blue-200 p-4 rounded-xl mb-4 flex-row gap-x-3">
         <AlertTriangle size={22} color={ui.colors.info} />
         <View className="flex-1">
-          <Text className="font-poppins-bold text-blue-800">Numeric {isTeamTemplate ? 'team' : 'category'} ranges</Text>
-          <Text className="font-poppins text-xs text-blue-700 mt-1">
+          <Text className="font-poppins-bold text-core-info-blue-800">Numeric {isTeamTemplate ? 'team' : 'category'} ranges</Text>
+          <Text className="font-poppins text-xs text-core-info-blue-700 mt-1">
             {isTeamTemplate ? 'Team' : 'Category'} 1 starts at {range}, {isTeamTemplate ? 'team' : 'category'} 2 starts at {range * 2}, and so on. Each {isTeamTemplate ? 'team' : 'category'} can contain up to {range} participants.
           </Text>
         </View>
@@ -295,7 +297,7 @@ function CategoryChestNumbers({ festival }: { festival: { id: string; chest_numb
               <Text className="font-poppins-bold text-ssf-text">{isTeamTemplate ? 'Team' : 'Category'} {stat.category}</Text>
               <Text className="font-poppins text-xs text-ssf-text-muted">{stat.total} participants · {stat.numeric}/{stat.total} numeric chest numbers</Text>
             </View>
-            {stat.numeric === stat.total ? <CheckCircle size={20} color="#15803D" /> : <AlertTriangle size={20} color={ui.colors.warning} />}
+            {stat.numeric === stat.total ? <CheckCircle size={20} color={coreColor("#15803D", 'success')} /> : <AlertTriangle size={20} color={ui.colors.warning} />}
           </View>
         </SsfCard>
       ))}

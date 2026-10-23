@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, ActivityIndicator } from 'react-native';
@@ -331,9 +332,9 @@ export default function ImportScheduleJson() {
         <Text className="text-3xl font-poppins-black text-ssf-text">Import Schedules</Text>
       </View>
 
-      <SsfCard className="mb-6 bg-blue-50 border border-blue-200">
-        <Text className="font-poppins-bold text-blue-800 mb-2">Schedule Import Safety Rules</Text>
-        <Text className="font-poppins text-xs text-blue-700 leading-5">
+      <SsfCard className="mb-6 bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
+        <Text className="font-poppins-bold text-core-info-blue-800 mb-2">Schedule Import Safety Rules</Text>
+        <Text className="font-poppins text-xs text-core-info-blue-700 leading-5">
           • Double scheduling is blocked in the database via Unique Constraints.{'\n'}
           • Overlap checking prevents booking the same venue for different events at the same time.{'\n'}
           • Conflicting events are highlighted in RED.{'\n'}
@@ -356,8 +357,8 @@ export default function ImportScheduleJson() {
               onChange={handleFileUpload} 
               style={{
                 fontFamily: 'Poppins_600SemiBold',
-                backgroundColor: '#065F46',
-                color: ui.colors.surface,
+                backgroundColor: coreColor('#065F46', 'successAction'),
+                color: ui.colors.onPrimary,
                 padding: '10px 20px',
                 borderRadius: '8px',
                 border: 'none',
@@ -365,19 +366,19 @@ export default function ImportScheduleJson() {
               }}
             />
           ) : (
-            <Text className="text-xs text-red-500 font-poppins">Please upload via web browser dashboard.</Text>
+            <Text className="text-xs text-core-danger-red-500 font-poppins">Please upload via web browser dashboard.</Text>
           )}
         </SsfCard>
       ) : (
         <>
           <View className="flex-row gap-4 mb-6">
             <SsfCard className="flex-1 items-center py-4">
-              <Calendar size={24} color="#065F46" className="mb-2" />
+              <Calendar size={24} color={coreColor("#065F46", 'success')} className="mb-2" />
               <Text className="font-poppins-bold text-2xl">{scheduleData.length}</Text>
               <Text className="font-poppins text-xs text-ssf-text-muted">Total Events</Text>
             </SsfCard>
             <SsfCard className="flex-1 items-center py-4">
-              <Database size={24} color="#065F46" className="mb-2" />
+              <Database size={24} color={coreColor("#065F46", 'success')} className="mb-2" />
               <Text className="font-poppins-bold text-2xl">{Object.keys(venueGroups).length}</Text>
               <Text className="font-poppins text-xs text-ssf-text-muted">Venues Utilized</Text>
             </SsfCard>
@@ -399,24 +400,24 @@ export default function ImportScheduleJson() {
             ) : (
               <View>
                 {dryRunReport.isValid ? (
-                  <View className="flex-row items-center bg-green-50 p-4 rounded-xl border border-green-200 mb-4">
-                    <CheckCircle size={24} color="#15803d" className="mr-3" />
+                  <View className="flex-row items-center bg-core-success-soft-green-50 p-4 rounded-xl border border-core-success-soft-green-200 mb-4">
+                    <CheckCircle size={24} color={coreColor("#15803d", 'success')} className="mr-3" />
                     <View className="flex-1">
-                      <Text className="font-poppins-bold text-green-800">Validation Passed</Text>
-                      <Text className="font-poppins text-xs text-green-700">No time overlaps, venue mismatch, or category conflicts. Safe to import!</Text>
+                      <Text className="font-poppins-bold text-core-success-green-800">Validation Passed</Text>
+                      <Text className="font-poppins text-xs text-core-success-green-700">No time overlaps, venue mismatch, or category conflicts. Safe to import!</Text>
                     </View>
                   </View>
                 ) : (
-                  <View className="bg-red-50 p-4 rounded-xl border border-red-200 mb-4">
+                  <View className="bg-core-danger-soft-red-50 p-4 rounded-xl border border-core-danger-soft-red-200 mb-4">
                     <View className="flex-row items-center mb-2">
                       <AlertCircle size={24} color={ui.colors.destructive} className="mr-3" />
-                      <Text className="font-poppins-bold text-red-800">Errors & Conflicts Detected</Text>
+                      <Text className="font-poppins-bold text-core-danger-red-800">Errors & Conflicts Detected</Text>
                     </View>
                     {dryRunReport.errors.map((err: string, i: number) => (
-                      <Text key={i} className="font-poppins text-xs text-red-700 mb-1">• {err}</Text>
+                      <Text key={i} className="font-poppins text-xs text-core-danger-red-700 mb-1">• {err}</Text>
                     ))}
                     {dryRunReport.conflicts.map((conf: any, i: number) => (
-                      <Text key={i} className="font-poppins text-xs text-red-800 font-poppins-bold mb-1">• Overlap (Row {conf.row}): [${conf.item_code}] ${conf.item_name} at ${conf.venue} overlaps with ${conf.conflict_with}</Text>
+                      <Text key={i} className="font-poppins text-xs text-core-danger-red-800 font-poppins-bold mb-1">• Overlap (Row {conf.row}): [${conf.item_code}] ${conf.item_name} at ${conf.venue} overlaps with ${conf.conflict_with}</Text>
                     ))}
                     
                     <SsfButton 
@@ -451,15 +452,15 @@ export default function ImportScheduleJson() {
             <Text className="font-poppins-bold text-lg mb-4 text-ssf-text">Venue Grouped Timetable Preview</Text>
             {Object.keys(venueGroups).map((venue: string) => (
               <View key={venue} className="mb-6 last:mb-0 border-b border-ssf-border last:border-0 pb-4 last:pb-0">
-                <Text className="font-poppins-bold text-ssf-primary mb-2 text-md">{venue}</Text>
+                <Text className="font-poppins-bold text-ui-primary-text mb-2 text-md">{venue}</Text>
                 {venueGroups[venue].map((s: any, idx: number) => (
-                  <View key={idx} className="flex-row justify-between items-center py-2 border-b border-slate-100 last:border-0">
+                  <View key={idx} className="flex-row justify-between items-center py-2 border-b border-core-border-slate-100 last:border-0">
                     <View className="flex-1 pr-4">
                       <Text className="font-poppins-bold text-xs">[{s.item_code}] {s.item_name}</Text>
                       <Text className="font-poppins text-xs text-ssf-text-muted">{s.category} • {s.section}</Text>
                     </View>
                     <View className="items-end">
-                      <Text className="font-poppins-bold text-xs text-slate-800">{s.start_time} - {s.end_time}</Text>
+                      <Text className="font-poppins-bold text-xs text-core-text-slate-800">{s.start_time} - {s.end_time}</Text>
                       <Text className="font-poppins text-xs text-ssf-text-muted">{s.date}</Text>
                     </View>
                   </View>
@@ -477,7 +478,7 @@ export default function ImportScheduleJson() {
           <View style={{ gap: 12 }}>
             <View className="flex-row justify-between border-b border-ssf-border pb-2">
               <Text className="font-poppins text-sm text-ssf-text-muted">Imported/Scheduled Items:</Text>
-              <Text className="font-poppins-bold text-sm text-green-700">{importReport.imported_count}</Text>
+              <Text className="font-poppins-bold text-sm text-core-success-green-700">{importReport.imported_count}</Text>
             </View>
             <View className="flex-row justify-between border-b border-ssf-border pb-2">
               <Text className="font-poppins text-sm text-ssf-text-muted">Skipped/Duplicate Slots:</Text>
@@ -485,7 +486,7 @@ export default function ImportScheduleJson() {
             </View>
             <View className="flex-row justify-between border-b border-ssf-border pb-2">
               <Text className="font-poppins text-sm text-ssf-text-muted">Overlap Conflicts Blocked:</Text>
-              <Text className="font-poppins-bold text-sm text-red-600">{importReport.conflict_count}</Text>
+              <Text className="font-poppins-bold text-sm text-core-danger-red-600">{importReport.conflict_count}</Text>
             </View>
             <View className="flex-row justify-between border-b border-ssf-border pb-2">
               <Text className="font-poppins text-sm text-ssf-text-muted">Execution Duration:</Text>

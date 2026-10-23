@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { useLayerStore } from '../Stores/layerStore';
 import { useHistoryStore } from '../Stores/historyStore';
@@ -79,7 +80,7 @@ export default function StudioContextMenu({ x, y, targetId, targetType, onClose,
         commit();
         removeLayer(layer.id);
       })}>
-        <span style={{...styles.icon, color: '#F87171'}}>🗑</span> <span style={{color: '#F87171'}}>Delete</span>
+        <span style={{...styles.icon, color: coreColor('#F87171', 'danger')}}>🗑</span> <span style={{color: coreColor('#F87171', 'danger')}}>Delete</span>
       </button>
 
       <div style={styles.divider} />
@@ -119,8 +120,8 @@ export default function StudioContextMenu({ x, y, targetId, targetType, onClose,
 const styles: Record<string, React.CSSProperties> = {
   menuContainer: {
     position: 'fixed',
-    backgroundColor: '#1E1E1E',
-    border: '1px solid #333',
+    backgroundColor: coreColor('#1E1E1E', 'surfaceStrong'),
+    border: `1px solid ${coreColor('#333', 'border')}`,
     borderRadius: 8,
     boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
     width: 200,
@@ -131,7 +132,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   menuHeader: {
     padding: '4px 12px 8px 12px',
-    borderBottom: '1px solid #333',
+    borderBottom: `1px solid ${coreColor('#333', 'border')}`,
     marginBottom: 4,
     display: 'flex',
     justifyContent: 'space-between',
@@ -140,7 +141,7 @@ const styles: Record<string, React.CSSProperties> = {
   menuTitle: {
     fontSize: 12,
     fontWeight: 600,
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -148,14 +149,14 @@ const styles: Record<string, React.CSSProperties> = {
   },
   menuType: {
     fontSize: 10,
-    color: '#64748B',
+    color: coreColor('#64748B', 'textMuted'),
     textTransform: 'uppercase',
   },
   menuItem: {
     padding: '8px 12px',
     background: 'transparent',
     border: 'none',
-    color: '#CBD5E1',
+    color: coreColor('#CBD5E1', 'text'),
     fontSize: 13,
     textAlign: 'left',
     cursor: 'pointer',
@@ -166,13 +167,13 @@ const styles: Record<string, React.CSSProperties> = {
   },
   divider: {
     height: 1,
-    backgroundColor: '#333',
+    backgroundColor: coreColor('#333', 'surfaceStrong'),
     margin: '4px 0',
   },
   icon: {
     width: 16,
     textAlign: 'center',
     fontSize: 14,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
   }
 };

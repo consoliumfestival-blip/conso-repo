@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect } from 'react';
 import { useDebounce } from '../../Hooks/useDebounce';
 
@@ -96,10 +97,10 @@ export default function SliderField({ label, value, onChange, min, max, step = 1
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 6 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 10, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
   inputRow: { display: 'flex', alignItems: 'center', gap: 4 },
-  numInput: { width: 56, height: 36, padding: '0 8px', fontSize: 12, border: '1px solid #2a2a2a', borderRadius: 6, outline: 'none', fontFamily: 'Inter, sans-serif', textAlign: 'right', transition: 'border-color 0.15s', backgroundColor: '#171717', color: '#E2E8F0' },
-  unit: { fontSize: 11, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 500 },
+  numInput: { width: 56, height: 36, padding: '0 8px', fontSize: 12, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, outline: 'none', fontFamily: 'Inter, sans-serif', textAlign: 'right', transition: 'border-color 0.15s', backgroundColor: coreColor('#171717', 'surfaceStrong'), color: coreColor('#E2E8F0', 'text') },
+  unit: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 500 },
   slider: { width: '100%' },
 };
 
@@ -118,9 +119,9 @@ export function ToggleField({ label, value, onChange, icon }: ToggleFieldProps) 
       title={label}
       style={{
         ...toggleStyles.btn,
-        backgroundColor: value ? '#0f766e' : '#1f1f1f',
-        color: value ? '#ccfbf1' : '#94A3B8',
-        border: `1px solid ${value ? '#0d9488' : '#2a2a2a'}`,
+        backgroundColor: value ? coreColor('#0f766e', 'primary') : coreColor('#1f1f1f', 'surfaceStrong'),
+        color: value ? coreColor('#ccfbf1', 'primaryText') : coreColor('#94A3B8', 'textSubtle'),
+        border: `1px solid ${value ? coreColor('#0d9488', 'border') : coreColor('#2a2a2a', 'border')}`,
         touchAction: 'manipulation',
       }}
     >

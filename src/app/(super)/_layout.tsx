@@ -1,21 +1,18 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { Stack } from 'expo-router';
+import { CoreAppearanceProvider } from '@/core/contexts/CoreAppearanceContext';
 
-// Midnight Blue Theme Token
-// Background:  #0B1524 (Deep Midnight)
-// Surface:     #111E35 (Dark Navy)
-// Border:      #1E3A5F (Steel Blue border)
-// Accent:      #FBBF24 (Gold)
-// Text:        #E2E8F0 (Light Slate)
+// Core appearance also covers the superadmin workspace.
 
 export default function SuperadminLayout() {
   return (
-    <Stack
+    <CoreAppearanceProvider><Stack
       screenOptions={{
         headerShown: false,
         animation: 'fade',
         contentStyle: {
-          backgroundColor: '#0B1524',
+          backgroundColor: coreColor('#0B1524', 'background'),
         },
       }}
     >
@@ -27,10 +24,10 @@ export default function SuperadminLayout() {
           headerShown: false,
           animation: 'slide_from_right',
           contentStyle: {
-            backgroundColor: '#0B1524',
+            backgroundColor: coreColor('#0B1524', 'background'),
           },
         }}
       />
-    </Stack>
+    </Stack></CoreAppearanceProvider>
   );
 }

@@ -1,31 +1,13 @@
 import { Platform } from 'react-native';
+import tokens from './coreThemeTokens.json';
+import { coreColor, CoreColor } from './coreTheme';
+
+// Static StyleSheets can retain these CSS references: changing the scoped
+// variables updates them without rebuilding styles or remounting screens.
+const themedColors = Object.fromEntries(Object.entries(tokens.legacy).map(([role, fallback]) => [role, coreColor(fallback, role as CoreColor)])) as Record<CoreColor, string>;
 
 export const ui = {
-  colors: {
-    background: '#F6F7F9',
-    surface: '#FFFFFF',
-    surfaceMuted: '#F1F4F7',
-    surfaceStrong: '#E8EDF2',
-    text: '#111827',
-    textMuted: '#64748B',
-    textSubtle: '#94A3B8',
-    border: '#E2E8F0',
-    borderStrong: '#CBD5E1',
-    primary: '#0F766E',
-    primaryHover: '#0B5D56',
-    primarySoft: '#E7F6F3',
-    sidebar: '#102A2E',
-    sidebarSoft: '#17383D',
-    sidebarText: '#D7E8E8',
-    success: '#15803D',
-    successSoft: '#DCFCE7',
-    warning: '#B45309',
-    warningSoft: '#FEF3C7',
-    danger: '#DC2626',
-    dangerSoft: '#FEE2E2',
-    info: '#2563EB',
-    infoSoft: '#DBEAFE',
-  },
+  colors: { ...themedColors, destructive: themedColors.danger, destructiveSoft: themedColors.dangerSoft },
   radius: {
     sm: 8,
     md: 10,

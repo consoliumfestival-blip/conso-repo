@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useDebounce } from '../../Hooks/useDebounce';
 
@@ -74,7 +75,7 @@ export default function ColorField({ label, value, onChange }: ColorFieldProps) 
         {/* Color Swatch */}
         <button
           onClick={() => setPickerOpen((v) => !v)}
-          style={{ ...styles.swatch, backgroundColor: isValidHex(localHex) ? localHex : '#000000' }}
+          style={{ ...styles.swatch, backgroundColor: isValidHex(localHex) ? localHex : coreColor('#000000', 'surfaceStrong') }}
           title="Open color picker"
         />
         {/* Hex Input */}
@@ -110,7 +111,7 @@ export default function ColorField({ label, value, onChange }: ColorFieldProps) 
               {SSF_PALETTE.map((c) => (
                 <button
                   key={c}
-                  style={{ ...styles.chip, backgroundColor: c, border: c === localHex ? '2px solid #38bdf8' : '1px solid #2a2a2a' }}
+                  style={{ ...styles.chip, backgroundColor: c, border: c === localHex ? `2px solid ${coreColor('#38bdf8', 'border')}` : `1px solid ${coreColor('#2a2a2a', 'border')}` }}
                   onClick={() => { setLocalHex(c); onChange(c); addRecentColor(c); }}
                 />
               ))}
@@ -124,7 +125,7 @@ export default function ColorField({ label, value, onChange }: ColorFieldProps) 
                 {recentColors.map((c) => (
                   <button
                     key={c}
-                    style={{ ...styles.chip, backgroundColor: c, border: c === localHex ? '2px solid #38bdf8' : '1px solid #2a2a2a' }}
+                    style={{ ...styles.chip, backgroundColor: c, border: c === localHex ? `2px solid ${coreColor('#38bdf8', 'border')}` : `1px solid ${coreColor('#2a2a2a', 'border')}` }}
                     onClick={() => { setLocalHex(c); onChange(c); }}
                   />
                 ))}
@@ -139,15 +140,15 @@ export default function ColorField({ label, value, onChange }: ColorFieldProps) 
 
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 6, position: 'relative' },
-  label: { fontSize: 10, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
-  row: { display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #2a2a2a', borderRadius: 8, padding: '0 8px', height: 36, backgroundColor: '#171717' },
-  swatch: { width: 20, height: 20, borderRadius: 4, border: '1px solid #2a2a2a', cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)' },
-  hexInput: { flex: 1, fontFamily: 'monospace', fontSize: 12, border: 'none', outline: 'none', color: '#E2E8F0', background: 'transparent', letterSpacing: '0.05em' },
-  eyeBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 0, color: '#94A3B8' },
-  picker: { position: 'absolute', top: '100%', left: 0, zIndex: 9999, backgroundColor: '#1f1f1f', border: '1px solid #2a2a2a', borderRadius: 12, padding: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 200 },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  row: { display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 8, padding: '0 8px', height: 36, backgroundColor: coreColor('#171717', 'surfaceStrong') },
+  swatch: { width: 20, height: 20, borderRadius: 4, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, cursor: 'pointer', flexShrink: 0, boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.05)' },
+  hexInput: { flex: 1, fontFamily: 'monospace', fontSize: 12, border: 'none', outline: 'none', color: coreColor('#E2E8F0', 'text'), background: 'transparent', letterSpacing: '0.05em' },
+  eyeBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, padding: 0, color: coreColor('#94A3B8', 'textSubtle') },
+  picker: { position: 'absolute', top: '100%', left: 0, zIndex: 9999, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 12, padding: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', marginTop: 4, minWidth: 200 },
   nativePicker: { width: '100%', height: 120, borderRadius: 8, border: 'none', cursor: 'pointer', marginBottom: 8, backgroundColor: 'transparent' },
   paletteSection: { marginBottom: 8 },
-  paletteLabel: { fontSize: 9, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 },
+  paletteLabel: { fontSize: 9, fontFamily: 'Inter, sans-serif', fontWeight: 700, color: coreColor('#94A3B8', 'textSubtle'), textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 },
   paletteRow: { display: 'flex', gap: 6, flexWrap: 'wrap' },
   chip: { width: 24, height: 24, borderRadius: 6, cursor: 'pointer', padding: 0 },
 };

@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { useTemplateStore } from '../Stores/templateStore';
 import { useLayerStore } from '../Stores/layerStore';
@@ -71,10 +72,10 @@ export default function CanvasSizeBlock() {
   };
 
   return (
-    <div style={{ padding: '16px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+    <div style={{ padding: '16px', background: coreColor('#F8FAFC', 'surfaceStrong'), borderBottom: `1px solid ${coreColor('#E2E8F0', 'border')}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-        <ImageIcon size={18} color="#64748B" />
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: '#1E293B', margin: 0 }}>CANVAS SIZE</h3>
+        <ImageIcon size={18} color={coreColor("#64748B", 'textMuted')} />
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: coreColor('#1E293B', 'text'), margin: 0 }}>CANVAS SIZE</h3>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -92,17 +93,17 @@ export default function CanvasSizeBlock() {
                 justifyContent: 'center',
                 gap: '4px',
                 padding: '12px 8px',
-                background: isActive ? '#EFF6FF' : '#FFFFFF',
-                border: isActive ? '1.5px solid #3B82F6' : '1px solid #CBD5E1',
+                background: isActive ? coreColor('#EFF6FF', 'surfaceStrong') : coreColor('#FFFFFF', 'surfaceStrong'),
+                border: isActive ? `1.5px solid ${coreColor('#3B82F6', 'border')}` : `1px solid ${coreColor('#CBD5E1', 'border')}`,
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
-                color: isActive ? '#2563EB' : '#475569'
+                color: isActive ? coreColor('#2563EB', 'info') : coreColor('#475569', 'text')
               }}
             >
               <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
               <div style={{ fontSize: '12px', fontWeight: isActive ? 600 : 500 }}>{size.label}</div>
-              <div style={{ fontSize: '10px', color: isActive ? '#3B82F6' : '#94A3B8' }}>
+              <div style={{ fontSize: '10px', color: isActive ? coreColor('#3B82F6', 'info') : coreColor('#94A3B8', 'textSubtle') }}>
                 {size.width} × {size.height}
               </div>
             </button>

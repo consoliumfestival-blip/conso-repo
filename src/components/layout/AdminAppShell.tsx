@@ -1,16 +1,7 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useMemo, useState } from "react";
-import {
-  Modal,
-  Platform,
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import {
   BadgePlus,
@@ -213,6 +204,11 @@ const navItems: NavItem[] = [
         match: (path) => path.includes("/settings/scoring-rules"),
       },
       {
+        label: "Appearance",
+        path: "/(admin)/settings/appearance",
+        match: (path) => path.includes("/settings/appearance"),
+      },
+      {
         label: "AI Settings & API Keys",
         path: "/(admin)/settings/api-keys",
         match: (path) => path.includes("/settings/api-keys"),
@@ -262,6 +258,7 @@ function DesktopSidebar({
   return (
     <View
       className="no-print"
+      {...{ dataSet: { coreGlass: 'navigation' } } as any}
       style={[styles.sidebar, tabletWidth ? { width: tabletWidth } : null, collapsed && styles.sidebarCollapsed]}
     >
       <View style={{ flex: 1, minHeight: 0 }}>
@@ -269,7 +266,7 @@ function DesktopSidebar({
           <View style={styles.brandMark}>
             <ShieldCheck
               size={23}
-              color={ui.colors.surface}
+              color={ui.colors.onPrimary}
               strokeWidth={2.4}
             />
           </View>
@@ -342,7 +339,7 @@ function DesktopSidebar({
                 >
                   <Icon
                     size={18}
-                    color={active ? ui.colors.primary : ui.colors.textMuted}
+                    color={active ? ui.colors.primaryText : ui.colors.textMuted}
                     strokeWidth={active ? 2.35 : 2}
                   />
                   {!collapsed && (
@@ -357,8 +354,8 @@ function DesktopSidebar({
                       </Text>
                       {item.label === "Judge Management" &&
                         pendingCount > 0 && (
-                          <View className="bg-red-500 rounded-full w-5 h-5 items-center justify-center ml-auto mr-1">
-                            <Text className="text-white text-[10px] font-bold">
+                          <View className="bg-core-danger-action-red-500 rounded-full w-5 h-5 items-center justify-center ml-auto mr-1">
+                            <Text className="text-core-on-primary-white text-[10px] font-bold">
                               {pendingCount}
                             </Text>
                           </View>
@@ -414,7 +411,7 @@ function DesktopSidebar({
         ]}
       >
         <View style={styles.avatar}>
-          <UserCircle size={26} color={ui.colors.primary} />
+          <UserCircle size={26} color={ui.colors.primaryText} />
         </View>
         {!collapsed && (
           <>
@@ -468,7 +465,7 @@ function MobileMenuSheet({
     >
       <View style={styles.modalRoot}>
         <Pressable style={styles.scrim} onPress={onClose} />
-        <SafeAreaView style={styles.sheet}>
+        <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={styles.sheet}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
             <View>
@@ -509,10 +506,10 @@ function MobileMenuSheet({
                     style={[styles.menuTile, active && styles.menuTileActive]}
                   >
                     <View style={[styles.menuIcon, active && styles.menuIconActive]}>
-                      <Icon size={22} color={active ? ui.colors.info : "#52647C"} strokeWidth={2} />
+                      <Icon size={22} color={active ? ui.colors.info : coreColor("#52647C", 'text')} strokeWidth={2} />
                       {item.label === "Judge Management" && pendingCount > 0 && (
-                        <View className="absolute -top-1 -right-1 bg-red-500 rounded-full w-4 h-4 items-center justify-center border border-white">
-                          <Text className="text-white text-[9px] font-bold">{pendingCount}</Text>
+                        <View className="absolute -top-1 -right-1 bg-core-danger-action-red-500 rounded-full w-4 h-4 items-center justify-center border border-core-border-white">
+                          <Text className="text-core-on-primary-white text-[9px] font-bold">{pendingCount}</Text>
                         </View>
                       )}
                     </View>
@@ -536,7 +533,7 @@ function MobileMenuSheet({
                     >
                       <Icon
                         size={22}
-                        color={active ? ui.colors.info : "#52647C"}
+                        color={active ? ui.colors.info : coreColor("#52647C", 'text')}
                         strokeWidth={2}
                       />
                     </View>
@@ -562,7 +559,7 @@ function MobileMenuSheet({
                             onPress={() => navigate(child.path)}
                             style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: childActive ? ui.colors.primarySoft : 'transparent', borderRadius: 12, marginBottom: 4 }}
                           >
-                            <Text style={{ fontFamily: childActive ? 'Poppins_600SemiBold' : 'Poppins_500Medium', fontSize: 13, color: childActive ? ui.colors.primary : ui.colors.textMuted }}>
+                            <Text style={{ fontFamily: childActive ? 'Poppins_600SemiBold' : 'Poppins_500Medium', fontSize: 13, color: childActive ? ui.colors.primaryText : ui.colors.textMuted }}>
                               {child.label}
                             </Text>
                           </TouchableOpacity>
@@ -607,7 +604,7 @@ function MobileBottomBar({
   const primaryItems = navItems.slice(0, 3);
 
   return (
-    <SafeAreaView className="no-print" style={styles.mobileBarSafe}>
+    <SafeAreaView {...{ dataSet: { coreGlass: 'navigation' } } as any} className="no-print" style={styles.mobileBarSafe}>
       <View style={styles.mobileBar}>
         {primaryItems.map((item) => {
           const active = item.match(pathname);
@@ -677,7 +674,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 
   if (pathname.includes("/settings/leaderboard/poster-studio")) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#09090b" }}>{children}</View>
+      <View style={{ flex: 1, backgroundColor: coreColor("#09090b", 'surfaceStrong') }}>{children}</View>
     );
   }
 
@@ -695,7 +692,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
       )}
       <View style={styles.shellMain}>
         {isDesktop && !hasIntegratedSectionHeader && (
-          <View className="no-print" style={styles.topbar}>
+          <View {...{ dataSet: { coreGlass: 'navigation' } } as any} className="no-print" style={styles.topbar}>
             <View>
               <Text style={styles.topbarEyebrow}>{festivalName}</Text>
               <Text style={styles.topbarTitle}>{pageTitle}</Text>
@@ -754,7 +751,7 @@ const styles = StyleSheet.create({
   sidebar: {
     width: 264,
     minHeight: "100%",
-    backgroundColor: "#FBFBFC",
+    backgroundColor: coreColor("#FBFBFC", 'surface'),
     borderRightWidth: 1,
     borderRightColor: ui.colors.border,
     paddingHorizontal: 12,
@@ -843,16 +840,16 @@ const styles = StyleSheet.create({
   desktopNavItemActive: {
     backgroundColor: ui.colors.primarySoft,
     borderWidth: 1,
-    borderColor: "#B9E5DE",
+    borderColor: coreColor("#B9E5DE", 'border'),
   },
   desktopNavLabel: {
-    color: "#334155",
+    color: coreColor("#334155", 'text'),
     fontFamily: "Poppins_400Regular",
     fontSize: 12,
     flex: 1,
   },
   desktopNavLabelActive: {
-    color: ui.colors.primary,
+    color: ui.colors.primaryText,
     fontFamily: "Poppins_700Bold",
   },
   desktopSubmenu: {
@@ -939,7 +936,7 @@ const styles = StyleSheet.create({
     }),
   },
   topbarEyebrow: {
-    color: ui.colors.primary,
+    color: ui.colors.primaryText,
     fontFamily: "Poppins_700Bold",
     fontSize: 9,
     letterSpacing: 1.2,
@@ -979,7 +976,7 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: ui.colors.success,
+    backgroundColor: ui.colors.successAction,
   },
   onlineText: {
     color: ui.colors.success,
@@ -1017,7 +1014,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   mobileTabIconActive: {
-    backgroundColor: "#EAF2FF",
+    backgroundColor: coreColor("#EAF2FF", 'surface'),
   },
   mobileTabLabel: {
     color: ui.colors.textMuted,
@@ -1099,8 +1096,8 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   menuTileActive: {
-    backgroundColor: "#F4F8FF",
-    borderColor: "#CFE0FF",
+    backgroundColor: coreColor("#F4F8FF", 'surface'),
+    borderColor: coreColor("#CFE0FF", 'border'),
   },
   menuIcon: {
     width: 44,
@@ -1112,10 +1109,10 @@ const styles = StyleSheet.create({
     marginBottom: 9,
   },
   menuIconActive: {
-    backgroundColor: "#E5EFFF",
+    backgroundColor: coreColor("#E5EFFF", 'surface'),
   },
   menuTileLabel: {
-    color: "#40516A",
+    color: coreColor("#40516A", 'text'),
     fontFamily: "Poppins_700Bold",
     fontSize: 12,
     textAlign: "center",
@@ -1131,7 +1128,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
-    backgroundColor: "#FBFCFD",
+    backgroundColor: coreColor("#FBFCFD", 'surface'),
   },
   sheetAvatar: {
     width: 44,
@@ -1139,7 +1136,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: ui.colors.infoSoft,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: coreColor("#BFDBFE", 'border'),
     alignItems: "center",
     justifyContent: "center",
   },

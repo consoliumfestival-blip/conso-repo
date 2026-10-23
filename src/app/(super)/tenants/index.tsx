@@ -1,16 +1,7 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  Platform,
-  ActivityIndicator,
-  Modal,
-  Clipboard,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator, Clipboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
 import type { FestivalTemplate } from '../../../lib/repositories/provisioningRepository';
@@ -23,12 +14,12 @@ import {
 } from 'lucide-react-native';
 
 const C = {
-  bg: '#0B1524', surface: '#111E35', border: '#1E3A5F',
-  accent: '#FBBF24', accentBg: 'rgba(251,191,36,0.10)',
-  text: '#E2E8F0', muted: '#475569', danger: '#F87171',
-  dangerBg: 'rgba(239,68,68,0.10)', green: '#34D399',
-  greenBg: 'rgba(52,211,153,0.10)', purple: '#818CF8',
-  purpleBg: 'rgba(129,140,248,0.10)',
+  bg: coreColor('#0B1524', 'background'), surface: coreColor('#111E35', 'surface'), border: `${coreColor('#1E3A5F', 'border')}`,
+  accent: coreColor('#FBBF24', 'primary'), accentBg: coreColor('rgba(251,191,36,0.10)', 'primarySoft'),
+  text: coreColor('#E2E8F0', 'text'), muted: coreColor('#475569', 'textMuted'), danger: coreColor('#F87171', 'danger'),
+  dangerBg: coreColor('rgba(239,68,68,0.10)', 'dangerSoft'), green: coreColor('#34D399', 'success'),
+  greenBg: coreColor('rgba(52,211,153,0.10)', 'successSoft'), purple: coreColor('#818CF8', 'info'),
+  purpleBg: coreColor('rgba(129,140,248,0.10)', 'infoSoft'),
 };
 
 type OrgType = 'unit' | 'sector' | 'division' | 'district' | 'state';
@@ -43,14 +34,14 @@ interface Org {
 }
 
 const ORG_TYPE_CONFIG: Record<OrgType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
-  unit:     { label: 'Unit',     icon: <Building2 size={16} color="#FBBF24" />, color: '#FBBF24', bg: 'rgba(251,191,36,0.10)' },
-  sector:   { label: 'Sector',   icon: <Map       size={16} color="#34D399" />, color: '#34D399', bg: 'rgba(52,211,153,0.10)' },
-  division: { label: 'Division', icon: <GitBranch size={16} color="#818CF8" />, color: '#818CF8', bg: 'rgba(129,140,248,0.10)' },
-  district: { label: 'District', icon: <Landmark  size={16} color="#EC4899" />, color: '#EC4899', bg: 'rgba(236,72,153,0.10)' },
-  state:    { label: 'State',    icon: <Flag      size={16} color="#A855F7" />, color: '#A855F7', bg: 'rgba(168,85,247,0.10)' },
+  unit:     { label: 'Unit',     icon: <Building2 size={16} color={coreColor("#FBBF24", 'warning')} />, color: coreColor('#FBBF24', 'warning'), bg: coreColor('rgba(251,191,36,0.10)', 'background') },
+  sector:   { label: 'Sector',   icon: <Map       size={16} color={coreColor("#34D399", 'success')} />, color: coreColor('#34D399', 'success'), bg: coreColor('rgba(52,211,153,0.10)', 'background') },
+  division: { label: 'Division', icon: <GitBranch size={16} color={coreColor("#818CF8", 'info')} />, color: coreColor('#818CF8', 'info'), bg: coreColor('rgba(129,140,248,0.10)', 'background') },
+  district: { label: 'District', icon: <Landmark  size={16} color={coreColor("#EC4899", 'info')} />, color: coreColor('#EC4899', 'info'), bg: coreColor('rgba(236,72,153,0.10)', 'background') },
+  state:    { label: 'State',    icon: <Flag      size={16} color={coreColor("#A855F7", 'info')} />, color: coreColor('#A855F7', 'info'), bg: coreColor('rgba(168,85,247,0.10)', 'background') },
 } as const;
 
-const DEFAULT_ORG_CONFIG = { label: 'Other', icon: <Layers size={16} color="#94A3B8" />, color: '#94A3B8', bg: 'rgba(148,163,184,0.10)' };
+const DEFAULT_ORG_CONFIG = { label: 'Other', icon: <Layers size={16} color={coreColor("#94A3B8", 'textSubtle')} />, color: coreColor('#94A3B8', 'textSubtle'), bg: coreColor('rgba(148,163,184,0.10)', 'background') };
 
 const getOrgConfig = (type: string) =>
   ORG_TYPE_CONFIG[type as OrgType] ?? DEFAULT_ORG_CONFIG;
@@ -244,7 +235,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
         <Animated.View entering={FadeInUp.duration(300)} style={{
           backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           padding: 24, borderTopWidth: 1, borderColor: C.border,
@@ -417,7 +408,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
           </TouchableOpacity>
 
           {/* Warning */}
-          <View style={{ backgroundColor: 'rgba(251,191,36,0.08)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.accent + '30', flexDirection: 'row', gap: 8 }}>
+          <View style={{ backgroundColor: coreAlpha(coreColor('#fbbf24', 'overlay'), 0.08), borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.accent + '30', flexDirection: 'row', gap: 8 }}>
             <Info size={16} color={C.accent} style={{ marginTop: 1 }} />
             <Text style={{ color: C.accent, fontFamily: 'Poppins_400Regular', fontSize: 12, flex: 1 }}>
               Use &quot;Open Login&quot; in a new tab to test without losing your superadmin session.
@@ -543,7 +534,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
         <Animated.View entering={FadeInUp.duration(300)} style={{
           backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           padding: 24, borderTopWidth: 1, borderColor: C.border,
@@ -602,7 +593,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
               <TouchableOpacity onPress={handleSave} disabled={provisionMutation.isPending || phase === 'provisioning'}
                 style={{ flex: 1, backgroundColor: provisionMutation.isPending ? C.border : C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
                 {provisionMutation.isPending ? <ActivityIndicator color={C.text} /> : (
-                  <Text style={{ color: '#000', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
+                  <Text style={{ color: coreColor('#000', 'text'), fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
                     {phase === 'failed' ? 'Retry Creation' : 'Create Tenant Account'}
                   </Text>
                 )}
@@ -611,7 +602,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
             {phase === 'success' && (
               <TouchableOpacity onPress={() => { onComplete(); onClose(); }}
                 style={{ flex: 1, backgroundColor: C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
-                <Text style={{ color: '#000', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Done</Text>
+                <Text style={{ color: coreColor('#000', 'text'), fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Done</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -707,7 +698,7 @@ export default function TenantsManager() {
                   <TouchableOpacity
                     onPress={rowAction}
                     activeOpacity={rowAction ? 0.8 : 1}
-                    style={{ backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: hasAccess ? (isDisabled ? '#F8717130' : '#34D39930') : C.border, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    style={{ backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: hasAccess ? (isDisabled ? coreColor('#F8717130', 'border') : coreColor('#34D39930', 'border')) : C.border, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                       <View style={{ backgroundColor: cfg.bg, padding: 10, borderRadius: 12 }}>{cfg.icon}</View>
@@ -721,7 +712,7 @@ export default function TenantsManager() {
 
                     {hasAccess ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: (isDisabled ? C.danger : '#34D399') + '40' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: (isDisabled ? C.danger : coreColor('#34D399', 'border')) + '40' }}>
                           {isDisabled ? <ShieldAlert size={12} color={C.danger} /> : <ShieldCheck size={12} color={C.green} />}
                           <Text style={{ color: isDisabled ? C.danger : C.green, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{isDisabled ? 'Disabled' : 'Active'}</Text>
                         </View>

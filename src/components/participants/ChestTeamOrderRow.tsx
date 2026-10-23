@@ -44,7 +44,7 @@ export function ChestTeamOrderRow(props: Props) {
           <View className="flex-1 min-w-0">
             <Text className="font-poppins-bold text-ssf-text">{index + 1}. {team.name}</Text>
             <Text className="font-poppins text-xs text-ssf-text-muted">{category ? `${team.total} participants` : `${team.total} participants · ${team.numeric}/${team.total} numbered`}</Text>
-            {!category && <Text className="font-poppins-semibold text-xs text-ssf-primary mt-1">{slot * range}–{(slot + 1) * range - 1}</Text>}
+            {!category && <Text className="font-poppins-semibold text-xs text-ui-primary-text mt-1">{slot * range}–{(slot + 1) * range - 1}</Text>}
           </View>
           <View className="flex-row gap-1">
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Move ${team.name} up`}

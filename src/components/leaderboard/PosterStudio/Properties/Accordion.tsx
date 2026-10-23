@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, ReactNode } from 'react';
 
 interface AccordionProps {
@@ -16,7 +17,7 @@ export default function Accordion({ title, children, defaultOpen = true }: Accor
         onClick={() => setIsOpen(!isOpen)}
       >
         <span style={styles.title}>{title}</span>
-        <span style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: 10, color: '#64748B' }}>
+        <span style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', fontSize: 10, color: coreColor('#64748B', 'textMuted') }}>
           ▼
         </span>
       </button>
@@ -31,8 +32,8 @@ export default function Accordion({ title, children, defaultOpen = true }: Accor
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    backgroundColor: '#171717',
-    border: '1px solid #2a2a2a',
+    backgroundColor: coreColor('#171717', 'surfaceStrong'),
+    border: `1px solid ${coreColor('#2a2a2a', 'border')}`,
     borderRadius: 8,
     marginBottom: 8,
     overflow: 'hidden',
@@ -43,8 +44,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '12px 14px',
-    backgroundColor: '#1f1f1f',
-    borderBottom: '1px solid #2a2a2a',
+    backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'),
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
     cursor: 'pointer',
     borderTop: 'none',
     borderLeft: 'none',
@@ -54,7 +55,7 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 12,
     fontWeight: 700,
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
   },

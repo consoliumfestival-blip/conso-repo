@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 /**
  * PublishedResultsPanel
  * --------------------
@@ -209,8 +210,8 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
                   onClick={() => handleSelectResult(result)}
                   style={{
                     ...styles.card,
-                    borderColor: isSelected ? '#0d9488' : '#2a2a2a',
-                    backgroundColor: isSelected ? '#115e59' : '#1f1f1f',
+                    borderColor: isSelected ? coreColor('#0d9488', 'border') : coreColor('#2a2a2a', 'border'),
+                    backgroundColor: isSelected ? coreColor('#115e59', 'primary') : coreColor('#1f1f1f', 'surfaceStrong'),
                     boxShadow: isSelected ? '0 0 0 2px #14b8a6' : '0 1px 4px rgba(0,0,0,0.5)',
                   }}
                 >
@@ -224,7 +225,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
                   <div style={styles.cardRanks}>
                     {itemResults.slice(0, 3).map(r => (
                       <div key={r.result_id} style={styles.rankRow}>
-                        <span style={{ ...styles.rankBadge, backgroundColor: r.rank === 1 ? '#422006' : r.rank === 2 ? '#1e293b' : '#3f2c00' }}>
+                        <span style={{ ...styles.rankBadge, backgroundColor: r.rank === 1 ? coreColor('#422006', 'warningAction') : r.rank === 2 ? coreColor('#1e293b', 'surfaceStrong') : coreColor('#3f2c00', 'dangerSoft') }}>
                           {r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`}
                         </span>
                         <span style={styles.participantName}>{r.participant_name || '—'}</span>
@@ -235,7 +236,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
 
                   {/* Footer */}
                   <div style={styles.cardFooter}>
-                    <span style={{ ...styles.statusPill, backgroundColor: activeTab === 'exported' ? '#064e3b' : '#451a1a', color: activeTab === 'exported' ? '#34d399' : '#fca5a5' }}>
+                    <span style={{ ...styles.statusPill, backgroundColor: activeTab === 'exported' ? coreColor('#064e3b', 'successAction') : coreColor('#451a1a', 'surfaceStrong'), color: activeTab === 'exported' ? coreColor('#34d399', 'success') : coreColor('#fca5a5', 'danger') }}>
                       {activeTab === 'exported' ? '✓ Poster Exported' : '⏳ Poster Pending'}
                     </span>
                     {isSelected && (
@@ -261,28 +262,28 @@ const styles: Record<string, React.CSSProperties> = {
   tabsRow: {
     display: 'flex',
     padding: '0 16px',
-    borderBottom: '1px solid #2a2a2a',
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
     gap: 16,
     alignItems: 'center',
     flexShrink: 0,
   },
   tabActive: {
-    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 600, color: '#38bdf8', borderBottom: '2px solid #38bdf8', cursor: 'pointer'
+    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 600, color: coreColor('#38bdf8', 'info'), borderBottom: `2px solid ${coreColor('#38bdf8', 'border')}`, cursor: 'pointer'
   },
   tabInactive: {
-    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 500, color: '#94A3B8', borderBottom: '2px solid transparent', cursor: 'pointer'
+    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 500, color: coreColor('#94A3B8', 'textSubtle'), borderBottom: '2px solid transparent', cursor: 'pointer'
   },
-  refreshBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: 16, padding: '4px', borderRadius: 6, marginLeft: 'auto' },
+  refreshBtn: { background: 'none', border: 'none', cursor: 'pointer', color: coreColor('#94A3B8', 'textSubtle'), fontSize: 16, padding: '4px', borderRadius: 6, marginLeft: 'auto' },
   body: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 },
-  searchRow: { padding: '10px 16px', borderBottom: '1px solid #2a2a2a', flexShrink: 0 },
+  searchRow: { padding: '10px 16px', borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`, flexShrink: 0 },
   searchInput: {
-    width: '100%', height: 32, padding: '0 12px', borderRadius: 6, border: '1px solid #2a2a2a', fontSize: 12, backgroundColor: '#1f1f1f', color: '#E2E8F0', outline: 'none', boxSizing: 'border-box',
+    width: '100%', height: 32, padding: '0 12px', borderRadius: 6, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, fontSize: 12, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), color: coreColor('#E2E8F0', 'text'), outline: 'none', boxSizing: 'border-box',
   },
   statusRow: { padding: '24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  loadingText: { fontSize: 13, color: '#94A3B8' },
-  emptyText: { fontSize: 13, color: '#64748B', textAlign: 'center', lineHeight: 1.6 },
-  errorRow: { padding: '12px 16px', backgroundColor: '#451a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, color: '#fca5a5' },
-  retryBtn: { padding: '4px 10px', borderRadius: 6, border: '1px solid #7f1d1d', backgroundColor: '#1f1f1f', cursor: 'pointer', fontSize: 12, color: '#fca5a5', fontWeight: 600 },
+  loadingText: { fontSize: 13, color: coreColor('#94A3B8', 'textSubtle') },
+  emptyText: { fontSize: 13, color: coreColor('#64748B', 'textMuted'), textAlign: 'center', lineHeight: 1.6 },
+  errorRow: { padding: '12px 16px', backgroundColor: coreColor('#451a1a', 'surfaceStrong'), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, color: coreColor('#fca5a5', 'danger') },
+  retryBtn: { padding: '4px 10px', borderRadius: 6, border: `1px solid ${coreColor('#7f1d1d', 'border')}`, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), cursor: 'pointer', fontSize: 12, color: coreColor('#fca5a5', 'danger'), fontWeight: 600 },
   grid: { display: 'flex', flexDirection: 'column', gap: 8, padding: 16 },
   card: {
     borderRadius: 8,
@@ -294,14 +295,14 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: 6,
   },
-  cardEventName: { fontSize: 12, fontWeight: 600, color: '#E2E8F0', lineHeight: 1.2 },
-  cardEventNameMl: { fontSize: 11, color: '#94A3B8', fontFamily: 'Noto Sans Malayalam, sans-serif' },
+  cardEventName: { fontSize: 12, fontWeight: 600, color: coreColor('#E2E8F0', 'text'), lineHeight: 1.2 },
+  cardEventNameMl: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Noto Sans Malayalam, sans-serif' },
   cardRanks: { display: 'flex', flexDirection: 'column', gap: 2 },
   rankRow: { display: 'flex', alignItems: 'center', gap: 6 },
   rankBadge: { width: 22, height: 22, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 },
-  participantName: { flex: 1, fontSize: 11, fontWeight: 600, color: '#CBD5E1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  orgName: { fontSize: 9, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 },
+  participantName: { flex: 1, fontSize: 11, fontWeight: 600, color: coreColor('#CBD5E1', 'text'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  orgName: { fontSize: 9, color: coreColor('#64748B', 'textMuted'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 },
   cardFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
   statusPill: { fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999, letterSpacing: '0.02em' },
-  bindingIndicator: { fontSize: 9, fontWeight: 700, color: '#38bdf8' },
+  bindingIndicator: { fontSize: 9, fontWeight: 700, color: coreColor('#38bdf8', 'info') },
 };

@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React, { useState, useRef } from 'react';
 import { fontService, FontMetadata } from '../../../../services/fontService';
 import { useAuthStore } from '../../../../core/store/authStore';
@@ -98,14 +99,14 @@ export default function FontManagerPanel({ onClose, onUploadSuccess }: FontManag
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  backdrop: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modal: { backgroundColor: '#171717', border: '1px solid #2a2a2a', borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: 'Inter, sans-serif' },
-  title: { fontSize: 16, fontWeight: 700, color: '#E2E8F0', margin: '0 0 4px 0' },
-  subtitle: { fontSize: 13, color: '#94A3B8', margin: '0 0 20px 0' },
-  error: { backgroundColor: '#451a1a', color: '#fca5a5', padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 16, border: '1px solid #7f1d1d' },
-  uploadBox: { border: '1px dashed #2a2a2a', borderRadius: 8, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
-  uploadBtn: { padding: '8px 16px', backgroundColor: '#38bdf8', color: '#0f172a', fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 },
-  hint: { fontSize: 11, color: '#64748b', textAlign: 'center' },
+  backdrop: { position: 'fixed', inset: 0, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.8), zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  modal: { backgroundColor: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: 'Inter, sans-serif' },
+  title: { fontSize: 16, fontWeight: 700, color: coreColor('#E2E8F0', 'text'), margin: '0 0 4px 0' },
+  subtitle: { fontSize: 13, color: coreColor('#94A3B8', 'textSubtle'), margin: '0 0 20px 0' },
+  error: { backgroundColor: coreColor('#451a1a', 'surfaceStrong'), color: coreColor('#fca5a5', 'danger'), padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 16, border: `1px solid ${coreColor('#7f1d1d', 'border')}` },
+  uploadBox: { border: `1px dashed ${coreColor('#2a2a2a', 'border')}`, borderRadius: 8, padding: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+  uploadBtn: { padding: '8px 16px', backgroundColor: coreColor('#38bdf8', 'infoAction'), color: coreColor('#0f172a', 'overlay'), fontWeight: 600, border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 13 },
+  hint: { fontSize: 11, color: coreColor('#64748b', 'textMuted'), textAlign: 'center' },
   actions: { display: 'flex', justifyContent: 'flex-end', marginTop: 20 },
-  closeBtn: { padding: '8px 16px', backgroundColor: 'transparent', color: '#94A3B8', fontWeight: 600, border: '1px solid #2a2a2a', borderRadius: 6, cursor: 'pointer', fontSize: 13 },
+  closeBtn: { padding: '8px 16px', backgroundColor: 'transparent', color: coreColor('#94A3B8', 'textSubtle'), fontWeight: 600, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, cursor: 'pointer', fontSize: 13 },
 };

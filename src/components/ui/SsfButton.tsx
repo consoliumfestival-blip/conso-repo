@@ -38,9 +38,9 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  };
 
  const textVariantClasses = {
- primary: 'text-white',
+ primary: 'text-core-on-primary-white',
  outline: 'text-ui-text',
- ghost: 'text-ui-primary',
+ ghost: 'text-ui-primary-text',
  };
 
  const textSizeClasses = {
@@ -65,7 +65,7 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  {...props}
  >
  {isLoading ? (
- <ActivityIndicator color={variant === 'primary' ? ui.colors.surface : ui.colors.primary} className="mr-2" />
+ <ActivityIndicator color={variant === 'primary' ? ui.colors.onPrimary : ui.colors.primaryText} className="mr-2" />
  ) : icon ? (
  <View className="mr-2">{icon}</View>
  ) : null}

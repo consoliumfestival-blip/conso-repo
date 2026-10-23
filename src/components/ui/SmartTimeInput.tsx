@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect } from 'react';
 import { TextInput, View, Platform, StyleSheet } from 'react-native';
 
@@ -83,7 +84,7 @@ export function SmartTimeInput({ value, onChange, fullWidth = false }: SmartTime
         onChangeText={setInputValue}
         onBlur={handleBlur}
         placeholder="e.g. 1000am, 230p"
-        placeholderTextColor="#9ca3af"
+        placeholderTextColor={coreColor("#9ca3af", 'textSubtle')}
         keyboardType={Platform.OS === 'ios' || Platform.OS === 'android' ? 'default' : 'default'}
       />
     </View>
@@ -92,14 +93,14 @@ export function SmartTimeInput({ value, onChange, fullWidth = false }: SmartTime
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: 'white',
+    backgroundColor: coreColor('white', 'surface'),
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: coreColor('#e5e7eb', 'border'),
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: Platform.OS === 'web' ? 10 : 12,
     fontSize: 16,
-    color: '#374151',
+    color: coreColor('#374151', 'text'),
     fontWeight: '500',
     ...(Platform.OS === 'web' && { outlineStyle: 'none' } as any),
   },

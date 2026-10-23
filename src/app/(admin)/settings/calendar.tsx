@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Platform, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -114,16 +115,16 @@ export default function FestivalCalendarSettings() {
 
       {/* Success Banner */}
       {saved && (
-        <View className="flex-row items-center gap-2 bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-          <CheckCircle2 size={18} color="#16A34A" />
-          <Text className="font-poppins-bold text-green-800 text-sm">Calendar Updated!</Text>
+        <View className="flex-row items-center gap-2 bg-core-success-soft-green-50 border border-core-success-soft-green-200 rounded-xl p-4 mb-4">
+          <CheckCircle2 size={18} color={coreColor("#16A34A", 'success')} />
+          <Text className="font-poppins-bold text-core-success-green-800 text-sm">Calendar Updated!</Text>
         </View>
       )}
 
       {/* Error Banner */}
       {error !== '' && (
-        <View className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-          <Text className="font-poppins-bold text-red-700 text-sm">{error}</Text>
+        <View className="bg-core-danger-soft-red-50 border border-core-danger-soft-red-200 rounded-xl p-4 mb-4">
+          <Text className="font-poppins-bold text-core-danger-red-700 text-sm">{error}</Text>
         </View>
       )}
 
@@ -262,7 +263,7 @@ export default function FestivalCalendarSettings() {
             <select
               value={formData.chest_number_template}
               onChange={(event) => setFormData({ ...formData, chest_number_template: event.target.value as 'category' | 'team' })}
-              className="flex h-10 w-full rounded-lg border border-ui-border bg-white px-3 py-2 text-sm font-poppins text-ui-text"
+              className="flex h-10 w-full rounded-lg border border-ui-border bg-core-surface-white px-3 py-2 text-sm font-poppins text-ui-text"
             >
               <option value="category">By category (current template)</option>
               <option value="team">By team (sub-organisation)</option>
@@ -273,7 +274,7 @@ export default function FestivalCalendarSettings() {
             <select
               value={String(formData.chest_number_category_range)}
               onChange={(event) => setFormData({ ...formData, chest_number_category_range: Number(event.target.value) as 100 | 1000 })}
-              className="flex h-10 w-full rounded-lg border border-ui-border bg-white px-3 py-2 text-sm font-poppins text-ui-text"
+              className="flex h-10 w-full rounded-lg border border-ui-border bg-core-surface-white px-3 py-2 text-sm font-poppins text-ui-text"
             >
               <option value="100">Under 100 (default): 100–199, 200–299…</option>
               <option value="1000">Under 1000: 1000–1999, 2000–2999…</option>

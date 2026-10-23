@@ -1,3 +1,5 @@
+import { coreColor } from '@/constants/coreTheme';
+import { useCoreOverlayScope } from '@/core/contexts/CoreAppearanceContext';
 import React, { useEffect, useState } from 'react';
 import { usePathname } from 'expo-router';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
@@ -5,6 +7,7 @@ import { X, Bell, AlertTriangle, Info, AlertCircle } from 'lucide-react-native';
 import { useNotification } from '../../core/contexts/NotificationContext';
 
 export const NotificationToast = () => {
+  const { style: themeStyle, ...themeProps } = useCoreOverlayScope();
   const { notification } = useNotification();
   const isTeamPortal = usePathname().startsWith('/team');
   const [visible, setVisible] = useState(false);
@@ -74,26 +77,28 @@ export const NotificationToast = () => {
 
   const getIcon = () => {
     switch (currentNotif.data?.priority) {
-      case 'URGENT': return <AlertTriangle size={24} color={isTeamPortal ? '#B84015' : '#EF4444'} />;
-      case 'HIGH': return <AlertCircle size={24} color={isTeamPortal ? '#EC5E27' : '#F59E0B'} />;
-      default: return <Bell size={24} color={isTeamPortal ? '#EC5E27' : '#3B82F6'} />;
+      case 'URGENT': return <AlertTriangle size={24} color={isTeamPortal ? coreColor('#B84015', 'danger') : coreColor('#EF4444', 'danger')} />;
+      case 'HIGH': return <AlertCircle size={24} color={isTeamPortal ? coreColor('#EC5E27', 'danger') : coreColor('#F59E0B', 'warning')} />;
+      default: return <Bell size={24} color={isTeamPortal ? coreColor('#EC5E27', 'danger') : coreColor('#3B82F6', 'info')} />;
     }
   };
 
   const getBgColor = () => {
     switch (currentNotif.data?.priority) {
-      case 'URGENT': return 'bg-red-50 border-red-200';
-      case 'HIGH': return 'bg-amber-50 border-amber-200';
-      default: return 'bg-white border-gray-200';
+      case 'URGENT': return 'bg-core-danger-soft-red-50 border-core-danger-soft-red-200';
+      case 'HIGH': return 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200';
+      default: return 'bg-core-surface-white border-core-border-gray-200';
     }
   };
 
   return (
     <Animated.View
+      {...themeProps}
       style={[
+        themeStyle,
         styles.container,
         {
-          ...(isTeamPortal ? { backgroundColor: '#FFFEF8', borderColor: '#EADBCB', borderWidth: 1 } : {}),
+          ...(isTeamPortal ? { backgroundColor: coreColor('#FFFEF8', 'surface'), borderColor: coreColor('#EADBCB', 'border'), borderWidth: 1 } : {}),
           opacity: fadeAnim,
           transform: [{ translateY }],
         },
@@ -104,11 +109,11 @@ export const NotificationToast = () => {
         {getIcon()}
       </View>
       <View className="flex-1">
-        <Text className={isTeamPortal ? "font-bold text-base" : "font-bold text-gray-900 text-base"} style={isTeamPortal ? { color: '#2D1C14' } : undefined}>{currentNotif.title}</Text>
-        <Text className={isTeamPortal ? "mt-1" : "text-gray-700 mt-1"} style={isTeamPortal ? { color: '#796252' } : undefined}>{currentNotif.body}</Text>
+        <Text className={isTeamPortal ? "font-bold text-base" : "font-bold text-core-text-gray-900 text-base"} style={isTeamPortal ? { color: coreColor('#2D1C14', 'text') } : undefined}>{currentNotif.title}</Text>
+        <Text className={isTeamPortal ? "mt-1" : "text-core-text-gray-700 mt-1"} style={isTeamPortal ? { color: coreColor('#796252', 'text') } : undefined}>{currentNotif.body}</Text>
       </View>
       <TouchableOpacity onPress={hideToast} className="p-2 ml-2">
-        <X size={20} color={isTeamPortal ? "#796252" : "#6B7280"} />
+        <X size={20} color={isTeamPortal ? coreColor("#796252", 'text') : coreColor("#6B7280", 'text')} />
       </TouchableOpacity>
     </Animated.View>
   );

@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
 import React, { useMemo, useState } from 'react';
 import { isNewerResult } from '../../../../core/utils/currentResult';
@@ -247,7 +248,7 @@ export default function IndividualRankingsPage() {
     if (isResultsLoading) {
       return (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={colors.teal} />
+          <ActivityIndicator color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.loadingText}>Calculating individual standings...</Text>
         </View>
       );
@@ -297,7 +298,7 @@ export default function IndividualRankingsPage() {
                   </View>
                   {p.qualified && (
                     <View style={styles.qualifiedBadge}>
-                      <Sparkles size={11} color="#047857" />
+                      <Sparkles size={11} color={coreColor("#047857", 'success')} />
                       <Text style={styles.qualifiedBadgeText}>Qualified</Text>
                     </View>
                   )}
@@ -306,7 +307,7 @@ export default function IndividualRankingsPage() {
                     disabled={openingProfileKey === p.participant_id}
                     style={styles.profileButton}
                   >
-                    <User size={12} color={colors.teal} />
+                    <User size={12} color={coreColor(colors.teal, 'primaryText')} />
                     <Text style={styles.profileButtonText}>
                       {openingProfileKey === p.participant_id ? 'Opening...' : 'Profile'}
                     </Text>
@@ -360,17 +361,17 @@ export default function IndividualRankingsPage() {
             <View style={{ flex: 1.0, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
               <View style={styles.placeRow}>
                 {p.first_places > 0 && (
-                  <View style={[styles.miniPlaceBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <View style={[styles.miniPlaceBadge, { backgroundColor: coreColor('#FEF3C7', 'warningSoft') }]}>
                     <Text style={{ fontSize: 10 }}>🥇 {p.first_places}</Text>
                   </View>
                 )}
                 {p.second_places > 0 && (
-                  <View style={[styles.miniPlaceBadge, { backgroundColor: '#F1F5F9' }]}>
+                  <View style={[styles.miniPlaceBadge, { backgroundColor: coreColor('#F1F5F9', 'surface') }]}>
                     <Text style={{ fontSize: 10 }}>🥈 {p.second_places}</Text>
                   </View>
                 )}
                 {p.third_places > 0 && (
-                  <View style={[styles.miniPlaceBadge, { backgroundColor: '#FEF3C7' }]}>
+                  <View style={[styles.miniPlaceBadge, { backgroundColor: coreColor('#FEF3C7', 'warningSoft') }]}>
                     <Text style={{ fontSize: 10 }}>🥉 {p.third_places}</Text>
                   </View>
                 )}
@@ -385,7 +386,7 @@ export default function IndividualRankingsPage() {
             <View style={{ flex: 1.0, alignItems: 'center' }}>
               {p.qualified ? (
                 <View style={styles.qualifiedBadge}>
-                  <Sparkles size={11} color="#047857" style={{ marginRight: 3 }} />
+                  <Sparkles size={11} color={coreColor("#047857", 'success')} style={{ marginRight: 3 }} />
                   <Text style={styles.qualifiedBadgeText}>Qualified</Text>
                 </View>
               ) : (
@@ -409,7 +410,7 @@ export default function IndividualRankingsPage() {
           </Text>
         </View>
         <TouchableOpacity onPress={() => refetchResults()} style={styles.secondaryAction}>
-          <RefreshCw size={16} color={colors.teal} />
+          <RefreshCw size={16} color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.secondaryActionText}>{isResultsRefetching ? 'Recalculating' : 'Recalculate'}</Text>
         </TouchableOpacity>
       </View>
@@ -519,7 +520,7 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.background,
   },
   secondaryActionText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -579,7 +580,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   filterChipTextActive: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
   },
   filterDivider: {
     width: 1.5,
@@ -639,7 +640,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankBadgeText: {
-    color: colors.navy,
+    color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Poppins_900Black',
     fontSize: 13,
   },
@@ -647,7 +648,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -668,7 +669,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   pointsValue: {
-    color: colors.blue,
+    color: coreColor(colors.blue, 'primaryText'),
     fontFamily: 'Poppins_900Black',
     fontSize: 18,
   },
@@ -685,7 +686,7 @@ const styles = StyleSheet.create({
   gradeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: coreColor('#F1F5F9', 'surface'),
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
@@ -706,7 +707,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gradeCountText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 10,
   },
@@ -724,16 +725,16 @@ const styles = StyleSheet.create({
   qualifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: coreColor('#D1FAE5', 'successSoft'),
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: coreColor('#A7F3D0', 'border'),
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 3,
     alignSelf: 'center',
   },
   qualifiedBadgeText: {
-    color: '#065F46',
+    color: coreColor('#065F46', 'success'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
   },
@@ -753,7 +754,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   profileButtonText: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
   },

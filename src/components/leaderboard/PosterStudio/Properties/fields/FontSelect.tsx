@@ -1,3 +1,5 @@
+import { coreColor, coreVariables } from '@/constants/coreTheme';
+import { useCoreAppearance } from '@/core/contexts/CoreAppearanceContext';
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 // @ts-ignore
 import { createPortal } from 'react-dom';
@@ -17,6 +19,8 @@ interface FontSelectProps {
 }
 
 export default function FontSelect({ label, value, onChange, script = 'both' }: FontSelectProps) {
+  const theme = useCoreAppearance();
+  const themeVariables = theme ? coreVariables(theme.colors) : {};
   const { tenant_id } = useAuthStore();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const festivalId = Array.isArray(id) ? id[0] : id;
@@ -146,9 +150,9 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
   }, [isOpen]);
 
   const popoverContent = isOpen ? (
-    <div className="font-popover-container" style={{ ...styles.popover, ...popoverStyle }}>
+    <div data-core-theme-scope={theme ? (theme.isDark ? 'dark' : 'light') : undefined} className="font-popover-container" style={{ ...themeVariables as React.CSSProperties, ...styles.popover, ...popoverStyle }}>
       <div style={styles.searchContainer}>
-        <Search size={14} color="#64748B" />
+        <Search size={14} color={coreColor("#64748B", 'textMuted')} />
         <input
           ref={searchInputRef}
           type="text"
@@ -186,14 +190,14 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
                     <span style={{ 
                       fontFamily: f.family, 
                       fontSize: 12, 
-                      color: value === f.family ? '#E0F2FE' : '#64748B',
+                      color: value === f.family ? coreColor('#E0F2FE', 'info') : coreColor('#64748B', 'textMuted'),
                       marginTop: 2,
                       opacity: 0.8
                     }}>
                       {f.category === 'Malayalam' ? 'മലയാളം' : 'The quick brown fox'}
                     </span>
                   </div>
-                  {value === f.family && <Check size={16} color="#38BDF8" />}
+                  {value === f.family && <Check size={16} color={coreColor("#38BDF8", 'info')} />}
                 </button>
               ))}
             </div>
@@ -220,7 +224,7 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {value}
         </span>
-        <ChevronDown size={14} color="#94A3B8" />
+        <ChevronDown size={14} color={coreColor("#94A3B8", 'textSubtle')} />
       </button>
       
       {/* Render Popover into body to escape clipping */}
@@ -250,7 +254,7 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 6, width: '100%' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 10, color: '#94A3B8', fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
   trigger: {
     display: 'flex',
     alignItems: 'center',
@@ -258,10 +262,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '0 8px',
     height: 32,
     borderRadius: 6,
-    border: '1px solid #334155',
+    border: `1px solid ${coreColor('#334155', 'border')}`,
     fontSize: 13,
-    color: '#E2E8F0',
-    backgroundColor: '#0F172A',
+    color: coreColor('#E2E8F0', 'text'),
+    backgroundColor: coreColor('#0F172A', 'overlay'),
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left',
@@ -269,8 +273,8 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'border-color 0.15s, background-color 0.15s',
   },
   popover: {
-    backgroundColor: '#0F172A',
-    border: '1px solid #334155',
+    backgroundColor: coreColor('#0F172A', 'overlay'),
+    border: `1px solid ${coreColor('#334155', 'border')}`,
     borderRadius: 8,
     boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
     zIndex: 10000,
@@ -282,14 +286,14 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     padding: '8px 12px',
-    borderBottom: '1px solid #1E293B',
+    borderBottom: `1px solid ${coreColor('#1E293B', 'border')}`,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     background: 'none',
     border: 'none',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     fontSize: 13,
     outline: 'none',
     fontFamily: 'Inter, sans-serif',
@@ -308,7 +312,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '6px 12px',
     fontSize: 11,
     fontWeight: 600,
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
   },
@@ -321,13 +325,13 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'left',
     background: 'none',
     border: 'none',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     cursor: 'pointer',
     transition: 'background-color 0.1s',
   },
   fontItemSelected: {
-    backgroundColor: '#0284C7',
-    color: '#FFFFFF',
+    backgroundColor: coreColor('#0284C7', 'infoAction'),
+    color: coreColor('#FFFFFF', 'text'),
   },
   fontItemContent: {
     display: 'flex',
@@ -336,15 +340,15 @@ const styles: Record<string, React.CSSProperties> = {
   emptyState: {
     padding: '16px',
     textAlign: 'center',
-    color: '#64748B',
+    color: coreColor('#64748B', 'textMuted'),
     fontSize: 13,
     fontFamily: 'Inter, sans-serif',
   },
   manageBtn: { 
     fontSize: 10, 
-    color: '#38BDF8', 
+    color: coreColor('#38BDF8', 'info'),
     background: 'transparent', 
-    border: '1px solid #1E293B', 
+    border: `1px solid ${coreColor('#1E293B', 'border')}`,
     borderRadius: 4, 
     padding: '4px 6px', 
     cursor: 'pointer',

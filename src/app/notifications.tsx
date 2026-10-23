@@ -1,3 +1,5 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { CoreAccountAppearance } from '@/core/contexts/CoreAppearanceContext';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Platform, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,24 +9,24 @@ import { Bell, Clock, AlertTriangle, CheckCircle2, Megaphone, Check, ArrowLeft }
 import { useRouter } from 'expo-router';
 
 const palette = {
-  page: '#030E21',
-  surface: 'rgba(255, 255, 255, 0.04)',
-  border: 'rgba(255, 255, 255, 0.08)',
-  text: '#FFFFFF',
-  muted: 'rgba(255, 255, 255, 0.6)',
+  page: coreColor('#030E21', 'background'),
+  surface: coreColor('rgba(255, 255, 255, 0.04)', 'surface'),
+  border: coreColor('rgba(255, 255, 255, 0.08)', 'border'),
+  text: coreColor('#FFFFFF', 'text'),
+  muted: coreColor('rgba(255, 255, 255, 0.6)', 'textMuted'),
 };
 
-export default function NotificationsInbox() {
+function NotificationsInbox() {
   const router = useRouter();
   const { notifications, isLoading, refetch, markAsRead, isMarkingAsRead } = useNotificationsInbox();
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'URGENT': return '#EF4444';
-      case 'HIGH': return '#F59E0B';
-      case 'LOW': return '#9CA3AF';
+      case 'URGENT': return coreColor('#EF4444', 'danger');
+      case 'HIGH': return coreColor('#F59E0B', 'warning');
+      case 'LOW': return coreColor('#9CA3AF', 'textMuted');
       case 'NORMAL':
-      default: return '#3B82F6';
+      default: return coreColor('#3B82F6', 'info');
     }
   };
 
@@ -43,7 +45,7 @@ export default function NotificationsInbox() {
 
   return (
     <LinearGradient 
-      colors={['#030F26', '#021E1B', '#02241F']}
+      colors={[coreColor('#030F26', 'surfaceStrong'), coreColor('#021E1B', 'surfaceStrong'), coreColor('#02241F', 'surfaceStrong')]}
       start={{ x: 0.1, y: 0.1 }}
       end={{ x: 0.9, y: 0.9 }}
       style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -54,12 +56,12 @@ export default function NotificationsInbox() {
         maxWidth: isDesktop ? 800 : undefined,
         maxHeight: isDesktop ? 900 : undefined,
         marginVertical: isDesktop ? 40 : 0,
-        backgroundColor: isDesktop ? 'rgba(255, 255, 255, 0.02)' : undefined,
+        backgroundColor: isDesktop ? coreAlpha(coreColor('#ffffff', 'overlay'), 0.02) : undefined,
         borderRadius: isDesktop ? 10 : 0,
         borderWidth: isDesktop ? 1 : 0,
         borderBottomWidth: isDesktop ? 6 : 0,
-        borderColor: 'rgba(255,255,255,0.08)',
-        borderBottomColor: 'rgba(0,0,0,0.4)',
+        borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.08),
+        borderBottomColor: coreAlpha(coreColor('#000000', 'border'), 0.4),
         overflow: 'hidden',
         ...Platform.select({
           web: isDesktop ? { backdropFilter: 'blur(20px)' } as any : {},
@@ -70,7 +72,7 @@ export default function NotificationsInbox() {
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: isDesktop ? 24 : (Platform.OS === 'web' ? 24 : 48), paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: palette.border }}>
           <TouchableOpacity 
             onPress={() => router.back()} 
-            style={{ padding: 10, backgroundColor: palette.surface, borderRadius: 12, marginRight: 16, borderBottomWidth: 2, borderBottomColor: 'rgba(255,255,255,0.1)' }}
+            style={{ padding: 10, backgroundColor: palette.surface, borderRadius: 12, marginRight: 16, borderBottomWidth: 2, borderBottomColor: coreAlpha(coreColor('#ffffff', 'border'), 0.1) }}
           >
             <ArrowLeft size={20} color={palette.text} />
           </TouchableOpacity>
@@ -88,7 +90,7 @@ export default function NotificationsInbox() {
         <ScrollView 
           style={{ flex: 1 }}
           contentContainerStyle={{ padding: 16, paddingBottom: 40, maxWidth: 800, alignSelf: 'center', width: '100%' }}
-          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#FFF" />}
+          refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={coreColor("#FFF", 'onPrimary')} />}
         >
           {notifications.length === 0 ? (
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60 }}>
@@ -108,8 +110,8 @@ export default function NotificationsInbox() {
                 <View 
                   key={item.id} 
                   style={{
-                    backgroundColor: isUnread ? 'rgba(40, 55, 80, 0.4)' : 'rgba(255, 255, 255, 0.03)',
-                    borderColor: isUnread ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255,255,255,0.06)',
+                    backgroundColor: isUnread ? coreAlpha(coreColor('#283750', 'overlay'), 0.4) : coreAlpha(coreColor('#ffffff', 'overlay'), 0.03),
+                    borderColor: isUnread ? coreAlpha(coreColor('#ffffff', 'border'), 0.15) : coreAlpha(coreColor('#ffffff', 'border'), 0.06),
                     borderWidth: 1,
                     borderRadius: 10,
                     padding: isDesktop ? 20 : 14,
@@ -138,15 +140,15 @@ export default function NotificationsInbox() {
                     
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: isDesktop ? 16 : 15, color: isUnread ? '#FFFFFF' : palette.muted, flex: 1, marginRight: 8, letterSpacing: -0.2 }}>
+                        <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: isDesktop ? 16 : 15, color: isUnread ? coreColor('#FFFFFF', 'onPrimary') : palette.muted, flex: 1, marginRight: 8, letterSpacing: -0.2 }}>
                           {notif.title}
                         </Text>
-                        <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 12 : 11, color: 'rgba(255,255,255,0.5)' }}>
+                        <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 12 : 11, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.5) }}>
                           {new Date(notif.created_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </Text>
                       </View>
                       
-                      <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 14 : 13, color: isUnread ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)', lineHeight: isDesktop ? 22 : 20 }}>
+                      <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 14 : 13, color: isUnread ? coreAlpha(coreColor('#ffffff', 'textMuted'), 0.85) : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4), lineHeight: isDesktop ? 22 : 20 }}>
                         {notif.message}
                       </Text>
 
@@ -157,8 +159,8 @@ export default function NotificationsInbox() {
                               <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 10, color: priorityColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>{notif.priority}</Text>
                             </View>
                           )}
-                          <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)' }}>
-                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'capitalize' }}>{notif.type}</Text>
+                          <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.06) }}>
+                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.6), textTransform: 'capitalize' }}>{notif.type}</Text>
                           </View>
                         </View>
                         
@@ -169,14 +171,14 @@ export default function NotificationsInbox() {
                             style={{ 
                               flexDirection: 'row', 
                               alignItems: 'center', 
-                              backgroundColor: 'rgba(255,255,255,0.1)', 
+                              backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.1),
                               paddingHorizontal: isDesktop ? 16 : 12, 
                               paddingVertical: isDesktop ? 8 : 6, 
                               borderRadius: 20, 
                             }}
                           >
-                            <Check size={14} color="#FFF" />
-                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: isDesktop ? 12 : 11, color: '#FFF', marginLeft: 6 }}>Mark Read</Text>
+                            <Check size={14} color={coreColor("#FFF", 'onPrimary')} />
+                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: isDesktop ? 12 : 11, color: coreColor('#FFF', 'onPrimary'), marginLeft: 6 }}>Mark Read</Text>
                           </TouchableOpacity>
                         )}
                       </View>
@@ -192,3 +194,5 @@ export default function NotificationsInbox() {
     </LinearGradient>
   );
 }
+
+export default function NotificationsRoute() { return <CoreAccountAppearance><NotificationsInbox /></CoreAccountAppearance>; }

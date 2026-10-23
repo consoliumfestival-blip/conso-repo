@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, TextInput } from 'react-native';
@@ -187,7 +188,7 @@ export default function EditScoringRule() {
   if (loading) {
     return (
       <View className="flex-1 bg-ssf-bg items-center justify-center">
-        <ActivityIndicator color="#0F766E" />
+        <ActivityIndicator color={coreColor("#0F766E", 'primaryText')} />
       </View>
     );
   }
@@ -265,7 +266,7 @@ export default function EditScoringRule() {
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
-                className="bg-white border border-ui-border rounded-lg px-3 py-2 font-poppins text-sm text-ui-text min-h-[80px] mt-1"
+                className="bg-core-surface-white border border-ui-border rounded-lg px-3 py-2 font-poppins text-sm text-ui-text min-h-[80px] mt-1"
                 placeholder="Enter guidelines for judges here..."
                 placeholderTextColor={ui.colors.textSubtle}
               />
@@ -285,7 +286,7 @@ export default function EditScoringRule() {
                 onPress={() => setRule({ ...rule, entry_mode: 'criteria' })}
                 className={`flex-1 rounded-lg border p-3 ${
                   rule.entry_mode !== 'total_only'
-                    ? 'bg-green-50 border-ui-primary'
+                    ? 'bg-core-success-soft-green-50 border-ui-primary'
                     : 'bg-ui-muted border-ui-border'
                 }`}
               >
@@ -296,7 +297,7 @@ export default function EditScoringRule() {
                 onPress={() => setRule({ ...rule, entry_mode: 'total_only', total_marks: '' })}
                 className={`flex-1 rounded-lg border p-3 ${
                   rule.entry_mode === 'total_only'
-                    ? 'bg-blue-50 border-blue-500'
+                    ? 'bg-core-info-soft-blue-50 border-core-primary-blue-500'
                     : 'bg-ui-muted border-ui-border'
                 }`}
               >
@@ -305,8 +306,8 @@ export default function EditScoringRule() {
               </TouchableOpacity>
             </View>
             {rule.entry_mode === 'total_only' && (
-              <View className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 mt-3">
-                <Text className="font-poppins text-xs text-blue-700">
+              <View className="bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 rounded-lg px-3 py-2 mt-3">
+                <Text className="font-poppins text-xs text-core-info-blue-700">
                   Saved criteria will be kept safely and restored if Paperless Criteria is enabled later.
                 </Text>
               </View>
@@ -319,7 +320,7 @@ export default function EditScoringRule() {
           <>
             <View className="flex-row justify-between items-center mb-3 px-1">
               <Text className="font-poppins-bold text-ui-text text-base">Evaluation Criteria</Text>
-              <Text className="font-poppins-bold text-ui-primary text-sm">
+              <Text className="font-poppins-bold text-ui-primary-text text-sm">
                 Total: {criteria.reduce((sum, c) => sum + (parseInt(c.marks) || 0), 0)} / {rule.total_marks}
               </Text>
             </View>
@@ -339,8 +340,8 @@ export default function EditScoringRule() {
                   className="w-20 text-center"
                   placeholder="Marks"
                 />
-                <TouchableOpacity onPress={() => removeCriteria(index)} className="p-3 bg-red-50 rounded-lg border border-red-100">
-                  <Trash2 size={18} color="#EF4444" />
+                <TouchableOpacity onPress={() => removeCriteria(index)} className="p-3 bg-core-danger-soft-red-50 rounded-lg border border-core-danger-soft-red-100">
+                  <Trash2 size={18} color={coreColor("#EF4444", 'danger')} />
                 </TouchableOpacity>
               </View>
             ))}

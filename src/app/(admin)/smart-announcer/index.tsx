@@ -1,8 +1,10 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Pressable, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { RefreshCcw, Radio, Trophy, CheckCircle, QrCode, Copy, Share, ExternalLink, X, Users, Award } from 'lucide-react-native';
-import { Modal, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { SsfButton } from '@/components/ui/SsfButton';
 import { supabase } from '@/core/config/supabase';
@@ -239,7 +241,7 @@ export default function SmartAnnouncerPage() {
             onPress={fetchQueue}
             disabled={loading}
           >
-            <RefreshCcw size={20} color="white" />
+            <RefreshCcw size={20} color={coreColor("white", 'onPrimary')} />
             <Text style={styles.refreshText}>Recalculate</Text>
           </TouchableOpacity>
         </View>
@@ -249,18 +251,18 @@ export default function SmartAnnouncerPage() {
           <View style={{ marginVertical: 16 }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingBottom: 8 }}>
               <TouchableOpacity 
-                style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFilterTeam === 'All' ? ui.colors.primary : '#f1f5f9' }} 
+                style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFilterTeam === 'All' ? ui.colors.primary : coreColor('#f1f5f9', 'surface') }}
                 onPress={() => setSelectedFilterTeam('All')}
               >
-                <Text style={{ fontWeight: '600', color: selectedFilterTeam === 'All' ? 'white' : '#475569' }}>All Teams</Text>
+                <Text style={{ fontWeight: '600', color: selectedFilterTeam === 'All' ? coreColor('white', 'onPrimary') : coreColor('#475569', 'text') }}>All Teams</Text>
               </TouchableOpacity>
               {teams.map(team => (
                 <TouchableOpacity 
                   key={team} 
-                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFilterTeam === team ? ui.colors.primary : '#f1f5f9' }} 
+                  style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedFilterTeam === team ? ui.colors.primary : coreColor('#f1f5f9', 'surface') }}
                   onPress={() => setSelectedFilterTeam(team)}
                 >
-                  <Text style={{ fontWeight: '600', color: selectedFilterTeam === team ? 'white' : '#475569' }}>{team}</Text>
+                  <Text style={{ fontWeight: '600', color: selectedFilterTeam === team ? coreColor('white', 'onPrimary') : coreColor('#475569', 'text') }}>{team}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -269,7 +271,7 @@ export default function SmartAnnouncerPage() {
 
         {loading ? (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color={ui.colors.primary} />
+            <ActivityIndicator size="large" color={ui.colors.primaryText} />
             <Text style={styles.loaderText}>Analyzing suspense impact...</Text>
           </View>
         ) : results.length === 0 ? (
@@ -281,7 +283,7 @@ export default function SmartAnnouncerPage() {
         ) : displayedResults.length === 0 ? (
           <View style={styles.loader}>
             <Radio size={48} color={ui.colors.textSubtle} />
-            <Text style={[styles.title, { marginTop: 16, color: '#b45309' }]}>No Matches Found</Text>
+            <Text style={[styles.title, { marginTop: 16, color: coreColor('#b45309', 'warning') }]}>No Matches Found</Text>
             <Text style={styles.subtitle}>നിലവിൽ {selectedFilterTeam}-നെ ഒന്നാം സ്ഥാനത്ത് എത്തിക്കാൻ കഴിയുന്ന പബ്ലിഷ് ചെയ്യാത്ത മത്സര ഫലങ്ങൾ ലഭ്യമല്ല.</Text>
           </View>
         ) : (
@@ -307,9 +309,9 @@ export default function SmartAnnouncerPage() {
                     <View style={styles.rowMiddle}>
                       <Text style={styles.impactTitleSmall}>Projected Leaderboard</Text>
                       <View style={styles.statsCompact}>
-                        <Text style={styles.statCompactText}><Trophy size={14} color="#fbbf24" /> 1st: {res.new_1st_points}</Text>
-                        <Text style={styles.statCompactText}><Trophy size={14} color="#64748b" /> 2nd: {res.new_2nd_points}</Text>
-                        <Text style={styles.statCompactText}><Trophy size={14} color="#b45309" /> 3rd: {res.new_3rd_points}</Text>
+                        <Text style={styles.statCompactText}><Trophy size={14} color={coreColor("#fbbf24", 'warning')} /> 1st: {res.new_1st_points}</Text>
+                        <Text style={styles.statCompactText}><Trophy size={14} color={coreColor("#64748b", 'textMuted')} /> 2nd: {res.new_2nd_points}</Text>
+                        <Text style={styles.statCompactText}><Trophy size={14} color={coreColor("#b45309", 'warning')} /> 3rd: {res.new_3rd_points}</Text>
                       </View>
                       <Text style={styles.leaderTextSmall}>
                         Leader: <Text style={styles.leaderHighlight}>{res.leader_name}</Text>
@@ -325,10 +327,10 @@ export default function SmartAnnouncerPage() {
                         disabled={publishing === res.result_id}
                       >
                         {publishing === res.result_id ? (
-                          <ActivityIndicator size="small" color="white" />
+                          <ActivityIndicator size="small" color={coreColor("white", 'onPrimary')} />
                         ) : (
                           <>
-                            <CheckCircle size={16} color="white" />
+                            <CheckCircle size={16} color={coreColor("white", 'onPrimary')} />
                             <Text style={styles.publishTextSmall}>Announce</Text>
                           </>
                         )}
@@ -342,23 +344,23 @@ export default function SmartAnnouncerPage() {
       
       {/* Result Details Modal */}
       <Modal visible={isDetailsModalOpen} transparent animationType="fade">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <View style={{ width: '100%', maxWidth: 500, backgroundColor: 'white', borderRadius: 16, padding: 0, maxHeight: '80%' }}>
+        <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 500, backgroundColor: coreColor('white', 'surface'), borderRadius: 16, padding: 0, maxHeight: '80%' }}>
             
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: coreColor('#f1f5f9', 'border') }}>
               <View>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: '#1e293b' }}>{selectedItemName}</Text>
-                <Text style={{ fontSize: 13, color: '#64748b' }}>Detailed Results Preview</Text>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: coreColor('#1e293b', 'text') }}>{selectedItemName}</Text>
+                <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted') }}>Detailed Results Preview</Text>
               </View>
               <TouchableOpacity onPress={() => setIsDetailsModalOpen(false)}>
-                <X size={24} color="#64748b" />
+                <X size={24} color={coreColor("#64748b", 'textMuted')} />
               </TouchableOpacity>
             </View>
 
             {loadingDetails ? (
               <View style={{ padding: 48, alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#0f766e" />
-                <Text style={{ marginTop: 16, color: '#64748b' }}>Loading details...</Text>
+                <ActivityIndicator size="large" color={coreColor("#0f766e", 'primaryText')} />
+                <Text style={{ marginTop: 16, color: coreColor('#64748b', 'textMuted') }}>Loading details...</Text>
               </View>
             ) : (
               <ScrollView style={{ padding: 20 }}>
@@ -366,46 +368,46 @@ export default function SmartAnnouncerPage() {
                   <View key={i} style={{ 
                     flexDirection: 'row', 
                     padding: 16, 
-                    backgroundColor: i === 0 ? '#f0fdf4' : i === 1 ? '#f8fafc' : i === 2 ? '#fffbeb' : '#ffffff',
+                    backgroundColor: i === 0 ? coreColor('#f0fdf4', 'successSoft') : i === 1 ? coreColor('#f8fafc', 'surface') : i === 2 ? coreColor('#fffbeb', 'warningSoft') : coreColor('#ffffff', 'surface'),
                     borderWidth: 1,
-                    borderColor: i === 0 ? '#bbf7d0' : '#e2e8f0',
+                    borderColor: i === 0 ? coreColor('#bbf7d0', 'border') : coreColor('#e2e8f0', 'border'),
                     borderRadius: 12,
                     marginBottom: 12
                   }}>
                     <View style={{ marginRight: 16, alignItems: 'center', justifyContent: 'center', width: 40 }}>
                       {r.rank ? (
                         <>
-                          <Award size={24} color={r.rank === 1 ? '#eab308' : r.rank === 2 ? '#94a3b8' : '#cd7f32'} />
-                          <Text style={{ fontWeight: '800', fontSize: 16, color: '#1e293b' }}>{r.rank}</Text>
+                          <Award size={24} color={r.rank === 1 ? coreColor('#eab308', 'warning') : r.rank === 2 ? coreColor('#94a3b8', 'textSubtle') : coreColor('#cd7f32', 'danger')} />
+                          <Text style={{ fontWeight: '800', fontSize: 16, color: coreColor('#1e293b', 'text') }}>{r.rank}</Text>
                         </>
                       ) : (
-                        <Text style={{ fontWeight: '600', fontSize: 14, color: '#94a3b8' }}>-</Text>
+                        <Text style={{ fontWeight: '600', fontSize: 14, color: coreColor('#94a3b8', 'textSubtle') }}>-</Text>
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontWeight: '700', fontSize: 16, color: '#1e293b', marginBottom: 4 }}>
+                      <Text style={{ fontWeight: '700', fontSize: 16, color: coreColor('#1e293b', 'text'), marginBottom: 4 }}>
                         {Array.isArray(r.registrations?.participants) 
                           ? r.registrations.participants.map((p: any) => p.name).join(', ') 
                           : r.registrations?.participants?.name || r.registrations?.leader?.name || r.registrations?.organisations?.name || 'Unknown'}
                       </Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-                        <Text style={{ fontSize: 13, color: '#64748b', fontWeight: '500' }}>
+                        <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted'), fontWeight: '500' }}>
                           Code: {r.registrations?.code_letter || 'N/A'}
                         </Text>
-                        <Text style={{ fontSize: 13, color: '#64748b' }}>•</Text>
-                        <Text style={{ fontSize: 13, color: '#0f766e', fontWeight: '600' }}>
+                        <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted') }}>•</Text>
+                        <Text style={{ fontSize: 13, color: coreColor('#0f766e', 'primaryText'), fontWeight: '600' }}>
                           {r.registrations?.organisations?.name || 'Unknown Team'}
                         </Text>
                         {r.grade && (
                           <>
-                            <Text style={{ fontSize: 13, color: '#64748b' }}>•</Text>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b' }}>Grade {r.grade}</Text>
+                            <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted') }}>•</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: coreColor('#1e293b', 'text') }}>Grade {r.grade}</Text>
                           </>
                         )}
                         {r.items?.category_codes && (
                           <>
-                            <Text style={{ fontSize: 13, color: '#64748b' }}>•</Text>
-                            <Text style={{ fontSize: 13, color: '#64748b' }}>
+                            <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted') }}>•</Text>
+                            <Text style={{ fontSize: 13, color: coreColor('#64748b', 'textMuted') }}>
                               {Array.isArray(r.items.category_codes) ? r.items.category_codes.join(', ') : String(r.items.category_codes)}
                             </Text>
                           </>
@@ -415,7 +417,7 @@ export default function SmartAnnouncerPage() {
                   </View>
                 ))}
                 {detailedResults.length === 0 && (
-                  <Text style={{ textAlign: 'center', color: '#64748b', padding: 20 }}>No result records found.</Text>
+                  <Text style={{ textAlign: 'center', color: coreColor('#64748b', 'textMuted'), padding: 20 }}>No result records found.</Text>
                 )}
               </ScrollView>
             )}
@@ -425,26 +427,26 @@ export default function SmartAnnouncerPage() {
 
       {/* QR Code Modal */}
       <Modal visible={isTokenModalOpen} transparent animationType="slide">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <View style={{ width: '100%', maxWidth: 400, backgroundColor: 'white', borderRadius: 16, padding: 24 }}>
-            <Text style={{ fontSize: 20, fontFamily: 'Poppins_900Black', color: '#1e293b', marginBottom: 16 }}>Announcer Access</Text>
+        <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.5), alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 400, backgroundColor: coreColor('white', 'surface'), borderRadius: 16, padding: 24 }}>
+            <Text style={{ fontSize: 20, fontFamily: 'Poppins_900Black', color: coreColor('#1e293b', 'text'), marginBottom: 16 }}>Announcer Access</Text>
             
             {generatingToken ? (
-              <ActivityIndicator size="large" color="#0f766e" style={{ marginVertical: 32 }} />
+              <ActivityIndicator size="large" color={coreColor("#0f766e", 'primaryText')} style={{ marginVertical: 32 }} />
             ) : announcerToken ? (
               <View style={{ alignItems: 'center' }}>
-                <View style={{ padding: 16, backgroundColor: 'white', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', marginBottom: 16 }}>
+                <View style={{ padding: 16, backgroundColor: coreColor('white', 'surface'), borderRadius: 12, borderWidth: 1, borderColor: coreColor('#e2e8f0', 'border'), marginBottom: 16 }}>
                   <QRCode
                     value={typeof window !== 'undefined' ? `${window.location.origin}/announcer/${announcerToken}` : `https://sahi-app.com/announcer/${announcerToken}`}
                     size={160}
-                    color="#0f766e"
-                    backgroundColor="white"
+                    color={coreColor("#0f766e", 'primaryText')}
+                    backgroundColor={coreColor("white", 'surface')}
                   />
                 </View>
-                <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Access Code</Text>
-                <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 28, color: '#0f766e', letterSpacing: 4, marginBottom: 24 }}>{announcerToken}</Text>
+                <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: coreColor('#64748b', 'textMuted'), textTransform: 'uppercase', letterSpacing: 1 }}>Access Code</Text>
+                <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 28, color: coreColor('#0f766e', 'primaryText'), letterSpacing: 4, marginBottom: 24 }}>{announcerToken}</Text>
                 
-                <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#64748b', textAlign: 'center', marginBottom: 24 }}>
+                <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: coreColor('#64748b', 'textMuted'), textAlign: 'center', marginBottom: 24 }}>
                   Scan this QR code or use the link to access the Announcer Portal. No login required.
                 </Text>
               </View>
@@ -500,7 +502,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   refreshText: {
-    color: 'white',
+    color: coreColor('white', 'onPrimary'),
     fontWeight: '600',
     fontSize: 14,
   },
@@ -520,7 +522,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: coreColor('white', 'surface'),
     borderRadius: 8,
     padding: 16,
     borderWidth: 1,
@@ -550,7 +552,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   badgeTextSmall: {
-    color: 'white',
+    color: coreColor('white', 'onPrimary'),
     fontWeight: '700',
     fontSize: 10,
     textTransform: 'uppercase',
@@ -612,7 +614,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   publishTextSmall: {
-    color: 'white',
+    color: coreColor('white', 'onPrimary'),
     fontWeight: '600',
     fontSize: 14,
   },

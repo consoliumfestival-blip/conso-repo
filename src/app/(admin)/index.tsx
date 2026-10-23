@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import {
@@ -83,22 +84,22 @@ type InsightView = 'overview' | 'categories' | 'organisations';
 
 const NAVY = ui.colors.text; // Text Primary
 const MUTED = ui.colors.textMuted; // Text Secondary
-const PAGE_BG = '#E2E8F0'; // Page Background
-const BORDER = '#E2E8F0'; // Border
-const EMERALD = '#0F766E'; // Primary Green
-const EMERALD_DARK = '#0B5D4B'; // Dark Green
-const SIDEBAR = '#0F766E'; // Sidebar Primary Green
-const SIDEBAR_DARK = '#0B5D4B'; // Sidebar Dark Green
+const PAGE_BG = coreColor('#E2E8F0', 'background'); // Page Background
+const BORDER = coreColor('#E2E8F0', 'border'); // Border
+const EMERALD = coreColor('#0F766E', 'primary'); // Primary Green
+const EMERALD_DARK = coreColor('#0B5D4B', 'primaryHover'); // Dark Green
+const SIDEBAR = coreColor('#0F766E', 'sidebar'); // Sidebar Primary Green
+const SIDEBAR_DARK = coreColor('#0B5D4B', 'sidebarSoft'); // Sidebar Dark Green
 
-const SUCCESS = '#10B981'; // Success
-const WARNING = '#F59E0B'; // Warning
-const DANGER = '#EF4444'; // Danger
-const INFO = '#3B82F6'; // Info
+const SUCCESS = coreColor('#10B981', 'success'); // Success
+const WARNING = coreColor('#F59E0B', 'warning'); // Warning
+const DANGER = coreColor('#EF4444', 'danger'); // Danger
+const INFO = coreColor('#3B82F6', 'info'); // Info
 
 const categoryColors = ['#14B8A6', '#10B981', '#F97316', '#38BDF8', '#8B5CF6', '#6366F1', '#2563EB', '#F43F5E'];
 
 const dashboardBgStyle = {
-  backgroundColor: '#F4F8F7',
+  backgroundColor: coreColor('#F4F8F7', 'surface'),
   ...Platform.select({
     web: {
       backgroundImage: 'linear-gradient(135deg, #F4F8F7 0%, #F2F6FA 55%, #F7F9FB 100%)',
@@ -110,15 +111,15 @@ const dashboardBgStyle = {
 // Layer 1 Surface (Welcome Section - Soft Glass)
 const welcomeSurface = {
   borderWidth: 1,
-  borderColor: 'rgba(100, 116, 139, 0.25)',
+  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
   borderRadius: 10,
-  shadowColor: ui.colors.text,
+  shadowColor: "#111827",
   shadowOpacity: 0.015,
   shadowRadius: 3,
   shadowOffset: { width: 0, height: 1 },
   ...Platform.select({
     web: {
-      backgroundColor: 'rgba(255, 255, 255, 0.90)',
+      backgroundColor: coreAlpha(coreColor('#ffffff', 'surface'), 0.9),
       backdropFilter: 'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
       boxShadow: '0 1px 3px rgba(15, 23, 42, 0.015)',
@@ -133,15 +134,15 @@ const welcomeSurface = {
 // Layer 2 Surface (Metric Cards - Soft Glass)
 const cardSurface = {
   borderWidth: 1,
-  borderColor: 'rgba(100, 116, 139, 0.25)',
+  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
   borderRadius: 10,
-  shadowColor: ui.colors.text,
+  shadowColor: "#111827",
   shadowOpacity: 0.015,
   shadowRadius: 3,
   shadowOffset: { width: 0, height: 1 },
   ...Platform.select({
     web: {
-      backgroundColor: 'rgba(255, 255, 255, 0.90)',
+      backgroundColor: coreAlpha(coreColor('#ffffff', 'surface'), 0.9),
       backdropFilter: 'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
       boxShadow: '0 1px 3px rgba(15, 23, 42, 0.015)',
@@ -156,15 +157,15 @@ const cardSurface = {
 // Layer 2.5 Surface (Quick Action Cards - Soft Glass)
 const actionCardSurface = {
   borderWidth: 1,
-  borderColor: 'rgba(100, 116, 139, 0.25)',
+  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
   borderRadius: 10,
-  shadowColor: ui.colors.text,
+  shadowColor: "#111827",
   shadowOpacity: 0.015,
   shadowRadius: 3,
   shadowOffset: { width: 0, height: 1 },
   ...Platform.select({
     web: {
-      backgroundColor: 'rgba(255, 255, 255, 0.90)',
+      backgroundColor: coreAlpha(coreColor('#ffffff', 'surface'), 0.9),
       backdropFilter: 'blur(6px)',
       WebkitBackdropFilter: 'blur(6px)',
       boxShadow: '0 1px 3px rgba(15, 23, 42, 0.015)',
@@ -179,15 +180,15 @@ const actionCardSurface = {
 // Layer 3 Surface (Analytics & Activity Panels - High-Readability Data Panels)
 const panelSurface = {
   borderWidth: 1,
-  borderColor: 'rgba(100, 116, 139, 0.25)',
+  borderColor: coreAlpha(coreColor('#64748b', 'border'), 0.25),
   borderRadius: 10,
-  shadowColor: ui.colors.text,
+  shadowColor: "#111827",
   shadowOpacity: 0.015,
   shadowRadius: 3,
   shadowOffset: { width: 0, height: 1 },
   ...Platform.select({
     web: {
-      backgroundColor: 'rgba(255, 255, 255, 0.97)',
+      backgroundColor: coreAlpha(coreColor('#ffffff', 'surface'), 0.97),
       boxShadow: '0 1px 3px rgba(15, 23, 42, 0.015)',
     },
     default: {
@@ -257,21 +258,21 @@ function SidebarItem({ label, icon: Icon, active, onPress }: NavigationItem) {
         borderRadius: 9,
         paddingHorizontal: 12,
         marginBottom: 6,
-        backgroundColor: active ? 'rgba(255, 255, 255, 0.14)' : 'transparent',
+        backgroundColor: active ? coreAlpha(coreColor('#ffffff', 'overlay'), 0.14) : 'transparent',
         borderWidth: active ? 1 : 0,
-        borderColor: active ? 'rgba(255, 255, 255, 0.20)' : 'transparent',
+        borderColor: active ? coreAlpha(coreColor('#ffffff', 'border'), 0.2) : 'transparent',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        <Icon color={active ? ui.colors.surface : 'rgba(255, 255, 255, 0.65)'} size={16} strokeWidth={2.1} />
-        <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: active ? ui.colors.surface : 'rgba(255, 255, 255, 0.72)', fontSize: 12.5, marginLeft: 10, flex: 1, letterSpacing: 0.3 }}>
+        <Icon color={active ? ui.colors.onPrimary : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.65)} size={16} strokeWidth={2.1} />
+        <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: active ? ui.colors.onPrimary : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.72), fontSize: 12.5, marginLeft: 10, flex: 1, letterSpacing: 0.3 }}>
           {label}
         </Text>
       </View>
-      {!active && <ChevronRight color="rgba(255, 255, 255, 0.4)" size={13} />}
+      {!active && <ChevronRight color={coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4)} size={13} />}
     </TouchableOpacity>
   );
 }
@@ -289,7 +290,7 @@ function ActionCard({ label, icon: Icon, visible, onPress }: ActionCardProps) {
       style={[actionCardSurface, { height: 62, flex: 1, minWidth: 175, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center' }]}
     >
       <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
-        <Icon color={EMERALD_DARK} size={19} strokeWidth={2.4} />
+        <Icon color={coreColor(EMERALD_DARK, 'primaryText')} size={19} strokeWidth={2.4} />
       </View>
       <Text numberOfLines={2} style={{ flex: 1, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11.5, lineHeight: 15 }}>
         {label}
@@ -318,7 +319,7 @@ function InsightChip({
         borderRadius: 10,
         borderWidth: 1,
         borderColor: active ? EMERALD : BORDER,
-        backgroundColor: active ? '#E6F6F2' : ui.colors.surface,
+        backgroundColor: active ? coreColor('#E6F6F2', 'surface') : ui.colors.surface,
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -340,8 +341,8 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
           disabled={!onAction}
           style={{ height: 28, paddingHorizontal: 14, borderRadius: 999, backgroundColor: ui.colors.successSoft, flexDirection: 'row', alignItems: 'center' }}
         >
-          <Text style={{ fontFamily: 'Poppins_700Bold', color: EMERALD_DARK, fontSize: 10 }}>{action}</Text>
-          <ChevronRight color={EMERALD_DARK} size={13} />
+          <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor(EMERALD_DARK, 'primaryText'), fontSize: 10 }}>{action}</Text>
+          <ChevronRight color={coreColor(EMERALD_DARK, 'primaryText')} size={13} />
         </TouchableOpacity>
       )}
     </View>
@@ -352,8 +353,8 @@ function EmptyAnalytics({ title }: { title: string }) {
   return (
     <View style={[panelSurface, { flex: 1, minWidth: 310, minHeight: 222, padding: 16 }]}>
       <SectionHeader title={title} />
-      <View style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: BORDER, backgroundColor: '#EDF2F7', alignItems: 'center', justifyContent: 'center' }}>
-        <BarChart3 color="#CBD5E1" size={34} />
+      <View style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: BORDER, backgroundColor: coreColor('#EDF2F7', 'surface'), alignItems: 'center', justifyContent: 'center' }}>
+        <BarChart3 color={coreColor("#CBD5E1", 'text')} size={34} />
         <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 12, marginTop: 8 }}>No dashboard data yet</Text>
       </View>
     </View>
@@ -459,7 +460,7 @@ export default function AdminDashboard() {
     time: formatRelativeTime(registration.createdAt),
     icon: Users,
     bg: ui.colors.successSoft,
-    color: EMERALD_DARK,
+    color: coreColor(EMERALD_DARK, 'primaryText'),
   }));
 
   if (isLoading && !refreshing) {
@@ -474,16 +475,16 @@ export default function AdminDashboard() {
             <View style={{ height: 84, paddingHorizontal: 16, justifyContent: 'center', backgroundColor: SIDEBAR_DARK }}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <ShieldCheck color={EMERALD_DARK} size={25} />
+                  <ShieldCheck color={coreColor(EMERALD_DARK, 'primaryText')} size={25} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Poppins_700Bold', color: '#D1FAE5', fontSize: 8, letterSpacing: 1.4, textTransform: 'uppercase' }}>
+                  <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor('#D1FAE5', 'success'), fontSize: 8, letterSpacing: 1.4, textTransform: 'uppercase' }}>
                     {orgType} Portal
                   </Text>
-                  <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 18, lineHeight: 21, letterSpacing: 0.4 }}>
+                  <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 18, lineHeight: 21, letterSpacing: 0.4 }}>
                     {orgName}
                   </Text>
-                  <Text style={{ fontFamily: 'Poppins_400Regular', color: '#D1FAE5', fontSize: 10 }}>Manage your festival operations</Text>
+                  <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#D1FAE5', 'success'), fontSize: 10 }}>Manage your festival operations</Text>
                 </View>
               </View>
             </View>
@@ -495,20 +496,20 @@ export default function AdminDashboard() {
             </ScrollView>
 
             <View style={{ padding: 14, paddingBottom: 18 }}>
-              <View style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 12, padding: 12, marginBottom: 14 }}>
+              <View style={{ borderWidth: 1, borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.12), backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.06), borderRadius: 12, padding: 12, marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: EMERALD, alignItems: 'center', justifyContent: 'center' }}>
-                    <ShieldCheck color={ui.colors.surface} size={16} />
+                    <ShieldCheck color={ui.colors.onPrimary} size={16} />
                   </View>
                   <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 10 }}>{orgName}</Text>
-                    <Text style={{ fontFamily: 'Poppins_400Regular', color: '#CFFAFE', fontSize: 9 }}>Festival Management System</Text>
+                    <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 10 }}>{orgName}</Text>
+                    <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#CFFAFE', 'info'), fontSize: 9 }}>Festival Management System</Text>
                   </View>
                 </View>
               </View>
               <View style={{ height: 116, borderRadius: 18, backgroundColor: SIDEBAR_DARK, overflow: 'hidden', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <Building2 color={ui.colors.surface} size={84} strokeWidth={1.2} />
-                <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(15,118,110,0.18)' }} />
+                <Building2 color={ui.colors.onPrimary} size={84} strokeWidth={1.2} />
+                <View style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: coreAlpha(coreColor('#0f766e', 'overlay'), 0.18) }} />
               </View>
             </View>
           </View>
@@ -517,7 +518,7 @@ export default function AdminDashboard() {
         <View style={[{ flex: 1 }, dashboardBgStyle]}>
           <View
             style={[
-              { display: isTablet ? 'none' : 'flex', height: 56, backgroundColor: ui.colors.surface, borderBottomWidth: 1, borderBottomColor: 'rgba(226, 232, 240, 0.8)', paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
+              { display: isTablet ? 'none' : 'flex', height: 56, backgroundColor: ui.colors.surface, borderBottomWidth: 1, borderBottomColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.8), paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 },
               Platform.OS === 'web' ? { position: 'sticky' as any, top: 0 } : undefined,
             ]}
           >
@@ -533,7 +534,7 @@ export default function AdminDashboard() {
                 </TouchableOpacity>
               )}
               <View style={{ width: isDesktop ? 280 : 210, position: 'relative', zIndex: 20 }}>
-                <View style={{ height: 38, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(226, 232, 240, 0.8)', backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13 }}>
+                <View style={{ height: 38, borderRadius: 10, borderWidth: 1, borderColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.8), backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 13 }}>
                   <Search color={ui.colors.textMuted} size={16} />
                   <TextInput
                     value={searchQuery}
@@ -555,7 +556,7 @@ export default function AdminDashboard() {
                       borderRadius: 10,
                       backgroundColor: ui.colors.surface,
                       padding: 6,
-                      shadowColor: ui.colors.text,
+                      shadowColor: "#111827",
                       shadowOpacity: 0.12,
                       shadowRadius: 10,
                       elevation: 8,
@@ -572,7 +573,7 @@ export default function AdminDashboard() {
                           }}
                           style={{ paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', borderRadius: 8 }}
                         >
-                          <Icon color={EMERALD_DARK} size={15} />
+                          <Icon color={coreColor(EMERALD_DARK, 'primaryText')} size={15} />
                           <Text style={{ marginLeft: 9, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11 }}>
                             {item.label}
                           </Text>
@@ -594,15 +595,15 @@ export default function AdminDashboard() {
                 <Bell color={NAVY} size={19} />
                 {unreadNotificationCount > 0 && (
                   <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: EMERALD, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 8 }}>
+                    <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 8 }}>
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </Text>
                   </View>
                 )}
               </TouchableOpacity>
               <TouchableOpacity onPress={logout} activeOpacity={0.82} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
-                  <UserCircle color="#9A3412" size={29} />
+                <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: coreColor('#FFF7ED', 'warningSoft'), alignItems: 'center', justifyContent: 'center' }}>
+                  <UserCircle color={coreColor("#9A3412", 'warning')} size={29} />
                 </View>
                 {isTablet && (
                   <View style={{ marginLeft: 10 }}>
@@ -628,8 +629,8 @@ export default function AdminDashboard() {
           >
             {!isTablet && (
               <View style={{ backgroundColor: SIDEBAR, borderRadius: 14, padding: 14, marginBottom: 12 }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', color: '#D1FAE5', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2 }}>{orgType} Portal</Text>
-                <Text style={{ fontFamily: 'Montserrat_700Bold', color: ui.colors.surface, fontSize: 21 }}>{orgName}</Text>
+                <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor('#D1FAE5', 'success'), fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2 }}>{orgType} Portal</Text>
+                <Text style={{ fontFamily: 'Montserrat_700Bold', color: ui.colors.onPrimary, fontSize: 21 }}>{orgName}</Text>
               </View>
             )}
 
@@ -647,15 +648,15 @@ export default function AdminDashboard() {
               ]}
             >
               <LinearGradient
-                colors={[ui.colors.surface, '#F8FBFA']}
+                colors={[ui.colors.surface, coreColor('#F8FBFA', 'surface')]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={[StyleSheet.absoluteFillObject, { zIndex: -1 }]}
               />
               <View style={{ flexDirection: isDesktop ? 'row' : 'column', alignItems: isDesktop ? 'center' : 'flex-start', justifyContent: 'space-between', width: '100%' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 260 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: '#D1FAE5', alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
-                    <Users color={EMERALD_DARK} size={23} strokeWidth={2.4} />
+                  <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: coreColor('#D1FAE5', 'successSoft'), alignItems: 'center', justifyContent: 'center', marginRight: 14 }}>
+                    <Users color={coreColor(EMERALD_DARK, 'primaryText')} size={23} strokeWidth={2.4} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: isDesktop ? 19 : 18, lineHeight: 24 }}>Welcome back, {userName}!</Text>
@@ -668,7 +669,7 @@ export default function AdminDashboard() {
                     <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Last updated: {updatedAt}</Text>
                     <RefreshCw color={MUTED} size={13} style={{ marginLeft: 8 }} />
                   </TouchableOpacity>
-                  <View style={{ width: 194, height: 38, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(226, 232, 240, 0.6)', backgroundColor: ui.colors.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ width: 194, height: 38, borderRadius: 10, borderWidth: 1, borderColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.6), backgroundColor: ui.colors.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: isError ? DANGER : SUCCESS, marginRight: 10 }} />
                     <View>
                       <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Dashboard Data</Text>
@@ -682,7 +683,7 @@ export default function AdminDashboard() {
             </Animated.View>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta={`${data?.participantsLast7Days ?? 0} added in last 7 days`} trend="neutral" icon={Users} iconBg={ui.colors.primarySoft} iconColor={EMERALD} delay={80} />
+              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta={`${data?.participantsLast7Days ?? 0} added in last 7 days`} trend="neutral" icon={Users} iconBg={ui.colors.primarySoft} iconColor={coreColor(EMERALD, 'primaryText')} delay={80} />
               <MetricCard label="Items" value={stats.items.toLocaleString()} delta="Active festival items" trend="neutral" icon={Trophy} iconBg={ui.colors.warningSoft} iconColor={WARNING} delay={140} />
               <MetricCard label="Pending Registrations" value={stats.pendingRegs.toLocaleString()} delta={`${data?.pendingRegsLast7Days ?? 0} created in last 7 days`} trend="neutral" icon={Clock} iconBg={ui.colors.destructiveSoft} iconColor={DANGER} delay={200} />
               <MetricCard label="Active Schedules" value={(data?.activeSchedulesCount ?? 0).toLocaleString()} delta="Scheduled or ongoing events" trend="neutral" icon={Calendar} iconBg={ui.colors.infoSoft} iconColor={INFO} delay={260} />
@@ -717,8 +718,8 @@ export default function AdminDashboard() {
               ]}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: '#E6F6F2', alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                  <ListFilter color={EMERALD_DARK} size={18} />
+                <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: coreColor('#E6F6F2', 'surface'), alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
+                  <ListFilter color={coreColor(EMERALD_DARK, 'primaryText')} size={18} />
                 </View>
                 <View>
                   <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 13 }}>Festival insights</Text>
@@ -739,7 +740,7 @@ export default function AdminDashboard() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
                       <Svg width={148} height={148} viewBox="0 0 148 148">
-                        <Circle cx="74" cy="74" r="58" stroke="#F1F5F9" strokeWidth="12" fill="none" />
+                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="12" fill="none" />
                         {(() => {
                           const radius = 58;
                           const circumference = 2 * Math.PI * radius;
@@ -802,7 +803,7 @@ export default function AdminDashboard() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                     <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
                       <Svg width={148} height={148} viewBox="0 0 148 148">
-                        <Circle cx="74" cy="74" r="58" stroke="#F1F5F9" strokeWidth="12" fill="none" />
+                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="12" fill="none" />
                         {(() => {
                           const radius = 58;
                           const circumference = 2 * Math.PI * radius;
@@ -864,7 +865,7 @@ export default function AdminDashboard() {
                 <View style={{ gap: 12 }}>
                   {activityItems.length === 0 ? (
                     <View style={{ minHeight: 140, alignItems: 'center', justifyContent: 'center' }}>
-                      <Users color="#CBD5E1" size={30} />
+                      <Users color={coreColor("#CBD5E1", 'text')} size={30} />
                       <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, marginTop: 8 }}>
                         No recent registrations
                       </Text>

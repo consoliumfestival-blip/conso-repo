@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
@@ -85,7 +86,7 @@ export default function VenuesManagement() {
     }
   };
 
-  if (isLoadingVenues) return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 40 }} />;
+  if (isLoadingVenues) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
 
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-3 px-3">
@@ -100,8 +101,8 @@ export default function VenuesManagement() {
           onPress={() => { resetForm(); setIsModalOpen(true); }}
           className="bg-ssf-primary px-4 py-2 rounded-xl flex-row items-center gap-x-2"
         >
-          <Plus size={16} color={ui.colors.surface} />
-          <Text className="font-poppins-bold text-white">Add Venue</Text>
+          <Plus size={16} color={ui.colors.onPrimary} />
+          <Text className="font-poppins-bold text-core-on-primary-white">Add Venue</Text>
         </TouchableOpacity>
       </View>
 
@@ -121,11 +122,11 @@ export default function VenuesManagement() {
                 </Text>
               </View>
               <View className="flex-row gap-x-2">
-                <TouchableOpacity onPress={() => openEdit(venue)} className="p-2 bg-gray-50 rounded-full">
-                  <Edit3 size={18} color="#4B5563" />
+                <TouchableOpacity onPress={() => openEdit(venue)} className="p-2 bg-core-surface-muted-gray-50 rounded-full">
+                  <Edit3 size={18} color={coreColor("#4B5563", 'text')} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(venue.id)} className="p-2 bg-red-50 rounded-full">
-                  <Trash2 size={18} color="#DC2626" />
+                <TouchableOpacity onPress={() => handleDelete(venue.id)} className="p-2 bg-core-danger-soft-red-50 rounded-full">
+                  <Trash2 size={18} color={coreColor("#DC2626", 'danger')} />
                 </TouchableOpacity>
               </View>
             </SsfCard>
@@ -134,7 +135,7 @@ export default function VenuesManagement() {
       )}
 
       {isModalOpen && (
-        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', zIndex: 50, padding: 20 }}>
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.5), justifyContent: 'center', alignItems: 'center', zIndex: 50, padding: 20 }}>
           <View style={{ backgroundColor: ui.colors.surface, borderRadius: 16, width: '100%', maxWidth: 400, padding: 24 }}>
             <Text className="font-poppins-bold text-lg mb-4 text-ssf-text">
               {editingId ? 'Edit Venue' : 'Add Venue'}

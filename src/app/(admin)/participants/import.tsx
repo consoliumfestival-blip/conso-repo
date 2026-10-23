@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
@@ -184,7 +185,7 @@ export default function ImportParticipants() {
           label="Template" 
           variant="outline" 
           size="sm" 
-          icon={<Download size={16} color="#1B6B3A" />} 
+          icon={<Download size={16} color={coreColor("#1B6B3A", 'primaryText')} />}
           onPress={downloadTemplate}
         />
       </View>
@@ -199,38 +200,38 @@ export default function ImportParticipants() {
                 className={`px-3 py-2 rounded-xl border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                 onPress={() => setSelectedOrgId(org.id)}
               >
-                <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-white' : 'text-ssf-text'}`}>
+                <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                   {org.name} <Text className="font-poppins font-normal text-xs opacity-80">({org.org_type})</Text>
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         ) : (
-          <Text className="font-poppins text-xs italic text-red-500">No organisations found. Please set up the hierarchy first.</Text>
+          <Text className="font-poppins text-xs italic text-core-danger-red-500">No organisations found. Please set up the hierarchy first.</Text>
         )}
       </SsfCard>
 
       {!fileDetails ? (
         <SsfCard className="items-center py-10">
-          <UploadCloud size={48} color="#1B6B3A" className="mb-4" />
+          <UploadCloud size={48} color={coreColor("#1B6B3A", 'primaryText')} className="mb-4" />
           <Text className="text-lg font-poppins-bold text-center mb-2">Upload Excel or CSV</Text>
           <Text className="text-sm text-ssf-text-muted text-center mb-6">Max size 5MB. .xlsx, .csv formats supported.</Text>
           <SsfButton label="Browse File" onPress={selectFile} isLoading={loading} />
-          {error && <Text className="text-red-500 mt-4 text-center font-poppins">{error}</Text>}
+          {error && <Text className="text-core-danger-red-500 mt-4 text-center font-poppins">{error}</Text>}
         </SsfCard>
       ) : (
         <View>
           <SsfCard className="mb-6 border border-ssf-primary bg-ui-success-soft">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center flex-1">
-                <FileSpreadsheet size={24} color="#1B6B3A" className="mr-3" />
+                <FileSpreadsheet size={24} color={coreColor("#1B6B3A", 'primaryText')} className="mr-3" />
                 <View className="flex-1">
                   <Text className="font-poppins-bold" numberOfLines={1}>{fileDetails.name}</Text>
                   <Text className="text-xs text-ssf-text-muted">{previewData.length} records found</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={reset}>
-                <Text className="text-red-500 font-poppins-bold text-sm">Cancel</Text>
+                <Text className="text-core-danger-red-500 font-poppins-bold text-sm">Cancel</Text>
               </TouchableOpacity>
             </View>
           </SsfCard>
@@ -256,7 +257,7 @@ export default function ImportParticipants() {
                         onPress={() => handleMapColumn(field.key, header)}
                         className={`px-3 py-2 rounded-lg border mr-2 ${columnMapping[field.key] === header ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                       >
-                        <Text className={`font-poppins text-sm ${columnMapping[field.key] === header ? 'text-white font-poppins-bold' : 'text-ssf-text'}`}>
+                        <Text className={`font-poppins text-sm ${columnMapping[field.key] === header ? 'text-core-on-primary-white font-poppins-bold' : 'text-ssf-text'}`}>
                           {header}
                         </Text>
                       </TouchableOpacity>
@@ -276,7 +277,7 @@ export default function ImportParticipants() {
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="text-lg font-poppins-bold">3. Preview & Fix</Text>
                 <TouchableOpacity onPress={runValidation} className="bg-ssf-surface px-3 py-1 rounded-lg border border-ssf-border">
-                  <Text className="font-poppins-bold text-xs text-ssf-primary">Re-Validate</Text>
+                  <Text className="font-poppins-bold text-xs text-ui-primary-text">Re-Validate</Text>
                 </TouchableOpacity>
               </View>
               
@@ -287,50 +288,50 @@ export default function ImportParticipants() {
               {validatedData.map((row, idx) => {
                 const hasError = row._errors.length > 0;
                 return (
-                  <View key={idx} className={`mb-3 p-3 rounded-xl border ${hasError ? 'bg-red-50 border-red-300' : 'bg-green-50 border-green-300'}`}>
+                  <View key={idx} className={`mb-3 p-3 rounded-xl border ${hasError ? 'bg-core-danger-soft-red-50 border-core-danger-soft-red-300' : 'bg-core-success-soft-green-50 border-core-success-soft-green-300'}`}>
                     <View className="flex-row justify-between mb-2">
                       <View className="flex-1 mr-2">
-                        <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase">Name</Text>
+                        <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase">Name</Text>
                         <TextInput 
                           value={row.name || ''} 
                           onChangeText={(v) => handleInlineEdit(idx, 'name', v)}
-                          className={`font-poppins-bold text-ssf-text bg-white px-2 py-1 rounded border ${!row.name ? 'border-red-400' : 'border-gray-200'}`}
+                          className={`font-poppins-bold text-ssf-text bg-core-surface-white px-2 py-1 rounded border ${!row.name ? 'border-core-danger-red-400' : 'border-core-border-gray-200'}`}
                         />
                       </View>
                       <View className="flex-1 mr-2">
-                        <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase">DOB</Text>
+                        <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase">DOB</Text>
                         <TextInput 
                           value={row.dob || ''} 
                           onChangeText={(v) => handleInlineEdit(idx, 'dob', v)}
                           placeholder="YYYY-MM-DD"
-                          className="font-poppins text-sm text-ssf-text bg-white px-2 py-1 rounded border border-gray-200"
+                          className="font-poppins text-sm text-ssf-text bg-core-surface-white px-2 py-1 rounded border border-core-border-gray-200"
                         />
                       </View>
                       <View className="w-16">
-                        <Text className="text-[10px] font-poppins-bold text-gray-500 uppercase">Class</Text>
+                        <Text className="text-[10px] font-poppins-bold text-core-text-muted-gray-500 uppercase">Class</Text>
                         <TextInput 
                           value={row.class_std ? String(row.class_std) : ''} 
                           onChangeText={(v) => handleInlineEdit(idx, 'class_std', v)}
-                          className="font-poppins text-sm text-ssf-text bg-white px-2 py-1 rounded border border-gray-200 text-center"
+                          className="font-poppins text-sm text-ssf-text bg-core-surface-white px-2 py-1 rounded border border-core-border-gray-200 text-center"
                         />
                       </View>
                     </View>
                     
                     <View className="flex-row items-center justify-between mt-1">
-                      <Text className="font-poppins text-xs text-gray-600">
-                        Resolved Category: <Text className="font-poppins-bold text-ssf-primary">{row._resolvedCategory || 'None'}</Text>
+                      <Text className="font-poppins text-xs text-core-text-gray-600">
+                        Resolved Category: <Text className="font-poppins-bold text-ui-primary-text">{row._resolvedCategory || 'None'}</Text>
                       </Text>
                       {hasError ? (
-                        <AlertCircle size={16} color="#DC2626" />
+                        <AlertCircle size={16} color={coreColor("#DC2626", 'danger')} />
                       ) : (
-                        <CheckCircle size={16} color="#16A34A" />
+                        <CheckCircle size={16} color={coreColor("#16A34A", 'success')} />
                       )}
                     </View>
 
                     {hasError && (
-                      <View className="mt-2 pt-2 border-t border-red-200">
+                      <View className="mt-2 pt-2 border-t border-core-danger-soft-red-200">
                         {row._errors.map((e, i) => (
-                          <Text key={i} className="font-poppins text-[10px] text-red-600">• {e}</Text>
+                          <Text key={i} className="font-poppins text-[10px] text-core-danger-red-600">• {e}</Text>
                         ))}
                       </View>
                     )}
@@ -349,13 +350,13 @@ export default function ImportParticipants() {
           )}
           
           {importResult?.errors && importResult.errors.length > 0 && (
-            <View className="mt-6 bg-red-50 p-4 rounded-xl border border-red-200">
-              <Text className="font-poppins-bold text-red-700 mb-2">Import Errors ({importResult.errors.length} rows failed)</Text>
+            <View className="mt-6 bg-core-danger-soft-red-50 p-4 rounded-xl border border-core-danger-soft-red-200">
+              <Text className="font-poppins-bold text-core-danger-red-700 mb-2">Import Errors ({importResult.errors.length} rows failed)</Text>
               {importResult.errors.map((err, idx) => (
                 <View key={idx} className="mb-2">
-                  <Text className="font-poppins-bold text-red-600 text-sm">Row {err.row}:</Text>
+                  <Text className="font-poppins-bold text-core-danger-red-600 text-sm">Row {err.row}:</Text>
                   {err.errors.map((msg: string, i: number) => (
-                    <Text key={i} className="font-poppins text-red-500 text-xs ml-2">• {msg}</Text>
+                    <Text key={i} className="font-poppins text-core-danger-red-500 text-xs ml-2">• {msg}</Text>
                   ))}
                 </View>
               ))}

@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React, { useEffect, useState } from 'react';
 import { useLayerStore } from './Stores/layerStore';
 import { useCanvasStore } from './Stores/canvasStore';
@@ -38,7 +39,7 @@ export default function DiagnosticsOverlay() {
   return (
     <div style={styles.container}>
       <div style={styles.header}>Debug Diagnostics</div>
-      <div style={styles.statRow}><span>FPS:</span> <span style={{ color: fps < 30 ? '#EF4444' : '#22C55E' }}>{fps}</span></div>
+      <div style={styles.statRow}><span>FPS:</span> <span style={{ color: fps < 30 ? coreColor('#EF4444', 'danger') : coreColor('#22C55E', 'success') }}>{fps}</span></div>
       {memory !== null && <div style={styles.statRow}><span>Memory:</span> <span>{memory} MB</span></div>}
       <div style={styles.statRow}><span>Layers:</span> <span>{layers.length} ({layers.filter(l => l.type === 'text').length} text)</span></div>
       <div style={styles.statRow}><span>Device Tier:</span> <span>{canvasStore.deviceQuality}</span></div>
@@ -54,8 +55,8 @@ const styles: Record<string, React.CSSProperties> = {
     position: 'absolute',
     bottom: 16,
     right: 16,
-    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-    color: '#38BDF8',
+    backgroundColor: coreAlpha(coreColor('#0f172a', 'surface'), 0.9),
+    color: coreColor('#38BDF8', 'info'),
     padding: 12,
     borderRadius: 8,
     fontFamily: 'monospace',
@@ -67,7 +68,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     fontWeight: 700,
-    color: '#FFFFFF',
+    color: coreColor('#FFFFFF', 'text'),
     borderBottom: '1px solid rgba(255,255,255,0.2)',
     paddingBottom: 4,
     marginBottom: 6,

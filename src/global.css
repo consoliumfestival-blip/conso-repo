@@ -200,3 +200,118 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
     animation: none !important;
   }
 }
+
+/* Only Core/Stage own these variables. Public, Team Leader and Judge retain
+   their existing classes and colour fallbacks, including shared components. */
+[data-core-theme-scope] {
+  color: var(--core-text);
+  accent-color: var(--core-primary-text);
+}
+[data-core-theme-scope] .welcome-card,
+[data-core-theme-scope] .metric-card,
+[data-core-theme-scope] .action-card,
+[data-core-theme-scope] .panel-card {
+  background: var(--core-surface) !important;
+  border-color: var(--core-border) !important;
+  box-shadow: 0 2px 8px rgb(var(--core-overlay-rgb) / 0.045) !important;
+  -webkit-backdrop-filter: var(--core-blur, none) !important;
+  backdrop-filter: var(--core-blur, none) !important;
+}
+[data-core-theme-scope] [data-core-glass] {
+  -webkit-backdrop-filter: var(--core-blur, none);
+  backdrop-filter: var(--core-blur, none);
+  box-shadow: inset 0 1px 0 rgb(var(--core-on-primary-rgb) / 0.05), 0 3px 12px rgb(var(--core-overlay-rgb) / 0.045) !important;
+}
+[data-core-theme-scope] [data-core-glass="surface"],
+[data-core-theme-scope] [data-core-glass="sheet"],
+[data-core-theme-scope] [data-core-glass="navigation"] {
+  background-color: rgb(var(--core-surface-rgb) / 0.97) !important;
+}
+[data-core-theme-scope="dark"] [data-core-glass="navigation"] {
+  background-color: rgb(var(--core-sidebar-rgb) / 0.97) !important;
+}
+[data-core-theme-scope] [data-core-glass] [data-core-glass] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+[data-core-theme-scope] input,
+[data-core-theme-scope] select,
+[data-core-theme-scope] textarea {
+  caret-color: var(--core-text);
+}
+[data-core-theme-scope] ::-webkit-scrollbar-thumb {
+  background: rgb(var(--core-text-muted-rgb) / 0.32);
+}
+[data-core-theme-scope] ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--core-primary-text-rgb) / 0.60);
+}
+@media (prefers-reduced-transparency: reduce) {
+  [data-core-theme-scope] { --core-blur: none !important; }
+}
+
+/* UI appearance never changes printable documents. */
+@media print {
+  [data-core-theme-scope] {
+    --core-background: #F6F7F9 !important;
+    --core-background-rgb: 246 247 249 !important;
+    --core-surface: #FFFFFF !important;
+    --core-surface-rgb: 255 255 255 !important;
+    --core-surface-muted: #F1F4F7 !important;
+    --core-surface-muted-rgb: 241 244 247 !important;
+    --core-surface-strong: #E8EDF2 !important;
+    --core-surface-strong-rgb: 232 237 242 !important;
+    --core-text: #111827 !important;
+    --core-text-rgb: 17 24 39 !important;
+    --core-text-muted: #64748B !important;
+    --core-text-muted-rgb: 100 116 139 !important;
+    --core-text-subtle: #94A3B8 !important;
+    --core-text-subtle-rgb: 148 163 184 !important;
+    --core-border: #E2E8F0 !important;
+    --core-border-rgb: 226 232 240 !important;
+    --core-border-strong: #CBD5E1 !important;
+    --core-border-strong-rgb: 203 213 225 !important;
+    --core-primary: #0F766E !important;
+    --core-primary-rgb: 15 118 110 !important;
+    --core-primary-hover: #0B5D56 !important;
+    --core-primary-hover-rgb: 11 93 86 !important;
+    --core-primary-soft: #E7F6F3 !important;
+    --core-primary-soft-rgb: 231 246 243 !important;
+    --core-on-primary: #FFFFFF !important;
+    --core-on-primary-rgb: 255 255 255 !important;
+    --core-sidebar: #102A2E !important;
+    --core-sidebar-rgb: 16 42 46 !important;
+    --core-sidebar-soft: #17383D !important;
+    --core-sidebar-soft-rgb: 23 56 61 !important;
+    --core-sidebar-text: #D7E8E8 !important;
+    --core-sidebar-text-rgb: 215 232 232 !important;
+    --core-success: #15803D !important;
+    --core-success-rgb: 21 128 61 !important;
+    --core-success-soft: #DCFCE7 !important;
+    --core-success-soft-rgb: 220 252 231 !important;
+    --core-warning: #B45309 !important;
+    --core-warning-rgb: 180 83 9 !important;
+    --core-warning-soft: #FEF3C7 !important;
+    --core-warning-soft-rgb: 254 243 199 !important;
+    --core-danger: #DC2626 !important;
+    --core-danger-rgb: 220 38 38 !important;
+    --core-danger-soft: #FEE2E2 !important;
+    --core-danger-soft-rgb: 254 226 226 !important;
+    --core-info: #2563EB !important;
+    --core-info-rgb: 37 99 235 !important;
+    --core-info-soft: #DBEAFE !important;
+    --core-info-soft-rgb: 219 234 254 !important;
+    --core-overlay: #0F172A !important;
+    --core-overlay-rgb: 15 23 42 !important;
+    --core-primary-text: #0F766E !important;
+    --core-primary-text-rgb: 15 118 110 !important;
+    --core-success-action: #15803D !important;
+    --core-success-action-rgb: 21 128 61 !important;
+    --core-warning-action: #B45309 !important;
+    --core-warning-action-rgb: 180 83 9 !important;
+    --core-danger-action: #DC2626 !important;
+    --core-danger-action-rgb: 220 38 38 !important;
+    --core-info-action: #2563EB !important;
+    --core-info-action-rgb: 37 99 235 !important;
+    --core-blur: none !important;
+  }
+}

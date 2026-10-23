@@ -1,17 +1,7 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-  ViewStyle,
-  PanResponder,
-  Platform,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View, ViewStyle, PanResponder, Platform } from 'react-native';
 import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { ui } from '@/constants/designSystem';
@@ -368,7 +358,7 @@ const styles = StyleSheet.create({
   },
   triggerText: {
     flex: 1,
-    color: '#334155',
+    color: coreColor('#334155', 'text'),
     fontFamily: 'Poppins_400Regular',
     fontSize: 14,
   },
@@ -476,7 +466,7 @@ const styles = StyleSheet.create({
     color: ui.colors.text,
   },
   selectorCellTextSelected: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
   },
   weekRow: {
@@ -510,11 +500,11 @@ const styles = StyleSheet.create({
     color: ui.colors.text,
   },
   dayTextSelected: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
   },
   dayTextToday: {
-    color: ui.colors.primary,
+    color: ui.colors.primaryText,
     fontFamily: 'Poppins_700Bold',
   },
 });

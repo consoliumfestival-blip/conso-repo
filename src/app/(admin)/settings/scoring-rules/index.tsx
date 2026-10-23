@@ -1,6 +1,8 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { ArrowLeft, Plus, Edit, UploadCloud, X } from 'lucide-react-native';
@@ -162,7 +164,7 @@ export default function ScoringRulesList() {
         </View>
 
         {loading ? (
-          <ActivityIndicator color="#0F766E" style={{ marginTop: 60 }} />
+          <ActivityIndicator color={coreColor("#0F766E", 'primaryText')} style={{ marginTop: 60 }} />
         ) : (
           <>
             <View className="flex-row justify-between items-center mb-4">
@@ -191,7 +193,7 @@ export default function ScoringRulesList() {
                       onPress={() => router.push(`/(admin)/settings/scoring-rules/${rule.id}` as any)}
                       className="p-2 bg-ui-muted rounded-full"
                     >
-                      <Edit size={16} color="#0F766E" />
+                      <Edit size={16} color={coreColor("#0F766E", 'primaryText')} />
                     </TouchableOpacity>
                   </View>
 
@@ -205,17 +207,17 @@ export default function ScoringRulesList() {
                       </View>
                     )}
                     {rule.is_default && (
-                      <View className="bg-blue-50 px-2 py-0.5 rounded">
-                        <Text className="font-poppins-bold text-blue-600 text-xs">Default</Text>
+                      <View className="bg-core-info-soft-blue-50 px-2 py-0.5 rounded">
+                        <Text className="font-poppins-bold text-core-info-blue-600 text-xs">Default</Text>
                       </View>
                     )}
                     {rule.tenant_id && (
-                      <View className="bg-orange-50 px-2 py-0.5 rounded">
-                        <Text className="font-poppins-bold text-orange-600 text-xs">Custom</Text>
+                      <View className="bg-core-warning-soft-orange-50 px-2 py-0.5 rounded">
+                        <Text className="font-poppins-bold text-core-warning-orange-600 text-xs">Custom</Text>
                       </View>
                     )}
-                    <View className={`px-2 py-0.5 rounded ${rule.entry_mode === 'total_only' ? 'bg-blue-50' : 'bg-green-50'}`}>
-                      <Text className={`font-poppins-bold text-xs ${rule.entry_mode === 'total_only' ? 'text-blue-700' : 'text-green-700'}`}>
+                    <View className={`px-2 py-0.5 rounded ${rule.entry_mode === 'total_only' ? 'bg-core-info-soft-blue-50' : 'bg-core-success-soft-green-50'}`}>
+                      <Text className={`font-poppins-bold text-xs ${rule.entry_mode === 'total_only' ? 'text-core-info-blue-700' : 'text-core-success-green-700'}`}>
                         {rule.entry_mode === 'total_only' ? 'Paper Total' : 'Paperless'}
                       </Text>
                     </View>
@@ -228,7 +230,7 @@ export default function ScoringRulesList() {
                       </Text>
                       <View className="flex-row flex-wrap gap-1">
                         {rule.scoring_criteria?.sort((a: any, b: any) => a.sort_order - b.sort_order).map((c: any) => (
-                          <Text key={c.id} className="font-poppins text-xs text-ui-text bg-white px-2 py-0.5 rounded border border-ui-border">
+                          <Text key={c.id} className="font-poppins text-xs text-ui-text bg-core-surface-white px-2 py-0.5 rounded border border-ui-border">
                             {c.name}: {c.marks}
                           </Text>
                         ))}
@@ -244,8 +246,8 @@ export default function ScoringRulesList() {
 
       {/* Upload JSON Modal */}
       <Modal visible={showUploadModal} transparent animationType="slide">
-        <View className="flex-1 bg-black/50 justify-center px-4">
-          <View className="bg-white rounded-2xl p-5 max-h-[80%]">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-center px-4">
+          <View className="bg-core-surface-white rounded-2xl p-5 max-h-[80%]">
             <View className="flex-row justify-between items-center mb-4">
               <Text className="font-poppins-bold text-lg text-ui-text">Upload Rules JSON</Text>
               <TouchableOpacity onPress={() => setShowUploadModal(false)}>

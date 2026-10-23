@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
 import { Megaphone, Bell, Clock, AlertTriangle, Send, History } from 'lucide-react-native';
@@ -166,17 +167,17 @@ export default function CommunicationCenter() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-core-surface-muted-gray-50">
       <PageHeader
         title="Communication Center"
         subtitle="Manage alerts, announcements, and automated reminders"
         rightComponent={
           <TouchableOpacity 
             onPress={() => router.push('/(admin)/communication/history')}
-            className="flex-row items-center bg-white border border-gray-200 px-3 py-2 rounded-lg"
+            className="flex-row items-center bg-core-surface-white border border-core-border-gray-200 px-3 py-2 rounded-lg"
           >
-            <History size={18} color="#4B5563" />
-            <Text className="ml-2 font-medium text-gray-700">History</Text>
+            <History size={18} color={coreColor("#4B5563", 'text')} />
+            <Text className="ml-2 font-medium text-core-text-gray-700">History</Text>
           </TouchableOpacity>
         }
       />
@@ -184,71 +185,71 @@ export default function CommunicationCenter() {
       <ScrollView className="flex-1 p-4">
         {/* Stats Widgets */}
         <View className="flex-row flex-wrap justify-between mb-6">
-          <View className="bg-white p-4 rounded-xl border border-gray-200 w-[31%] items-center shadow-sm">
-            <Clock size={24} color="#3B82F6" className="mb-2" />
-            <Text className="text-2xl font-bold text-gray-900">{stats.upcoming}</Text>
-            <Text className="text-xs text-gray-500 text-center mt-1">Upcoming Reminders</Text>
+          <View className="bg-core-surface-white p-4 rounded-xl border border-core-border-gray-200 w-[31%] items-center shadow-sm">
+            <Clock size={24} color={coreColor("#3B82F6", 'info')} className="mb-2" />
+            <Text className="text-2xl font-bold text-core-text-gray-900">{stats.upcoming}</Text>
+            <Text className="text-xs text-core-text-muted-gray-500 text-center mt-1">Upcoming Reminders</Text>
           </View>
-          <View className="bg-white p-4 rounded-xl border border-gray-200 w-[31%] items-center shadow-sm">
-            <Send size={24} color="#10B981" className="mb-2" />
-            <Text className="text-2xl font-bold text-gray-900">{stats.sentToday}</Text>
-            <Text className="text-xs text-gray-500 text-center mt-1">Sent Today</Text>
+          <View className="bg-core-surface-white p-4 rounded-xl border border-core-border-gray-200 w-[31%] items-center shadow-sm">
+            <Send size={24} color={coreColor("#10B981", 'success')} className="mb-2" />
+            <Text className="text-2xl font-bold text-core-text-gray-900">{stats.sentToday}</Text>
+            <Text className="text-xs text-core-text-muted-gray-500 text-center mt-1">Sent Today</Text>
           </View>
-          <View className="bg-white p-4 rounded-xl border border-gray-200 w-[31%] items-center shadow-sm">
-            <AlertTriangle size={24} color="#EF4444" className="mb-2" />
-            <Text className="text-2xl font-bold text-gray-900">{stats.failed}</Text>
-            <Text className="text-xs text-gray-500 text-center mt-1">Failed Deliveries</Text>
+          <View className="bg-core-surface-white p-4 rounded-xl border border-core-border-gray-200 w-[31%] items-center shadow-sm">
+            <AlertTriangle size={24} color={coreColor("#EF4444", 'danger')} className="mb-2" />
+            <Text className="text-2xl font-bold text-core-text-gray-900">{stats.failed}</Text>
+            <Text className="text-xs text-core-text-muted-gray-500 text-center mt-1">Failed Deliveries</Text>
           </View>
         </View>
 
         {/* Quick Announcements */}
-        <Text className="text-lg font-bold text-gray-900 mb-3">Quick Announcements</Text>
+        <Text className="text-lg font-bold text-core-text-gray-900 mb-3">Quick Announcements</Text>
         <View className="flex-row flex-wrap justify-between mb-6">
           {QUICK_ANNOUNCEMENTS.map(item => (
             <TouchableOpacity
               key={item.id}
               onPress={() => handleSendQuick(item)}
               disabled={isSending}
-              className={`bg-white border border-gray-200 rounded-xl p-4 w-[48%] mb-3 shadow-sm flex-row items-center ${isSending ? 'opacity-50' : ''}`}
+              className={`bg-core-surface-white border border-core-border-gray-200 rounded-xl p-4 w-[48%] mb-3 shadow-sm flex-row items-center ${isSending ? 'opacity-50' : ''}`}
             >
               <Text className="text-2xl mr-3">{item.icon}</Text>
               <View className="flex-1">
-                <Text className="font-bold text-gray-900">{item.title}</Text>
+                <Text className="font-bold text-core-text-gray-900">{item.title}</Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Custom Announcement */}
-        <Text className="text-lg font-bold text-gray-900 mb-3">Custom Announcement</Text>
-        <View className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-10">
-          <Text className="text-sm font-medium text-gray-700 mb-1">Title</Text>
+        <Text className="text-lg font-bold text-core-text-gray-900 mb-3">Custom Announcement</Text>
+        <View className="bg-core-surface-white border border-core-border-gray-200 rounded-xl p-4 shadow-sm mb-10">
+          <Text className="text-sm font-medium text-core-text-gray-700 mb-1">Title</Text>
           <TextInput
             value={customTitle}
             onChangeText={setCustomTitle}
             placeholder="e.g. Stage B Participants"
-            className="border border-gray-300 rounded-lg p-3 mb-4 text-gray-900"
+            className="border border-core-border-gray-300 rounded-lg p-3 mb-4 text-core-text-gray-900"
           />
 
-          <Text className="text-sm font-medium text-gray-700 mb-1">Message</Text>
+          <Text className="text-sm font-medium text-core-text-gray-700 mb-1">Message</Text>
           <TextInput
             value={customMessage}
             onChangeText={setCustomMessage}
             placeholder="Type your message here..."
             multiline
             numberOfLines={4}
-            className="border border-gray-300 rounded-lg p-3 mb-4 text-gray-900 h-24 text-top align-top"
+            className="border border-core-border-gray-300 rounded-lg p-3 mb-4 text-core-text-gray-900 h-24 text-top align-top"
           />
 
-          <Text className="text-sm font-medium text-gray-700 mb-2">Priority</Text>
+          <Text className="text-sm font-medium text-core-text-gray-700 mb-2">Priority</Text>
           <View className="flex-row gap-2 mb-6">
             {['LOW', 'NORMAL', 'HIGH', 'URGENT'].map(p => (
               <TouchableOpacity
                 key={p}
                 onPress={() => setCustomPriority(p)}
-                className={`px-3 py-1.5 rounded-full border ${customPriority === p ? 'bg-primary-50 border-primary-500' : 'bg-gray-50 border-gray-200'}`}
+                className={`px-3 py-1.5 rounded-full border ${customPriority === p ? 'bg-primary-50 border-primary-500' : 'bg-core-surface-muted-gray-50 border-core-border-gray-200'}`}
               >
-                <Text className={`text-xs font-medium ${customPriority === p ? 'text-primary-700' : 'text-gray-600'}`}>{p}</Text>
+                <Text className={`text-xs font-medium ${customPriority === p ? 'text-primary-700' : 'text-core-text-gray-600'}`}>{p}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -259,11 +260,11 @@ export default function CommunicationCenter() {
             className={`bg-primary-600 rounded-xl p-4 flex-row justify-center items-center ${(!customTitle || !customMessage || isSending) ? 'opacity-50' : ''}`}
           >
             {isSending ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={coreColor("white", 'onPrimary')} />
             ) : (
               <>
-                <Megaphone size={20} color="white" />
-                <Text className="text-white font-bold ml-2">Send Broadcast</Text>
+                <Megaphone size={20} color={coreColor("white", 'onPrimary')} />
+                <Text className="text-core-on-primary-white font-bold ml-2">Send Broadcast</Text>
               </>
             )}
           </TouchableOpacity>

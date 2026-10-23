@@ -4,7 +4,8 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Slot, Stack, usePathname } from "expo-router";
+import { Slot, Stack, usePathname, useSegments } from "expo-router";
+import { readCoreAppearance, resolveCoreColors } from '@/constants/coreTheme';
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "../global.css";
@@ -37,16 +38,19 @@ const LOADING_BG = "#011635";
 
 function AppLoadingScreen() {
   const teamRoute = usePathname().startsWith('/team');
+  const coreRoute = ['(admin)', '(super)', '(auth)'].includes(String(useSegments()[0]));
+  const systemDark = useColorScheme() === 'dark';
+  const coreColors = resolveCoreColors(readCoreAppearance(), systemDark);
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: teamRoute ? teamUi.colors.background : LOADING_BG,
+        backgroundColor: teamRoute ? teamUi.colors.background : coreRoute ? coreColors.background : LOADING_BG,
         justifyContent: "center",
         alignItems: "center",
       }}
     >
-      <ActivityIndicator size="large" color={teamRoute ? teamUi.colors.primary : "#c69a53"} />
+      <ActivityIndicator size="large" color={teamRoute ? teamUi.colors.primary : coreRoute ? coreColors.primaryText : "#c69a53"} />
     </View>
   );
 }

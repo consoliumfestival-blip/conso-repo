@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -152,7 +153,7 @@ export default function CollegeFestCategoriesScreen() {
   return (
     <ScrollView className="flex-1 bg-ssf-bg" contentContainerStyle={{ padding: 20, paddingBottom: 80 }}>
       <TouchableOpacity onPress={() => router.back()} className="mb-4 flex-row items-center">
-        <ArrowLeft size={18} color="#1B6B3A" /><Text className="ml-2 font-poppins-bold text-emerald-800">Back</Text>
+        <ArrowLeft size={18} color={coreColor("#1B6B3A", 'primaryText')} /><Text className="ml-2 font-poppins-bold text-core-success-emerald-800">Back</Text>
       </TouchableOpacity>
       <Text className="font-poppins-bold text-2xl text-ssf-text">Categories</Text>
       <Text className="mb-5 mt-1 font-poppins text-sm text-ssf-text-muted">
@@ -178,15 +179,15 @@ export default function CollegeFestCategoriesScreen() {
         </View>
       </SsfCard>
 
-      {isCollegeFest && generalSetupOpen && !generalCategoryEnabled && <SsfCard className="mb-5 border border-emerald-200 bg-emerald-50 p-4">
+      {isCollegeFest && generalSetupOpen && !generalCategoryEnabled && <SsfCard className="mb-5 border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 p-4">
         <Text className="mb-1 font-poppins-bold text-base">Create General Category</Text>
         <Text className="mb-4 font-poppins text-xs text-ssf-text-muted">
           Save this setup to make General (GN) available in item creation. It accepts participants from every existing participant category.
         </Text>
         <Text className="mb-1 font-poppins text-xs text-ssf-text-muted">Category Name</Text>
-        <TextInput value="General" editable={false} className="mb-3 rounded-xl border border-ssf-border bg-white p-3 font-poppins" />
+        <TextInput value="General" editable={false} className="mb-3 rounded-xl border border-ssf-border bg-core-surface-white p-3 font-poppins" />
         <Text className="mb-1 font-poppins text-xs text-ssf-text-muted">Category Code</Text>
-        <TextInput value="gn" editable={false} className="mb-4 rounded-xl border border-ssf-border bg-white p-3 font-poppins" />
+        <TextInput value="gn" editable={false} className="mb-4 rounded-xl border border-ssf-border bg-core-surface-white p-3 font-poppins" />
         <View className="flex-row gap-x-2">
           <SsfButton label={create.isPending || update.isPending || updateFestival.isPending ? 'Saving…' : 'Save General Category'} onPress={saveGeneralCategory} disabled={create.isPending || update.isPending || setActive.isPending || updateFestival.isPending} className="flex-1" />
           <SsfButton label="Cancel" variant="outline" onPress={() => setGeneralSetupOpen(false)} />
@@ -218,7 +219,7 @@ export default function CollegeFestCategoriesScreen() {
             <Text className="font-poppins-bold text-base">{generalCategory.name}</Text>
             <Text className="font-poppins text-xs text-ssf-text-muted">{generalCategory.code} · Order {generalCategory.sort_order} · {generalCategory.is_active ? 'Active' : 'Archived'}{generalCategoryEnabled ? '' : ' · Feature disabled'}</Text>
           </View>
-          <TouchableOpacity onPress={() => beginEdit(generalCategory)} className="px-3 py-2"><Text className="font-poppins-bold text-emerald-700">Edit</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => beginEdit(generalCategory)} className="px-3 py-2"><Text className="font-poppins-bold text-core-success-emerald-700">Edit</Text></TouchableOpacity>
           <TouchableOpacity disabled={setActive.isPending} onPress={async () => {
             if (!generalCategory.is_active) {
               setGeneralSetupOpen(true);
@@ -227,7 +228,7 @@ export default function CollegeFestCategoriesScreen() {
             setGeneralCategory(false);
             return;
           }} className="p-2">
-            {generalCategory.is_active ? <Archive size={18} color="#B45309" /> : <RotateCcw size={18} color="#047857" />}
+            {generalCategory.is_active ? <Archive size={18} color={coreColor("#B45309", 'warning')} /> : <RotateCcw size={18} color={coreColor("#047857", 'success')} />}
           </TouchableOpacity>
           <TouchableOpacity disabled={remove.isPending} onPress={() => deleteCategory(generalCategory)} className="p-2">
             <Trash2 size={18} color={ui.colors.destructive} />
@@ -236,7 +237,7 @@ export default function CollegeFestCategoriesScreen() {
       </SsfCard>}
 
       {isCollegeFest && (isLoading ? <ActivityIndicator /> : error ? (
-        <Text className="text-red-700">Unable to load categories. Please refresh.</Text>
+        <Text className="text-core-danger-red-700">Unable to load categories. Please refresh.</Text>
       ) : customCategories.length === 0 ? (
         <View className="items-center rounded-xl border border-dashed border-ssf-border p-8">
           <Plus size={28} color={ui.colors.textMuted} /><Text className="mt-2 font-poppins">No custom College Fest categories have been created yet.</Text>
@@ -248,7 +249,7 @@ export default function CollegeFestCategoriesScreen() {
               <Text className="font-poppins-bold text-base">{category.name}</Text>
               <Text className="font-poppins text-xs text-ssf-text-muted">{category.code} · Order {category.sort_order} · {category.is_active ? 'Active' : 'Archived'}</Text>
             </View>
-            <TouchableOpacity onPress={() => beginEdit(category)} className="px-3 py-2"><Text className="font-poppins-bold text-emerald-700">Edit</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => beginEdit(category)} className="px-3 py-2"><Text className="font-poppins-bold text-core-success-emerald-700">Edit</Text></TouchableOpacity>
             <TouchableOpacity
               disabled={setActive.isPending}
               onPress={async () => {
@@ -257,7 +258,7 @@ export default function CollegeFestCategoriesScreen() {
               }}
               className="p-2"
             >
-              {category.is_active ? <Archive size={18} color="#B45309" /> : <RotateCcw size={18} color="#047857" />}
+              {category.is_active ? <Archive size={18} color={coreColor("#B45309", 'warning')} /> : <RotateCcw size={18} color={coreColor("#047857", 'success')} />}
             </TouchableOpacity>
             <TouchableOpacity disabled={remove.isPending} onPress={() => deleteCategory(category)} className="p-2">
               <Trash2 size={18} color={ui.colors.destructive} />

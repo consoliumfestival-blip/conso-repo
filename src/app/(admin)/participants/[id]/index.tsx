@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform, Switch, useWindowDimensions, Image, ActivityIndicator } from 'react-native';
@@ -47,11 +48,11 @@ function InfoTile({
   style?: any;
 }) {
   const valueColor =
-    tone === 'success' ? 'text-emerald-700' : tone === 'warning' ? 'text-amber-700' : 'text-ssf-text';
+    tone === 'success' ? 'text-core-success-emerald-700' : tone === 'warning' ? 'text-core-warning-amber-700' : 'text-ssf-text';
 
   return (
     <View
-      className="min-h-[48px] justify-center border-b border-slate-200 py-1.5 pr-3"
+      className="min-h-[48px] justify-center border-b border-core-border-slate-200 py-1.5 pr-3"
       style={style}
     >
       <Text className="font-poppins text-[10px] uppercase tracking-wide text-ssf-text-muted">{label}</Text>
@@ -76,7 +77,7 @@ function DetailAccordion({
   children: React.ReactNode;
 }) {
   return (
-    <View className="border-b border-slate-200">
+    <View className="border-b border-core-border-slate-200">
       <TouchableOpacity
         onPress={onToggle}
         activeOpacity={0.82}
@@ -86,14 +87,14 @@ function DetailAccordion({
       >
         <View className="h-8 w-8 items-center justify-center">
           {expanded
-            ? <ChevronDown size={16} color="#047857" />
+            ? <ChevronDown size={16} color={coreColor("#047857", 'success')} />
             : <ChevronRight size={16} color={ui.colors.textMuted} />}
         </View>
         <View className="ml-2.5 flex-1">
-          <Text className={`font-poppins-bold text-[12px] ${expanded ? 'text-emerald-800' : 'text-ssf-text'}`}>{title}</Text>
+          <Text className={`font-poppins-bold text-[12px] ${expanded ? 'text-core-success-emerald-800' : 'text-ssf-text'}`}>{title}</Text>
           <Text className="font-poppins text-[9px] text-ssf-text-muted">{subtitle}</Text>
         </View>
-        <Text className={`font-poppins-bold text-[9px] uppercase ${expanded ? 'text-emerald-700' : 'text-slate-400'}`}>
+        <Text className={`font-poppins-bold text-[9px] uppercase ${expanded ? 'text-core-success-emerald-700' : 'text-core-text-muted-slate-400'}`}>
           {expanded ? 'Hide' : 'View'}
         </Text>
       </TouchableOpacity>
@@ -494,9 +495,9 @@ export default function ParticipantDetails() {
 
   const getStatusColor = (status: string) => {
     switch((status || 'pending').toLowerCase()) {
-      case 'approved': return { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-200' };
-      case 'rejected': return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' };
-      default: return { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-200' };
+      case 'approved': return { bg: 'bg-core-success-soft-green-100', text: 'text-core-success-green-700', border: 'border-core-success-soft-green-200' };
+      case 'rejected': return { bg: 'bg-core-danger-soft-red-100', text: 'text-core-danger-red-700', border: 'border-core-danger-soft-red-200' };
+      default: return { bg: 'bg-core-warning-soft-yellow-100', text: 'text-core-warning-yellow-700', border: 'border-core-warning-soft-yellow-200' };
     }
   };
   const statColor = getStatusColor(participant.status);
@@ -524,7 +525,7 @@ export default function ParticipantDetails() {
         <View className="mb-3 flex-row items-center">
           <TouchableOpacity
             onPress={goBack}
-            className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white"
+            className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-core-border-slate-200 bg-core-surface-white"
           >
             <ArrowLeft size={19} color={ui.colors.text} />
           </TouchableOpacity>
@@ -536,24 +537,24 @@ export default function ParticipantDetails() {
       )}
 
       {participant.is_terminated && (
-        <View className="bg-amber-100 border border-amber-300 rounded-xl p-4 mb-4 flex-row items-center gap-x-3">
-          <AlertTriangle size={24} color="#D97706" />
+        <View className="bg-core-warning-soft-amber-100 border border-core-warning-soft-amber-300 rounded-xl p-4 mb-4 flex-row items-center gap-x-3">
+          <AlertTriangle size={24} color={coreColor("#D97706", 'warning')} />
           <View className="flex-1">
-            <Text className="font-poppins-bold text-amber-700">Participant Terminated</Text>
-            <Text className="font-poppins text-xs text-amber-600">Reason: {participant.termination_reason || 'No reason provided'}</Text>
+            <Text className="font-poppins-bold text-core-warning-amber-700">Participant Terminated</Text>
+            <Text className="font-poppins text-xs text-core-warning-amber-600">Reason: {participant.termination_reason || 'No reason provided'}</Text>
           </View>
         </View>
       )}
 
       {isBanned && (
-        <View className="bg-red-100 border border-red-300 rounded-xl p-4 mb-4 flex-row items-center gap-x-3">
-          <AlertTriangle size={24} color="#DC2626" />
+        <View className="bg-core-danger-soft-red-100 border border-core-danger-soft-red-300 rounded-xl p-4 mb-4 flex-row items-center gap-x-3">
+          <AlertTriangle size={24} color={coreColor("#DC2626", 'danger')} />
           <View className="flex-1">
-            <Text className="font-poppins-bold text-red-700">Plagiarism Ban Active</Text>
-            <Text className="font-poppins text-xs text-red-600">Banned until: {new Date(participant.plagiarism_ban_until).toLocaleDateString()}</Text>
+            <Text className="font-poppins-bold text-core-danger-red-700">Plagiarism Ban Active</Text>
+            <Text className="font-poppins text-xs text-core-danger-red-600">Banned until: {new Date(participant.plagiarism_ban_until).toLocaleDateString()}</Text>
           </View>
-          <TouchableOpacity onPress={handleBan} className="bg-white px-3 py-1 rounded-lg border border-red-200">
-            <Text className="font-poppins-bold text-xs text-red-700">Manage</Text>
+          <TouchableOpacity onPress={handleBan} className="bg-core-surface-white px-3 py-1 rounded-lg border border-core-danger-soft-red-200">
+            <Text className="font-poppins-bold text-xs text-core-danger-red-700">Manage</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -565,20 +566,20 @@ export default function ParticipantDetails() {
         style={{ padding: 0, borderRadius: 10 }}
       >
         <LinearGradient
-          colors={['#D8F1EB', '#E2F4F0', '#DDF2ED']}
+          colors={[coreColor('#D8F1EB', 'surface'), coreColor('#E2F4F0', 'surface'), coreColor('#DDF2ED', 'surface')]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{ height: isDesktopProfile ? 70 : 88 }}
         />
         <View className={isDesktopProfile ? 'px-4 pb-4' : 'px-3 pb-3'}>
           <View
-            className={`rounded-[10px] border border-emerald-100 bg-white shadow-sm ${isDesktopProfile ? 'p-3' : 'p-4'}`}
+            className={`rounded-[10px] border border-core-success-soft-emerald-100 bg-core-surface-white shadow-sm ${isDesktopProfile ? 'p-3' : 'p-4'}`}
             style={{ marginTop: isDesktopProfile ? -24 : -38 }}
           >
             <View className="flex-row items-center justify-between">
               <View className="flex-1 flex-row items-center">
-                <View className={`${isDesktopProfile ? 'h-14 w-14 rounded-2xl' : 'h-16 w-16 rounded-[18px]'} items-center justify-center border border-emerald-100 bg-emerald-50`}>
-                  <Text className={`${isDesktopProfile ? 'text-lg' : 'text-xl'} font-poppins-black text-emerald-800`}>
+                <View className={`${isDesktopProfile ? 'h-14 w-14 rounded-2xl' : 'h-16 w-16 rounded-[18px]'} items-center justify-center border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50`}>
+                  <Text className={`${isDesktopProfile ? 'text-lg' : 'text-xl'} font-poppins-black text-core-success-emerald-800`}>
                     {avatarInitials}
                   </Text>
                 </View>
@@ -591,14 +592,14 @@ export default function ParticipantDetails() {
                   </Text>
                   <View className="mt-2 flex-row flex-wrap items-center gap-1.5">
                     {participant.category_code && (
-                      <View className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1">
-                        <Text className="font-poppins-bold text-[9px] uppercase text-slate-600">
+                      <View className="rounded-lg border border-core-border-slate-200 bg-core-surface-muted-slate-50 px-2 py-1">
+                        <Text className="font-poppins-bold text-[9px] uppercase text-core-text-slate-600">
                           {participant.category_code}
                         </Text>
                       </View>
                     )}
-                    <View className="rounded-lg border border-emerald-100 bg-emerald-50 px-2 py-1">
-                      <Text className="font-poppins-bold text-[9px] text-emerald-700">
+                    <View className="rounded-lg border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50 px-2 py-1">
+                      <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700">
                         Chest {participant.chest_number || 'N/A'}
                       </Text>
                     </View>
@@ -618,17 +619,17 @@ export default function ParticipantDetails() {
                 <View className="ml-3 flex-row items-center gap-x-2">
                   <TouchableOpacity
                     onPress={toggleLock}
-                    className={`h-9 w-9 items-center justify-center rounded-lg border ${locked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-white'}`}
+                    className={`h-9 w-9 items-center justify-center rounded-lg border ${locked ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-core-success-soft-emerald-200 bg-core-surface-white'}`}
                   >
-                    {locked ? <Lock size={15} color="#DC2626" /> : <Unlock size={15} color="#047857" />}
+                    {locked ? <Lock size={15} color={coreColor("#DC2626", 'danger')} /> : <Unlock size={15} color={coreColor("#047857", 'success')} />}
                   </TouchableOpacity>
                   {!locked && !isEditing && (
                   <TouchableOpacity
                     className="flex-row items-center rounded-lg bg-ssf-primary px-4 py-2.5"
                     onPress={() => setIsEditing(true)}
                   >
-                    <Edit3 size={15} color={ui.colors.surface} />
-                    <Text className="ml-1.5 font-poppins-bold text-[11px] text-white">Edit</Text>
+                    <Edit3 size={15} color={ui.colors.onPrimary} />
+                    <Text className="ml-1.5 font-poppins-bold text-[11px] text-core-on-primary-white">Edit</Text>
                   </TouchableOpacity>
                   )}
                 </View>
@@ -636,7 +637,7 @@ export default function ParticipantDetails() {
             </View>
 
             {isEditing ? (
-              <View className="mt-3 border-t border-slate-100 pt-2.5">
+              <View className="mt-3 border-t border-core-border-slate-100 pt-2.5">
                 <Text className="font-poppins text-ssf-text-muted mb-2 text-xs">Organisation (Team) *</Text>
                 {availableOrganisations.length > 0 ? (
                   <View className="flex-row flex-wrap gap-2">
@@ -646,21 +647,21 @@ export default function ParticipantDetails() {
                         className={`px-3 py-1.5 rounded-lg border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                         onPress={() => setSelectedOrgId(org.id)}
                       >
-                        <Text className={`font-poppins-bold text-xs ${selectedOrgId === org.id ? 'text-white' : 'text-ssf-text'}`}>
+                        <Text className={`font-poppins-bold text-xs ${selectedOrgId === org.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                           {org.name} <Text className="font-poppins font-normal text-[10px] opacity-80">({org.org_type})</Text>
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 ) : organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division') ? (
-                  <Text className="font-poppins text-xs italic text-amber-700">No subordinate organisations are available for this {festivalLevel}.</Text>
+                  <Text className="font-poppins text-xs italic text-core-warning-amber-700">No subordinate organisations are available for this {festivalLevel}.</Text>
                 ) : (
-                  <Text className="font-poppins text-xs italic text-red-500">Loading organisations...</Text>
+                  <Text className="font-poppins text-xs italic text-core-danger-red-500">Loading organisations...</Text>
                 )}
               </View>
             ) : participant.organisations && (
-              <View className="mt-3 flex-row items-center border-t border-slate-100 pt-2.5">
-                <ShieldCheck size={14} color="#047857" />
+              <View className="mt-3 flex-row items-center border-t border-core-border-slate-100 pt-2.5">
+                <ShieldCheck size={14} color={coreColor("#047857", 'success')} />
                 <Text numberOfLines={1} className="ml-2 flex-1 font-poppins-bold text-[10px] uppercase text-ssf-text">
                   {participant.organisations.name}
                 </Text>
@@ -671,15 +672,15 @@ export default function ParticipantDetails() {
             )}
 
             {!isDesktopProfile && (
-              <View className="mt-3 flex-row gap-x-2 border-t border-slate-100 pt-3">
+              <View className="mt-3 flex-row gap-x-2 border-t border-core-border-slate-100 pt-3">
                 <TouchableOpacity
                   onPress={toggleLock}
                   className={`h-11 flex-1 flex-row items-center justify-center rounded-xl border ${
-                    locked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50'
+                    locked ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50'
                   }`}
                 >
-                  {locked ? <Lock size={16} color="#DC2626" /> : <Unlock size={16} color="#047857" />}
-                  <Text className={`ml-2 font-poppins-bold text-[11px] ${locked ? 'text-red-600' : 'text-emerald-700'}`}>
+                  {locked ? <Lock size={16} color={coreColor("#DC2626", 'danger')} /> : <Unlock size={16} color={coreColor("#047857", 'success')} />}
+                  <Text className={`ml-2 font-poppins-bold text-[11px] ${locked ? 'text-core-danger-red-600' : 'text-core-success-emerald-700'}`}>
                     {locked ? 'Unlock profile' : 'Lock profile'}
                   </Text>
                 </TouchableOpacity>
@@ -688,8 +689,8 @@ export default function ParticipantDetails() {
                     className="h-11 flex-1 flex-row items-center justify-center rounded-xl bg-ssf-primary"
                     onPress={() => setIsEditing(true)}
                   >
-                    <Edit3 size={16} color={ui.colors.surface} />
-                    <Text className="ml-2 font-poppins-bold text-[11px] text-white">Edit details</Text>
+                    <Edit3 size={16} color={ui.colors.onPrimary} />
+                    <Text className="ml-2 font-poppins-bold text-[11px] text-core-on-primary-white">Edit details</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -697,9 +698,9 @@ export default function ParticipantDetails() {
           </View>
 
         {participant.status === 'rejected' && participant.rejection_reason && (
-          <View className="bg-red-50 p-3 rounded-lg mb-4 border border-red-100">
-            <Text className="font-poppins-bold text-xs text-red-700">Rejection Reason:</Text>
-            <Text className="font-poppins text-sm text-red-600">{participant.rejection_reason}</Text>
+          <View className="bg-core-danger-soft-red-50 p-3 rounded-lg mb-4 border border-core-danger-soft-red-100">
+            <Text className="font-poppins-bold text-xs text-core-danger-red-700">Rejection Reason:</Text>
+            <Text className="font-poppins text-sm text-core-danger-red-600">{participant.rejection_reason}</Text>
           </View>
         )}
 
@@ -726,10 +727,10 @@ export default function ParticipantDetails() {
             }
           >
           <View className="gap-y-4">
-            <View className="items-center rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
-              <Text className="mb-3 font-poppins-bold text-[10px] uppercase tracking-widest text-emerald-700">Live preview</Text>
-              <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-emerald-200 shadow-sm">
-                <Text className="font-poppins-black text-2xl text-emerald-900">
+            <View className="items-center rounded-2xl border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50 p-5">
+              <Text className="mb-3 font-poppins-bold text-[10px] uppercase tracking-widest text-core-success-emerald-700">Live preview</Text>
+              <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-core-border-white bg-core-success-soft-emerald-200 shadow-sm">
+                <Text className="font-poppins-black text-2xl text-core-success-emerald-900">
                   {(name || 'Participant').trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase()}
                 </Text>
               </View>
@@ -756,7 +757,7 @@ export default function ParticipantDetails() {
               {(!festival?.gender_mode || festival.gender_mode === 'both') && <View className="flex-1" style={{ zIndex: 40 }}>
                 <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Gender (boys/girls)</Text>
                 <View className="flex-row gap-2">
-                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-slate-300 bg-white'}`}><Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
+                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}><Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
                 </View>
               </View>}
             </View>
@@ -774,7 +775,7 @@ export default function ParticipantDetails() {
                 <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={educationType} onChangeText={setEducationType} />
               </View>
             </View>}
-            <View className="border-t border-gray-100 pt-4 gap-y-4">
+            <View className="border-t border-core-border-gray-100 pt-4 gap-y-4">
               <View className="flex-row items-center gap-x-2">
                 <Eye size={18} color={ui.colors.info} />
                 <Text className="font-poppins-bold text-base text-ssf-text">Public Candidate Profile</Text>
@@ -782,13 +783,13 @@ export default function ParticipantDetails() {
               <View>
                 <Text className="text-sm font-poppins text-ssf-text-muted mb-2">Profile Photo</Text>
                 <View className="flex-row items-center gap-3">
-                  {photoPreviewUrl ? <Image source={{ uri: photoPreviewUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} /> : <View className="h-14 w-14 items-center justify-center rounded-full border border-ssf-border bg-slate-50"><Text className="font-poppins text-xl text-ssf-text-muted">?</Text></View>}
-                  <TouchableOpacity onPress={chooseProfilePhoto} className="min-h-10 flex-row items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3"><Upload size={15} color="#2563EB"/><Text className="font-poppins-bold text-xs text-blue-700">Select Photo</Text></TouchableOpacity>
-                  {!!photoPreviewUrl && <TouchableOpacity onPress={clearProfilePhoto} className="min-h-10 rounded-xl border border-red-100 bg-red-50 px-3"><Text className="font-poppins-bold text-xs text-red-700">Remove</Text></TouchableOpacity>}
-                  {(isUploadingProfilePhoto || isRemovingProfilePhoto) && <ActivityIndicator size="small" color={ui.colors.primary} />}
+                  {photoPreviewUrl ? <Image source={{ uri: photoPreviewUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} /> : <View className="h-14 w-14 items-center justify-center rounded-full border border-ssf-border bg-core-surface-muted-slate-50"><Text className="font-poppins text-xl text-ssf-text-muted">?</Text></View>}
+                  <TouchableOpacity onPress={chooseProfilePhoto} className="min-h-10 flex-row items-center gap-2 rounded-xl border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-3"><Upload size={15} color={coreColor("#2563EB", 'info')}/><Text className="font-poppins-bold text-xs text-core-info-blue-700">Select Photo</Text></TouchableOpacity>
+                  {!!photoPreviewUrl && <TouchableOpacity onPress={clearProfilePhoto} className="min-h-10 rounded-xl border border-core-danger-soft-red-100 bg-core-danger-soft-red-50 px-3"><Text className="font-poppins-bold text-xs text-core-danger-red-700">Remove</Text></TouchableOpacity>}
+                  {(isUploadingProfilePhoto || isRemovingProfilePhoto) && <ActivityIndicator size="small" color={ui.colors.primaryText} />}
                 </View>
               </View>
-              <View className="flex-row justify-between items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
+              <View className="flex-row justify-between items-center bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 rounded-xl p-3">
                 <View className="flex-1 pr-3">
                   <Text className="font-poppins-bold text-sm text-ssf-text">Public profile enabled</Text>
                   <Text className="font-poppins text-xs text-ssf-text-muted">Allow this candidate profile to be opened publicly.</Text>
@@ -796,11 +797,11 @@ export default function ParticipantDetails() {
                 <Switch
                   value={publicProfileEnabled}
                   onValueChange={setPublicProfileEnabled}
-                  trackColor={{ false: '#CBD5E1', true: '#B9EBD1' }}
-                  thumbColor={publicProfileEnabled ? ui.colors.success : '#F8FAFC'}
+                  trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#B9EBD1', 'primarySoft') }}
+                  thumbColor={publicProfileEnabled ? ui.colors.success : coreColor('#F8FAFC', 'primary')}
                 />
               </View>
-              <View className="flex-row justify-between items-center bg-green-50 border border-green-100 rounded-xl p-3">
+              <View className="flex-row justify-between items-center bg-core-success-soft-green-50 border border-core-success-soft-green-100 rounded-xl p-3">
                 <View className="flex-1 pr-3">
                   <Text className="font-poppins-bold text-sm text-ssf-text">Show organisation publicly</Text>
                   <Text className="font-poppins text-xs text-ssf-text-muted">Display organisation name on the public profile.</Text>
@@ -808,15 +809,15 @@ export default function ParticipantDetails() {
                 <Switch
                   value={showOrganisationPublic}
                   onValueChange={setShowOrganisationPublic}
-                  trackColor={{ false: '#CBD5E1', true: '#B9EBD1' }}
-                  thumbColor={showOrganisationPublic ? ui.colors.success : '#F8FAFC'}
+                  trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#B9EBD1', 'primarySoft') }}
+                  thumbColor={showOrganisationPublic ? ui.colors.success : coreColor('#F8FAFC', 'primary')}
                 />
               </View>
             </View>
           </View>
           </SsfSheet>
         ) : (
-          <View className={`${isDesktopProfile ? 'gap-y-2 border-t border-gray-100 pt-3' : 'gap-y-2 pt-3'}`}>
+          <View className={`${isDesktopProfile ? 'gap-y-2 border-t border-core-border-gray-100 pt-3' : 'gap-y-2 pt-3'}`}>
             <DetailAccordion
               title="Competition details"
               subtitle="Category, age and eligibility"
@@ -872,8 +873,8 @@ export default function ParticipantDetails() {
             </DetailAccordion>
 
             {!isBanned && (
-              <TouchableOpacity onPress={handleBan} className="mt-1 self-start rounded-lg border border-red-100 bg-red-50 px-3 py-2">
-                <Text className="font-poppins-bold text-[10px] text-red-600">Add plagiarism ban</Text>
+              <TouchableOpacity onPress={handleBan} className="mt-1 self-start rounded-lg border border-core-danger-soft-red-100 bg-core-danger-soft-red-50 px-3 py-2">
+                <Text className="font-poppins-bold text-[10px] text-core-danger-red-600">Add plagiarism ban</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -888,7 +889,7 @@ export default function ParticipantDetails() {
       {(isLoadingGeneralTeamResults || generalTeamResults.length > 0) && (
         <SsfCard className="mb-3 w-full p-3" style={{ borderRadius: 10 }}>
           <View className="mb-3 flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center rounded-lg bg-emerald-50">
+            <View className="h-10 w-10 items-center justify-center rounded-lg bg-core-success-soft-emerald-50">
               <Trophy size={17} color={ui.colors.success} />
             </View>
             <View className="ml-2.5">
@@ -901,7 +902,7 @@ export default function ParticipantDetails() {
           {isLoadingGeneralTeamResults ? (
             <Text className="font-poppins text-xs text-ssf-text-muted">Loading team results…</Text>
           ) : generalTeamResults.map((result: any) => (
-            <View key={result.registration_id} className="flex-row items-center border-b border-slate-100 py-2 last:border-b-0">
+            <View key={result.registration_id} className="flex-row items-center border-b border-core-border-slate-100 py-2 last:border-b-0">
               <View className="flex-1">
                 <Text className="font-poppins-bold text-[13px]">{result.item_name_en || result.item_code || 'General competition'}</Text>
                 <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">
@@ -909,7 +910,7 @@ export default function ParticipantDetails() {
                 </Text>
               </View>
               <View className="items-end">
-                <Text className="font-poppins-bold text-xs text-emerald-700">
+                <Text className="font-poppins-bold text-xs text-core-success-emerald-700">
                   {result.rank ? `Rank ${result.rank}` : 'Not ranked'}
                 </Text>
               </View>
@@ -931,7 +932,7 @@ export default function ParticipantDetails() {
             accessibilityState={{ expanded: publicSectionExpanded }}
             className={`${isDesktopProfile ? 'gap-x-3' : 'gap-x-2.5'} flex-1 flex-row items-center`}
           >
-            <View className={`h-10 w-10 items-center justify-center rounded-lg border ${participant.public_profile_enabled === false ? 'border-slate-200 bg-slate-100' : 'border-emerald-100 bg-emerald-50'}`}>
+            <View className={`h-10 w-10 items-center justify-center rounded-lg border ${participant.public_profile_enabled === false ? 'border-core-border-slate-200 bg-core-surface-muted-slate-100' : 'border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50'}`}>
               {participant.public_profile_enabled === false ? (
                 <EyeOff size={20} color={ui.colors.textMuted} />
               ) : (
@@ -947,7 +948,7 @@ export default function ParticipantDetails() {
               </Text>
             </View>
             {publicSectionExpanded
-              ? <ChevronDown size={17} color="#047857" />
+              ? <ChevronDown size={17} color={coreColor("#047857", 'success')} />
               : <ChevronRight size={17} color={ui.colors.textMuted} />}
           </TouchableOpacity>
           {participant.profile_slug && participant.public_profile_enabled !== false && (
@@ -955,37 +956,37 @@ export default function ParticipantDetails() {
               onPress={() => router.push(`/candidate/${participant.profile_slug}` as any)}
               accessibilityRole="button"
               accessibilityLabel="Open public profile"
-              className={`${isDesktopProfile ? 'ml-3 px-3' : 'ml-2 w-9'} h-9 rounded-xl border border-blue-100 bg-blue-50 flex-row items-center justify-center gap-x-1.5`}
+              className={`${isDesktopProfile ? 'ml-3 px-3' : 'ml-2 w-9'} h-9 rounded-xl border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 flex-row items-center justify-center gap-x-1.5`}
             >
               <ExternalLink size={15} color={ui.colors.info} />
-              {isDesktopProfile && <Text className="font-poppins-bold text-[11px] text-blue-700">Open</Text>}
+              {isDesktopProfile && <Text className="font-poppins-bold text-[11px] text-core-info-blue-700">Open</Text>}
             </TouchableOpacity>
           )}
         </View>
-        {publicSectionExpanded && <View className="border-t border-slate-100">
+        {publicSectionExpanded && <View className="border-t border-core-border-slate-100">
           <View className="flex-row">
             <View className="flex-1 py-3 pr-3">
               <View className="flex-row items-center">
                 {participant.public_profile_enabled === false
                   ? <EyeOff size={14} color={ui.colors.textMuted} />
-                  : <CheckCircle2 size={14} color="#047857" />}
+                  : <CheckCircle2 size={14} color={coreColor("#047857", 'success')} />}
                 <Text className="ml-1.5 font-poppins text-[10px] uppercase tracking-wide text-ssf-text-muted">Visibility</Text>
               </View>
-              <Text className={`mt-1 font-poppins-bold text-[13px] ${participant.public_profile_enabled === false ? 'text-gray-500' : 'text-emerald-700'}`}>
+              <Text className={`mt-1 font-poppins-bold text-[13px] ${participant.public_profile_enabled === false ? 'text-core-text-muted-gray-500' : 'text-core-success-emerald-700'}`}>
                 {participant.public_profile_enabled === false ? 'Disabled' : 'Public'}
               </Text>
             </View>
-            <View className="flex-1 border-l border-slate-100 py-3 pl-3">
+            <View className="flex-1 border-l border-core-border-slate-100 py-3 pl-3">
               <View className="flex-row items-center">
-                <ShieldCheck size={14} color={participant.show_organisation_public === false ? ui.colors.textMuted : '#2563EB'} />
+                <ShieldCheck size={14} color={participant.show_organisation_public === false ? ui.colors.textMuted : coreColor('#2563EB', 'info')} />
                 <Text className="ml-1.5 font-poppins text-[10px] uppercase tracking-wide text-ssf-text-muted">Organisation</Text>
               </View>
-              <Text className={`mt-1 font-poppins-bold text-[13px] ${participant.show_organisation_public === false ? 'text-gray-500' : 'text-blue-700'}`}>
+              <Text className={`mt-1 font-poppins-bold text-[13px] ${participant.show_organisation_public === false ? 'text-core-text-muted-gray-500' : 'text-core-info-blue-700'}`}>
                 {participant.show_organisation_public === false ? 'Hidden publicly' : 'Shown publicly'}
               </Text>
             </View>
           </View>
-          <View className="border-t border-slate-100 py-3">
+          <View className="border-t border-core-border-slate-100 py-3">
             <View className="mb-1 flex-row items-center">
               <CircleUserRound size={14} color={ui.colors.textMuted} />
               <Text className="ml-1.5 font-poppins text-[10px] uppercase tracking-wide text-ssf-text-muted">Profile slug</Text>
@@ -994,7 +995,7 @@ export default function ParticipantDetails() {
               {participant.profile_slug || 'Will be generated on save'}
             </Text>
           </View>
-          <View className="border-t border-slate-100 pt-3">
+          <View className="border-t border-core-border-slate-100 pt-3">
             <Text className="mb-1 font-poppins text-[10px] uppercase tracking-wide text-ssf-text-muted">Public bio</Text>
             <Text className="font-poppins text-[13px] leading-5 text-ssf-text">
               {participant.profile_bio || 'No public bio added yet.'}
@@ -1017,7 +1018,7 @@ export default function ParticipantDetails() {
             accessibilityState={{ expanded: eventsSectionExpanded }}
             className="flex-row items-center flex-1"
           >
-            <View className="h-10 w-10 items-center justify-center rounded-lg bg-amber-50">
+            <View className="h-10 w-10 items-center justify-center rounded-lg bg-core-warning-soft-amber-50">
               <Trophy size={17} color={ui.colors.warning} />
             </View>
             <View className="ml-2.5">
@@ -1028,30 +1029,30 @@ export default function ParticipantDetails() {
             </View>
             <View className="ml-auto mr-3">
               {eventsSectionExpanded
-                ? <ChevronDown size={17} color="#047857" />
+                ? <ChevronDown size={17} color={coreColor("#047857", 'success')} />
                 : <ChevronRight size={17} color={ui.colors.textMuted} />}
             </View>
           </TouchableOpacity>
         </View>
         {eventsSectionExpanded && (events.length === 0 ? (
-           <View className="items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
-             <Trophy size={26} color="#CBD5E1" />
+           <View className="items-center rounded-xl border border-dashed border-core-border-slate-200 bg-core-surface-muted-slate-50 px-4 py-8">
+             <Trophy size={26} color={coreColor("#CBD5E1", 'text')} />
              <Text className="mt-2 font-poppins-bold text-xs text-ssf-text-muted">No events assigned yet</Text>
            </View>
         ) : (
            <View className="gap-y-2">
              {events.map((ev: any, index: number) => (
-               <View key={ev.id} className="flex-row items-center border-b border-slate-100 py-3 last:border-b-0">
-                  <View className="h-8 w-8 items-center justify-center rounded-lg bg-white">
-                    <Text className="font-poppins-bold text-[11px] text-emerald-700">{index + 1}</Text>
+               <View key={ev.id} className="flex-row items-center border-b border-core-border-slate-100 py-3 last:border-b-0">
+                  <View className="h-8 w-8 items-center justify-center rounded-lg bg-core-surface-white">
+                    <Text className="font-poppins-bold text-[11px] text-core-success-emerald-700">{index + 1}</Text>
                   </View>
                   <View className="ml-3 flex-1">
                     <Text className="font-poppins-bold text-[13px]">{ev.items?.item_name_en || 'Unknown Event'}</Text>
                     <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">{ev.level || 'Festival'} level</Text>
                   </View>
                   {ev.items?.item_code && (
-                    <View className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-1">
-                      <Text className="font-poppins-bold text-[9px] text-blue-700">{ev.items.item_code}</Text>
+                    <View className="rounded-lg border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-2 py-1">
+                      <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">{ev.items.item_code}</Text>
                     </View>
                   )}
                 </View>
@@ -1069,8 +1070,8 @@ export default function ParticipantDetails() {
               label="Terminate Participant"
               variant="outline"
               size={isDesktopProfile ? 'md' : 'sm'}
-              className={isDesktopProfile ? 'border-amber-200 bg-amber-50' : 'w-full border-amber-200 bg-amber-50'}
-              icon={<AlertTriangle size={16} color="#D97706" />}
+              className={isDesktopProfile ? 'border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50' : 'w-full border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50'}
+              icon={<AlertTriangle size={16} color={coreColor("#D97706", 'warning')} />}
               onPress={handleTerminate}
               disabled={isTerminating}
             />
@@ -1079,8 +1080,8 @@ export default function ParticipantDetails() {
               label="Revoke Termination"
               variant="outline"
               size={isDesktopProfile ? 'md' : 'sm'}
-              className={isDesktopProfile ? 'border-emerald-200 bg-emerald-50' : 'w-full border-emerald-200 bg-emerald-50'}
-              icon={<Unlock size={16} color="#059669" />}
+              className={isDesktopProfile ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50' : 'w-full border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50'}
+              icon={<Unlock size={16} color={coreColor("#059669", 'success')} />}
               onPress={handleRevokeTermination}
               disabled={isRevokingTermination}
             />
@@ -1089,8 +1090,8 @@ export default function ParticipantDetails() {
             label="Delete Participant"
             variant="outline"
             size={isDesktopProfile ? 'md' : 'sm'}
-            className={isDesktopProfile ? '' : 'w-full border-red-100 bg-red-50'}
-            icon={<Trash2 size={16} color="#DC2626" />}
+            className={isDesktopProfile ? '' : 'w-full border-core-danger-soft-red-100 bg-core-danger-soft-red-50'}
+            icon={<Trash2 size={16} color={coreColor("#DC2626", 'danger')} />}
             onPress={handleDelete}
           />
         </View>
@@ -1099,7 +1100,7 @@ export default function ParticipantDetails() {
 
       {/* Action Modal */}
       {actionModal.visible && (
-        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 20 }}>
+        <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 20 }}>
           <View style={{ backgroundColor: ui.colors.surface, borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, zIndex: 10000, elevation: 10 }}>
             <Text className="font-poppins-bold text-lg mb-2 text-ssf-text">{actionModal.title}</Text>
             {!!actionModal.message && <Text className="font-poppins text-sm text-ssf-text-muted mb-4">{actionModal.message}</Text>}
@@ -1133,7 +1134,7 @@ export default function ParticipantDetails() {
 
             <View className="flex-row justify-end gap-x-3 mt-2">
               {actionModal.type !== 'alert' && (
-                <TouchableOpacity onPress={closeActionModal} className="px-4 py-2 rounded-xl border border-slate-200">
+                <TouchableOpacity onPress={closeActionModal} className="px-4 py-2 rounded-xl border border-core-border-slate-200">
                   <Text className="font-poppins-bold text-ssf-text">Cancel</Text>
                 </TouchableOpacity>
               )}
@@ -1148,9 +1149,9 @@ export default function ParticipantDetails() {
                     else action(val);
                   }
                 }}
-                className={`px-4 py-2 rounded-xl ${actionModal.type === 'alert' ? 'bg-ssf-primary w-full items-center' : (actionModal.title.includes('Delete') || actionModal.title.includes('Remove') || actionModal.title.includes('Ban') ? 'bg-red-600' : 'bg-ssf-primary')}`}
+                className={`px-4 py-2 rounded-xl ${actionModal.type === 'alert' ? 'bg-ssf-primary w-full items-center' : (actionModal.title.includes('Delete') || actionModal.title.includes('Remove') || actionModal.title.includes('Ban') ? 'bg-core-danger-action-red-600' : 'bg-ssf-primary')}`}
               >
-                <Text className="font-poppins-bold text-white">
+                <Text className="font-poppins-bold text-core-on-primary-white">
                   {actionModal.type === 'alert' ? 'OK' : (actionModal.title.includes('Delete') || actionModal.title.includes('Remove') ? 'Confirm' : 'Proceed')}
                 </Text>
               </TouchableOpacity>

@@ -1,16 +1,8 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { X } from 'lucide-react-native';
 
 type SsfSheetProps = {
@@ -52,7 +44,7 @@ export function SsfSheet({
           onPress={onClose}
         />
 
-        <View style={[styles.panel, { width: sheetWidth }]}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }]}>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text className="font-poppins-bold text-xl text-ssf-text">{title}</Text>
@@ -104,7 +96,7 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surface,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: ui.colors.border,
-    shadowColor: ui.colors.text,
+    shadowColor: "#111827",
     shadowOffset: { width: -8, height: 0 },
     shadowOpacity: 0.14,
     shadowRadius: 24,
@@ -118,7 +110,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 54 : 24,
     paddingBottom: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: coreColor('#E2E8F0', 'border'),
   },
   headerCopy: {
     flex: 1,
@@ -129,9 +121,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: coreColor('#E2E8F0', 'border'),
   },
   closeButtonPressed: {
     backgroundColor: ui.colors.surfaceMuted,
@@ -149,7 +141,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 30 : 20,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: coreColor('#E2E8F0', 'border'),
     backgroundColor: ui.colors.surface,
   },
 });

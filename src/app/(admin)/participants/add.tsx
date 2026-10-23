@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TextInput, Alert, TouchableOpacity, Platform, Switch, Image, ActivityIndicator } from 'react-native';
@@ -24,8 +25,8 @@ const CLASS_OPTIONS = [
 ];
 
 const JUNIOR_SENIOR_OPTIONS: { label: string; value: 'JUNIOR' | 'SENIOR'; age: string; color: string }[] = [
-  { label: 'JUNIOR', value: 'JUNIOR', age: 'Born 01 June 2006 – 31 May 2011', color: '#1B6B3A' },
-  { label: 'SENIOR', value: 'SENIOR', age: 'Born 01 June 2000 – 31 May 2006', color: '#1B6B3A' },
+  { label: 'JUNIOR', value: 'JUNIOR', age: 'Born 01 June 2006 – 31 May 2011', color: coreColor('#1B6B3A', 'primaryText') },
+  { label: 'SENIOR', value: 'SENIOR', age: 'Born 01 June 2000 – 31 May 2006', color: coreColor('#1B6B3A', 'primaryText') },
 ];
 
 const CATEGORY_LABELS: Record<CategoryCode, string> = {
@@ -380,8 +381,8 @@ export default function AddParticipant() {
     <ScrollView className="flex-1 bg-ssf-bg px-4 py-5 md:px-8 md:py-7" contentContainerStyle={{ paddingBottom: 32 }}>
       <View className="mx-auto w-full max-w-7xl">
         <View className="mb-4 flex-row items-center gap-3 px-1 md:mb-5">
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
-            <UserRoundPlus size={24} color="#0F766E" />
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-core-success-soft-emerald-50">
+            <UserRoundPlus size={24} color={coreColor("#0F766E", 'primaryText')} />
           </View>
           <View>
             <Text className="font-poppins-black text-2xl text-ssf-text">Add Participant</Text>
@@ -389,16 +390,16 @@ export default function AddParticipant() {
           </View>
         </View>
 
-      <SsfCard className="gap-y-3 rounded-2xl border-slate-200 p-3 md:gap-y-4 md:p-5">
+      <SsfCard className="gap-y-3 rounded-2xl border-core-border-slate-200 p-3 md:gap-y-4 md:p-5">
         <View className="flex-col gap-3 md:flex-row">
           {/* Name */}
-          <View className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 md:flex-[1.5] md:p-4">
+          <View className="rounded-xl border border-core-border-slate-100 bg-core-surface-muted-slate-50/80 p-3 md:flex-[1.5] md:p-4">
             <View className="mb-2 flex-row items-center gap-2">
-              <UserRound size={16} color="#334155" />
-              <Text className="font-poppins-bold text-sm text-ssf-text">Full Name <Text className="text-red-600">*</Text></Text>
+              <UserRound size={16} color={coreColor("#334155", 'text')} />
+              <Text className="font-poppins-bold text-sm text-ssf-text">Full Name <Text className="text-core-danger-red-600">*</Text></Text>
             </View>
             <TextInput
-              className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-poppins text-sm text-ssf-text"
+              className="h-11 rounded-lg border border-core-border-slate-300 bg-core-surface-white px-3 font-poppins text-sm text-ssf-text"
               placeholder="E.g. Mohammed Ali"
               value={name}
               onChangeText={setName}
@@ -407,9 +408,9 @@ export default function AddParticipant() {
           </View>
 
           {/* Date of Birth */}
-          <View className="rounded-xl border border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4">
+          <View className="rounded-xl border border-core-border-slate-100 bg-core-surface-muted-slate-50/80 p-3 md:flex-1 md:p-4">
             <View className="mb-2 flex-row items-center gap-2">
-              <CalendarDays size={16} color="#334155" />
+              <CalendarDays size={16} color={coreColor("#334155", 'text')} />
               <Text className="font-poppins-bold text-sm text-ssf-text">Date of Birth <Text className="font-poppins text-ssf-text-muted">{isCollegeFest ? '(Optional)' : '*'}</Text></Text>
             </View>
             {Platform.OS === 'web' ? (
@@ -420,7 +421,7 @@ export default function AddParticipant() {
               />
             ) : (
               <TextInput
-                className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-poppins text-sm text-ssf-text"
+                className="h-11 rounded-lg border border-core-border-slate-300 bg-core-surface-white px-3 font-poppins text-sm text-ssf-text"
                 placeholder="YYYY-MM-DD"
                 value={dob}
                 onChangeText={(text) => setDob(formatDOBInput(text))}
@@ -431,7 +432,7 @@ export default function AddParticipant() {
             )}
             {dob && dob.length > 0 && (
               <Text className="mt-1 font-poppins text-xs text-ssf-text-muted">
-                Age as of 31 May {festivalYear}: <Text className="font-poppins-bold text-ssf-primary">
+                Age as of 31 May {festivalYear}: <Text className="font-poppins-bold text-ui-primary-text">
                   {(() => { try { return calculateAge(dob, festivalYear); } catch { return '?'; } })()}
                 </Text>
               </Text>
@@ -440,23 +441,23 @@ export default function AddParticipant() {
         </View>
 
         <View className="flex-col gap-3 md:flex-row md:items-start">
-          <SsfCard className="gap-y-3 rounded-xl border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
+          <SsfCard className="gap-y-3 rounded-xl border-core-border-slate-100 bg-core-surface-muted-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
             <View className="flex-row items-center gap-2">
-              <Trophy size={17} color="#334155" />
-              <Text className="font-poppins-bold text-sm text-ssf-text">Category <Text className="text-red-600">*</Text></Text>
+              <Trophy size={17} color={coreColor("#334155", 'text')} />
+              <Text className="font-poppins-bold text-sm text-ssf-text">Category <Text className="text-core-danger-red-600">*</Text></Text>
             </View>
 
             {!isGenderFixedByFestival && (
               <View>
-                <Text className="mb-2 font-poppins-bold text-xs text-ssf-text-muted">Gender <Text className="text-red-600">*</Text></Text>
+                <Text className="mb-2 font-poppins-bold text-xs text-ssf-text-muted">Gender <Text className="text-core-danger-red-600">*</Text></Text>
                 <View className="flex-row gap-2">
                   {(['boys', 'girls'] as const).map((option) => (
                     <TouchableOpacity
                       key={option}
-                      className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-slate-300 bg-white'}`}
+                      className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}
                       onPress={() => setSelectedGender(option)}
                     >
-                      <Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-white' : 'text-ssf-text'}`}>
+                      <Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                         {option}
                       </Text>
                     </TouchableOpacity>
@@ -467,13 +468,13 @@ export default function AddParticipant() {
 
         {isCollegeFest && (
           <View>
-            {categoriesLoading ? <ActivityIndicator color="#1B6B3A" /> : categoriesError ? (
-              <Text className="font-poppins text-sm text-red-600">Unable to load College Fest categories.</Text>
+            {categoriesLoading ? <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} /> : categoriesError ? (
+              <Text className="font-poppins text-sm text-core-danger-red-600">Unable to load College Fest categories.</Text>
             ) : participantCollegeCategories.length === 0 ? (
-              <View className="rounded-xl border border-amber-300 bg-amber-50 p-4">
-                <Text className="font-poppins text-sm text-amber-800">No College Fest categories have been created yet.</Text>
+              <View className="rounded-xl border border-core-warning-soft-amber-300 bg-core-warning-soft-amber-50 p-4">
+                <Text className="font-poppins text-sm text-core-warning-amber-800">No College Fest categories have been created yet.</Text>
                 <TouchableOpacity onPress={() => router.push('/(admin)/settings/categories' as any)} className="mt-3">
-                  <Text className="font-poppins-bold text-emerald-700">Create Categories</Text>
+                  <Text className="font-poppins-bold text-core-success-emerald-700">Create Categories</Text>
                 </TouchableOpacity>
               </View>
             ) : <View className="flex-row flex-wrap gap-2">
@@ -483,7 +484,7 @@ export default function AddParticipant() {
                   className={`min-w-[120px] px-3 py-3 rounded-xl border items-center ${collegeCategory === category.code ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                   onPress={() => setCollegeCategory(category.code)}
                 >
-                  <Text className={`font-poppins-bold text-xs ${collegeCategory === category.code ? 'text-white' : 'text-ssf-text'}`}>
+                  <Text className={`font-poppins-bold text-xs ${collegeCategory === category.code ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                     {category.name}
                   </Text>
                 </TouchableOpacity>
@@ -503,7 +504,7 @@ export default function AddParticipant() {
                 className={`px-3 py-2 rounded-xl border ${classStd === cls ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                 onPress={() => { setClassStd(cls === classStd ? '' : cls); setEducationType(''); setManualCategory(''); }}
               >
-                <Text className={`font-poppins-bold text-sm ${classStd === cls ? 'text-white' : 'text-ssf-text'}`}>
+                <Text className={`font-poppins-bold text-sm ${classStd === cls ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                   {cls}
                 </Text>
               </TouchableOpacity>
@@ -522,7 +523,7 @@ export default function AddParticipant() {
                 className={`px-3 py-2 rounded-xl border ${educationType === type ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                 onPress={() => { setEducationType(type === educationType ? '' : type); setClassStd(''); setManualCategory(''); }}
               >
-                <Text className={`font-poppins-bold text-sm ${educationType === type ? 'text-white' : 'text-ssf-text'}`}>
+                <Text className={`font-poppins-bold text-sm ${educationType === type ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                   {type}
                 </Text>
               </TouchableOpacity>
@@ -547,8 +548,8 @@ export default function AddParticipant() {
                   paddingHorizontal: 12,
                   borderRadius: 16,
                   borderWidth: 2,
-                  borderColor: manualCategory === opt.value ? '#1B6B3A' : ui.colors.border,
-                  backgroundColor: manualCategory === opt.value ? '#1B6B3A' : '#FAFAFA',
+                  borderColor: manualCategory === opt.value ? coreColor('#1B6B3A', 'border') : ui.colors.border,
+                  backgroundColor: manualCategory === opt.value ? coreColor('#1B6B3A', 'primary') : coreColor('#FAFAFA', 'surface'),
                   alignItems: 'center',
                 }}
                 onPress={() => {
@@ -561,14 +562,14 @@ export default function AddParticipant() {
                 <Text style={{
                   fontWeight: '800',
                   fontSize: 16,
-                  color: manualCategory === opt.value ? ui.colors.surface : '#1B6B3A',
+                  color: manualCategory === opt.value ? ui.colors.onPrimary : coreColor('#1B6B3A', 'primaryText'),
                   letterSpacing: 1,
                 }}>
                   {opt.label}
                 </Text>
                 <Text style={{
                   fontSize: 11,
-                  color: manualCategory === opt.value ? 'rgba(255,255,255,0.85)' : '#6B7280',
+                  color: manualCategory === opt.value ? coreAlpha(coreColor('#ffffff', 'textMuted'), 0.85) : coreColor('#6B7280', 'text'),
                   marginTop: 2,
                 }}>
                   {opt.age}
@@ -581,20 +582,20 @@ export default function AddParticipant() {
         {/* Sahithyolsav auto-resolved category */}
         {!isCollegeFest && <View className={`rounded-xl p-4 border ${
           ageClassWarning
-            ? 'bg-red-50 border-red-400'
-            : resolvedCategory ? 'bg-green-50 border-green-400' : 'bg-ssf-surface border-ssf-border'
+            ? 'bg-core-danger-soft-red-50 border-core-danger-red-400'
+            : resolvedCategory ? 'bg-core-success-soft-green-50 border-core-success-green-400' : 'bg-ssf-surface border-ssf-border'
         }`}>
           <Text className="font-poppins text-ssf-text-muted mb-1">Auto-Assigned Category</Text>
           {resolvedCategory && !ageClassWarning ? (
-            <Text className="font-poppins-bold text-green-700 text-base">
+            <Text className="font-poppins-bold text-core-success-green-700 text-base">
               ✅ {getCategoryLabel(resolvedCategory)}
             </Text>
           ) : ageClassWarning ? (
             <>
-              <Text className="font-poppins-bold text-red-600 text-base">
+              <Text className="font-poppins-bold text-core-danger-red-600 text-base">
                 ❌ {getCategoryLabel(resolvedCategory!)}
               </Text>
-              <Text className="font-poppins text-xs text-red-600 mt-2">{ageClassWarning}</Text>
+              <Text className="font-poppins text-xs text-core-danger-red-600 mt-2">{ageClassWarning}</Text>
             </>
           ) : (
             <Text className="font-poppins text-xs text-ssf-text-muted italic">
@@ -602,25 +603,25 @@ export default function AddParticipant() {
             </Text>
           )}
           {categoryError ? (
-            <Text className="font-poppins text-xs text-red-500 mt-1">{categoryError}</Text>
+            <Text className="font-poppins text-xs text-core-danger-red-500 mt-1">{categoryError}</Text>
           ) : null}
         </View>}
 
           </SsfCard>
 
         {/* Organisation Selector */}
-          <SsfCard className="gap-y-3 rounded-xl border-slate-100 bg-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
+          <SsfCard className="gap-y-3 rounded-xl border-core-border-slate-100 bg-core-surface-muted-slate-50/80 p-3 md:flex-1 md:p-4" variant="section">
           <View className="flex-row items-center gap-2">
-            <Building2 size={17} color="#334155" />
-            <Text className="font-poppins-bold text-sm text-ssf-text">Organisation (Unit/Sector/Division) <Text className="text-red-600">*</Text></Text>
+            <Building2 size={17} color={coreColor("#334155", 'text')} />
+            <Text className="font-poppins-bold text-sm text-ssf-text">Organisation (Unit/Sector/Division) <Text className="text-core-danger-red-600">*</Text></Text>
           </View>
           {isFestivalLoading || isOrganisationsLoading ? (
             <View className="flex-row items-center gap-2 py-2">
-              <ActivityIndicator size="small" color={ui.colors.primary} />
+              <ActivityIndicator size="small" color={ui.colors.primaryText} />
               <Text className="font-poppins text-xs text-ssf-text-muted">Loading festival and eligible organisations…</Text>
             </View>
           ) : organisationsLoadError ? (
-            <Text className="font-poppins text-xs text-red-500">Could not load organisations: {organisationsLoadError}</Text>
+            <Text className="font-poppins text-xs text-core-danger-red-500">Could not load organisations: {organisationsLoadError}</Text>
           ) : !activeFestival ? (
             <Text className="font-poppins text-xs text-ssf-text-muted">Activate a festival before selecting an organisation.</Text>
           ) : availableOrganisations.length > 0 ? (
@@ -631,14 +632,14 @@ export default function AddParticipant() {
                   className={`px-3 py-2 rounded-xl border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
                   onPress={() => setSelectedOrgId(org.id)}
                 >
-                  <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-white' : 'text-ssf-text'}`}>
+                  <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
                     {org.name} <Text className="font-poppins font-normal text-xs opacity-80">({org.org_type})</Text>
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
           ) : (
-            <Text className="font-poppins text-xs italic text-red-500">
+            <Text className="font-poppins text-xs italic text-core-danger-red-500">
               {organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division')
                 ? `No subordinate organisations found for this ${festivalLevel}.`
                 : 'No organisations found. Please set up the hierarchy first.'}
@@ -648,7 +649,7 @@ export default function AddParticipant() {
         </View>
 
         {/* Candidate Profile Section */}
-        <View className="gap-y-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3 md:gap-y-4 md:p-4">
+        <View className="gap-y-3 rounded-xl border border-core-info-soft-blue-100 bg-core-info-soft-blue-50/70 p-3 md:gap-y-4 md:p-4">
           <View className="flex-row items-start gap-x-2">
             <Eye size={18} color={ui.colors.info} />
             <View className="flex-1">
@@ -664,36 +665,36 @@ export default function AddParticipant() {
               <View className="flex-row items-center gap-x-4 mb-3">
                 <Image
                   source={{ uri: photoPreviewUrl }}
-                  style={{ width: 80, height: 80, borderRadius: 40, borderColor: '#E2E8F0', borderWidth: 1 }}
+                  style={{ width: 80, height: 80, borderRadius: 40, borderColor: coreColor('#E2E8F0', 'border'), borderWidth: 1 }}
                   resizeMode="cover"
                 />
                 <TouchableOpacity
                   onPress={handlePhotoRemove}
-                  className="px-3 py-2 rounded-xl border border-red-100 bg-red-50"
+                  className="px-3 py-2 rounded-xl border border-core-danger-soft-red-100 bg-core-danger-soft-red-50"
                 >
-                  <Text className="font-poppins-bold text-xs text-red-700">Remove Photo</Text>
+                  <Text className="font-poppins-bold text-xs text-core-danger-red-700">Remove Photo</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <View className="flex-row items-center gap-x-4 mb-3">
-                <View className="w-20 h-20 rounded-full bg-slate-50 border border-ssf-border items-center justify-center">
+                <View className="w-20 h-20 rounded-full bg-core-surface-muted-slate-50 border border-ssf-border items-center justify-center">
                   <Text className="font-poppins text-2xl text-ssf-text-muted">?</Text>
                 </View>
                 <TouchableOpacity
                   onPress={handlePhotoSelect}
-                  className="min-h-10 flex-row items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2"
+                  className="min-h-10 flex-row items-center gap-2 rounded-xl border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-4 py-2"
                 >
-                  <Upload size={15} color="#2563EB" />
-                  <Text className="font-poppins-bold text-xs text-blue-700">Select Photo</Text>
+                  <Upload size={15} color={coreColor("#2563EB", 'info')} />
+                  <Text className="font-poppins-bold text-xs text-core-info-blue-700">Select Photo</Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
           {/* Visibility Toggle */}
-          <View className="flex-row justify-between items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <View className="flex-row justify-between items-center bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 rounded-xl p-3">
             <View className="flex-1 flex-row items-center gap-3 pr-3">
-              <Globe2 size={18} color="#2563EB" />
+              <Globe2 size={18} color={coreColor("#2563EB", 'info')} />
               <View className="flex-1">
                 <Text className="font-poppins-bold text-sm text-ssf-text">Public profile enabled</Text>
                 <Text className="font-poppins text-xs text-ssf-text-muted">Allow this candidate profile to be opened publicly.</Text>
@@ -702,15 +703,15 @@ export default function AddParticipant() {
             <Switch
               value={publicProfileEnabled}
               onValueChange={setPublicProfileEnabled}
-              trackColor={{ false: '#CBD5E1', true: '#B9EBD1' }}
-              thumbColor={publicProfileEnabled ? ui.colors.success : '#F8FAFC'}
+              trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#B9EBD1', 'primarySoft') }}
+              thumbColor={publicProfileEnabled ? ui.colors.success : coreColor('#F8FAFC', 'primary')}
             />
           </View>
 
           {/* Organisation Visibility Toggle */}
-          <View className="flex-row justify-between items-center bg-green-50 border border-green-100 rounded-xl p-3">
+          <View className="flex-row justify-between items-center bg-core-success-soft-green-50 border border-core-success-soft-green-100 rounded-xl p-3">
             <View className="flex-1 flex-row items-center gap-3 pr-3">
-              <Building2 size={18} color="#059669" />
+              <Building2 size={18} color={coreColor("#059669", 'success')} />
               <View className="flex-1">
                 <Text className="font-poppins-bold text-sm text-ssf-text">Show organisation publicly</Text>
                 <Text className="font-poppins text-xs text-ssf-text-muted">Display organisation name on the public profile.</Text>
@@ -719,8 +720,8 @@ export default function AddParticipant() {
             <Switch
               value={showOrganisationPublic}
               onValueChange={setShowOrganisationPublic}
-              trackColor={{ false: '#CBD5E1', true: '#B9EBD1' }}
-              thumbColor={showOrganisationPublic ? ui.colors.success : '#F8FAFC'}
+              trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#B9EBD1', 'primarySoft') }}
+              thumbColor={showOrganisationPublic ? ui.colors.success : coreColor('#F8FAFC', 'primary')}
             />
           </View>
         </View>

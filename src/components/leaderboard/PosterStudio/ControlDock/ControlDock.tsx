@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { useLayerStore } from '../Stores/layerStore';
 import TransformBlock from '../Properties/TransformBlock';
@@ -74,7 +75,7 @@ export default function ControlDock({
         )}
 
         {activePanel === 'properties' && !selectedLayer && (
-          <div style={{ padding: 16, color: '#94A3B8', fontSize: 13 }}>
+          <div style={{ padding: 16, color: coreColor('#94A3B8', 'textSubtle'), fontSize: 13 }}>
             Select an object on the canvas to view its properties.
           </div>
         )}
@@ -125,8 +126,8 @@ const styles: Record<string, React.CSSProperties> = {
   dockContainer: {
     width: 340,
     flexShrink: 0,
-    backgroundColor: '#171717',
-    borderLeft: '1px solid #2a2a2a',
+    backgroundColor: coreColor('#171717', 'surfaceStrong'),
+    borderLeft: `1px solid ${coreColor('#2a2a2a', 'border')}`,
     display: 'flex',
     flexDirection: 'column',
     zIndex: 30,
@@ -136,12 +137,12 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '12px 16px',
-    borderBottom: '1px solid #2a2a2a',
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
   },
   dockTitle: {
     fontSize: 13,
     fontWeight: 700,
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     margin: 0,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
@@ -149,7 +150,7 @@ const styles: Record<string, React.CSSProperties> = {
   closeBtn: {
     background: 'none',
     border: 'none',
-    color: '#94A3B8',
+    color: coreColor('#94A3B8', 'textSubtle'),
     fontSize: 20,
     cursor: 'pointer',
     padding: '0 4px',
@@ -165,8 +166,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '12px 28px', 
     borderRadius: 6, 
     border: 'none', 
-    backgroundColor: '#0F766E', 
-    color: '#FFFFFF', 
+    backgroundColor: coreColor('#0F766E', 'primary'),
+    color: coreColor('#FFFFFF', 'onPrimary'),
     fontSize: 14, 
     fontWeight: 700, 
     cursor: 'pointer', 

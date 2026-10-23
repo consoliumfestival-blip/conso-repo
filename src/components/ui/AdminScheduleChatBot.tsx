@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -296,9 +297,9 @@ ${JSON.stringify(contextData, null, 2)}`;
   };
 
   const quickActionChips = [
-    { label: 'Event Stats', icon: <Calendar size={12} color="#818CF8" />, query: 'How many events are scheduled?' },
-    { label: 'System Results', icon: <Database size={12} color="#34D399" />, query: 'Show me unpublished results' },
-    { label: 'Registrations', icon: <ShieldCheck size={12} color="#FBBF24" />, query: 'How many participants registered?' },
+    { label: 'Event Stats', icon: <Calendar size={12} color={coreColor("#818CF8", 'info')} />, query: 'How many events are scheduled?' },
+    { label: 'System Results', icon: <Database size={12} color={coreColor("#34D399", 'success')} />, query: 'Show me unpublished results' },
+    { label: 'Registrations', icon: <ShieldCheck size={12} color={coreColor("#FBBF24", 'warning')} />, query: 'How many participants registered?' },
   ];
 
   return (
@@ -306,16 +307,16 @@ ${JSON.stringify(contextData, null, 2)}`;
       {!isOpen && (
         <TouchableOpacity activeOpacity={0.85} onPress={toggleChat} style={styles.floatingButton}>
           <LinearGradient
-            colors={['#818CF8', '#4F46E5', '#312E81']}
+            colors={[coreColor('#818CF8', 'info'), coreColor('#4F46E5', 'info'), coreColor('#312E81', 'info')]}
             locations={[0, 0.5, 1]}
             start={{ x: 0.2, y: 0 }}
             end={{ x: 0.8, y: 1 }}
             style={styles.floatingButtonGradient}
           >
             <View style={styles.floatingIconWrapper}>
-              <ShieldAlert size={24} color={ui.colors.surface} />
+              <ShieldAlert size={24} color={ui.colors.onPrimary} />
               <View style={styles.sparkleIcon}>
-                <Lock size={10} color="#FBBF24" />
+                <Lock size={10} color={coreColor("#FBBF24", 'warning')} />
               </View>
             </View>
           </LinearGradient>
@@ -334,14 +335,14 @@ ${JSON.stringify(contextData, null, 2)}`;
         >
           <View style={styles.panelInner}>
             <LinearGradient
-              colors={['rgba(79, 70, 229, 0.15)', 'rgba(3, 15, 30, 0.6)']}
+              colors={[coreAlpha(coreColor('#4f46e5', 'surface'), 0.15), coreAlpha(coreColor('#030f1e', 'surface'), 0.6)]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
               style={styles.panelHeader}
             >
               <View style={styles.headerTitleRow}>
                 <View style={styles.aiBadgeGlow}>
-                  <ShieldCheck size={16} color="#818CF8" />
+                  <ShieldCheck size={16} color={coreColor("#818CF8", 'info')} />
                 </View>
                 <View>
                   <Text style={[styles.headerTitle, dStyles.headerTitle]}>Admin Portal Bot</Text>
@@ -351,13 +352,13 @@ ${JSON.stringify(contextData, null, 2)}`;
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <TouchableOpacity
                   onPress={() => setIsVoiceEnabled(!isVoiceEnabled)}
-                  style={[styles.closeButton, { backgroundColor: isVoiceEnabled ? 'rgba(79,70,229,0.3)' : 'rgba(255,255,255,0.06)' }]}
+                  style={[styles.closeButton, { backgroundColor: isVoiceEnabled ? coreAlpha(coreColor('#4f46e5', 'overlay'), 0.3) : coreAlpha(coreColor('#ffffff', 'overlay'), 0.06) }]}
                   activeOpacity={0.8}
                 >
-                  <Volume2 size={16} color={isVoiceEnabled ? '#818CF8' : 'rgba(255,255,255,0.4)'} />
+                  <Volume2 size={16} color={isVoiceEnabled ? coreColor('#818CF8', 'info') : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4)} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={toggleChat} style={styles.closeButton} activeOpacity={0.8}>
-                  <X size={18} color="rgba(255, 255, 255, 0.6)" />
+                  <X size={18} color={coreAlpha(coreColor('#ffffff', 'textMuted'), 0.6)} />
                 </TouchableOpacity>
               </View>
             </LinearGradient>
@@ -385,11 +386,11 @@ ${JSON.stringify(contextData, null, 2)}`;
                       <View key={msg.id} style={[styles.messageRow, isUser ? styles.messageRowUser : styles.messageRowAi]}>
                         {!isUser && (
                           <View style={styles.botIconWrapper}>
-                            <ShieldCheck size={10} color="#818CF8" />
+                            <ShieldCheck size={10} color={coreColor("#818CF8", 'info')} />
                           </View>
                         )}
                         <LinearGradient
-                          colors={isUser ? ['#4F46E5', '#3730A3'] : ['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.04)']}
+                          colors={isUser ? [coreColor('#4F46E5', 'info'), coreColor('#3730A3', 'info')] : [coreAlpha(coreColor('#ffffff', 'surface'), 0.08), coreAlpha(coreColor('#ffffff', 'surface'), 0.04)]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={[styles.messageBubble, isUser ? styles.messageBubbleUser : styles.messageBubbleAi]}
@@ -428,13 +429,13 @@ ${JSON.stringify(contextData, null, 2)}`;
 
                 <View style={styles.inputContainer}>
                   <TouchableOpacity onPress={toggleVoice} style={[styles.voiceButton, isListening && styles.voiceButtonActive]}>
-                    {isListening ? <MicOff size={18} color="#EF4444" /> : <Mic size={18} color="rgba(255, 255, 255, 0.7)" />}
+                    {isListening ? <MicOff size={18} color={coreColor("#EF4444", 'danger')} /> : <Mic size={18} color={coreAlpha(coreColor('#ffffff', 'textMuted'), 0.7)} />}
                   </TouchableOpacity>
                   <TextInput
                     value={inputValue}
                     onChangeText={setInputValue}
                     placeholder="Ask about portal data..."
-                    placeholderTextColor="rgba(255, 255, 255, 0.35)"
+                    placeholderTextColor={coreAlpha(coreColor('#ffffff', 'textSubtle'), 0.35)}
                     style={[styles.textInput, dStyles.textInput]}
                     onSubmitEditing={() => handleSend(inputValue)}
                     {...Platform.select({ web: { outlineStyle: 'none' as any }, default: {} })}
@@ -444,7 +445,7 @@ ${JSON.stringify(contextData, null, 2)}`;
                     disabled={!inputValue.trim()}
                     style={[styles.sendButton, !inputValue.trim() && styles.sendButtonDisabled]}
                   >
-                    <Send size={16} color={ui.colors.surface} />
+                    <Send size={16} color={ui.colors.onPrimary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -456,51 +457,51 @@ ${JSON.stringify(contextData, null, 2)}`;
 
 const styles = StyleSheet.create({
   container: { position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'flex-end', alignItems: 'flex-end' },
-  floatingButton: { position: 'absolute', bottom: 24, right: 24, width: 64, height: 64, borderRadius: 32, elevation: 12, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 8 }, shadowRadius: 20, shadowOpacity: 0.6, borderWidth: 2, borderColor: 'rgba(255, 255, 255, 0.3)', overflow: 'hidden' },
+  floatingButton: { position: 'absolute', bottom: 24, right: 24, width: 64, height: 64, borderRadius: 32, elevation: 12, shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 8 }, shadowRadius: 20, shadowOpacity: 0.6, borderWidth: 2, borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.3), overflow: 'hidden' },
   floatingButtonGradient: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
   floatingIconWrapper: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  sparkleIcon: { position: 'absolute', top: -6, right: -6, backgroundColor: '#031E19', borderRadius: 8, padding: 1.5, borderWidth: 1, borderColor: 'rgba(251, 191, 36, 0.4)' },
-  chatPanel: { position: 'absolute', bottom: 24, right: 24, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(79, 70, 229, 0.3)', backgroundColor: 'rgba(3, 10, 24, 0.95)', overflow: 'hidden', elevation: 12, shadowColor: ui.shadow.shadowColor, shadowOffset: { width: 0, height: 10 }, shadowRadius: 30, shadowOpacity: 0.8 },
+  sparkleIcon: { position: 'absolute', top: -6, right: -6, backgroundColor: coreColor('#031E19', 'surfaceStrong'), borderRadius: 8, padding: 1.5, borderWidth: 1, borderColor: coreAlpha(coreColor('#fbbf24', 'border'), 0.4) },
+  chatPanel: { position: 'absolute', bottom: 24, right: 24, borderRadius: 20, borderWidth: 1.5, borderColor: coreAlpha(coreColor('#4f46e5', 'border'), 0.3), backgroundColor: coreAlpha(coreColor('#030a18', 'surface'), 0.95), overflow: 'hidden', elevation: 12, shadowColor: ui.shadow.shadowColor, shadowOffset: { width: 0, height: 10 }, shadowRadius: 30, shadowOpacity: 0.8 },
   panelInner: { flex: 1, flexDirection: 'column' },
-  panelHeader: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  panelHeader: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.08), flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  aiBadgeGlow: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(79, 70, 229, 0.2)', borderWidth: 1, borderColor: 'rgba(79, 70, 229, 0.4)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 14.5 },
-  headerSubtitle: { fontFamily: 'Poppins_400Regular', color: 'rgba(255, 255, 255, 0.45)', fontSize: 10, marginTop: 0.5 },
-  closeButton: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', justifyContent: 'center' },
+  aiBadgeGlow: { width: 32, height: 32, borderRadius: 16, backgroundColor: coreAlpha(coreColor('#4f46e5', 'overlay'), 0.2), borderWidth: 1, borderColor: coreAlpha(coreColor('#4f46e5', 'border'), 0.4), alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 14.5 },
+  headerSubtitle: { fontFamily: 'Poppins_400Regular', color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.45), fontSize: 10, marginTop: 0.5 },
+  closeButton: { width: 28, height: 28, borderRadius: 14, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05), alignItems: 'center', justifyContent: 'center' },
   passwordScreen: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  lockIconContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(79, 70, 229, 0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 1, borderColor: 'rgba(79, 70, 229, 0.3)' },
-  passwordTitle: { fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 20, marginBottom: 8 },
-  passwordSubtitle: { fontFamily: 'Poppins_400Regular', color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, textAlign: 'center', marginBottom: 32 },
+  lockIconContainer: { width: 64, height: 64, borderRadius: 32, backgroundColor: coreAlpha(coreColor('#4f46e5', 'overlay'), 0.15), alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 1, borderColor: coreAlpha(coreColor('#4f46e5', 'border'), 0.3) },
+  passwordTitle: { fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 20, marginBottom: 8 },
+  passwordSubtitle: { fontFamily: 'Poppins_400Regular', color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.5), fontSize: 12, textAlign: 'center', marginBottom: 32 },
   passwordInputWrapper: { width: '100%', marginBottom: 20 },
-  passwordInput: { width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.15)', borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontFamily: 'Poppins_400Regular', color: ui.colors.surface, fontSize: 14 },
-  errorTextSmall: { fontFamily: 'Poppins_400Regular', color: '#F87171', fontSize: 11, marginTop: 6, marginLeft: 4 },
-  unlockBtn: { width: '100%', backgroundColor: '#4F46E5', paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 4 },
-  unlockBtnText: { fontFamily: 'Poppins_700Bold', color: ui.colors.surface, fontSize: 14 },
+  passwordInput: { width: '100%', backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05), borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.15), borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, fontFamily: 'Poppins_400Regular', color: ui.colors.onPrimary, fontSize: 14 },
+  errorTextSmall: { fontFamily: 'Poppins_400Regular', color: coreColor('#F87171', 'danger'), fontSize: 11, marginTop: 6, marginLeft: 4 },
+  unlockBtn: { width: '100%', backgroundColor: coreColor('#4F46E5', 'infoAction'), paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 4 },
+  unlockBtnText: { fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 14 },
   messageScroll: { flex: 1 },
   messageScrollContent: { padding: 16, gap: 16 },
   messageRow: { flexDirection: 'row', gap: 8, maxWidth: '85%' },
   messageRowUser: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   messageRowAi: { alignSelf: 'flex-start' },
-  botIconWrapper: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(79, 70, 229, 0.2)', borderWidth: 1, borderColor: 'rgba(79, 70, 229, 0.4)', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  botIconWrapper: { width: 22, height: 22, borderRadius: 11, backgroundColor: coreAlpha(coreColor('#4f46e5', 'overlay'), 0.2), borderWidth: 1, borderColor: coreAlpha(coreColor('#4f46e5', 'border'), 0.4), alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   messageBubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, borderWidth: 1, flexShrink: 1 },
-  messageBubbleUser: { borderColor: 'rgba(255, 255, 255, 0.15)', borderTopRightRadius: 2 },
-  messageBubbleAi: { borderColor: 'rgba(255, 255, 255, 0.1)', borderTopLeftRadius: 2 },
+  messageBubbleUser: { borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.15), borderTopRightRadius: 2 },
+  messageBubbleAi: { borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.1), borderTopLeftRadius: 2 },
   messageText: { fontFamily: 'Poppins_400Regular', fontSize: 12.5, lineHeight: 18 },
-  messageTextUser: { color: ui.colors.surface },
-  messageTextAi: { color: 'rgba(255, 255, 255, 0.95)' },
-  messageTime: { fontFamily: 'Poppins_400Regular', color: 'rgba(255, 255, 255, 0.4)', fontSize: 8.5, alignSelf: 'flex-end', marginTop: 6 },
-  chipsOuterContainer: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.05)', backgroundColor: 'rgba(3, 10, 24, 0.6)' },
+  messageTextUser: { color: ui.colors.onPrimary },
+  messageTextAi: { color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.95) },
+  messageTime: { fontFamily: 'Poppins_400Regular', color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4), fontSize: 8.5, alignSelf: 'flex-end', marginTop: 6 },
+  chipsOuterContainer: { paddingVertical: 10, borderTopWidth: 1, borderTopColor: coreAlpha(coreColor('#ffffff', 'border'), 0.05), backgroundColor: coreAlpha(coreColor('#030a18', 'overlay'), 0.6) },
   chipsContainer: { paddingHorizontal: 16, gap: 8 },
-  chipButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.15)', borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, height: 32 },
-  chipText: { fontFamily: 'Poppins_700Bold', color: 'rgba(255, 255, 255, 0.8)', fontSize: 10 },
+  chipButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05), borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.15), borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, height: 32 },
+  chipText: { fontFamily: 'Poppins_700Bold', color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.8), fontSize: 10 },
   inlineChipsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10, marginBottom: 4 },
-  inlineChipButton: { backgroundColor: 'rgba(79, 70, 229, 0.2)', borderColor: 'rgba(79, 70, 229, 0.4)', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  inlineChipText: { fontFamily: 'Poppins_700Bold', color: '#818CF8', fontSize: 11 },
-  inputContainer: { flexDirection: 'row', padding: 12, backgroundColor: 'rgba(3, 10, 24, 0.95)', borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center', gap: 10 },
-  voiceButton: { padding: 10, marginRight: 2, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.05)' },
-  voiceButtonActive: { backgroundColor: 'rgba(239, 68, 68, 0.15)' },
-  textInput: { flex: 1, height: 42, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontFamily: 'Poppins_400Regular', color: ui.colors.surface, fontSize: 13 },
-  sendButton: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#4F46E5', alignItems: 'center', justifyContent: 'center', elevation: 2 },
-  sendButtonDisabled: { backgroundColor: 'rgba(255, 255, 255, 0.05)' },
+  inlineChipButton: { backgroundColor: coreAlpha(coreColor('#4f46e5', 'overlay'), 0.2), borderColor: coreAlpha(coreColor('#4f46e5', 'border'), 0.4), borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  inlineChipText: { fontFamily: 'Poppins_700Bold', color: coreColor('#818CF8', 'info'), fontSize: 11 },
+  inputContainer: { flexDirection: 'row', padding: 12, backgroundColor: coreAlpha(coreColor('#030a18', 'surface'), 0.95), borderTopWidth: 1, borderTopColor: coreAlpha(coreColor('#ffffff', 'border'), 0.08), alignItems: 'center', gap: 10 },
+  voiceButton: { padding: 10, marginRight: 2, borderRadius: 20, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05) },
+  voiceButtonActive: { backgroundColor: coreAlpha(coreColor('#ef4444', 'overlay'), 0.15) },
+  textInput: { flex: 1, height: 42, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05), borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.1), borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, fontFamily: 'Poppins_400Regular', color: ui.colors.onPrimary, fontSize: 13 },
+  sendButton: { width: 42, height: 42, borderRadius: 12, backgroundColor: coreColor('#4F46E5', 'infoAction'), alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  sendButtonDisabled: { backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05) },
 });

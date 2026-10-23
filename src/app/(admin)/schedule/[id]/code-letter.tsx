@@ -1,3 +1,5 @@
+import { coreColor } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
@@ -8,7 +10,7 @@ import { useSchedule } from '../../../../core/hooks/useSchedule';
 import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { ArrowLeft, RefreshCw, Lock, Edit2, AlertTriangle } from 'lucide-react-native';
-import { Modal, TextInput } from 'react-native';
+import { TextInput } from 'react-native';
 import { codeLetterTarget, codeLetterPreview } from '../../../../core/utils/codeLetters';
 
 export default function CodeLetterGeneration() {
@@ -41,7 +43,7 @@ export default function CodeLetterGeneration() {
   const [editError, setEditError] = React.useState<string>('');
 
   if (isLoadingSchedules || isLoadingRegs) {
-    return <ActivityIndicator color="#1B6B3A" style={{ marginTop: 40 }} />;
+    return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
   }
 
   if (!schedule) {
@@ -167,7 +169,7 @@ export default function CodeLetterGeneration() {
       contentContainerStyle={{ width: '100%', maxWidth: 960, alignSelf: 'center', padding: 12, paddingBottom: 28 }}
     >
       <View className="flex-row items-center mb-3">
-        <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-white">
+        <TouchableOpacity onPress={goBack} className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
           <ArrowLeft size={18} color={ui.colors.text} />
         </TouchableOpacity>
         <View>
@@ -177,9 +179,9 @@ export default function CodeLetterGeneration() {
       </View>
 
       {isShuffleLocked && (
-        <View className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 flex-row items-center gap-x-3">
-          <Lock size={20} color="#B45309" />
-          <Text className="font-poppins-bold text-amber-700">🔒 Code Letter Shuffle Locked by Stage Portal</Text>
+        <View className="bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-lg p-3 mb-3 flex-row items-center gap-x-3">
+          <Lock size={20} color={coreColor("#B45309", 'warning')} />
+          <Text className="font-poppins-bold text-core-warning-amber-700">🔒 Code Letter Shuffle Locked by Stage Portal</Text>
         </View>
       )}
 
@@ -193,7 +195,7 @@ export default function CodeLetterGeneration() {
               label={isGeneratingCodeLetters ? 'Drawing...' : 'Draw Letters'}
               onPress={handleGenerate}
               disabled={isGeneratingCodeLetters || activeRegistrations.length === 0}
-              icon={<RefreshCw size={14} color={ui.colors.surface} />}
+              icon={<RefreshCw size={14} color={ui.colors.onPrimary} />}
             />
           )}
         </View>
@@ -213,23 +215,23 @@ export default function CodeLetterGeneration() {
             {activeRegistrations.map((reg: any, idx: number) => (
               <View
                 key={reg.id}
-                className={`min-h-[52px] flex-row px-3 py-2 items-center ${idx !== activeRegistrations.length - 1 ? 'border-b border-gray-100' : ''}`}
+                className={`min-h-[52px] flex-row px-3 py-2 items-center ${idx !== activeRegistrations.length - 1 ? 'border-b border-core-border-gray-100' : ''}`}
               >
                 <Text className="flex-[3] font-poppins text-sm text-ssf-text">{reg.participants?.name}</Text>
                 <Text className="flex-1 font-poppins-bold text-sm text-center text-ssf-text">{reg.participants?.chest_number}</Text>
                 <View className="flex-1 items-center">
-                  <Text className="font-poppins-black text-lg text-ssf-primary">{reg.code_letter || '-'}</Text>
+                  <Text className="font-poppins-black text-lg text-ui-primary-text">{reg.code_letter || '-'}</Text>
                   {reg.code_letter_fixed ? <Text className="font-poppins text-[10px] text-ssf-text-muted">Fixed</Text> : null}
                 </View>
                 {!isShuffleLocked && (
                   <TouchableOpacity 
-                    className="w-10 items-center justify-center p-2 rounded-full bg-blue-50"
+                    className="w-10 items-center justify-center p-2 rounded-full bg-core-info-soft-blue-50"
                     onPress={() => {
                       setEditingReg(reg);
                       setNewLetter(reg.code_letter || '');
                     }}
                   >
-                    <Edit2 size={16} color="#2563EB" />
+                    <Edit2 size={16} color={coreColor("#2563EB", 'info')} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -240,8 +242,8 @@ export default function CodeLetterGeneration() {
 
       {/* Manual Edit Modal */}
       <Modal visible={!!editingReg} transparent animationType="fade">
-        <View className="flex-1 bg-black/50 justify-center items-center p-4">
-          <View className="bg-white rounded-xl border border-ui-border p-5 w-full max-w-sm">
+        <View className="flex-1 bg-core-surface-strong-black/50 justify-center items-center p-4">
+          <View className="bg-core-surface-white rounded-xl border border-ui-border p-5 w-full max-w-sm">
             <Text className="font-poppins-bold text-xl mb-2">{editingReg?.code_letter ? 'Edit Code Letter' : 'Assign Code Letter'}</Text>
             <Text className="font-poppins text-ssf-text-muted mb-4">{editingReg?.participants?.name}</Text>
             
@@ -258,9 +260,9 @@ export default function CodeLetterGeneration() {
               codeLetterTarget(activeRegistrations, editingReg?.id, newLetter)?.participants?.name)}</Text>
             
             {!!editError && (
-              <View className="bg-red-50 p-3 rounded-lg flex-row items-start gap-x-2 mb-4">
-                <AlertTriangle size={16} color="#DC2626" style={{ marginTop: 2 }} />
-                <Text className="font-poppins text-sm text-red-700 flex-1">{editError}</Text>
+              <View className="bg-core-danger-soft-red-50 p-3 rounded-lg flex-row items-start gap-x-2 mb-4">
+                <AlertTriangle size={16} color={coreColor("#DC2626", 'danger')} style={{ marginTop: 2 }} />
+                <Text className="font-poppins text-sm text-core-danger-red-700 flex-1">{editError}</Text>
               </View>
             )}
 

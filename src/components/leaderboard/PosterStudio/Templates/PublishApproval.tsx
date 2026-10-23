@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { useTemplateStore } from '../Stores/templateStore';
 import { useLayerStore } from '../Stores/layerStore';
@@ -123,8 +124,8 @@ export default function PublishApproval() {
         <span style={styles.statusLabel}>Current Status:</span>
         <span style={{
           ...styles.statusBadge,
-          backgroundColor: publishStatus === 'published' ? '#DCFCE7' : publishStatus === 'pending_approval' ? '#FEF9C3' : '#F1F5F9',
-          color: publishStatus === 'published' ? '#166534' : publishStatus === 'pending_approval' ? '#854D0E' : '#475569'
+          backgroundColor: publishStatus === 'published' ? coreColor('#DCFCE7', 'successSoft') : publishStatus === 'pending_approval' ? coreColor('#FEF9C3', 'warningSoft') : coreColor('#F1F5F9', 'surface'),
+          color: publishStatus === 'published' ? coreColor('#166534', 'success') : publishStatus === 'pending_approval' ? coreColor('#854D0E', 'warning') : coreColor('#475569', 'text')
         }}>
           {publishStatus.replace('_', ' ').toUpperCase()}
         </span>
@@ -163,17 +164,17 @@ export default function PublishApproval() {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderTop: '1px solid #E2E8F0',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
+    borderTop: `1px solid ${coreColor('#E2E8F0', 'border')}`,
   },
-  title: { margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, color: '#0F172A' },
+  title: { margin: '0 0 12px 0', fontSize: 14, fontWeight: 700, color: coreColor('#0F172A', 'overlay') },
   localWarning: {
     display: 'flex',
     alignItems: 'flex-start',
     gap: 10,
     padding: '10px 12px',
-    backgroundColor: '#FFF7ED',
-    border: '1px solid #FED7AA',
+    backgroundColor: coreColor('#FFF7ED', 'warningSoft'),
+    border: `1px solid ${coreColor('#FED7AA', 'border')}`,
     borderRadius: 8,
     marginBottom: 12,
   },
@@ -187,18 +188,18 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column' as const,
     gap: 2,
     fontSize: 12,
-    color: '#92400E',
+    color: coreColor('#92400E', 'warning'),
     lineHeight: '1.4',
   },
   publishReadyBanner: {
     padding: '6px 12px',
-    backgroundColor: '#DCFCE7',
-    border: '1px solid #86EFAC',
+    backgroundColor: coreColor('#DCFCE7', 'successSoft'),
+    border: `1px solid ${coreColor('#86EFAC', 'border')}`,
     borderRadius: 8,
     marginBottom: 12,
     fontSize: 12,
     fontWeight: 700,
-    color: '#166534',
+    color: coreColor('#166534', 'success'),
     textAlign: 'center' as const,
   },
   statusBox: {
@@ -206,11 +207,11 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: '8px 12px',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
     borderRadius: 6,
     marginBottom: 12,
   },
-  statusLabel: { fontSize: 12, fontWeight: 600, color: '#64748B' },
+  statusLabel: { fontSize: 12, fontWeight: 600, color: coreColor('#64748B', 'textMuted') },
   statusBadge: {
     fontSize: 10,
     fontWeight: 700,
@@ -224,9 +225,9 @@ const styles: Record<string, React.CSSProperties> = {
   btnSecondary: {
     flex: 1,
     padding: '8px',
-    backgroundColor: '#FFFFFF',
-    color: '#0F172A',
-    border: '1px solid #CBD5E1',
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
+    color: coreColor('#0F172A', 'overlay'),
+    border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
     borderRadius: 6,
     fontWeight: 600,
     fontSize: 12,
@@ -234,8 +235,8 @@ const styles: Record<string, React.CSSProperties> = {
   btnPrimary: {
     flex: 1,
     padding: '8px',
-    backgroundColor: '#0EA5E9',
-    color: '#FFFFFF',
+    backgroundColor: coreColor('#0EA5E9', 'infoAction'),
+    color: coreColor('#FFFFFF', 'text'),
     border: 'none',
     borderRadius: 6,
     fontWeight: 600,

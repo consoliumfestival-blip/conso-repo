@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
 import React, { useMemo } from 'react';
 import {
@@ -79,11 +80,11 @@ const Sidebar = ({
   const router = useRouter();
 
   return (
-    <LinearGradient colors={[colors.navy, '#082B4B']} style={styles.sidebar}>
+    <LinearGradient colors={[colors.navy, coreColor('#082B4B', 'infoSoft')]} style={styles.sidebar}>
       <View>
         <View style={styles.brandRow}>
           <View style={styles.logoMark}>
-            <Trophy size={22} color={ui.colors.surface} />
+            <Trophy size={22} color={ui.colors.onPrimary} />
           </View>
           {!compact && (
             <View style={{ flex: 1 }}>
@@ -93,7 +94,7 @@ const Sidebar = ({
           )}
           {onClose && (
             <TouchableOpacity onPress={onClose} style={styles.mobileClose}>
-              <X size={18} color="#D6F7FF" />
+              <X size={18} color={coreColor("#D6F7FF", 'textMuted')} />
             </TouchableOpacity>
           )}
         </View>
@@ -106,7 +107,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'unit' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <BarChart3 size={20} color={ui.colors.surface} />
+            <BarChart3 size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'unit' ? styles.navTextActive : styles.navTextInactive}>Unit Rankings</Text>}
           </TouchableOpacity>
 
@@ -117,7 +118,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'controls' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <ShieldCheck size={20} color={ui.colors.surface} />
+            <ShieldCheck size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'controls' ? styles.navTextActive : styles.navTextInactive}>Leaderboard Controls</Text>}
           </TouchableOpacity>
 
@@ -128,7 +129,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'item' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <ListFilter size={20} color={ui.colors.surface} />
+            <ListFilter size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'item' ? styles.navTextActive : styles.navTextInactive}>Item Results</Text>}
           </TouchableOpacity>
 
@@ -139,7 +140,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'individual' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <Users size={20} color={ui.colors.surface} />
+            <Users size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'individual' ? styles.navTextActive : styles.navTextInactive}>Individual Rankings</Text>}
           </TouchableOpacity>
 
@@ -150,7 +151,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'poster' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <Image size={20} color={ui.colors.surface} />
+            <Image size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'poster' ? styles.navTextActive : styles.navTextInactive}>Poster Studio</Text>}
           </TouchableOpacity>
 
@@ -161,7 +162,7 @@ const Sidebar = ({
             }}
             style={[styles.navItem, activeItem === 'media-center' && styles.navItemActive, compact && styles.navItemCompact]}
           >
-            <Download size={20} color={ui.colors.surface} />
+            <Download size={20} color={ui.colors.onPrimary} />
             {!compact && <Text style={activeItem === 'media-center' ? styles.navTextActive : styles.navTextInactive}>Media Center</Text>}
           </TouchableOpacity>
         </View>
@@ -302,7 +303,7 @@ export default function LeaderboardLayout() {
             <View style={styles.header}>
             <View style={styles.headerTitleWrap}>
               <TouchableOpacity onPress={() => router.push('/(admin)')} style={styles.menuButton}>
-                <ArrowLeft size={21} color={colors.navy} />
+                <ArrowLeft size={21} color={coreColor(colors.navy, 'primaryText')} />
               </TouchableOpacity>
               <View>
                 <Text style={styles.eyebrow}>Sahithyolsav 2026</Text>
@@ -324,7 +325,7 @@ export default function LeaderboardLayout() {
                 } as any)}
                 style={styles.previewButton}
               >
-                <Eye size={17} color={ui.colors.surface} />
+                <Eye size={17} color={ui.colors.onPrimary} />
                 {!isMobile && <Text style={styles.previewButtonText}>Preview</Text>}
               </TouchableOpacity>
             </View>
@@ -355,7 +356,7 @@ export default function LeaderboardLayout() {
               value={formatNumber(totalPoints)}
               sub="Published results"
               tone={colors.teal}
-              icon={<Zap size={19} color={colors.teal} />}
+              icon={<Zap size={19} color={coreColor(colors.teal, 'primaryText')} />}
             />
             <MetricCard
               cardWidth={metricCardWidth}
@@ -436,20 +437,20 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 14,
-    backgroundColor: 'rgba(22,184,217,0.22)',
+    backgroundColor: coreAlpha(coreColor('#16b8d9', 'overlay'), 0.22),
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.18),
   },
   brandTitle: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_900Black',
     fontSize: 18,
     lineHeight: 21,
   },
   brandYear: {
-    color: '#9DEBFF',
+    color: coreColor('#9DEBFF', 'textMuted'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
     textTransform: 'uppercase',
@@ -471,17 +472,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   navItemActive: {
-    backgroundColor: 'rgba(22,184,217,0.22)',
+    backgroundColor: coreAlpha(coreColor('#16b8d9', 'overlay'), 0.22),
     borderWidth: 1,
-    borderColor: 'rgba(157,235,255,0.24)',
+    borderColor: coreAlpha(coreColor('#9debff', 'border'), 0.24),
   },
   navTextActive: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
   },
   navTextInactive: {
-    color: '#9DEBFF',
+    color: coreColor('#9DEBFF', 'textMuted'),
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 14,
     opacity: 0.85,
@@ -493,9 +494,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.08),
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderColor: coreAlpha(coreColor('#ffffff', 'border'), 0.12),
   },
   profileBoxCompact: {
     justifyContent: 'center',
@@ -509,17 +510,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   profileName: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
   },
   profileRole: {
-    color: '#B6EFFF',
+    color: coreColor('#B6EFFF', 'textMuted'),
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
   },
   profileLogout: {
-    color: '#9DEBFF',
+    color: coreColor('#9DEBFF', 'textMuted'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
   },
@@ -527,7 +528,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.08),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -564,7 +565,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   eyebrow: {
-    color: colors.teal,
+    color: coreColor(colors.teal, 'primaryText'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 11,
     textTransform: 'uppercase',
@@ -586,7 +587,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: ui.colors.successSoft,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: coreColor('#BBF7D0', 'border'),
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
@@ -599,7 +600,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
   },
   liveText: {
-    color: '#15803D',
+    color: coreColor('#15803D', 'success'),
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -622,7 +623,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
   },
   previewButtonText: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
     fontFamily: 'Poppins_700Bold',
     fontSize: 12,
   },
@@ -701,6 +702,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   mobileNavTextActive: {
-    color: ui.colors.surface,
+    color: ui.colors.onPrimary,
   },
 });

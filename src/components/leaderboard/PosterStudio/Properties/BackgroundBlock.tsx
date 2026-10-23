@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React, { useCallback, useState } from 'react';
 import NumericField from './fields/NumericField';
 import SliderField from './fields/SliderField';
@@ -99,7 +100,7 @@ export default function BackgroundBlock({ festivalId, tenantId }: BackgroundBloc
   if (!activeTemplate?.background_url) {
     return (
       <Accordion title="Background Image">
-        <p style={{ fontSize: 12, color: '#94A3B8', marginBottom: 12 }}>No background image uploaded.</p>
+        <p style={{ fontSize: 12, color: coreColor('#94A3B8', 'textSubtle'), marginBottom: 12 }}>No background image uploaded.</p>
         <UploadButton />
       </Accordion>
     );
@@ -151,9 +152,9 @@ const styles: Record<string, React.CSSProperties> = {
   actionBtn: { 
     padding: '6px 0', 
     borderRadius: 6, 
-    border: '1px solid #1E293B', 
-    background: '#0F172A', 
-    color: '#E2E8F0', 
+    border: `1px solid ${coreColor('#1E293B', 'border')}`,
+    background: coreColor('#0F172A', 'surfaceStrong'),
+    color: coreColor('#E2E8F0', 'text'),
     fontSize: 11, 
     fontWeight: 600, 
     cursor: 'pointer',
@@ -167,9 +168,9 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     padding: '8px 0',
     borderRadius: 6,
-    border: '1px dashed #38BDF8',
-    background: 'rgba(56, 189, 248, 0.1)',
-    color: '#38BDF8',
+    border: `1px dashed ${coreColor('#38BDF8', 'border')}`,
+    background: coreColor('rgba(56, 189, 248, 0.1)', 'surfaceStrong'),
+    color: coreColor('#38BDF8', 'info'),
     fontSize: 12,
     fontWeight: 600,
     cursor: 'pointer',

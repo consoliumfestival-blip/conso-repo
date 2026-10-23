@@ -1,6 +1,8 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Modal, Clipboard } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Clipboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfInput } from '../../../components/ui/SsfInput';
@@ -210,14 +212,14 @@ export default function SubOrganisationsManager() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F8FAFC' }}>
+    <View style={{ flex: 1, backgroundColor: coreColor('#F8FAFC', 'surface') }}>
       <Animated.View entering={FadeInDown.duration(400)} style={{ flex: 1 }}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
           
           <View style={{ padding: 20, paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <TouchableOpacity onPress={() => router.back()} style={{ padding: 10, backgroundColor: ui.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <TouchableOpacity onPress={() => router.back()} style={{ padding: 10, backgroundColor: ui.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: coreColor('#E2E8F0', 'border') }}>
                   <ArrowLeft size={20} color={ui.colors.text} />
                 </TouchableOpacity>
                 <View>
@@ -229,23 +231,23 @@ export default function SubOrganisationsManager() {
                 <SsfButton
                   label="Add New"
                   size="sm"
-                  icon={<Plus size={16} color={ui.colors.surface} />}
+                  icon={<Plus size={16} color={ui.colors.onPrimary} />}
                   onPress={openCreateModal}
                 />
               ) : (
-                <View style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: '#FDE68A', backgroundColor: '#FFFBEB' }}>
-                  <Text style={{ fontFamily: 'Poppins_500Medium', fontSize: 12, color: '#92400E' }}>Onboarding temporarily unavailable</Text>
+                <View style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: coreColor('#FDE68A', 'border'), backgroundColor: coreColor('#FFFBEB', 'warningSoft') }}>
+                  <Text style={{ fontFamily: 'Poppins_500Medium', fontSize: 12, color: coreColor('#92400E', 'warning') }}>Onboarding temporarily unavailable</Text>
                 </View>
               )}
             </View>
           </View>
 
           <View style={{ paddingHorizontal: 20, flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <TouchableOpacity onPress={() => setShowArchived(false)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: !showArchived ? '#0F766E' : ui.colors.border, backgroundColor: !showArchived ? ui.colors.successSoft : ui.colors.surface }}>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: !showArchived ? '#0F766E' : ui.colors.textMuted }}>Active ({orgs.length})</Text>
+            <TouchableOpacity onPress={() => setShowArchived(false)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: !showArchived ? coreColor('#0F766E', 'border') : ui.colors.border, backgroundColor: !showArchived ? ui.colors.successSoft : ui.colors.surface }}>
+              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: !showArchived ? coreColor('#0F766E', 'primaryText') : ui.colors.textMuted }}>Active ({orgs.length})</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowArchived(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived ? '#B45309' : ui.colors.border, backgroundColor: showArchived ? '#FFFBEB' : ui.colors.surface }}>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: showArchived ? '#B45309' : ui.colors.textMuted }}>Archived ({archivedOrgs.length})</Text>
+            <TouchableOpacity onPress={() => setShowArchived(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived ? coreColor('#B45309', 'border') : ui.colors.border, backgroundColor: showArchived ? coreColor('#FFFBEB', 'warningSoft') : ui.colors.surface }}>
+              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: showArchived ? coreColor('#B45309', 'warning') : ui.colors.textMuted }}>Archived ({archivedOrgs.length})</Text>
             </TouchableOpacity>
           </View>
 
@@ -254,15 +256,15 @@ export default function SubOrganisationsManager() {
               <SsfTableSkeleton rows={6} columns={3} compact />
             ) : (showArchived ? archivedChildOrganisationsError : childOrganisationsError) ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.8 }}>
-                <Building2 size={48} color="#DC2626" />
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: '#DC2626', marginTop: 16, textAlign: 'center' }}>
+                <Building2 size={48} color={coreColor("#DC2626", 'danger')} />
+                <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#DC2626', 'danger'), marginTop: 16, textAlign: 'center' }}>
                   Unable to load teams. Check your connection and try again.
                 </Text>
                 <TouchableOpacity
                   onPress={() => showArchived ? refetchArchivedChildOrganisations() : refetchChildOrganisations()}
-                  style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0F766E' }}
+                  style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'primary') }}
                 >
-                  <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.surface }}>Retry</Text>
+                  <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary }}>Retry</Text>
                 </TouchableOpacity>
               </View>
             ) : listedOrgs.length === 0 ? (
@@ -273,7 +275,7 @@ export default function SubOrganisationsManager() {
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ minWidth: 800, flex: 1, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 14, overflow: 'hidden' }}>
-                  <View style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
+                  <View style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: coreColor('#F1F5F9', 'surface'), borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
                     <Text style={{ flex: 1.6, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Team</Text>
                     <Text style={{ flex: 1.5, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Login Username</Text>
                     <Text style={{ width: 100, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Type</Text>
@@ -281,20 +283,20 @@ export default function SubOrganisationsManager() {
                   </View>
 
                   {listedOrgs.map((org: any) => (
-                    <View key={org.id} style={{ minHeight: 64, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: ui.colors.surface }}>
+                    <View key={org.id} style={{ minHeight: 64, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: coreColor('#E2E8F0', 'border'), backgroundColor: ui.colors.surface }}>
                       <View style={{ flex: 1.6, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                          <Building2 size={15} color="#0F766E" />
+                          <Building2 size={15} color={coreColor("#0F766E", 'primaryText')} />
                         </View>
                         <Text numberOfLines={1} style={{ flex: 1, fontFamily: 'Poppins_700Bold', fontSize: 13, color: ui.colors.text }}>{org.name}</Text>
                       </View>
                       <View style={{ flex: 1.5, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
-                        <User size={13} color="#0F766E" />
+                        <User size={13} color={coreColor("#0F766E", 'primaryText')} />
                         <Text numberOfLines={1} style={{ marginLeft: 7, fontFamily: 'Poppins_400Regular', fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
                       </View>
                       <View style={{ width: 100, alignItems: 'flex-start' }}>
-                        <View style={{ backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 9, color: '#0F766E', textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
+                        <View style={{ backgroundColor: coreColor('#F1F5F9', 'surface'), borderWidth: 1, borderColor: coreColor('#E2E8F0', 'border'), paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
+                          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 9, color: coreColor('#0F766E', 'primaryText'), textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
                         </View>
                       </View>
                       <View style={{ width: 160, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
@@ -303,31 +305,31 @@ export default function SubOrganisationsManager() {
                             onPress={() => handleResetPassword(org)}
                             accessibilityLabel={`Reset Password for ${org.name}`}
                             disabled={isResettingCredential}
-                            style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#FECACA' }}
+                            style={{ width: 34, height: 34, backgroundColor: coreColor('#FEF2F2', 'dangerSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FECACA', 'border') }}
                           >
-                            <RefreshCw size={15} color="#DC2626" />
+                            <RefreshCw size={15} color={coreColor("#DC2626", 'danger')} />
                           </TouchableOpacity>
                         )}
                         {!showArchived && <TouchableOpacity
                           onPress={() => router.push(`/unit-profile/${org.id}`)}
                           accessibilityLabel={`Open ${org.name}`}
-                          style={{ width: 34, height: 34, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE' }}
+                          style={{ width: 34, height: 34, backgroundColor: coreColor('#EFF6FF', 'infoSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#BFDBFE', 'border') }}
                         >
-                          <ExternalLink size={15} color="#2563EB" />
+                          <ExternalLink size={15} color={coreColor("#2563EB", 'info')} />
                         </TouchableOpacity>}
                         {!showArchived && <TouchableOpacity
                           onPress={() => handleArchiveOrg(org)}
                           accessibilityLabel={`Archive ${org.name}`}
                           disabled={isArchiving}
-                          style={{ width: 34, height: 34, backgroundColor: '#FFFBEB', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#FDE68A' }}
+                          style={{ width: 34, height: 34, backgroundColor: coreColor('#FFFBEB', 'warningSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FDE68A', 'border') }}
                         >
-                          <Archive size={15} color="#B45309" />
+                          <Archive size={15} color={coreColor("#B45309", 'warning')} />
                         </TouchableOpacity>}
-                        {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0' }}>
-                          <RotateCcw size={15} color="#047857" />
+                        {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: coreColor('#ECFDF5', 'successSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#A7F3D0', 'border') }}>
+                          <RotateCcw size={15} color={coreColor("#047857", 'success')} />
                         </TouchableOpacity>}
-                        {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: '#FECACA' }}>
-                          <Trash2 size={15} color="#DC2626" />
+                        {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: coreColor('#FEF2F2', 'dangerSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FECACA', 'border') }}>
+                          <Trash2 size={15} color={coreColor("#DC2626", 'danger')} />
                         </TouchableOpacity>}
                       </View>
                     </View>
@@ -340,7 +342,7 @@ export default function SubOrganisationsManager() {
       </Animated.View>
 
       <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}>
+        <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: ui.colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
             <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Team</Text>
             
@@ -368,7 +370,7 @@ export default function SubOrganisationsManager() {
             <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginBottom: 16 }}>Use 3–40 lowercase letters, numbers or underscores.</Text>
 
             {errorMsg ? (
-              <Text style={{ color: '#DC2626', fontFamily: 'Poppins_400Regular', marginBottom: 16, fontSize: 13 }}>⚠️ {errorMsg}</Text>
+              <Text style={{ color: coreColor('#DC2626', 'danger'), fontFamily: 'Poppins_400Regular', marginBottom: 16, fontSize: 13 }}>⚠️ {errorMsg}</Text>
             ) : null}
 
             <View style={{ flexDirection: 'row', gap: 12 }}>

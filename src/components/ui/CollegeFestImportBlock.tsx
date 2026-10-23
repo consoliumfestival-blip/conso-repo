@@ -1,3 +1,4 @@
+import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { View, Text } from 'react-native';
 import { ShieldAlert } from 'lucide-react-native';
@@ -9,12 +10,12 @@ export function CollegeFestImportBlock({ teamTemplate = false }: { teamTemplate?
 
   return (
     <View className="flex-1 bg-ssf-bg p-6 items-center justify-center">
-      <View className="bg-amber-50 border border-amber-200 rounded-2xl p-6 max-w-md w-full items-center">
-        <ShieldAlert size={40} color="#B45309" className="mb-3" />
-        <Text className="font-poppins-bold text-base text-amber-900 text-center mb-2">
+      <View className="bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-2xl p-6 max-w-md w-full items-center">
+        <ShieldAlert size={40} color={coreColor("#B45309", 'warning')} className="mb-3" />
+        <Text className="font-poppins-bold text-base text-core-warning-amber-900 text-center mb-2">
           {teamTemplate ? 'Bulk import is unavailable with team chest numbers' : 'Bulk import is not available for College Fest'}
         </Text>
-        <Text className="font-poppins text-sm text-amber-800 text-center leading-5">
+        <Text className="font-poppins text-sm text-core-warning-amber-800 text-center leading-5">
           {teamTemplate
             ? 'Use Add Participant for now. A team-aware importer can be added later without accepting old chest numbers.'
             : 'Participants for College Fest must be added manually with their category selected as Sub Junior, Junior, or Senior.'}

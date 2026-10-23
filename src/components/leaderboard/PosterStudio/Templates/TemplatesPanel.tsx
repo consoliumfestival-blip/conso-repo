@@ -1,3 +1,4 @@
+import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React, { useState } from 'react';
 import { useGetPosterTemplates, useDeletePosterTemplate } from '../../../../core/hooks/useLeaderboardSettings';
 import { LayoutTemplate, Plus, Search, Check, RotateCcw, Trash2 } from 'lucide-react';
@@ -29,7 +30,7 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
       </div>
 
       <div style={styles.searchRow}>
-        <Search size={14} color="#64748B" />
+        <Search size={14} color={coreColor("#64748B", 'textMuted')} />
         <input
           type="text"
           placeholder="Search templates..."
@@ -47,8 +48,8 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
           <div 
             style={{
               ...styles.item,
-              borderColor: currentTemplateId === 'starter-template' ? '#38BDF8' : '#1E293B',
-              backgroundColor: currentTemplateId === 'starter-template' ? 'rgba(56, 189, 248, 0.05)' : '#0F172A'
+              borderColor: currentTemplateId === 'starter-template' ? coreColor('#38BDF8', 'border') : coreColor('#1E293B', 'border'),
+              backgroundColor: currentTemplateId === 'starter-template' ? coreAlpha(coreColor('#38bdf8', 'overlay'), 0.05) : coreColor('#0F172A', 'overlay')
             }}
           >
             <div 
@@ -56,13 +57,13 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
               onClick={() => onSelectTemplate('starter-template')}
             >
               <div style={styles.iconBox}>
-                <LayoutTemplate size={16} color={currentTemplateId === 'starter-template' ? '#38BDF8' : '#64748B'} />
+                <LayoutTemplate size={16} color={currentTemplateId === 'starter-template' ? coreColor('#38BDF8', 'info') : coreColor('#64748B', 'textMuted')} />
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <div style={styles.name}>Starter Template</div>
                 <div style={styles.sub}>Default Layout • 1080x1080</div>
               </div>
-              {currentTemplateId === 'starter-template' && <Check size={16} color="#38BDF8" />}
+              {currentTemplateId === 'starter-template' && <Check size={16} color={coreColor("#38BDF8", 'info')} />}
             </div>
           </div>
         )}
@@ -74,8 +75,8 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
               key={t.id} 
               style={{
                 ...styles.item,
-                borderColor: isSelected ? '#38BDF8' : '#1E293B',
-                backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.05)' : '#0F172A'
+                borderColor: isSelected ? coreColor('#38BDF8', 'border') : coreColor('#1E293B', 'border'),
+                backgroundColor: isSelected ? coreAlpha(coreColor('#38bdf8', 'overlay'), 0.05) : coreColor('#0F172A', 'overlay')
               }}
             >
               <div 
@@ -83,7 +84,7 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
                 onClick={() => onSelectTemplate(t.id)}
               >
                 <div style={styles.iconBox}>
-                  <LayoutTemplate size={16} color={isSelected ? '#38BDF8' : '#64748B'} />
+                  <LayoutTemplate size={16} color={isSelected ? coreColor('#38BDF8', 'info') : coreColor('#64748B', 'textMuted')} />
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   <div style={styles.name}>{t.name || 'Untitled Template'}</div>
@@ -91,7 +92,7 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
                     {t.aspect_ratio || '1:1'} • {t.width}x{t.height}
                   </div>
                 </div>
-                {isSelected && <Check size={16} color="#38BDF8" />}
+                {isSelected && <Check size={16} color={coreColor("#38BDF8", 'info')} />}
               </div>
               <button
                 onClick={(e) => {
@@ -130,7 +131,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: {
     padding: '16px',
-    borderBottom: '1px solid #2a2a2a'
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`
   },
   createBtn: {
     width: '100%',
@@ -139,8 +140,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: 8,
     padding: '10px',
-    backgroundColor: '#38bdf8',
-    color: '#0f172a',
+    backgroundColor: coreColor('#38bdf8', 'infoAction'),
+    color: coreColor('#0f172a', 'overlay'),
     border: 'none',
     borderRadius: 6,
     fontWeight: 600,
@@ -157,8 +158,8 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px',
     marginTop: 8,
     backgroundColor: 'transparent',
-    color: '#94A3B8',
-    border: '1px solid #334155',
+    color: coreColor('#94A3B8', 'textSubtle'),
+    border: `1px solid ${coreColor('#334155', 'border')}`,
     borderRadius: 6,
     fontWeight: 500,
     fontSize: 12,
@@ -170,14 +171,14 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 8,
     padding: '12px 16px',
-    borderBottom: '1px solid #2a2a2a',
-    backgroundColor: '#171717'
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
+    backgroundColor: coreColor('#171717', 'surfaceStrong')
   },
   searchInput: {
     flex: 1,
     background: 'none',
     border: 'none',
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     fontSize: 13,
     outline: 'none'
   },
@@ -190,7 +191,7 @@ const styles: Record<string, React.CSSProperties> = {
     gap: 8
   },
   emptyText: {
-    color: '#64748B',
+    color: coreColor('#64748B', 'textMuted'),
     fontSize: 13,
     textAlign: 'center',
     marginTop: 20
@@ -208,7 +209,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.05),
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center'
@@ -216,19 +217,19 @@ const styles: Record<string, React.CSSProperties> = {
   name: {
     fontSize: 13,
     fontWeight: 600,
-    color: '#E2E8F0',
+    color: coreColor('#E2E8F0', 'text'),
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis'
   },
   sub: {
     fontSize: 11,
-    color: '#94A3B8'
+    color: coreColor('#94A3B8', 'textSubtle')
   },
   deleteBtn: {
     background: 'none',
     border: 'none',
-    color: '#EF4444',
+    color: coreColor('#EF4444', 'danger'),
     padding: '8px',
     cursor: 'pointer',
     borderRadius: '4px',

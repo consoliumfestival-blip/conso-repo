@@ -173,3 +173,12 @@ html, body, #root, #__next {
   font-style: normal;
 }
 
+
+
+/* Team Leader portal scrollbars use its isolated Orange and Milk palette. */
+html:has(#team-leader-portal) ::-webkit-scrollbar-thumb {
+  background: rgba(236, 94, 39, 0.30) !important;
+}
+html:has(#team-leader-portal) ::-webkit-scrollbar-thumb:hover {
+  background: #B84015 !important;
+}

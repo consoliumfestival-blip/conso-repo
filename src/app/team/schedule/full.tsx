@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -8,7 +8,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { Skeleton } from '@/components/team/TeamSkeleton';
 
 export default function FullScheduleScreen() {
   const { context, loading: contextLoading } = useTeamLeaderContext();

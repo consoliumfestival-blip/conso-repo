@@ -1,4 +1,5 @@
-import { ui } from '@/constants/designSystem';
+import { TeamPortalIdentity } from '@/components/team/TeamPortalIdentity';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -7,7 +8,7 @@ import { Eye, EyeOff, LockKeyhole, UserRound } from 'lucide-react-native';
 import { useAuthStore } from '@/core/store/authStore';
 import { authService } from '@/services/authService';
 import { Button } from '@/components/team/TeamButton';
-import { Label } from '@/components/ui/shadcn/label';
+import { Label } from '@/components/team/TeamLabel';
 import { Card } from '@/components/team/TeamCard';
 
 export default function TeamLeaderLogin() {
@@ -19,7 +20,7 @@ export default function TeamLeaderLogin() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 640;
+  const isDesktop = width >= 900;
 
   const handleLogin = async () => {
     setErrorMsg('');
@@ -54,7 +55,7 @@ export default function TeamLeaderLogin() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
+    <View nativeID="team-leader-portal" style={{ flex: 1, backgroundColor: ui.colors.background }}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -64,7 +65,8 @@ export default function TeamLeaderLogin() {
           padding: 16,
         }}
       >
-        <Card style={{ width: '100%', maxWidth: 400, padding: isDesktop ? 32 : 24 }}>
+        <Card style={{ width: '100%', maxWidth: 400, borderRadius: isDesktop ? 16 : 28, padding: isDesktop ? 32 : 22 }}>
+          <TeamPortalIdentity />
           {/* Header */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
             <View style={{
@@ -107,7 +109,8 @@ export default function TeamLeaderLogin() {
               }}>
                 <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
+                  accessibilityLabel="Username"
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your username"
                   placeholderTextColor={ui.colors.textMuted}
                   value={username}
@@ -132,8 +135,8 @@ export default function TeamLeaderLogin() {
                 backgroundColor: ui.colors.background,
               }}>
                 <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
+                <TextInput accessibilityLabel="Password"
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={password}
@@ -141,7 +144,7 @@ export default function TeamLeaderLogin() {
                   secureTextEntry={!showPassword}
                   editable={!loading}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8} accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? (
                     <EyeOff size={16} color={ui.colors.textMuted} />
                   ) : (

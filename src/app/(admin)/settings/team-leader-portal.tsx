@@ -1,3 +1,4 @@
+import { teamLoginPath } from '@/core/utils/teamLoginPresentation';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
@@ -61,17 +62,6 @@ interface Profile {
   email: string | null;
   role: string | null;
 }
-
-const TEAM_COLOR_PRESETS = [
-  { name: 'Teal', primary: '#0F766E', accent: '#14B8A6' },
-  { name: 'Blue', primary: '#1D4ED8', accent: '#60A5FA' },
-  { name: 'Violet', primary: '#6D28D9', accent: '#A78BFA' },
-  { name: 'Rose', primary: '#BE123C', accent: '#FB7185' },
-  { name: 'Orange', primary: '#C2410C', accent: '#FB923C' },
-  { name: 'Green', primary: '#166534', accent: '#4ADE80' },
-  { name: 'Indigo', primary: '#3730A3', accent: '#818CF8' },
-  { name: 'Slate', primary: '#334155', accent: '#94A3B8' },
-];
 
 type TeamLeaderManagementCache = {
   participants: Participant[];
@@ -280,7 +270,7 @@ export default function TeamLeaderPortalAdmin() {
         });
       setTeams(teamList);
 
-      const formatted = (assignmentsResult.data || []).map((a: any) => {
+      const formatted: Assignment[] = (assignmentsResult.data || []).map((a: any): Assignment => {
         const teamName = a.team_name || 'Unknown Team';
 
         return {
@@ -502,36 +492,6 @@ export default function TeamLeaderPortalAdmin() {
     setSelectedTeam(team as FestivalTeam);
   }, []);
 
-  const handleTeamColorSelect = async (preset: typeof TEAM_COLOR_PRESETS[number]) => {
-    if (!selectedTeam || !activeFestival?.id || !activeFestival.tenant_id) return;
-
-    const nextTeam = {
-      ...selectedTeam,
-      portal_primary_color: preset.primary,
-      portal_accent_color: preset.accent,
-    };
-    setSelectedTeam(nextTeam);
-    setTeams((current) => current.map((team) => team.organisation_id === nextTeam.organisation_id ? nextTeam : team));
-
-    const { error } = await supabase
-      .from('festival_teams')
-      .upsert({
-        id: selectedTeam.id.startsWith('organisation:') ? undefined : selectedTeam.id,
-        festival_id: activeFestival.id,
-        organisation_id: selectedTeam.organisation_id,
-        parent_tenant_id: activeFestival.tenant_id,
-        is_active: true,
-        portal_primary_color: preset.primary,
-        portal_accent_color: preset.accent,
-      }, { onConflict: 'festival_id,organisation_id' });
-
-    if (error) {
-      Alert.alert('Color update failed', error.message);
-      return;
-    }
-    Alert.alert('Team color saved', `${selectedTeam.organisation_name} portal color updated.`);
-  };
-
   const handleAssign = async () => {
     if (!activeFestival?.id) {
       Alert.alert('Validation', 'No active festival is selected.');
@@ -719,37 +679,14 @@ export default function TeamLeaderPortalAdmin() {
                   <View className="flex-row items-center justify-between mb-3">
                     <View>
                       <Text className="font-semibold text-foreground">Team portal color</Text>
-                      <Text className="text-xs text-muted-foreground mt-0.5">
-                        Choose the visual identity for {selectedTeam.organisation_name}
-                      </Text>
+                      <Text className="text-xs text-muted-foreground mt-0.5">Fixed for the Team Leader Portal. Selection is disabled.</Text>
                     </View>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        backgroundColor: selectedTeam.portal_primary_color,
-                        borderWidth: 3,
-                        borderColor: selectedTeam.portal_accent_color,
-                      }}
-                    />
+                    <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#EC5E27', borderWidth: 3, borderColor: '#FDFDF1' }} />
                   </View>
-                  <View className="flex-row flex-wrap" style={{ gap: 8 }}>
-                    {TEAM_COLOR_PRESETS.map((preset) => {
-                      const active = selectedTeam.portal_primary_color === preset.primary;
-                      return (
-                        <TouchableOpacity
-                          key={preset.name}
-                          onPress={() => handleTeamColorSelect(preset)}
-                          accessibilityLabel={`Use ${preset.name} team color`}
-                          className={`flex-row items-center px-2 py-1.5 rounded-full border ${active ? 'border-foreground' : 'border-border'}`}
-                        >
-                          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: preset.primary, marginRight: 6 }} />
-                          <Text className="text-xs text-foreground">{preset.name}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                  <TouchableOpacity disabled accessibilityState={{ disabled: true }} className="flex-row items-center px-3 py-2 rounded-full border border-border self-start opacity-50">
+                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#EC5E27', marginRight: 6 }} />
+                    <Text className="text-xs text-foreground">Orange and Milk - Disabled</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -809,7 +746,7 @@ export default function TeamLeaderPortalAdmin() {
                       <TouchableOpacity
                         onPress={() => {
                           const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                          const text = `Team: ${selectedTeam?.organisation_name || ''}\nUsername: ${tempCredentials.username}\nPassword: ${tempCredentials.password}\nLogin Link: ${origin}/team/login`;
+                          const text = `Team: ${selectedTeam?.organisation_name || ''}\nUsername: ${tempCredentials.username}\nPassword: ${tempCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), selectedTeam?.organisation_name)}`;
                           copyCredential(text, 'All credentials');
                         }}
                         className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-green-700"
@@ -981,7 +918,7 @@ export default function TeamLeaderPortalAdmin() {
                         <TouchableOpacity
                           onPress={() => {
                             const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                            const text = `Username: ${resetCredentials.username}\nPassword: ${resetCredentials.password}\nLogin Link: ${origin}/team/login`;
+                            const text = `Username: ${resetCredentials.username}\nPassword: ${resetCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), assignment.team_name)}`;
                             copyCredential(text, `Reset_Login_${assignment.id}`);
                           }}
                           className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-amber-700"

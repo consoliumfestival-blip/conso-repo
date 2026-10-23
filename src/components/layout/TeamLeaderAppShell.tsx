@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { TEAM_DESKTOP_MIN_WIDTH, teamUi as ui } from '@/constants/teamLeaderTheme';
 import { TeamText as Text } from '@/components/team/TeamText';
 import React, { useState } from "react";
 import { Modal, Platform, Pressable, ScrollView, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -98,7 +98,7 @@ export function TeamLeaderAppShell({
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const { context } = useTeamLeaderContext();
 
   React.useEffect(() => {
@@ -115,8 +115,8 @@ export function TeamLeaderAppShell({
     .charAt(0)
     .toUpperCase();
 
-  // Tablets use the full navigation rail; short landscape phone windows keep phone navigation.
-  const showSidebar = width >= 900 || (width >= 600 && height >= 600);
+  // Phones keep bottom navigation; medium tablets and desktops use the sidebar.
+  const showSidebar = width >= TEAM_DESKTOP_MIN_WIDTH;
   const sidebarWidth = width < 720 ? 220 : width < 900 ? 240 : 264;
 
   const handleLogout = async () => {
@@ -132,12 +132,12 @@ export function TeamLeaderAppShell({
   // Desktop sidebar
   if (showSidebar) {
     return (
-      <View style={{ flex: 1, flexDirection: "row", backgroundColor: ui.colors.background }}>
+      <View nativeID="team-leader-portal" style={{ flex: 1, flexDirection: "row", backgroundColor: ui.colors.background }}>
         {/* Sidebar */}
         <View
           style={{
             width: sidebarOpen ? sidebarWidth : 68,
-            backgroundColor: '#FBFBFC',
+            backgroundColor: ui.colors.background,
             borderRightWidth: 1,
             borderRightColor: ui.colors.border,
             paddingTop: 18,
@@ -174,7 +174,7 @@ export function TeamLeaderAppShell({
                     >
                       <Text
                         style={{
-                          color: ui.colors.surface,
+                          color: ui.colors.onPrimary,
                           fontSize: 15,
                           fontWeight: "800",
                         }}
@@ -231,7 +231,7 @@ export function TeamLeaderAppShell({
                 >
                   <Text
                     style={{
-                      color: ui.colors.surface,
+                      color: ui.colors.onPrimary,
                       fontSize: 15,
                       fontWeight: "800",
                     }}
@@ -270,7 +270,7 @@ export function TeamLeaderAppShell({
                     borderRadius: 9,
                     marginBottom: 2,
                     borderWidth: active ? 1 : 0,
-                    borderColor: active ? '#B9E5DE' : "transparent",
+                    borderColor: active ? ui.colors.borderStrong : "transparent",
                   }}
                 >
                   <Icon
@@ -281,7 +281,7 @@ export function TeamLeaderAppShell({
                     <Text
                       style={{
                         marginLeft: 10,
-                        color: active ? ui.colors.primary : '#334155',
+                        color: active ? ui.colors.primary : ui.colors.text,
                         fontSize: 12,
                         fontWeight: active ? "700" : "400",
                       }}
@@ -389,9 +389,23 @@ export function TeamLeaderAppShell({
 
   // Mobile layout
   return (
-    <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
-      {/* Content */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 88 }}>
+    <View nativeID="team-leader-portal" style={{ flex: 1, backgroundColor: ui.colors.background }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <TouchableOpacity onPress={() => navigate('/team/profile')} accessibilityLabel="Open team profile"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{teamInitial}</Text>
+          </View>
+          <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{context?.team_name || 'Team Portal'}</Text>
+            <Text style={{ color: ui.colors.textMuted, fontSize: 10 }}>Team workspace</Text></View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => navigate('/team/announcements')} accessibilityLabel="Open announcements"
+          style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: ui.colors.border }}>
+          <MessageSquare size={19} color={ui.colors.text} />
+        </TouchableOpacity>
+      </View>
+      {/* Mobile content has its own composition and room for the floating navigation. */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: 112 }}>
         {children}
       </ScrollView>
 
@@ -400,11 +414,10 @@ export function TeamLeaderAppShell({
         style={{
           flexDirection: "row",
           backgroundColor: ui.colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: ui.colors.border,
-          paddingBottom: Platform.OS === "ios" ? 20 : 4,
-          paddingTop: 4,
-          paddingHorizontal: 6,
+          position: 'absolute', bottom: Platform.OS === 'ios' ? 22 : 14, left: 12, right: 12,
+          maxWidth: 540, alignSelf: 'center', marginHorizontal: 'auto',
+          borderWidth: 1, borderColor: ui.colors.border, borderRadius: 999,
+          paddingVertical: 7, paddingHorizontal: 7,
           ...ui.shadow,
         }}
       >
@@ -423,32 +436,24 @@ export function TeamLeaderAppShell({
           return (
             <TouchableOpacity
               key={item.path}
+              accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: active }}
               onPress={() =>
                 item.path === "/team/more"
                   ? setMoreOpen(true)
                   : navigate(item.path)
               }
               style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "center",
-                minHeight: 58,
+                flex: active ? 1.7 : 1,
+                flexDirection: 'row', gap: 5, borderRadius: 999,
+                backgroundColor: active ? ui.colors.primary : 'transparent',
+                alignItems: "center", justifyContent: "center", minHeight: 46,
               }}
             >
               <Icon
                 size={20}
-                color={active ? ui.colors.info : ui.colors.textMuted}
+                color={active ? ui.colors.onPrimary : ui.colors.textMuted}
               />
-              <Text
-                style={{
-                  fontSize: 9,
-                  color: active ? ui.colors.info : ui.colors.textMuted,
-                  marginTop: 2,
-                  fontWeight: "700",
-                }}
-              >
-                {item.shortLabel || item.label}
-              </Text>
+              {active ? <Text numberOfLines={1} style={{ fontSize: 10, color: ui.colors.onPrimary, fontWeight: '700' }}>{item.shortLabel || item.label}</Text> : null}
             </TouchableOpacity>
           );
         })}
@@ -457,7 +462,7 @@ export function TeamLeaderAppShell({
       <Modal visible={moreOpen} transparent animationType="slide" onRequestClose={() => setMoreOpen(false)}>
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
           <Pressable accessibilityLabel="Close team menu" onPress={() => setMoreOpen(false)}
-            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: 'rgba(15, 23, 42, 0.45)' }} />
+            style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, backgroundColor: ui.colors.overlay }} />
           <View style={{ maxHeight: '88%', backgroundColor: ui.colors.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' }}>
             <View style={{ width: 58, height: 6, borderRadius: 3, backgroundColor: ui.colors.borderStrong, alignSelf: 'center', marginTop: 14 }} />
             <View style={{ minHeight: 68, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
@@ -475,15 +480,15 @@ export function TeamLeaderAppShell({
                 const Icon = item.icon;
                 const active = item.match(pathname);
                 return <TouchableOpacity key={item.path} onPress={() => navigate(item.path)}
-                  style={{ width: '48%', minHeight: 112, borderRadius: 18, borderWidth: 1, borderColor: active ? '#CFE0FF' : ui.colors.border, backgroundColor: active ? '#F4F8FF' : ui.colors.surface, alignItems: 'center', justifyContent: 'center', padding: 12 }}>
-                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: active ? '#E5EFFF' : ui.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 9 }}>
+                  style={{ width: '48%', minHeight: 112, borderRadius: 18, borderWidth: 1, borderColor: active ? ui.colors.borderStrong : ui.colors.border, backgroundColor: active ? ui.colors.primarySoft : ui.colors.surface, alignItems: 'center', justifyContent: 'center', padding: 12 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: active ? ui.colors.primarySoft : ui.colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 9 }}>
                     <Icon size={20} color={active ? ui.colors.info : ui.colors.textMuted} />
                   </View>
-                  <Text style={{ color: active ? ui.colors.info : '#40516A', fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
+                  <Text style={{ color: active ? ui.colors.info : ui.colors.textMuted, fontSize: 12, fontWeight: '700', textAlign: 'center' }}>{item.label}</Text>
                 </TouchableOpacity>;
               })}
             </ScrollView>
-            <TouchableOpacity onPress={handleLogout} style={{ minHeight: 76, borderTopWidth: 1, borderTopColor: ui.colors.border, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: '#FBFCFD' }}>
+            <TouchableOpacity onPress={handleLogout} style={{ minHeight: 76, borderTopWidth: 1, borderTopColor: ui.colors.border, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', gap: 11, backgroundColor: ui.colors.background }}>
               <LogOut size={18} color={ui.colors.danger} />
               <Text style={{ color: ui.colors.danger, fontSize: 13, fontWeight: '700' }}>Logout</Text>
             </TouchableOpacity>

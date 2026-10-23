@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -9,7 +9,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderParticipant } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 
 export default function ParticipantsScreen() {

@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -10,8 +10,8 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
 import { Button } from '@/components/team/TeamButton';
-import { Label } from '@/components/ui/shadcn/label';
-import { Separator } from '@/components/ui/shadcn/separator';
+import { Label } from '@/components/team/TeamLabel';
+import { Separator } from '@/components/team/TeamSeparator';
 
 export default function ProfileScreen() {
   const { context } = useTeamLeaderContext();
@@ -63,30 +63,6 @@ export default function ProfileScreen() {
             </View>
           </CardContent>
         </Card>
-
-        {/* Team Info */}
-        {context && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Assignment</CardTitle>
-            </CardHeader>
-            <CardContent style={{ gap: 12 }}>
-              <View style={{ gap: 4 }}>
-                <Label>Organisation ID</Label>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
-                  {context.organisation_id || 'N/A'}
-                </Text>
-              </View>
-              <Separator />
-              <View style={{ gap: 4 }}>
-                <Label>Festival ID</Label>
-                <Text style={{ fontSize: 14, fontWeight: '500', color: ui.colors.text }}>
-                  {context.festival_id || 'N/A'}
-                </Text>
-              </View>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Sign Out */}
         <Card>

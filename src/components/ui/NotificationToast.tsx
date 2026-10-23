@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { usePathname } from 'expo-router';
 import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
 import { X, Bell, AlertTriangle, Info, AlertCircle } from 'lucide-react-native';
 import { useNotification } from '../../core/contexts/NotificationContext';
 
 export const NotificationToast = () => {
   const { notification } = useNotification();
+  const isTeamPortal = usePathname().startsWith('/team');
   const [visible, setVisible] = useState(false);
   const [fadeAnim] = useState(new Animated.Value(0));
   const [translateY] = useState(new Animated.Value(-100));
@@ -72,9 +74,9 @@ export const NotificationToast = () => {
 
   const getIcon = () => {
     switch (currentNotif.data?.priority) {
-      case 'URGENT': return <AlertTriangle size={24} color="#EF4444" />;
-      case 'HIGH': return <AlertCircle size={24} color="#F59E0B" />;
-      default: return <Bell size={24} color="#3B82F6" />;
+      case 'URGENT': return <AlertTriangle size={24} color={isTeamPortal ? '#B84015' : '#EF4444'} />;
+      case 'HIGH': return <AlertCircle size={24} color={isTeamPortal ? '#EC5E27' : '#F59E0B'} />;
+      default: return <Bell size={24} color={isTeamPortal ? '#EC5E27' : '#3B82F6'} />;
     }
   };
 
@@ -91,21 +93,22 @@ export const NotificationToast = () => {
       style={[
         styles.container,
         {
+          ...(isTeamPortal ? { backgroundColor: '#FFFEF8', borderColor: '#EADBCB', borderWidth: 1 } : {}),
           opacity: fadeAnim,
           transform: [{ translateY }],
         },
       ]}
-      className={`absolute top-12 left-4 right-4 z-50 flex-row items-center p-4 rounded-xl border shadow-lg ${getBgColor()}`}
+      className={`absolute top-12 left-4 right-4 z-50 flex-row items-center p-4 rounded-xl border shadow-lg ${isTeamPortal ? '' : getBgColor()}`}
     >
       <View className="mr-3">
         {getIcon()}
       </View>
       <View className="flex-1">
-        <Text className="font-bold text-gray-900 text-base">{currentNotif.title}</Text>
-        <Text className="text-gray-700 mt-1">{currentNotif.body}</Text>
+        <Text className={isTeamPortal ? "font-bold text-base" : "font-bold text-gray-900 text-base"} style={isTeamPortal ? { color: '#2D1C14' } : undefined}>{currentNotif.title}</Text>
+        <Text className={isTeamPortal ? "mt-1" : "text-gray-700 mt-1"} style={isTeamPortal ? { color: '#796252' } : undefined}>{currentNotif.body}</Text>
       </View>
       <TouchableOpacity onPress={hideToast} className="p-2 ml-2">
-        <X size={20} color="#6B7280" />
+        <X size={20} color={isTeamPortal ? "#796252" : "#6B7280"} />
       </TouchableOpacity>
     </Animated.View>
   );

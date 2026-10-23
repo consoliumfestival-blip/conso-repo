@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { TEAM_DESKTOP_MIN_WIDTH, teamUi as ui } from '@/constants/teamLeaderTheme';
 import { TeamText as Text } from '@/components/team/TeamText';
 import React, { useEffect, useState } from 'react';
 import { Pressable, View, useWindowDimensions } from 'react-native';
@@ -8,13 +8,13 @@ import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderScheduleRow, TeamLeaderPublishedResult, TeamLeaderAnnouncement, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { Skeleton } from '@/components/team/TeamSkeleton';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 
 function StatCard({ icon: Icon, label, value, helper, tone, iconBg }: { icon: React.ComponentType<any>; label: string; value: string | number; helper: string; tone: string; iconBg: string }) {
   return (
-    <Card style={{ flex: 1, minWidth: 170, borderRadius: 16, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 }}>
+    <Card style={{ flex: 1, minWidth: 0, borderRadius: 16, borderColor: ui.colors.border, shadowColor: ui.shadow.shadowColor, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 2 }}>
       <CardContent style={{ padding: 16 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center' }}>
@@ -33,9 +33,9 @@ function StatCard({ icon: Icon, label, value, helper, tone, iconBg }: { icon: Re
 
 function SectionHeader({ icon: Icon, title, description, action, onPress }: { icon: React.ComponentType<any>; title: string; description: string; action: string; onPress: () => void }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: '#E5F5F1', alignItems: 'center', justifyContent: 'center' }}><Icon size={20} color={ui.colors.primary} /></View>
+        <View style={{ width: 38, height: 38, borderRadius: 13, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Icon size={20} color={ui.colors.primary} /></View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>{title}</Text>
           <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 3 }}>{description}</Text>
@@ -83,7 +83,7 @@ export default function TeamLeaderDashboard() {
   if (dataError) return <TeamLeaderAppShell><TeamLeaderDataError message={dataError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
 
   const teamName = context.team_name || 'Your Team';
-  const teamPrimary = context.portal_primary_color || ui.colors.primary;
+  const teamPrimary = ui.colors.primary;
   const todayKey = new Date().toDateString();
   const todaysEvents = schedule.filter((event) => event.start_time && new Date(event.start_time).toDateString() === todayKey);
   const upcomingEvents = schedule.filter((event) => !event.start_time || new Date(event.start_time).getTime() >= Date.now()).slice(0, 5);
@@ -91,38 +91,39 @@ export default function TeamLeaderDashboard() {
   const ownStanding = standings.find((row) => row.is_own_team);
   const nextEvent = upcomingEvents[0];
   const goTo = (path: string) => router.push(path as any);
-  const statWidth = width < 600 ? '100%' : width < 1100 ? 250 : 170;
+  const mobile = width < TEAM_DESKTOP_MIN_WIDTH;
+  const statWidth = mobile ? '48%' : width < 1100 ? 250 : 170;
 
   return (
     <TeamLeaderAppShell>
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
-        <Card>
-          <CardContent style={{ padding: 20, minHeight: 116, justifyContent: 'center' }}>
+        <Card style={mobile ? { backgroundColor: ui.colors.surface, borderColor: ui.colors.border, borderRadius: 28 } : undefined}>
+          <CardContent style={{ padding: 20, minHeight: mobile ? 128 : 116, justifyContent: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <View style={{ width: 54, height: 54, borderRadius: 16, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 54, height: 54, borderRadius: 16, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
                 <Users size={25} color={teamPrimary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: ui.colors.text, fontSize: width < 600 ? 18 : 20, fontWeight: '700' }}>Welcome back, {teamName}!</Text>
+                <Text style={{ color: ui.colors.text, fontSize: mobile ? 21 : 20, fontWeight: '700' }}>Welcome back, {teamName}!</Text>
                 <Text style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 3 }}>Here is what is happening with your team today.</Text>
               </View>
             </View>
           </CardContent>
         </Card>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          <View style={{ width: statWidth }}><StatCard icon={Trophy} label="Current Rank" value={ownStanding?.rank ? `#${ownStanding.rank}` : '—'} helper="Keep pushing!" tone="#23B981" iconBg={ui.colors.successSoft} /></View>
-          <View style={{ width: statWidth }}><StatCard icon={Trophy} label="Total Points" value={ownStanding?.total_points ?? 0} helper="Points earned" tone="#3478F6" iconBg={ui.colors.primarySoft} /></View>
-          <View style={{ width: statWidth }}><StatCard icon={CalendarDays} label="Today&apos;s Events" value={todaysEvents.length} helper="Events today" tone="#9366E8" iconBg={ui.colors.infoSoft} /></View>
-          <View style={{ width: statWidth }}><StatCard icon={CalendarDays} label="Next Reporting" value={nextEvent?.start_time ? new Date(nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'} helper="No upcoming report" tone="#E9962F" iconBg={ui.colors.warningSoft} /></View>
-          <View style={{ width: statWidth }}><StatCard icon={Megaphone} label="Announcements" value={announcements.length} helper="Unread" tone="#55B64B" iconBg={ui.colors.successSoft} /></View>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: mobile ? 'space-between' : 'flex-start', gap: mobile ? 8 : 12 }}>
+          <View style={{ width: statWidth }}><StatCard icon={Trophy} label="Current Rank" value={ownStanding?.rank ? `#${ownStanding.rank}` : '—'} helper="Keep pushing!" tone={ui.colors.primary} iconBg={ui.colors.successSoft} /></View>
+          <View style={{ width: statWidth }}><StatCard icon={Trophy} label="Total Points" value={ownStanding?.total_points ?? 0} helper="Points earned" tone={ui.colors.primary} iconBg={ui.colors.primarySoft} /></View>
+          <View style={{ width: statWidth }}><StatCard icon={CalendarDays} label="Today&apos;s Events" value={todaysEvents.length} helper="Events today" tone={ui.colors.primary} iconBg={ui.colors.infoSoft} /></View>
+          <View style={{ width: statWidth }}><StatCard icon={CalendarDays} label="Next Reporting" value={nextEvent?.start_time ? new Date(nextEvent.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'} helper="No upcoming report" tone={ui.colors.primary} iconBg={ui.colors.warningSoft} /></View>
+          <View style={{ width: statWidth }}><StatCard icon={Megaphone} label="Announcements" value={announcements.length} helper="Unread" tone={ui.colors.primary} iconBg={ui.colors.successSoft} /></View>
         </View>
 
         <View>
           <Text style={{ color: ui.colors.text, fontSize: 18, fontWeight: '800', marginBottom: 12 }}>Quick access</Text>
           <View style={{ backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 18, padding: 13, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
             {[{ label: 'My team', desc: 'View and manage your team', path: '/team/my-team', icon: Users }, { label: 'Full schedule', desc: 'Browse all events & timings', path: '/team/schedule', icon: CalendarDays }, { label: 'View results', desc: 'Check results & standings', path: '/team/results', icon: Trophy }].map(({ label, desc, path, icon: Icon }) => (
-              <Pressable key={path} onPress={() => goTo(path)} accessibilityRole="button" style={{ flex: 1, minWidth: 210, padding: 14, borderRadius: 13, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: '#FAFDFC', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Pressable key={path} onPress={() => goTo(path)} accessibilityRole="button" style={{ flex: 1, minWidth: mobile ? 220 : 210, padding: mobile ? 12 : 14, borderRadius: 13, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <Icon size={23} color={ui.colors.primary} /><View style={{ flex: 1 }}><Text style={{ color: ui.colors.primary, fontSize: 13, fontWeight: '800' }}>{label}</Text><Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 3 }}>{desc}</Text></View><ArrowRight size={17} color={ui.colors.primary} />
               </Pressable>
             ))}
@@ -148,5 +149,5 @@ export default function TeamLeaderDashboard() {
 }
 
 function EmptyState({ icon: Icon, title, text }: { icon: React.ComponentType<any>; title: string; text: string }) {
-  return <View style={{ minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: '#E8F5F2', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Icon size={25} color="#71C9BD" /></View><Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '800' }}>{title}</Text><Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>{text}</Text></View>;
+  return <View style={{ minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingVertical: 18 }}><View style={{ width: 54, height: 54, borderRadius: 27, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Icon size={25} color={ui.colors.primary} /></View><Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '800' }}>{title}</Text><Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>{text}</Text></View>;
 }

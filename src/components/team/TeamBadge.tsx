@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { ui } from '@/constants/designSystem';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import { TeamText } from './TeamText';
 
 type Variant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';

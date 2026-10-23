@@ -1,9 +1,10 @@
+import { teamUi } from '@/constants/teamLeaderTheme';
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
-import { Slot, Stack } from "expo-router";
+import { Slot, Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "../global.css";
@@ -35,16 +36,17 @@ import { NotificationToast } from "../components/ui/NotificationToast";
 const LOADING_BG = "#011635";
 
 function AppLoadingScreen() {
+  const teamRoute = usePathname().startsWith('/team');
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: LOADING_BG,
+        backgroundColor: teamRoute ? teamUi.colors.background : LOADING_BG,
         justifyContent: "center",
         alignItems: "center",
       }}
     >
-      <ActivityIndicator size="large" color="#c69a53" />
+      <ActivityIndicator size="large" color={teamRoute ? teamUi.colors.primary : "#c69a53"} />
     </View>
   );
 }

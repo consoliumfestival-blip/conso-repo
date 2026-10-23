@@ -1,4 +1,5 @@
-import { ui } from '@/constants/designSystem';
+import { TeamPortalIdentity } from '@/components/team/TeamPortalIdentity';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ScrollView, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -7,7 +8,7 @@ import { Eye, EyeOff, LockKeyhole, ShieldCheck, UserRound, CheckCircle2 } from '
 import { useAuthStore } from '@/core/store/authStore';
 import { supabase } from '@/core/config/supabase';
 import { Button } from '@/components/team/TeamButton';
-import { Label } from '@/components/ui/shadcn/label';
+import { Label } from '@/components/team/TeamLabel';
 import { Card } from '@/components/team/TeamCard';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { authService } from '@/services/authService';
@@ -17,7 +18,7 @@ export default function TeamLeaderFirstLogin() {
   const setUser = useAuthStore((state) => state.setUser);
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isDesktop = width >= 640;
+  const isDesktop = width >= 900;
 
   const currentUsername = user?.user_metadata?.username || user?.user_metadata?.team_leader_code || '';
   const requiresUsernameChange = user?.app_metadata?.must_change_credentials === true
@@ -73,7 +74,7 @@ export default function TeamLeaderFirstLogin() {
 
 
   return (
-    <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
+    <View nativeID="team-leader-portal" style={{ flex: 1, backgroundColor: ui.colors.background }}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
@@ -84,20 +85,21 @@ export default function TeamLeaderFirstLogin() {
         }}
       >
         <Card style={{ width: '100%', maxWidth: 440, padding: isDesktop ? 32 : 24 }}>
+          <TeamPortalIdentity />
           {/* Header */}
           <View style={{ alignItems: 'center', marginBottom: 24 }}>
             <View style={{
               width: 56,
               height: 56,
               borderRadius: 28,
-              backgroundColor: '#0F766E15',
+              backgroundColor: ui.colors.primarySoft,
               borderWidth: 1,
-              borderColor: '#0F766E40',
+              borderColor: ui.colors.borderStrong,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 12,
             }}>
-              <ShieldCheck size={28} color="#0F766E" />
+              <ShieldCheck size={28} color={ui.colors.primary} />
             </View>
             <Text style={{
               fontSize: 20,
@@ -132,7 +134,8 @@ export default function TeamLeaderFirstLogin() {
               }}>
                 <UserRound size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
                 <TextInput
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
+                  accessibilityLabel="Username"
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="e.g. victoria or victoria_leader"
                   placeholderTextColor={ui.colors.textMuted}
                   value={newUsername}
@@ -167,8 +170,8 @@ export default function TeamLeaderFirstLogin() {
                 backgroundColor: ui.colors.background,
               }}>
                 <LockKeyhole size={16} color={ui.colors.textMuted} style={{ marginRight: 8 }} />
-                <TextInput
-                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0 }}
+                <TextInput accessibilityLabel="Password"
+                  style={{ flex: 1, fontSize: 14, color: ui.colors.text, padding: 0, backgroundColor: 'transparent', borderWidth: 0, borderRadius: 0, ...({ outlineStyle: 'none', boxShadow: 'none' } as any) }}
                   placeholder="Enter your new password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={newPassword}
@@ -197,11 +200,11 @@ export default function TeamLeaderFirstLogin() {
               <View style={{
                 padding: 10,
                 borderRadius: 8,
-                backgroundColor: '#FEE2E2',
+                backgroundColor: ui.colors.dangerSoft,
                 borderWidth: 1,
-                borderColor: '#FCA5A5',
+                borderColor: ui.colors.borderStrong,
               }}>
-                <Text style={{ fontSize: 12, color: '#991B1B', textAlign: 'center' }}>{errorMsg}</Text>
+                <Text style={{ fontSize: 12, color: ui.colors.danger, textAlign: 'center' }}>{errorMsg}</Text>
                 {errorMsg.toLowerCase().includes('session expired') || errorMsg.toLowerCase().includes('sign in again') ? (
                   <TouchableOpacity
                     onPress={() => router.replace('/team/login')}
@@ -211,10 +214,10 @@ export default function TeamLeaderFirstLogin() {
                       paddingVertical: 5,
                       paddingHorizontal: 14,
                       borderRadius: 6,
-                      backgroundColor: '#DC2626',
+                      backgroundColor: ui.colors.danger,
                     }}
                   >
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Back to Sign In</Text>
+                    <Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '600' }}>Back to Sign In</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -225,16 +228,16 @@ export default function TeamLeaderFirstLogin() {
               <View style={{
                 padding: 10,
                 borderRadius: 8,
-                backgroundColor: '#DCFCE7',
+                backgroundColor: ui.colors.successSoft,
                 borderWidth: 1,
-                borderColor: '#86EFAC',
+                borderColor: ui.colors.borderStrong,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
               }}>
-                <CheckCircle2 size={16} color="#166534" />
-                <Text style={{ fontSize: 12, color: '#166534', fontWeight: '600' }}>{successMsg}</Text>
+                <CheckCircle2 size={16} color={ui.colors.success} />
+                <Text style={{ fontSize: 12, color: ui.colors.success, fontWeight: '600' }}>{successMsg}</Text>
               </View>
             ) : null}
 
@@ -247,10 +250,10 @@ export default function TeamLeaderFirstLogin() {
                 height: 44,
                 borderRadius: 10,
                 marginTop: 4,
-                backgroundColor: '#0F766E',
+                backgroundColor: ui.colors.primary,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+              <Text style={{ color: ui.colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
                 {loading ? 'Saving Credentials...' : requiresUsernameChange ? 'Save & Enter Dashboard' : 'Change Password & Continue'}
               </Text>
             </Button>

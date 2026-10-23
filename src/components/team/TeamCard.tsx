@@ -1,16 +1,17 @@
 import React from 'react';
-import { View, ViewProps, TextProps } from 'react-native';
-import { ui } from '@/constants/designSystem';
+import { View, ViewProps, TextProps, useWindowDimensions } from 'react-native';
+import { TEAM_DESKTOP_MIN_WIDTH, teamUi as ui } from '@/constants/teamLeaderTheme';
 import { TeamText } from './TeamText';
 
 export const Card = React.forwardRef<React.ElementRef<typeof View>, ViewProps>(
-  ({ style, ...props }, ref) => (
-    <View
+  ({ style, ...props }, ref) => {
+    const { width } = useWindowDimensions();
+    return <View
       ref={ref}
       {...props}
       style={[{
         backgroundColor: ui.colors.surface,
-        borderRadius: ui.radius.xl,
+        borderRadius: width < TEAM_DESKTOP_MIN_WIDTH ? 24 : ui.radius.xl,
         borderWidth: 1,
         borderColor: ui.colors.border,
         shadowColor: ui.colors.text,
@@ -19,8 +20,8 @@ export const Card = React.forwardRef<React.ElementRef<typeof View>, ViewProps>(
         shadowOffset: { width: 0, height: 4 },
         elevation: 1,
       }, style]}
-    />
-  ),
+    />;
+  },
 );
 
 export const CardHeader = React.forwardRef<React.ElementRef<typeof View>, ViewProps>(

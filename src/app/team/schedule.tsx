@@ -1,4 +1,4 @@
-import { ui } from '@/constants/designSystem';
+import { teamUi as ui } from '@/constants/teamLeaderTheme';
 import React, { useEffect, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
@@ -10,7 +10,7 @@ import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamL
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
 import { Button } from '@/components/team/TeamButton';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';

@@ -46,8 +46,16 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
   const eligibleIds = useMemo(() => new Set(eligible.map(person => person.id)), [eligible]);
   const min = Number(entry.item?.group_min_members ?? 0);
   const max = Number(entry.item?.group_max_members ?? 0);
-  const sizeValid = memberIds.length > 0 && (min < 1 || memberIds.length >= min) && (max < 1 || memberIds.length <= max);
-  const valid = sizeValid && !!leaderId && memberIds.includes(leaderId) && memberIds.every(id => eligibleIds.has(id));
+  // Configured member counts describe the competition; the roster RPC requires
+  // a non-empty eligible roster and a leader, without enforcing those counts.
+  const validationMessage = memberIds.length === 0
+    ? 'Keep at least one member in this group entry.'
+    : !leaderId || !memberIds.includes(leaderId)
+      ? 'Choose a leader from the selected members before saving.'
+      : memberIds.some(id => !eligibleIds.has(id))
+        ? 'Deselect members who are no longer eligible before saving.'
+        : '';
+  const valid = !validationMessage;
   const changed = memberIds.length !== expectedIds.length || memberIds.some(id => !expectedIds.includes(id))
     || leaderId !== entry.group_leader_participant_id;
   const choices = useMemo(() => {
@@ -63,7 +71,7 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
   }, [eligible, entry, festivalId, memberIds, search]);
 
   const toggle = (id: string) => {
-    if (!eligibleIds.has(id)) return;
+    if (!eligibleIds.has(id) && !memberIds.includes(id)) return;
     setMemberIds(ids => {
       if (!ids.includes(id)) return [...ids, id];
       if (leaderId === id) setLeaderId('');
@@ -107,18 +115,19 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
         <ScrollView className="min-h-0 flex-1" keyboardShouldPersistTaps="handled">
           {choices.map(person => {
             const selected = memberIds.includes(person.id);
-            const allowed = eligibleIds.has(person.id);
+            const eligibleMember = eligibleIds.has(person.id);
+            const allowed = selected || eligibleMember;
             return <View key={person.id} className="mb-2 flex-row items-center gap-2 rounded-lg border border-ui-border p-2">
               <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: !allowed }} disabled={!allowed || saving} onPress={() => toggle(person.id)} className="min-h-11 min-w-11 flex-1 flex-row items-center gap-2">
                 <View className={`h-5 w-5 items-center justify-center rounded border ${selected ? 'border-emerald-700 bg-emerald-700' : 'border-slate-300'}`}>{selected && <Check size={13} color="white" />}</View>
-                <View className="flex-1"><Text className="font-poppins-bold text-xs text-ui-text">{person.name}</Text><Text className="font-poppins text-[11px] text-ui-text-muted">{person.chest_number || 'No chest number'}{!allowed ? ' · No longer eligible' : ''}</Text></View>
+                <View className="flex-1"><Text className="font-poppins-bold text-xs text-ui-text">{person.name}</Text><Text className="font-poppins text-[11px] text-ui-text-muted">{person.chest_number || 'No chest number'}{!eligibleMember ? ' · No longer eligible' : ''}</Text></View>
               </TouchableOpacity>
-              {selected && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Choose ${person.name} as group leader`} disabled={saving || !allowed} onPress={() => setLeaderId(person.id)} className={`min-h-10 justify-center rounded-lg border px-3 ${leaderId === person.id ? 'border-emerald-700 bg-emerald-50' : 'border-ui-border'}`}><Text className="font-poppins-bold text-xs text-ui-text">{leaderId === person.id ? 'Leader' : 'Make leader'}</Text></TouchableOpacity>}
+              {selected && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Choose ${person.name} as group leader`} disabled={saving || !eligibleMember} onPress={() => setLeaderId(person.id)} className={`min-h-10 justify-center rounded-lg border px-3 ${leaderId === person.id ? 'border-emerald-700 bg-emerald-50' : 'border-ui-border'}`}><Text className="font-poppins-bold text-xs text-ui-text">{leaderId === person.id ? 'Leader' : 'Make leader'}</Text></TouchableOpacity>}
             </View>;
           })}
         </ScrollView>
-        <Text className="mt-2 font-poppins text-xs text-ui-text-muted">{memberIds.length} selected{min > 0 ? ` · minimum ${min}` : ''}{max > 0 ? ` · maximum ${max}` : ''}</Text>
-        {!valid && <Text className="mt-1 font-poppins text-xs text-amber-800">Choose an eligible roster and a leader within the configured group size.</Text>}
+        <Text className="mt-2 font-poppins text-xs text-ui-text-muted">{memberIds.length} selected{min > 0 || max > 0 ? ` · Configured size: ${min > 0 ? min : '—'}${max > 0 && max !== min ? `–${max}` : ''} (reference only)` : ''}</Text>
+        {!valid && <Text className="mt-1 font-poppins text-xs text-amber-800">{validationMessage}</Text>}
         {!!error && <Text className="mt-2 font-poppins text-xs text-red-700">{error}</Text>}
         <View className="mt-3 flex-row justify-end gap-2">
           <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={onClose} className="min-h-11 justify-center rounded-lg border border-ui-border px-4"><Text className="font-poppins-bold text-xs text-ui-text">Cancel</Text></TouchableOpacity>

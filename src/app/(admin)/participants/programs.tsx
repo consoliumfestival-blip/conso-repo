@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { GroupRosterEditor } from '../../../components/participants/GroupRosterEditor';
+import { GroupEntryDeleteDialog } from '../../../components/participants/GroupEntryDeleteDialog';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
@@ -54,6 +55,7 @@ export default function ProgramsScreen() {
   const { data: festivalRegistrations = [] } = useFestivalRegistrations(festival?.id);
   const [section, setSection] = useState<'individual' | 'group'>(typeof edit === 'string' ? 'group' : 'individual');
   const [editingEntry, setEditingEntry] = useState<GeneralTeamEntry | null>(null);
+  const [deletingEntry, setDeletingEntry] = useState<GeneralTeamEntry | null>(null);
   const [activeCard, setActiveCard] = useState<{ item: ProgramItem; category: string; kind: 'participant' | 'general_team' } | null>(null);
   const [cardModalMode, setCardModalMode] = useState<'details' | 'assign'>('assign');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -333,7 +335,10 @@ export default function ProgramsScreen() {
               {currentRegistrations.filter(entry => entry.item?.id === activeCard.item.id).length ? currentRegistrations.filter(entry => entry.item?.id === activeCard.item.id).map(entry => <View key={entry.id} className="mb-2 rounded-lg border border-ui-border bg-white p-3">
                 <Text className="font-poppins-bold text-sm text-ui-text">{entry.leader?.name || 'Group'} · Leader chest {entry.entry_chest_number || '—'} · {entry.organisation?.name || 'Organisation unavailable'}</Text>
                 {entry.members.map(member => <Text key={member.participant_id} className="mt-1 font-poppins text-xs text-ui-text-muted">{member.participant?.name || 'Participant'}{member.participant?.chest_number ? ` · ${member.participant.chest_number}` : ''}</Text>)}
-                <TouchableOpacity onPress={() => { setActiveCard(null); setEditingEntry(entry); }} accessibilityRole="button" accessibilityLabel={`Edit members of group ${entry.entry_chest_number}`} className="mt-3 min-h-10 self-start justify-center rounded-lg border border-ui-border px-3"><Text className="font-poppins-bold text-xs text-ui-text">Edit members</Text></TouchableOpacity>
+                <View className="mt-3 flex-row flex-wrap gap-2">
+                  <TouchableOpacity onPress={() => { setActiveCard(null); setEditingEntry(entry); }} accessibilityRole="button" accessibilityLabel={`Edit members of group ${entry.entry_chest_number}`} className="min-h-11 justify-center rounded-lg border border-ui-border px-3"><Text className="font-poppins-bold text-xs text-ui-text">Edit members</Text></TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setActiveCard(null); setDeletingEntry(entry); }} accessibilityRole="button" accessibilityLabel={`Delete group entry ${entry.entry_chest_number}`} className="min-h-11 flex-row items-center gap-1 rounded-lg border border-red-200 px-3"><Trash2 size={13} color="#B91C1C"/><Text className="font-poppins-bold text-xs text-red-700">Delete entry</Text></TouchableOpacity>
+                </View>
               </View>) : <Text className="py-4 font-poppins text-sm text-ui-text-muted">No team entries have been assigned to this program.</Text>}
             </ScrollView>
           </> : <>
@@ -366,6 +371,8 @@ export default function ProgramsScreen() {
         </View>
       </View>
     </Modal>
+    {deletingEntry && festival && <GroupEntryDeleteDialog key={deletingEntry.id} entry={deletingEntry} festivalId={festival.id}
+      onClose={() => setDeletingEntry(null)} onDeleted={() => { setDeletingEntry(null); setNotice('Group entry deleted. Students and team were kept.'); }} />}
     {editingEntry && festival && <GroupRosterEditor key={editingEntry.id} entry={editingEntry} festivalId={festival.id}
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
       onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); }} />}

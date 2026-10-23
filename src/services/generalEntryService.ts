@@ -70,6 +70,11 @@ export function formatGeneralEntryError(error: unknown, operation: 'create' | 'l
 }
 
 export const generalEntryService = {
+  async remove(registrationId: string) {
+    const { data, error } = await supabase.rpc('safe_delete_group_entry', { p_registration_id: registrationId });
+    if (error) throw new Error(error.message);
+    return data as { status: 'removed' | 'blocked' | 'not_found'; message?: string; member_ids?: string[] };
+  },
   async list(festivalId: string): Promise<GeneralTeamEntry[]> {
     const { data, error } = await supabase
       .from('registrations')

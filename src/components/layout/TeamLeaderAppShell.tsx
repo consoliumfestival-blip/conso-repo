@@ -277,12 +277,12 @@ export function TeamLeaderAppShell({
                     paddingVertical: 7,
                     paddingHorizontal: sidebarOpen ? 12 : 0,
                     justifyContent: sidebarOpen ? "flex-start" : "center",
-                    backgroundColor: active ? ui.colors.navActive : "transparent",
+                    backgroundColor: "transparent",
                     marginHorizontal: sidebarOpen ? 0 : 4,
                     borderRadius: 9,
                     marginBottom: 2,
                     borderWidth: active ? 1 : 0,
-                    borderColor: active ? ui.colors.borderStrong : "transparent",
+                    borderColor: active ? ui.colors.navActive : "transparent",
                   }}
                 >
                   <Icon

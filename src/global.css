@@ -211,8 +211,6 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
 [data-core-theme-scope] .metric-card,
 [data-core-theme-scope] .action-card,
 [data-core-theme-scope] .panel-card {
-  background: var(--core-surface) !important;
-  border-color: var(--core-border) !important;
   box-shadow: 0 2px 8px rgb(var(--core-overlay-rgb) / 0.045) !important;
   -webkit-backdrop-filter: var(--core-blur, none) !important;
   backdrop-filter: var(--core-blur, none) !important;

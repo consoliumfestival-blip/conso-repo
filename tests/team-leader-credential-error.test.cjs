@@ -47,3 +47,28 @@ test('self credential update keeps the standard invoke message when no response 
 
   await assert.rejects(service.selfUpdateCredentials('new-user', 'new-password'), { message: 'Network request failed' });
 });
+
+test('reset returns a separate trimmed username and preserves all six password digits', async () => {
+  const service = loadService({ data: { success: true, username: '  leader  ', password: '001234' }, error: null });
+  const result = await service.resetPassword('user', 'festival');
+  assert.equal(result.username, 'leader');
+  assert.equal(result.password, '001234');
+});
+
+test('malformed reset responses are not presented as usable credentials', async () => {
+  for (const data of [
+    { success: true, username: '', password: '001234' },
+    { success: true, username: 'leader', password: 'letters' },
+    { success: true, username: 'leader', password: '1234567' },
+  ]) {
+    const service = loadService({ data, error: null });
+    await assert.rejects(service.resetPassword('user', 'festival'), /reset response/);
+  }
+});
+
+test('a completed setup response directs a retrying user back to sign in', async () => {
+  const service = loadService({ data: null, error: {
+    context: { json: async () => ({ error: 'CREDENTIAL_CHANGE_NOT_REQUIRED', message: 'Credential setup is not required.' }) },
+  } });
+  await assert.rejects(service.selfUpdateCredentials(null, '012345'), /Sign in again/);
+});

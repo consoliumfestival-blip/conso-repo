@@ -1,5 +1,5 @@
 import { coreColor } from '@/constants/coreTheme';
-import { teamLoginPath } from '@/core/utils/teamLoginPresentation';
+import { teamLeaderClipboardValue, TeamLeaderCredentialKind } from '@/core/utils/teamLeaderCredentials';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
@@ -105,9 +105,10 @@ export default function TeamLeaderPortalAdmin() {
 
   const [openDropdown, setOpenDropdown] = useState<'participant' | 'team' | null>(null);
 
-  const copyCredential = async (value: string | null | undefined, label: string) => {
-    if (!value) return;
+  const copyCredential = async (rawValue: string | null | undefined, label: string, kind: TeamLeaderCredentialKind) => {
+    if (!rawValue) return;
     try {
+      const value = teamLeaderClipboardValue(rawValue, kind);
       if (Platform.OS === 'web') {
         let copied = false;
         // Keep the legacy copy attempt synchronous with the click. Some browsers
@@ -150,7 +151,9 @@ export default function TeamLeaderPortalAdmin() {
       setTimeout(() => setCopiedCredential(null), 1800);
     } catch (error) {
       console.error(`Failed to copy ${label}:`, error);
-      const message = 'Clipboard access was blocked. Allow clipboard access for this site, then try again.';
+      const message = error instanceof Error && /not available|Reissue/.test(error.message)
+        ? error.message
+        : 'Clipboard access was blocked. Allow clipboard access for this site, then try again.';
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.alert(`Copy failed\n\n${message}`);
       } else {
@@ -379,7 +382,8 @@ export default function TeamLeaderPortalAdmin() {
         const errorMsg = (error as any)?.context?.message || error.message;
         throw new Error(errorMsg || 'Failed to create Team Leader account.');
       }
-      if (typeof data?.user_id !== 'string' || typeof data?.password !== 'string') {
+      if (typeof data?.user_id !== 'string' || typeof data?.password !== 'string' || !/^[0-9]{6}$/.test(data.password)
+        || typeof data?.username !== 'string' || !data.username.trim()) {
         throw new Error('The account was created, but its one-time password could not be returned.');
       }
       if (tenantId && activeFestival?.id) {
@@ -388,7 +392,7 @@ export default function TeamLeaderPortalAdmin() {
 
       setTempCredentials({
         user_id: data.user_id,
-        username: data?.username ?? null,
+        username: data.username.trim(),
         password: data?.password,
       });
       setShowCreateAccount(false);
@@ -731,7 +735,7 @@ export default function TeamLeaderPortalAdmin() {
                       {tempCredentials.username && (
                         <View className="flex-row items-center justify-between py-1">
                           <Text className="text-sm text-core-success-green-700 dark:text-core-success-green-400 flex-1">Username: {tempCredentials.username}</Text>
-                          <TouchableOpacity onPress={() => copyCredential(tempCredentials.username, 'Username')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
+                          <TouchableOpacity onPress={() => copyCredential(tempCredentials.username, 'Username', 'username')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
                             <Copy size={14} color={coreColor("#15803d", 'success')} />
                             <Text className="text-xs text-core-success-green-700 ml-1">{copiedCredential === 'Username' ? 'Copied' : 'Copy username'}</Text>
                           </TouchableOpacity>
@@ -739,23 +743,12 @@ export default function TeamLeaderPortalAdmin() {
                       )}
                       <View className="flex-row items-center justify-between py-1">
                         <Text className="text-sm text-core-success-green-700 dark:text-core-success-green-400 flex-1">Temporary Password: {tempCredentials.password}</Text>
-                        <TouchableOpacity onPress={() => copyCredential(tempCredentials.password, 'Password')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
+                        <TouchableOpacity onPress={() => copyCredential(tempCredentials.password, 'Password', 'password')} className="flex-row items-center px-2 py-1 rounded border border-core-success-soft-green-300">
                           <Copy size={14} color={coreColor("#15803d", 'success')} />
                           <Text className="text-xs text-core-success-green-700 ml-1">{copiedCredential === 'Password' ? 'Copied' : 'Copy password'}</Text>
                         </TouchableOpacity>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                          const text = `Team: ${selectedTeam?.organisation_name || ''}\nUsername: ${tempCredentials.username}\nPassword: ${tempCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), selectedTeam?.organisation_name)}`;
-                          copyCredential(text, 'All credentials');
-                        }}
-                        className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-core-primary-green-700"
-                      >
-                        <Copy size={14} color={coreColor("#ffffff", 'onPrimary')} />
-                        <Text className="text-xs text-core-on-primary-white font-medium ml-1">{copiedCredential === 'All credentials' ? 'Copied all details' : 'Copy login details'}</Text>
-                      </TouchableOpacity>
-                      <Text className="text-xs text-muted-foreground mt-2 italic">On first login, the leader will be required to set their own personal username and password.</Text>
+                      <Text className="text-xs text-muted-foreground mt-2">Copy username and password separately. On first login, choose your own six-digit numeric password.</Text>
                     </View>
                   )}
                 </View>
@@ -768,7 +761,7 @@ export default function TeamLeaderPortalAdmin() {
                     Participant: {selectedParticipant?.name}
                   </Text>
                   <Text className="text-sm text-muted-foreground mb-4">
-                    A clean team-based username (e.g. {selectedTeam?.organisation_name ? selectedTeam.organisation_name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'team'}) and temporary password will be generated automatically. On first login, the leader will set their own permanent username and password.
+                    A short username and six-digit temporary password will be generated automatically. On first login, the leader can choose a personal username and must set a six-digit numeric password.
                   </Text>
                   <View className="flex-row justify-end space-x-2">
                     <TouchableOpacity
@@ -856,7 +849,7 @@ export default function TeamLeaderPortalAdmin() {
                           Username: <Text className="font-mono text-primary">{assignment.leader_code}</Text>
                         </Text>
                         <TouchableOpacity
-                          onPress={() => copyCredential(assignment.leader_code, `Username_${assignment.id}`)}
+                          onPress={() => copyCredential(assignment.leader_code, `Username_${assignment.id}`, 'username')}
                           className="px-2 py-1 rounded border border-border"
                           accessibilityLabel={`Copy username for ${assignment.leader_name}`}
                         >
@@ -875,7 +868,7 @@ export default function TeamLeaderPortalAdmin() {
                           </TouchableOpacity>
                         ) : assignment.password_state === 'pending_change' && getAvailablePassword(assignment) ? (
                           <TouchableOpacity
-                            onPress={() => void copyCredential(getAvailablePassword(assignment), `Password_${assignment.id}`)}
+                            onPress={() => void copyCredential(getAvailablePassword(assignment), `Password_${assignment.id}`, 'password')}
                             className="px-2 py-1 rounded border border-border ml-1"
                             accessibilityLabel={`Copy password for ${assignment.leader_name}`}
                           >
@@ -902,32 +895,21 @@ export default function TeamLeaderPortalAdmin() {
                         <Text className="font-medium text-core-warning-amber-900 mb-1">New temporary login credentials</Text>
                         <View className="flex-row items-center justify-between py-1">
                           <Text className="text-xs text-core-warning-amber-800 flex-1">Username: {resetCredentials.username}</Text>
-                          <TouchableOpacity onPress={() => copyCredential(resetCredentials.username, `Reset_Username_${assignment.id}`)} className="px-2 py-1 rounded border border-core-warning-soft-amber-300">
+                          <TouchableOpacity onPress={() => copyCredential(resetCredentials.username, `Reset_Username_${assignment.id}`, 'username')} className="px-2 py-1 rounded border border-core-warning-soft-amber-300">
                             <Text className="text-xs text-core-warning-amber-800">{copiedCredential === `Reset_Username_${assignment.id}` ? 'Copied' : 'Copy username'}</Text>
                           </TouchableOpacity>
                         </View>
                         <View className="flex-row items-center justify-between py-1">
                           <Text className="text-xs text-core-warning-amber-800 flex-1">Temporary password: {resetCredentials.password}</Text>
                           <TouchableOpacity
-                            onPress={() => copyCredential(resetCredentials.password, `Reset_Password_${assignment.id}`)}
+                            onPress={() => copyCredential(resetCredentials.password, `Reset_Password_${assignment.id}`, 'password')}
                             className="px-2 py-1 rounded border border-core-warning-soft-amber-300"
                             accessibilityLabel={`Copy temporary password for ${assignment.leader_name}`}
                           >
                             <Text className="text-xs text-core-warning-amber-800">{copiedCredential === `Reset_Password_${assignment.id}` ? 'Copied' : 'Copy password'}</Text>
                           </TouchableOpacity>
                         </View>
-                        <TouchableOpacity
-                          onPress={() => {
-                            const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                            const text = `Username: ${resetCredentials.username}\nPassword: ${resetCredentials.password}\nLogin Link: ${origin}${teamLoginPath(activeFestival?.custom_name || (activeFestival ? `Festival ${activeFestival.festival_year}` : ''), assignment.team_name)}`;
-                            copyCredential(text, `Reset_Login_${assignment.id}`);
-                          }}
-                          className="flex-row items-center justify-center mt-2 px-3 py-2 rounded bg-core-warning-action-amber-700"
-                        >
-                          <Copy size={14} color={coreColor("#ffffff", 'onPrimary')} />
-                          <Text className="text-xs text-core-on-primary-white font-medium ml-1">{copiedCredential === `Reset_Login_${assignment.id}` ? 'Copied' : 'Copy login details'}</Text>
-                        </TouchableOpacity>
-                        <Text className="text-xs text-core-warning-amber-700 mt-2">This temporary password replaces the previous one. The leader will be asked to change it after signing in.</Text>
+                        <Text className="text-xs text-core-warning-amber-700 mt-2">Your password is now six digits only. Copy username and password separately. The old password no longer works; choose a new six-digit password after signing in.</Text>
                       </View>
                     )}
                   </View>

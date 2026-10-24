@@ -37,7 +37,7 @@ const getRequiredProfile = async (userId: string) => {
 };
 
 const resolveUserLogin = async (identifier: string, password: string, loginType?: 'team_leader') => {
-  const submittedIdentifier = loginType === 'team_leader' ? identifier : identifier.trim();
+  const submittedIdentifier = identifier.trim();
 
   // Email login: resolve directly against Supabase Auth.
   if (!loginType && submittedIdentifier.includes('@')) {

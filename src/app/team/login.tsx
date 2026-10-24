@@ -12,6 +12,7 @@ import { Card } from '@/components/team/TeamCard';
 import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
+import { isSixDigitPassword, readNumericPasswordInput } from '@/core/utils/teamLeaderCredentials';
 
 export default function TeamLeaderLogin() {
   React.useEffect(() => applyPortalPwaMetadata('team'), []);
@@ -20,6 +21,8 @@ export default function TeamLeaderLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [useLegacyPassword, setUseLegacyPassword] = useState(false);
+  const [invalidPasswordInput, setInvalidPasswordInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const setUser = useAuthStore((state) => state.setUser);
@@ -29,14 +32,19 @@ export default function TeamLeaderLogin() {
   const ThemeIcon = mode === 'dark' ? Sun : Moon;
 
   const handleLogin = async () => {
+    if (invalidPasswordInput) return;
     setErrorMsg('');
-    if (!username || !password) {
+    if (!username.trim() || !password) {
       setErrorMsg('Please enter both username and password.');
+      return;
+    }
+    if (!useLegacyPassword && !isSixDigitPassword(password)) {
+      setErrorMsg('Enter your six-digit password.');
       return;
     }
     setLoading(true);
     try {
-      const result = await authService.loginTeamLeader(username, password);
+      const result = await authService.loginTeamLeader(username.trim(), password);
       if (result.role !== 'team_leader') {
         await authService.logout().catch(() => undefined);
         setErrorMsg('This account does not have Team Leader access.');
@@ -54,7 +62,10 @@ export default function TeamLeaderLogin() {
         router.replace('/team/dashboard');
       }
     } catch (error: any) {
-      setErrorMsg(authService.friendlyError(error.message));
+      const message = error?.message || 'Could not sign in. Please try again.';
+      setErrorMsg(/invalid (username|login credentials|credentials)/i.test(message)
+        ? 'Incorrect username or password. Please check and try again.'
+        : authService.friendlyError(message));
     } finally {
       setLoading(false);
     }
@@ -151,7 +162,21 @@ export default function TeamLeaderLogin() {
                   placeholder="Enter your password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(value) => {
+                    const next = useLegacyPassword ? value : readNumericPasswordInput(value);
+                    if (next === null) {
+                      setInvalidPasswordInput(true);
+                      setErrorMsg('Enter only six digits (0–9); copy the password separately from the username.');
+                      return;
+                    }
+                    setInvalidPasswordInput(false);
+                    setErrorMsg('');
+                    setPassword(next);
+                  }}
+                  keyboardType={useLegacyPassword ? 'default' : 'number-pad'}
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  autoComplete="current-password"
                   secureTextEntry={!showPassword}
                   editable={!loading}
                 />
@@ -164,6 +189,16 @@ export default function TeamLeaderLogin() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            <TouchableOpacity
+              disabled={loading}
+              onPress={() => { setUseLegacyPassword((value) => !value); setPassword(''); setErrorMsg(''); setInvalidPasswordInput(false); }}
+              accessibilityRole="button"
+            >
+              <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>
+                {useLegacyPassword ? 'Use six-digit password' : 'Use an older password with letters'}
+              </Text>
+            </TouchableOpacity>
 
             {errorMsg ? (
               <View style={{
@@ -181,7 +216,7 @@ export default function TeamLeaderLogin() {
 
             <Button
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || invalidPasswordInput}
               loading={loading}
               className="mt-1"
             >

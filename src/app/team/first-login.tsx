@@ -14,6 +14,7 @@ import { authService } from '@/services/authService';
 import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
+import { isSixDigitPassword, readNumericPasswordInput } from '@/core/utils/teamLeaderCredentials';
 
 export default function TeamLeaderFirstLogin() {
   React.useEffect(() => applyPortalPwaMetadata('team'), []);
@@ -35,14 +36,23 @@ export default function TeamLeaderFirstLogin() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [savedUsername, setSavedUsername] = useState<string | null>(null);
+  const [invalidPasswordInput, setInvalidPasswordInput] = useState(false);
 
   const handleUpdate = async () => {
+    if (invalidPasswordInput) return;
     setErrorMsg('');
+    setSuccessMsg('');
     if (requiresUsernameChange && !newUsername.trim() && !currentUsername) {
       setErrorMsg('Enter a username to continue.');
       return;
     }
+    if (!isSixDigitPassword(newPassword)) {
+      setErrorMsg('Choose exactly six digits (0–9) for your password.');
+      return;
+    }
     setLoading(true);
+    let credentialsSaved = savedUsername !== null;
     try {
       let targetUserId = user?.id;
       if (!targetUserId) {
@@ -55,24 +65,28 @@ export default function TeamLeaderFirstLogin() {
       }
 
       // 1. Securely update credentials via service-role / edge
-      const usernameToUse = requiresUsernameChange ? (newUsername.trim() || currentUsername) : currentUsername;
-      await teamLeaderPortalService.selfUpdateCredentials(
-        requiresUsernameChange ? usernameToUse : null,
-        newPassword,
-      );
-
-      setSuccessMsg('Credentials updated successfully! Logging into your dashboard...');
+      let usernameToUse = savedUsername ?? (requiresUsernameChange ? (newUsername.trim() || currentUsername) : currentUsername);
+      if (!credentialsSaved) {
+        const updated = await teamLeaderPortalService.selfUpdateCredentials(
+          requiresUsernameChange ? usernameToUse : null,
+          newPassword,
+        );
+        usernameToUse = updated.username;
+        setSavedUsername(usernameToUse);
+        credentialsSaved = true;
+      }
 
       // 2. Establish fresh authenticated session with newly set credentials
       const loginResult = await authService.loginTeamLeader(usernameToUse, newPassword);
       setUser(loginResult.user, loginResult.tenant_id, loginResult.role, loginResult.is_superadmin);
 
-      setTimeout(() => {
-        router.replace('/team/dashboard');
-      }, 800);
+      router.replace('/team/dashboard');
 
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to update credentials. Please try again.');
+      setErrorMsg(err?.message || 'Please try again.');
+      if (credentialsSaved) {
+        setSuccessMsg('Your password has changed. Retry sign in, or return to Sign In and use your new six-digit password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -153,7 +167,7 @@ export default function TeamLeaderFirstLogin() {
                   onChangeText={setNewUsername}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  editable={!loading}
+                  editable={!loading && savedUsername === null}
                 />
               </View>
               <Text style={{ fontSize: 11, color: ui.colors.textMuted }}>
@@ -186,9 +200,19 @@ export default function TeamLeaderFirstLogin() {
                   placeholder="Enter your new password"
                   placeholderTextColor={ui.colors.textMuted}
                   value={newPassword}
-                  onChangeText={setNewPassword}
+                  onChangeText={(value) => {
+                    const next = readNumericPasswordInput(value);
+                    if (next === null) { setInvalidPasswordInput(true); setErrorMsg('Use exactly six digits (0–9).'); return; }
+                    setInvalidPasswordInput(false);
+                    setErrorMsg('');
+                    setNewPassword(next);
+                  }}
+                  keyboardType="number-pad"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
                   secureTextEntry={!showPassword}
-                  editable={!loading}
+                  editable={!loading && savedUsername === null}
                 />
                 <TouchableOpacity
                   onPress={() => setShowPassword(!showPassword)}
@@ -202,7 +226,7 @@ export default function TeamLeaderFirstLogin() {
                 </TouchableOpacity>
               </View>
               <Text style={{ fontSize: 11, color: ui.colors.textMuted }}>
-                Choose a password you can remember.
+                Choose exactly six digits (0–9). Keep any leading zeroes.
               </Text>
             </View>
 
@@ -216,7 +240,7 @@ export default function TeamLeaderFirstLogin() {
                 borderColor: ui.colors.borderStrong,
               }}>
                 <Text style={{ fontSize: 12, color: ui.colors.danger, textAlign: 'center' }}>{errorMsg}</Text>
-                {errorMsg.toLowerCase().includes('session expired') || errorMsg.toLowerCase().includes('sign in again') ? (
+                {(
                   <TouchableOpacity
                     onPress={() => router.replace('/team/login')}
                     style={{
@@ -230,7 +254,7 @@ export default function TeamLeaderFirstLogin() {
                   >
                     <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '600' }}>Back to Sign In</Text>
                   </TouchableOpacity>
-                ) : null}
+                )}
               </View>
             ) : null}
 
@@ -248,14 +272,14 @@ export default function TeamLeaderFirstLogin() {
                 gap: 6,
               }}>
                 <CheckCircle2 size={16} color={ui.colors.success} />
-                <Text style={{ fontSize: 12, color: ui.colors.success, fontWeight: '600' }}>{successMsg}</Text>
+                <Text style={{ flex: 1, fontSize: 12, color: ui.colors.success, fontWeight: '600' }}>{successMsg}</Text>
               </View>
             ) : null}
 
             {/* Submit Button */}
             <Button
               onPress={handleUpdate}
-              disabled={loading}
+              disabled={loading || invalidPasswordInput}
               style={{
                 width: '100%',
                 height: 44,
@@ -265,7 +289,7 @@ export default function TeamLeaderFirstLogin() {
               }}
             >
               <Text style={{ color: ui.colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
-                {loading ? 'Saving Credentials...' : requiresUsernameChange ? 'Save & Enter Dashboard' : 'Change Password & Continue'}
+                {loading ? 'Please wait...' : savedUsername !== null ? 'Retry Sign In' : requiresUsernameChange ? 'Save & Enter Dashboard' : 'Change Password & Continue'}
               </Text>
             </Button>
           </View>

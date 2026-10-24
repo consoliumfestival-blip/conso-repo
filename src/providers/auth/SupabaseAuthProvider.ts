@@ -14,6 +14,30 @@ type UsernameLoginFunctionResponse = {
   };
 };
 
+const invalidCredentialsError = { message: 'Invalid username or password.', code: 'INVALID_CREDENTIALS' };
+const unavailableError = { message: 'Login is temporarily unavailable. Please try again.', code: 'LOGIN_UNAVAILABLE' };
+const connectionError = { message: 'Could not reach the login service. Check your connection and try again.', code: 'LOGIN_CONNECTION_ERROR' };
+const rateLimitError = { message: 'Too many attempts. Please wait a moment before trying again.', code: 'RATE_LIMITED' };
+
+const classifyUsernameLoginError = async (error: unknown) => {
+  const context = typeof error === 'object' && error !== null && 'context' in error
+    ? (error as { context?: { status?: number; json?: () => Promise<unknown> } }).context
+    : undefined;
+  let responseCode: string | undefined;
+  if (typeof context?.json === 'function') {
+    try {
+      const body = await context.json() as { error?: unknown };
+      if (typeof body?.error === 'string') responseCode = body.error;
+    } catch {
+      // The HTTP status still distinguishes a service error from bad credentials.
+    }
+  }
+  if (context?.status === 429 || responseCode === 'RATE_LIMITED') return rateLimitError;
+  if (context?.status === 401 || responseCode === 'INVALID_CREDENTIALS') return invalidCredentialsError;
+  if (!context?.status) return connectionError;
+  return unavailableError;
+};
+
 const normalizeError = (error: unknown): AuthResult<never>['error'] => {
   if (!error) return null;
   const providerError = error as ProviderError;
@@ -46,7 +70,9 @@ export class SupabaseAuthProvider implements AuthProvider {
       ) {
         return {
           data: null,
-          error: { message: data?.message || 'Invalid username or password.', code: data?.error || 'LOGIN_FAILED' },
+          error: data?.error === 'INVALID_CREDENTIALS'
+            ? invalidCredentialsError
+            : data?.error === 'RATE_LIMITED' ? rateLimitError : unavailableError,
         };
       }
       return {
@@ -60,21 +86,7 @@ export class SupabaseAuthProvider implements AuthProvider {
         error: null,
       };
     } catch (err: unknown) {
-      // FunctionsHttpError carries the JSON body under .context; surface a
-      // generic message so username existence is never revealed.
-      let message = 'Invalid username or password.';
-      const context = typeof err === 'object' && err !== null && 'context' in err
-        ? (err as { context?: { json?: () => Promise<unknown> } }).context
-        : undefined;
-      if (context && typeof context.json === 'function') {
-        try {
-          const body = await context.json() as { message?: string; error?: string };
-          if (body.message && body.error === 'RATE_LIMITED') message = body.message;
-        } catch {
-          // ignore: fall back to the default generic message
-        }
-      }
-      return { data: null, error: { message, code: 'LOGIN_FAILED' } };
+      return { data: null, error: await classifyUsernameLoginError(err) };
     }
   }
 

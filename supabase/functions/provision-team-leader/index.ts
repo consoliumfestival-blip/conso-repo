@@ -130,6 +130,11 @@ serve(async (req) => {
         return json(404, { error: 'TEAM_LEADER_NOT_FOUND', message: 'A valid Team Leader account was not found.' });
       }
 
+      const resetUsername = targetProfile.team_leader_code;
+      if (typeof resetUsername !== 'string' || !resetUsername || resetUsername !== resetUsername.trim()) {
+        return json(409, { error: 'INVALID_LOGIN_USERNAME', message: 'This account needs a valid username before its password can be reset.' });
+      }
+
       const { data: targetAuthData, error: targetAuthError } = await admin.auth.admin.getUserById(targetUserId);
       if (targetAuthError || !targetAuthData.user) {
         return json(404, { error: 'TEAM_LEADER_NOT_FOUND', message: 'A valid Team Leader account was not found.' });
@@ -191,6 +196,10 @@ serve(async (req) => {
 
       if (mustChangeUsername && !newUsername) {
         return json(400, { error: 'USERNAME_REQUIRED', message: 'Enter a username to continue.' });
+      }
+
+      if (!/^[0-9]{6}$/.test(newPassword)) {
+        return json(400, { error: 'INVALID_PASSWORD_FORMAT', message: 'Use exactly six digits (0–9) for the new password.' });
       }
 
       const updatedUsername = mustChangeUsername ? newUsername : (callerProf.team_leader_code || '');
@@ -302,6 +311,11 @@ serve(async (req) => {
 
       if (linkedProfileError || linkedAuthError || !linkedAuthUser?.user || linkedProfile?.role !== 'team_leader') {
         return json(409, { error: 'TEAM_LEADER_ACCOUNT_NOT_FOUND', message: 'A valid Team Leader account was not found for this participant.' });
+      }
+
+      if (typeof linkedProfile.team_leader_code !== 'string' || !linkedProfile.team_leader_code
+        || linkedProfile.team_leader_code !== linkedProfile.team_leader_code.trim()) {
+        return json(409, { error: 'INVALID_LOGIN_USERNAME', message: 'This account needs a valid username before its password can be reset.' });
       }
 
       const newPassword = generateTemporaryPassword();

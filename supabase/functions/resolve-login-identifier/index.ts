@@ -62,7 +62,7 @@ serve(async (req) => {
 
   const teamLeaderLogin = body?.login_type === 'team_leader';
   const username = typeof body?.username === 'string'
-    ? (teamLeaderLogin ? body.username : body.username.trim().toLowerCase())
+    ? (teamLeaderLogin ? body.username.trim() : body.username.trim().toLowerCase())
     : '';
   const password = typeof body?.password === 'string' ? body.password : '';
 
@@ -98,24 +98,38 @@ serve(async (req) => {
     return json(429, { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a moment before trying again.' });
   }
 
-  // Server-side email resolution. Unknown usernames and resolution failures
-  // produce the identical generic error as a wrong password.
+  // Unknown usernames and wrong passwords share a generic failure. Resolver
+  // outages remain service errors so users are not told their password is wrong.
   const { data: email, error: resolveError } = await admin.rpc(
     teamLeaderLogin ? 'resolve_team_leader_login_email' : 'resolve_login_email',
     { p_username: username },
   );
 
+  if (resolveError) {
+    return json(503, { error: 'LOGIN_UNAVAILABLE', message: 'Login is temporarily unavailable. Please try again.' });
+  }
+
   // Unknown and known usernames both execute an Auth password check, reducing
   // the timing distinction. The dummy address is deterministic but never
   // returned and cannot reveal the internal synthetic login address.
   const dummyHash = await sha256(`dummy:${username}`);
-  const loginEmail = !resolveError && typeof email === 'string' && email
+  const loginEmail = typeof email === 'string' && email
     ? email
     : `invalid_${dummyHash.slice(0, 24)}@sahi.local`;
 
   const { data: signInData, error: signInError } = await admin.auth.signInWithPassword({ email: loginEmail, password });
-  if (signInError || !signInData?.session) {
+  if (signInError?.status === 429) {
+    return json(429, { error: 'RATE_LIMITED', message: 'Too many attempts. Please wait a moment before trying again.' });
+  }
+  if (signInError && (!signInError.status || signInError.status >= 500)) {
+    return json(503, { error: 'LOGIN_UNAVAILABLE', message: 'Login is temporarily unavailable. Please try again.' });
+  }
+  if (signInError) {
     return json(401, { error: 'INVALID_CREDENTIALS', message: 'Invalid username or password.' });
+  }
+
+  if (!signInData?.session) {
+    return json(503, { error: 'LOGIN_UNAVAILABLE', message: 'Login is temporarily unavailable. Please try again.' });
   }
 
   // Success: session tokens only (no email, no tenant/org/profile data).

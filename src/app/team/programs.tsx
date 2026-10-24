@@ -3,16 +3,34 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, CheckCircle2, ChevronDown, Eye, Search, X } from 'lucide-react-native';
+import { ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { festivalCategoryService } from '@/services/festivalCategoryService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
 
 
-function categoryLabel(codes: string[] | null) {
-  return Array.isArray(codes) && codes.length ? codes.join(', ') : 'All categories';
+const GENERAL_CATEGORY_CODES = new Set(['GN', 'GENERAL']);
+
+function normalizeCategoryCode(code: string) {
+  const normalized = code.trim().toUpperCase();
+  return GENERAL_CATEGORY_CODES.has(normalized) ? 'GENERAL' : normalized;
 }
+
+function categoryDisplay(code: string) {
+  return normalizeCategoryCode(code) === 'GENERAL' ? 'General' : code.trim();
+}
+
+function categoryLabel(codes: string[] | null) {
+  if (!Array.isArray(codes) || !codes.length) return 'All categories';
+  return [...new Set(codes.map(normalizeCategoryCode).filter(Boolean))]
+    .sort((left, right) => left === 'GENERAL' ? -1 : right === 'GENERAL' ? 1 : left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' }))
+    .map(categoryDisplay)
+    .join(', ');
+}
+
+type ProgramSort = 'default' | 'name_asc' | 'name_desc' | 'code_asc' | 'category_asc';
 
 export default function TeamProgramsScreen() {
   const ui = useTeamUi();
@@ -30,7 +48,8 @@ export default function TeamProgramsScreen() {
   const [programSearch, setProgramSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [genderFilter, setGenderFilter] = useState('All genders');
-  const [filterPicker, setFilterPicker] = useState<'category' | 'gender' | null>(null);
+  const [programSort, setProgramSort] = useState<ProgramSort>('default');
+  const [filterPicker, setFilterPicker] = useState<'category' | 'gender' | 'sort' | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
   const [programKind, setProgramKind] = useState<'participant' | 'general_team'>('participant');
   const [activeIndividualProgram, setActiveIndividualProgram] = useState<TeamLeaderProgramOption | null>(null);
@@ -78,6 +97,12 @@ export default function TeamProgramsScreen() {
     enabled: !!context,
     queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
+  const festivalCategoriesQuery = useQuery({
+    queryKey: ['team-leader-festival-categories', context?.festival_id],
+    enabled: !!context?.festival_id,
+    queryFn: () => festivalCategoryService.list(context!.festival_id),
+    staleTime: 5 * 60 * 1000,
+  });
   const groupEligibilityQuery = useQuery({
     queryKey: ['team-group-eligible-members', context?.festival_id, activeGeneralProgram?.item_id],
     enabled: !!context && !!activeGeneralProgram,
@@ -93,23 +118,78 @@ export default function TeamProgramsScreen() {
     refetchOnMount: 'always',
   });
 
-  const visiblePrograms = useMemo(() => (programsQuery.data ?? []).filter((program) =>
-    program.entry_kind === programKind && (program.is_eligible || program.is_assigned),
-  ).filter((program) =>
-    !programSearch.trim() || `${program.item_code ?? ''} ${program.item_name_en ?? ''} ${program.item_name_ml ?? ''} ${categoryLabel(program.category_codes)}`
-      .toLowerCase().includes(programSearch.trim().toLowerCase()),
-  ).filter((program) => categoryFilter === 'All categories'
-    || (program.category_codes ?? []).some((category) => category.trim().toUpperCase() === categoryFilter))
-    .filter((program) => genderFilter === 'All genders'
-      || (genderFilter === 'Both' ? !program.gender || program.gender.toLowerCase() === 'both' : program.gender?.toLowerCase() === genderFilter.toLowerCase())),
-  [programsQuery.data, programSearch, programKind, categoryFilter, genderFilter]);
+  const categoryOrder = useMemo(() => {
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    for (const category of festivalCategoriesQuery.data ?? []) {
+      const code = normalizeCategoryCode(category.code);
+      if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
+    }
+    for (const person of participants) {
+      const code = person.category_code ? normalizeCategoryCode(person.category_code) : '';
+      if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
+    }
+    for (const program of programsQuery.data ?? []) {
+      for (const rawCode of program.category_codes ?? []) {
+        const code = normalizeCategoryCode(rawCode);
+        if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
+      }
+    }
+    if (!seen.has('GENERAL')) ordered.push('GENERAL');
+    return ordered;
+  }, [festivalCategoriesQuery.data, participants, programsQuery.data]);
+  const categoryOptions = ['All categories', ...categoryOrder];
+  const categoriesByCode = new Map((festivalCategoriesQuery.data ?? []).map((category) => [normalizeCategoryCode(category.code), category]));
+  const displayCategoryOption = (code: string) => code === 'All categories'
+    ? code
+    : normalizeCategoryCode(code) === 'GENERAL'
+      ? 'General'
+      : categoriesByCode.get(normalizeCategoryCode(code))?.name ?? categoryDisplay(code);
 
-  const categoryOptions = ['All categories', ...Array.from(new Set((programsQuery.data ?? [])
-    .filter((program) => program.entry_kind === programKind)
-    .flatMap((program) => program.category_codes ?? [])).values()).sort()];
+  const visiblePrograms = useMemo(() => {
+    const filtered = (programsQuery.data ?? []).filter((program) =>
+      program.entry_kind === programKind && (program.is_eligible || program.is_assigned),
+    ).filter((program) =>
+      !programSearch.trim() || `${program.item_code ?? ''} ${program.item_name_en ?? ''} ${program.item_name_ml ?? ''} ${categoryLabel(program.category_codes)}`
+        .toLowerCase().includes(programSearch.trim().toLowerCase()),
+    ).filter((program) => categoryFilter === 'All categories'
+      || (program.category_codes ?? []).some((category) => normalizeCategoryCode(category) === categoryFilter))
+      .filter((program) => genderFilter === 'All genders'
+        || (genderFilter === 'Both' ? !program.gender || program.gender.toLowerCase() === 'both' : program.gender?.toLowerCase() === genderFilter.toLowerCase()));
+
+    if (programSort === 'default') return filtered;
+    const compare = (left: string, right: string) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+    const categoryRank = new Map(categoryOrder.map((code, index) => [code, index]));
+    return [...filtered].sort((left, right) => {
+      if (programSort === 'code_asc') return compare(left.item_code ?? '', right.item_code ?? '');
+      if (programSort === 'category_asc') {
+        const rank = (codes: string[] | null) => {
+          const ranks = (codes ?? []).map(normalizeCategoryCode).map((code) => categoryRank.get(code)).filter((value): value is number => value !== undefined);
+          return ranks.length ? Math.min(...ranks) : Number.MAX_SAFE_INTEGER;
+        };
+        const byCategory = rank(left.category_codes) - rank(right.category_codes);
+        if (byCategory) return byCategory;
+        const leftName = left.item_name_en || left.item_name_ml || left.item_code || '';
+        const rightName = right.item_name_en || right.item_name_ml || right.item_code || '';
+        return compare(leftName, rightName) || compare(left.item_code ?? '', right.item_code ?? '');
+      }
+      const leftName = left.item_name_en || left.item_name_ml || left.item_code || '';
+      const rightName = right.item_name_en || right.item_name_ml || right.item_code || '';
+      const byName = compare(leftName, rightName);
+      return programSort === 'name_desc' ? -byName : byName;
+    });
+  }, [programsQuery.data, programSearch, programKind, categoryFilter, genderFilter, programSort, categoryOrder]);
+
   const genderOptions = ['All genders', ...Array.from(new Set((programsQuery.data ?? [])
     .filter((program) => program.entry_kind === programKind && program.gender && program.gender.toLowerCase() !== 'both')
     .map((program) => program.gender!))).sort()];
+  const sortOptions: { value: ProgramSort; label: string }[] = [
+    { value: 'default', label: 'Default order' },
+    { value: 'name_asc', label: 'Name A–Z' },
+    { value: 'name_desc', label: 'Name Z–A' },
+    { value: 'code_asc', label: 'Code A–Z' },
+    { value: 'category_asc', label: 'Category order' },
+  ];
 
   const individualEligibleIds = new Set(activeIndividualProgram?.eligible_participant_ids ?? []);
   const individualAssignedIds = new Set(activeIndividualProgram?.assigned_participant_ids ?? []);
@@ -507,6 +587,8 @@ export default function TeamProgramsScreen() {
   const cardWidth: `${number}%` = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
   const filterOptions = filterPicker === 'category' ? categoryOptions : genderOptions;
   const filterValue = filterPicker === 'category' ? categoryFilter : genderFilter;
+  const selectedSortLabel = sortOptions.find((option) => option.value === programSort)?.label ?? 'Default order';
+  const pickerOptions = filterPicker === 'sort' ? sortOptions.map((option) => option.label) : filterOptions;
 
   return (
     <TeamLeaderAppShell>
@@ -532,14 +614,21 @@ export default function TeamProgramsScreen() {
 
         {participants.length > 0 ? <>
           <View style={{ marginBottom: 12, padding: 8, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-            <View style={{ minWidth: 210, height: isPhone ? 44 : 40, flex: 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ minWidth: isPhone ? 0 : 210, width: isPhone ? '100%' : undefined, height: isPhone ? 44 : 40, flex: isPhone ? undefined : 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Search size={16} color={muted} />
               <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
               {!!programSearch && <Pressable onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={muted} /></Pressable>}
             </View>
-            {([['category', categoryFilter], ['gender', genderFilter]] as const).map(([key, value]) => <Pressable key={key} accessibilityRole="button" onPress={() => setFilterPicker(key)} style={{ minWidth: 116, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <Text numberOfLines={1} style={{ flex: 1, color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{value}</Text><ChevronDown size={14} color={muted} />
+            {([['category', categoryFilter], ['gender', genderFilter]] as const).map(([key, value]) => <Pressable key={key} accessibilityRole="button" onPress={() => setFilterPicker(key)} style={{ minWidth: isPhone ? 0 : 116, width: isPhone ? '48%' : undefined, flexGrow: isPhone ? 1 : 0, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <Text numberOfLines={1} style={{ flex: 1, color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{key === 'category' ? displayCategoryOption(value) : value}</Text><ChevronDown size={14} color={muted} />
             </Pressable>)}
+            <Pressable accessibilityRole="button" accessibilityLabel={`Sort programs, currently ${selectedSortLabel}`} onPress={() => setFilterPicker('sort')} style={{ minWidth: isPhone ? 0 : 140, width: isPhone ? '100%' : undefined, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
+                {programSort === 'category_asc' ? <ListOrdered size={15} color={muted} /> : programSort === 'name_desc' ? <ArrowDownZA size={15} color={muted} /> : <ArrowDownAZ size={15} color={muted} />}
+                <Text numberOfLines={1} style={{ flex: 1, color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{selectedSortLabel}</Text>
+              </View>
+              <ChevronDown size={14} color={muted} />
+            </Pressable>
           </View>
 
           <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
@@ -563,8 +652,13 @@ export default function TeamProgramsScreen() {
       <Modal visible={!!filterPicker} transparent animationType="fade" onRequestClose={() => setFilterPicker(null)}>
         <Pressable onPress={() => setFilterPicker(null)} style={{ flex: 1, justifyContent: 'center', padding: 16, backgroundColor: ui.colors.overlay }}>
           <Pressable onPress={(event) => event.stopPropagation()} style={{ maxHeight: '75%', borderRadius: isPhone ? 20 : 12, padding: 16, backgroundColor: ui.colors.surface }}>
-            <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '700' }}>Filter programs</Text><Pressable onPress={() => setFilterPicker(null)} accessibilityLabel="Close filter"><X size={19} color={muted} /></Pressable></View>
-            <ScrollView>{filterOptions.map((option) => <Pressable key={option} onPress={() => { if (filterPicker === 'category') setCategoryFilter(option); else setGenderFilter(option); setFilterPicker(null); }} style={{ borderBottomWidth: 1, borderBottomColor: border, paddingVertical: 12 }}><Text style={{ color: filterValue === option ? ui.colors.primary : ui.colors.text, fontSize: 13, fontWeight: filterValue === option ? '700' : '400' }}>{option}</Text></Pressable>)}</ScrollView>
+            <View style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '700' }}>{filterPicker === 'sort' ? 'Sort programs' : 'Filter programs'}</Text><Pressable onPress={() => setFilterPicker(null)} accessibilityLabel="Close filter"><X size={19} color={muted} /></Pressable></View>
+            <ScrollView>{pickerOptions.map((option) => <Pressable key={option} onPress={() => {
+              if (filterPicker === 'category') setCategoryFilter(option);
+              else if (filterPicker === 'gender') setGenderFilter(option);
+              else setProgramSort(sortOptions.find((sortOption) => sortOption.label === option)?.value ?? 'default');
+              setFilterPicker(null);
+            }} style={{ minHeight: 44, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: border }}><Text style={{ color: filterPicker === 'sort' ? (selectedSortLabel === option ? ui.colors.primary : ui.colors.text) : option === filterValue ? ui.colors.primary : ui.colors.text, fontSize: 13, fontWeight: (filterPicker === 'sort' ? selectedSortLabel === option : option === filterValue) ? '700' : '400' }}>{filterPicker === 'category' ? displayCategoryOption(option) : option}</Text></Pressable>)}</ScrollView>
           </Pressable>
         </Pressable>
       </Modal>

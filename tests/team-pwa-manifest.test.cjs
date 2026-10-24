@@ -31,14 +31,14 @@ test('Team Portal install manifest is scoped to the team routes and has a real h
 });
 
 test('Team Portal manifest stays isolated from the main app manifest', () => {
-  assert.equal(mainManifest.start_url, '/');
-  assert.equal(mainManifest.scope, undefined);
-  assert.equal(mainManifest.name, 'Alviora-2k26');
+  assert.equal(mainManifest.start_url, '/?installedPortal=main');
+  assert.equal(mainManifest.scope, '/');
+  assert.equal(mainManifest.name, 'Consolium');
   assert.equal(mainManifest.theme_color, '#0F766E');
 });
 
 test('Team routes select their manifest and capture the browser install event before the app mounts', () => {
-  assert.match(htmlShell, /manifestLink\.href = isTeamRoute\(\) \? '\/team-manifest\.json' : '\/manifest\.json'/);
+  assert.match(htmlShell, /manifestLink\.href = isTeamRoute\(\)[\s\S]*?\? '\/team-manifest\.json'[\s\S]*?: '\/manifest\.json'/);
   assert.match(htmlShell, /viewport-fit=cover/);
   assert.match(htmlShell, /beforeinstallprompt/);
 });

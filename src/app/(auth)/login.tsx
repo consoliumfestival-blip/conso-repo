@@ -7,6 +7,7 @@ import { DevConfig } from '@/core/config/dev_config';
 import { authService } from '@/services/authService';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
+import { Link } from 'expo-router';
 
 const palette = {
   ink: coreColor('#17212E', 'text'),
@@ -89,6 +90,9 @@ export default function LoginScreen() {
               <ArrowRight size={18} color={palette.onPrimary} />
             </>}
           </TouchableOpacity>
+          <Link href="/team/login" style={styles.teamPortalLink}>
+            Team Leader? Open Team Leader login
+          </Link>
         </View>
       </View>
     </ScrollView>
@@ -155,4 +159,5 @@ const styles = StyleSheet.create({
   loginButton: { minHeight: 44, borderRadius: 10, backgroundColor: palette.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   loadingButton: { opacity: 0.7 },
   loginButtonText: { color: palette.onPrimary, fontSize: 14, fontWeight: '600' },
+  teamPortalLink: { color: palette.primaryText, fontSize: 13, textAlign: 'center', marginTop: 18 },
 });

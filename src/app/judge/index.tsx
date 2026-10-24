@@ -461,7 +461,6 @@ export default function JudgePortalLanding() {
             {/* Left Column (Brand & Info) */}
             <View style={{ flex: 1, padding: 56, position: 'relative', borderRightWidth: 1, borderRightColor: '#F1F5F9' }}>
               {renderBackButton()}
-              <View style={{ marginTop: 20, marginBottom: 32 }}><ConsoliumLogo size={46} /></View>
               
               <View style={{ marginTop: 20 }}>
                 <View style={{ width: 64, height: 64, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 32 }}>

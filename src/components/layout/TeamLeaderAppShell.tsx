@@ -93,15 +93,20 @@ const navItems: NavItem[] = [
   },
 ];
 
+const PersistentTeamShellContext = React.createContext(false);
+
 export function TeamLeaderAppShell({
   children,
   hideMobileHeader = false,
   mobileEdgeToEdge = false,
+  persistentShell = false,
 }: {
   children: React.ReactNode;
   hideMobileHeader?: boolean;
   mobileEdgeToEdge?: boolean;
+  persistentShell?: boolean;
 }) {
+  const insidePersistentShell = React.useContext(PersistentTeamShellContext);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
@@ -115,6 +120,7 @@ export function TeamLeaderAppShell({
   const { mode, toggleMode } = useTeamTheme();
 
   React.useEffect(() => {
+    if (insidePersistentShell) return;
     const mustUpdateCredentials = user?.app_metadata?.must_change_credentials
       || user?.app_metadata?.must_change_password
       || user?.user_metadata?.must_change_credentials
@@ -122,8 +128,11 @@ export function TeamLeaderAppShell({
     if (mustUpdateCredentials && pathname !== "/team/first-login") {
       router.replace("/team/first-login");
     }
-  }, [user, pathname, router]);
-  React.useEffect(() => applyPortalPwaMetadata('team', context?.team_name, context?.festival_team_id), [context?.team_name, context?.festival_team_id]);
+  }, [insidePersistentShell, user, pathname, router]);
+  React.useEffect(() => {
+    if (insidePersistentShell) return;
+    return applyPortalPwaMetadata('team', context?.team_name, context?.festival_team_id);
+  }, [insidePersistentShell, context?.team_name, context?.festival_team_id]);
   const portalRootId = Platform.OS === 'web' && isFocused
     ? 'team-leader-portal-active'
     : 'team-leader-portal';
@@ -148,13 +157,29 @@ export function TeamLeaderAppShell({
   const ThemeIcon = mode === 'dark' ? Sun : Moon;
   const themeActionLabel = mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
 
+  if (insidePersistentShell) {
+    return (
+      <ScrollView
+        style={{ flex: 1, backgroundColor: ui.colors.background }}
+        showsVerticalScrollIndicator={showSidebar || !mobileEdgeToEdge}
+        contentContainerStyle={showSidebar
+          ? { padding: width < 900 ? 14 : 20 }
+          : { paddingHorizontal: mobileEdgeToEdge ? 0 : 16, paddingTop: mobileEdgeToEdge ? 0 : 4, paddingBottom: 112 }}
+      >
+        <View nativeID={Platform.OS === 'web' && isFocused ? 'team-portal-page-active' : undefined}>
+          {children}
+        </View>
+      </ScrollView>
+    );
+  }
+
   const handleLogout = async () => {
     await logoutTeamLeader();
     router.replace("/team/login");
   };
 
   const navigate = (path: string) => {
-    router.push(path as any);
+    if (pathname !== path) router.push(path as any);
     setMoreOpen(false);
   };
 
@@ -370,12 +395,18 @@ export function TeamLeaderAppShell({
             </View>
           </View>
 
-          <ScrollView
-            style={{ flex: 1, backgroundColor: ui.colors.background }}
-            contentContainerStyle={{ padding: width < 900 ? 14 : 20 }}
-          >
-            {children}
-          </ScrollView>
+          {persistentShell ? (
+            <PersistentTeamShellContext.Provider value={true}>
+              <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
+            </PersistentTeamShellContext.Provider>
+          ) : (
+            <ScrollView
+              style={{ flex: 1, backgroundColor: ui.colors.background }}
+              contentContainerStyle={{ padding: width < 900 ? 14 : 20 }}
+            >
+              {children}
+            </ScrollView>
+          )}
         </View>
       </View>
     );
@@ -403,9 +434,15 @@ export function TeamLeaderAppShell({
         </View>
       )}
       {/* Mobile content has its own composition and room for the floating navigation. */}
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={!mobileEdgeToEdge} contentContainerStyle={{ paddingHorizontal: mobileEdgeToEdge ? 0 : 16, paddingTop: mobileEdgeToEdge ? 0 : 4, paddingBottom: 112 }}>
-        {children}
-      </ScrollView>
+      {persistentShell ? (
+        <PersistentTeamShellContext.Provider value={true}>
+          <View style={{ flex: 1, minHeight: 0 }}>{children}</View>
+        </PersistentTeamShellContext.Provider>
+      ) : (
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={!mobileEdgeToEdge} contentContainerStyle={{ paddingHorizontal: mobileEdgeToEdge ? 0 : 16, paddingTop: mobileEdgeToEdge ? 0 : 4, paddingBottom: 112 }}>
+          {children}
+        </ScrollView>
+      )}
 
       {/* Mobile bottom nav */}
       <View

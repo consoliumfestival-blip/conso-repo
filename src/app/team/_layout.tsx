@@ -1,10 +1,24 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import React from 'react';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { Platform, View } from 'react-native';
 import { TeamLeaderProvider } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderThemeProvider, useTeamTheme } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamInstallPrompt } from '@/components/team/TeamInstallPrompt';
+import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
+
+function TeamStackFrame({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  if (pathname === '/team/login' || pathname === '/team/first-login') {
+    return <View style={{ flex: 1 }}>{children}</View>;
+  }
+
+  return (
+    <TeamLeaderAppShell persistentShell hideMobileHeader={pathname === '/team/dashboard'}>
+      {children}
+    </TeamLeaderAppShell>
+  );
+}
 
 export default function TeamLeaderLayout() {
   return (
@@ -99,7 +113,10 @@ function TeamLeaderNavigation() {
     <ThemeProvider value={{ ...DefaultTheme, colors: { ...DefaultTheme.colors, background: ui.colors.background, card: ui.colors.surface, primary: ui.colors.primary, border: ui.colors.border, text: ui.colors.text } }}>
       <View style={{ flex: 1, backgroundColor: ui.colors.background }}>
         <TeamInstallPrompt />
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: ui.colors.background } }}>
+        <Stack
+          layout={({ children }) => <TeamStackFrame>{children}</TeamStackFrame>}
+          screenOptions={{ headerShown: false, contentStyle: { backgroundColor: ui.colors.background } }}
+        >
           <Stack.Screen name="login" />
           <Stack.Screen name="first-login" />
           <Stack.Screen name="dashboard" />

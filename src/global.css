@@ -168,20 +168,20 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
   background: var(--team-portal-scrollbar-hover, #B84015) !important;
 }
 
-/* Team Portal screen entrance: a short compositor-friendly transition on web. */
-@keyframes team-portal-screen-enter {
-  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+/* Keep portal navigation visible; animate only the changing page content. */
+@keyframes team-portal-page-enter {
+  from { opacity: 0.98; transform: translate3d(0, 4px, 0); }
   to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  #team-leader-portal-active {
-    animation: team-portal-screen-enter 180ms ease-out both;
+  #team-portal-page-active {
+    animation: team-portal-page-enter 160ms ease-out both;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #team-leader-portal-active {
+  #team-portal-page-active {
     animation: none !important;
   }
 }

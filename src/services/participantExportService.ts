@@ -151,7 +151,7 @@ export function downloadTeamParticipantSlipsPdf(args: {
     doc.rect(PRINT_MARGIN, top, slipWidth, slotHeight);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...INK);
-    doc.setFontSize(11.5);
+    doc.setFontSize(12.5);
     doc.text(doc.splitTextToSize(safeText(participant.name) || 'Unnamed participant', slipWidth - 54).slice(0, 2), PRINT_MARGIN + 4, top + 7);
     doc.setFontSize(9);
     doc.text(`Chest No: ${safeText(participant.chest_number) || '—'}`, pageWidth - PRINT_MARGIN - 4, top + 7, { align: 'right' });
@@ -247,6 +247,9 @@ export function downloadTeamItemParticipantsPdf(args: {
       styles: { font: 'helvetica', fontSize: 8, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.8, overflow: 'linebreak', minCellHeight: 6 },
       headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
       columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 32, halign: 'center' }, 2: { cellWidth: 140 } },
+      didParseCell: (hook) => {
+        if (hook.section === 'body' && hook.column.index === 2) hook.cell.styles.fontSize = 9;
+      },
       rowPageBreak: 'avoid',
       didDrawPage: () => {
         if (doc.getNumberOfPages() > 1) {
@@ -330,6 +333,7 @@ export function downloadItemVerificationPdf(args: {
     headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.35 },
     columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 95 }, 3: { cellWidth: 47, halign: 'center' } },
     didParseCell: (hook) => {
+      if (hook.section === 'body' && hook.column.index === 2) hook.cell.styles.fontSize = 9;
       if (hook.section === 'body' && hook.column.index === 3 && ['Rejected', 'Cancelled'].includes(String(hook.cell.raw))) {
         hook.cell.styles.fillColor = LIGHT_GRAY;
         hook.cell.styles.fontStyle = 'bold';

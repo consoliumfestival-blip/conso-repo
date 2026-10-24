@@ -1,4 +1,5 @@
 import { supabase } from '@/core/config/supabase';
+import type { TeamLeaderParticipantExportRow } from '@/services/participantExportService';
 
 export interface TeamLeaderContext {
   assignment_id: string;
@@ -154,6 +155,11 @@ export const teamLeaderPortalService = {
     return data ?? { portal_primary_color: null, portal_accent_color: null };
   },
   getParticipants: () => readRpc<TeamLeaderParticipant>('get_team_leader_participants'),
+  getParticipantExportRows: async () => {
+    const { data, error } = await supabase.rpc('get_team_leader_participant_export_rows');
+    if (error) throw error;
+    return (data ?? []) as TeamLeaderParticipantExportRow[];
+  },
   getProgramsForParticipant: async (participantId: string) => {
     const { data, error } = await supabase.rpc('get_team_leader_participant_programs', {
       p_participant_id: participantId,

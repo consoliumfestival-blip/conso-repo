@@ -6,15 +6,12 @@ import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useFestival } from '../../../core/hooks/useFestival';
-import { useAuthStore } from '../../../core/store/authStore';
-import { downloadParticipantItemsPdf, downloadParticipantPdf } from '../../../services/participantItemsPdfService';
 import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, GitCompare, RotateCcw, Trophy } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as XLSX from 'xlsx';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
+import { ParticipantExportModal, ParticipantExportKind, ExportChoice } from '@/components/participants/ParticipantExportModal';
+import { downloadItemVerificationPdf, downloadParticipantsCsv, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf, ExportAssignment, ExportItem, ExportParticipant, ExportSort, loadAdminGroupMembers } from '@/services/participantExportService';
 
 export default function ParticipantsList() {
   const router = useRouter();
@@ -24,8 +21,12 @@ export default function ParticipantsList() {
   const { data: activeFestival } = useActiveFestival();
   const { useItems } = useFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(activeFestival?.id);
-  const { tenant_id: tenantId, is_superadmin: isSuperadmin } = useAuthStore();
-  const [isExportingItemsPdf, setIsExportingItemsPdf] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportKind, setExportKind] = useState<ParticipantExportKind>('item_verification');
+  const [exportTeamId, setExportTeamId] = useState('');
+  const [exportItemId, setExportItemId] = useState('');
+  const [exportSort, setExportSort] = useState<ExportSort>('team');
   
   const {
     participants,
@@ -112,105 +113,86 @@ export default function ParticipantsList() {
     return matchesSearch && matchesCompetition && matchesCat && matchesStatus && matchesGender;
   });
 
-  const exportToExcel = async () => {
-    if (filteredParticipants.length === 0) {
-      if (Platform.OS === 'web') window.alert('No data to export');
-      else Alert.alert('No Data', 'No participants found to export.');
-      return;
-    }
+  const currentFestivalParticipants = activeFestival?.id
+    ? participants.filter((participant: any) => participant.festival_id === activeFestival.id)
+    : participants;
+  const exportTeams: ExportChoice[] = Array.from(new Map(currentFestivalParticipants
+    .filter((participant: any) => participant.organisation_id && participant.organisations?.name)
+    .map((participant: any) => [participant.organisation_id, { id: participant.organisation_id, label: participant.organisations.name }])).values())
+    .sort((a, b) => a.label.localeCompare(b.label));
+  const exportItems: ExportChoice[] = (activeItems as any[])
+    .filter((item: any) => item?.id)
+    .map((item: any) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 
-    const data = filteredParticipants.map((p: any) => ({
-      'Name': p.name,
-      'Chest Number': p.chest_number || '-',
-      'Category': p.category_code || '-',
-      'Gender': p.gender || '-',
-      'Age': p.age || '-',
-      'Status': (p.status || 'pending').toUpperCase(),
-      'Registered By': p.registered_by || '-',
-      'Created At': new Date(p.created_at).toLocaleDateString()
-    }));
+  const openExport = () => {
+    if (!exportTeamId && exportTeams[0]) setExportTeamId(exportTeams[0].id);
+    if (!exportItemId && exportItems[0]) setExportItemId(exportItems[0].id);
+    setIsExportOpen(true);
+  };
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Participants");
-
-    const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-    const filename = `Participants_${new Date().getTime()}.xlsx`;
-
-    if (Platform.OS === 'web') {
-      const uri = `data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,${base64}`;
-      const link = document.createElement('a');
-      link.href = uri;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      const docDir = (FileSystem as any).documentDirectory || '';
-      const fileUri = docDir + filename;
-      const encType = (FileSystem as any).EncodingType?.Base64 || 'base64';
-      await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: encType });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
-      } else {
-        Alert.alert('Error', 'Sharing not available on this device');
+  const runExport = async () => {
+    try {
+      setIsExporting(true);
+      if (exportKind === 'csv') {
+        await downloadParticipantsCsv(filteredParticipants.map((participant: any): ExportParticipant => ({
+          id: participant.id, name: participant.name, chest_number: participant.chest_number,
+          organisation_id: participant.organisation_id, organisation_name: participant.organisations?.name,
+          category_code: participant.category_code, gender: participant.gender, age: participant.age,
+          status: participant.status, created_at: participant.created_at, registered_by: participant.registered_by,
+        })));
+        setIsExportOpen(false);
+        return;
       }
-    }
-  };
-
-  const exportItemsPdf = async (allTenants = false) => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Web download only', 'Open the admin portal in a browser to download this PDF.');
-      return;
-    }
-    if (!activeFestival?.id && !tenantId) {
-      window.alert('No active festival or tenant was found for this export.');
-      return;
-    }
-    if (!allTenants && filteredParticipants.length === 0) {
-      window.alert('No participants match the selected item and category filters.');
-      return;
-    }
-    try {
-      setIsExportingItemsPdf(true);
-      const result = await downloadParticipantItemsPdf({
-        festivalId: activeFestival?.id,
-        tenantId,
-        allTenants,
-        itemId: allTenants ? undefined : selectedCompetitionDetails?.itemId,
-        categoryCode: allTenants ? undefined : (selectedCompetitionDetails?.categoryCode || selectedCategory),
-        participants: allTenants ? undefined : filteredParticipants,
+      if (!activeFestival?.id) throw new Error('Select an active festival before exporting.');
+      const people: ExportParticipant[] = currentFestivalParticipants.map((participant: any) => ({
+        id: participant.id, name: participant.name, chest_number: participant.chest_number,
+        organisation_id: participant.organisation_id, organisation_name: participant.organisations?.name,
+        category_code: participant.category_code, gender: participant.gender, age: participant.age,
+        status: participant.status, created_at: participant.created_at, registered_by: participant.registered_by,
+      }));
+      const itemRecords: ExportItem[] = (activeItems as any[]).map((item: any) => ({
+        id: item.id, item_code: item.item_code, item_name_en: item.item_name_en,
+        item_name_ml: item.item_name_ml, category_codes: item.category_codes,
+        participation_type: item.participation_type,
+      }));
+      const groupMembers = await loadAdminGroupMembers(festivalRegistrations as any[]);
+      const membersByRegistration = new Map<string, string[]>();
+      groupMembers.forEach(({ registration_id, participant_id }) => membersByRegistration.set(registration_id, [
+        ...(membersByRegistration.get(registration_id) ?? []), participant_id,
+      ]));
+      const personById = new Map(people.map((person) => [person.id, person]));
+      const assignments: ExportAssignment[] = (festivalRegistrations as any[]).flatMap((registration) => {
+        if (!registration.item_id) return [];
+        const personIds: string[] = registration.participant_id
+          ? [registration.participant_id]
+          : membersByRegistration.get(registration.id) ?? [];
+        return personIds.map((participantId) => ({
+          registration_id: registration.id, participant_id: participantId, item_id: registration.item_id,
+          registration_status: registration.status, is_verified: registration.is_verified,
+          organisation_id: registration.organisation_id || personById.get(participantId)?.organisation_id,
+          organisation_name: personById.get(participantId)?.organisation_name,
+        }));
       });
-      window.alert(`PDF downloaded: ${result.participantCount} participants across ${result.itemCount} item-category competitions.`);
-    } catch (error: any) {
-      window.alert(error?.message || 'Unable to generate the participant item PDF.');
-    } finally {
-      setIsExportingItemsPdf(false);
-    }
-  };
 
-  const exportParticipantPdf = async (allTenants = false) => {
-    if (Platform.OS !== 'web') {
-      Alert.alert('Web download only', 'Open the admin portal in a browser to download this PDF.');
-      return;
-    }
-    if (!activeFestival?.id && !tenantId) {
-      window.alert('No active festival or tenant was found for this export.');
-      return;
-    }
-    try {
-      setIsExportingItemsPdf(true);
-      const result = await downloadParticipantPdf({
-        festivalId: activeFestival?.id,
-        tenantId,
-        allTenants,
-        participants: allTenants ? undefined : participants,
-      });
-      window.alert(`PDF downloaded: ${result.participantCount} participants.`);
+      if (exportKind === 'item_verification') {
+        const item = itemRecords.find((candidate) => candidate.id === exportItemId);
+        if (!item) throw new Error('Select an item to export.');
+        downloadItemVerificationPdf({ festivalName: activeFestival.custom_name || `Festival ${activeFestival.festival_year}`, item, participants: people, assignments, sortBy: exportSort });
+      } else {
+        const team = exportTeams.find((candidate) => candidate.id === exportTeamId);
+        if (!team) throw new Error('Select a team to export.');
+        const teamPeople = people.filter((person) => person.organisation_id === team.id);
+        const teamAssignments = assignments.filter((assignment) => assignment.organisation_id === team.id);
+        if (exportKind === 'slips') downloadTeamParticipantSlipsPdf({ teamName: team.label, participants: teamPeople, items: itemRecords, assignments: teamAssignments });
+        else downloadTeamItemParticipantsPdf({ teamName: team.label, teamId: team.id, participants: teamPeople, items: itemRecords, assignments: teamAssignments });
+      }
+      setIsExportOpen(false);
     } catch (error: any) {
-      window.alert(error?.message || 'Unable to generate the participant PDF.');
+      if (Platform.OS === 'web') window.alert(error?.message || 'Unable to create the export.');
+      else Alert.alert('Export unavailable', error?.message || 'Unable to create the export.');
     } finally {
-      setIsExportingItemsPdf(false);
+      setIsExporting(false);
     }
   };
 
@@ -371,45 +353,16 @@ export default function ParticipantsList() {
             <GitCompare size={14} color={coreColor("#1B6B3A", 'primaryText')} />
             <Text className="font-poppins-bold text-ui-primary-text text-xs">Reassign</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={exportToExcel} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg">
-            <FileDown size={20} color={coreColor("#1B6B3A", 'primaryText')} />
-          </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => exportItemsPdf(false)}
-            disabled={isExportingItemsPdf}
-            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            onPress={openExport}
+            disabled={isExporting || isLoadingList || isLoadingItems || isLoadingRegistrations}
+            accessibilityRole="button"
+            accessibilityLabel="Export participants"
+            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || isLoadingRegistrations ? 'opacity-60' : ''}`}
           >
-            <FileDown size={18} color={ui.colors.primaryText} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Item PDF</Text>
+            <FileDown size={16} color={ui.colors.onPrimary} />
+            <Text className="font-poppins-bold text-xs text-core-on-primary-white">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => exportParticipantPdf(false)}
-            disabled={isExportingItemsPdf}
-            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
-          >
-            <FileDown size={18} color={ui.colors.primaryText} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Participant PDF</Text>
-          </TouchableOpacity>
-          {isSuperadmin && (
-            <TouchableOpacity
-              onPress={() => exportItemsPdf(true)}
-              disabled={isExportingItemsPdf}
-              className="p-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1"
-            >
-              <FileDown size={18} color={ui.colors.onPrimary} />
-              <Text className="font-poppins-bold text-xs text-core-on-primary-white">All-Tenant PDF</Text>
-            </TouchableOpacity>
-          )}
-          {isSuperadmin && (
-            <TouchableOpacity
-              onPress={() => exportParticipantPdf(true)}
-              disabled={isExportingItemsPdf}
-              className="p-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1"
-            >
-              <FileDown size={18} color={ui.colors.onPrimary} />
-              <Text className="font-poppins-bold text-xs text-core-on-primary-white">All-Tenant Participant PDF</Text>
-            </TouchableOpacity>
-          )}
           <TouchableOpacity onPress={() => router.push('/(admin)/participants/import')} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg">
             <Upload size={20} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
@@ -710,6 +663,24 @@ export default function ParticipantsList() {
           </View>
         )}
       </SsfCard>
+      <ParticipantExportModal
+        visible={isExportOpen}
+        isTeamPortal={false}
+        colors={{ overlay: 'rgba(12, 20, 32, 0.48)', surface: '#FFFFFF', text: ui.colors.text, muted: ui.colors.textMuted, border: ui.colors.border, primary: ui.colors.primary, onPrimary: ui.colors.onPrimary, selected: ui.colors.surfaceMuted }}
+        teams={exportTeams}
+        items={exportItems}
+        selectedKind={exportKind}
+        selectedTeamId={exportTeamId}
+        selectedItemId={exportItemId}
+        sortBy={exportSort}
+        busy={isExporting}
+        onKindChange={setExportKind}
+        onTeamChange={setExportTeamId}
+        onItemChange={setExportItemId}
+        onSortChange={setExportSort}
+        onClose={() => setIsExportOpen(false)}
+        onDownload={runExport}
+      />
     </ScrollView>
   );
 }

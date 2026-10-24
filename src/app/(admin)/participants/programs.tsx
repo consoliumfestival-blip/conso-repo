@@ -9,6 +9,7 @@ import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { GroupRosterEditor } from '../../../components/participants/GroupRosterEditor';
 import { GroupEntryDeleteDialog } from '../../../components/participants/GroupEntryDeleteDialog';
+import { TeamProgramProgressModal } from '../../../components/participants/TeamProgramProgressModal';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
@@ -68,6 +69,7 @@ export default function ProgramsScreen() {
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [filterPicker, setFilterPicker] = useState<'type' | 'stage' | 'category' | null>(null);
   const [itemToDeactivate, setItemToDeactivate] = useState<ProgramItem | null>(null);
+  const [showTeamProgress, setShowTeamProgress] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDeselect, setConfirmDeselect] = useState(false);
@@ -282,8 +284,9 @@ export default function ProgramsScreen() {
           <Text className="mt-1 font-poppins-black text-2xl text-ui-text">Programs</Text>
           <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{sectionCards.length} programs · {doneCount} completed</Text>
         </View>
-        <View className="flex-row items-center gap-2">
+        <View className="flex-row flex-wrap items-center gap-2">
           {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
+          <TouchableOpacity onPress={() => setShowTeamProgress(true)} className="min-h-10 justify-center rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button" accessibilityLabel="View team program progress"><Text className="font-poppins-bold text-xs text-ui-text">Team progress</Text></TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(admin)/settings/items' as any)} className="flex-row items-center gap-1.5 rounded-lg bg-core-primary-emerald-700 px-3 py-2" accessibilityRole="button"><Plus size={15} color={coreColor("white", 'onPrimary')}/><Text className="font-poppins-bold text-xs text-core-on-primary-white">Add program</Text></TouchableOpacity>
         </View>
       </View>
@@ -378,5 +381,6 @@ export default function ProgramsScreen() {
     {editingEntry && festival && <GroupRosterEditor key={editingEntry.id} entry={editingEntry} festivalId={festival.id}
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
       onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); }} />}
+    {showTeamProgress && festival && <TeamProgramProgressModal festivalId={festival.id} onClose={() => setShowTeamProgress(false)} />}
   </View>;
 }

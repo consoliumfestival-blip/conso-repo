@@ -106,6 +106,14 @@ export default function TeamProgramsScreen() {
     enabled: !!context,
     queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
+
+  useEffect(() => {
+    if (!activeIndividualProgram) return;
+    const refreshedProgram = programsQuery.data?.find((program) => program.item_id === activeIndividualProgram.item_id);
+    if (refreshedProgram && refreshedProgram !== activeIndividualProgram) {
+      setActiveIndividualProgram(refreshedProgram);
+    }
+  }, [activeIndividualProgram?.item_id, programsQuery.data]);
   const festivalCategoriesQuery = useQuery({
     queryKey: ['team-leader-festival-categories', context?.festival_id],
     enabled: !!context?.festival_id,
@@ -361,7 +369,6 @@ export default function TeamProgramsScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['team-leader-programs', context?.festival_id],
       });
-      setActiveIndividualProgram(null);
       setSelectedIndividualParticipantIds([]);
       setNotice({ kind: 'success', text: `${result.assigned_count} participant(s) added to ${program.item_name_en || program.item_name_ml || program.item_code || 'the program'}.` });
     } catch (error: any) {
@@ -380,7 +387,6 @@ export default function TeamProgramsScreen() {
       const result = await teamLeaderPortalService.markProgramCompleted(program.item_id);
       await queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] });
       setPendingCompletionProgram(null);
-      setActiveIndividualProgram(null);
       setNotice({ kind: 'success', text: `${program.item_name_en || program.item_name_ml || program.item_code || 'Program'} marked complete for ${result.participant_count} participants.` });
     } catch (error: any) {
       setCompletionError(error?.message || 'Could not mark this program completed. Please refresh and try again.');
@@ -399,6 +405,7 @@ export default function TeamProgramsScreen() {
     const detail = isGeneral
       ? `${program.item_code ? `${program.item_code} · ` : ''}${groupRange}${program.team_entry_count ? ` · ${program.team_entry_count} team ${program.team_entry_count === 1 ? 'entry' : 'entries'}` : ''}`
       : [program.item_code, categoryLabel(program.category_codes), program.gender && program.gender.toLowerCase() !== 'both' ? program.gender : null, program.assigned_participant_ids?.length ? `${program.assigned_participant_ids.length} assigned` : null].filter(Boolean).join(' · ');
+    const canMarkCompleted = !isGeneral && (program.assigned_participant_ids?.length ?? 0) > 0;
     return (
       <View key={program.item_id} style={{
         width: cardWidth,
@@ -436,8 +443,8 @@ export default function TeamProgramsScreen() {
         <View style={{ gap: 8 }}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={assigned ? `${name} participants already assigned` : isGeneral ? `Select students for ${name}` : `Select participants for ${name}`}
-          disabled={assigned || busy || !program.is_eligible}
+          accessibilityLabel={isGeneral ? (assigned ? `${name} team entry already added` : `Select students for ${name}`) : `Add participants to ${name}`}
+          disabled={busy || (isGeneral && (assigned || !program.is_eligible))}
           onPress={() => isGeneral ? openGeneralPicker(program) : openIndividualPicker(program)}
           style={{
             minHeight: 42,
@@ -447,22 +454,35 @@ export default function TeamProgramsScreen() {
             justifyContent: 'center',
             flexDirection: 'row',
             gap: 5,
-            backgroundColor: assigned ? ui.colors.primarySoft : ui.colors.primary,
+            backgroundColor: isGeneral && assigned ? ui.colors.primarySoft : ui.colors.primary,
             opacity: busy ? 0.75 : 1,
           }}
         >
-          {busy ? <ActivityIndicator size="small" color={assigned ? orange : ui.colors.onPrimary} /> : assigned ? <Check size={14} color={orange} /> : null}
-          <Text style={{ color: assigned ? orange : ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{assigned ? 'Added' : busy ? 'Adding' : isGeneral ? 'Select team' : 'Select students'}</Text>
+          {busy ? <ActivityIndicator size="small" color={isGeneral && assigned ? orange : ui.colors.onPrimary} /> : isGeneral && assigned ? <Check size={14} color={orange} /> : null}
+          <Text style={{ color: isGeneral && assigned ? orange : ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{busy ? (isGeneral ? 'Adding' : 'Adding participants') : isGeneral ? (assigned ? 'Added' : 'Select team') : 'Add participants'}</Text>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`View participants for ${name}`}
-          onPress={() => setActiveViewProgram(program)}
-          style={{ minHeight: 42, paddingHorizontal: 12, borderRadius: 7, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 }}
-        >
-          <Eye size={15} color={ui.colors.text} />
-          <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>View Participants</Text>
-        </Pressable>
+        <View style={{ flexDirection: isPhone ? 'column' : 'row', gap: 8 }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View participants for ${name}`}
+            onPress={() => setActiveViewProgram(program)}
+            style={{ flex: 1, minHeight: 42, paddingHorizontal: 8, borderRadius: 7, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6 }}
+          >
+            <Eye size={15} color={ui.colors.text} />
+            <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>View Participants</Text>
+          </Pressable>
+          {!isGeneral ? <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={completed ? `${name} completed` : `Mark ${name} completed`}
+            accessibilityState={{ disabled: !canMarkCompleted || completed || busy }}
+            disabled={!canMarkCompleted || completed || busy}
+            onPress={() => { setCompletionError(''); setPendingCompletionProgram(program); }}
+            style={{ flex: 1, minHeight: 42, paddingHorizontal: 8, borderRadius: 7, borderWidth: 1, borderColor: completed ? ui.colors.success : border, backgroundColor: completed ? ui.colors.successSoft : ui.colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, opacity: !canMarkCompleted || completed || busy ? 0.72 : 1 }}
+          >
+            {completed ? <CheckCircle2 size={15} color={ui.colors.success} /> : null}
+            <Text numberOfLines={1} style={{ color: completed ? ui.colors.success : ui.colors.text, fontSize: 12, fontWeight: '700' }}>{completed ? 'Completed' : 'Mark completed'}</Text>
+          </Pressable> : null}
+        </View>
         </View>
       </View>
     );
@@ -471,8 +491,7 @@ export default function TeamProgramsScreen() {
   const individualEntryPicker = (
     <Modal visible={!!activeIndividualProgram} transparent animationType="slide" onRequestClose={() => {
       if (savingItemId) return;
-      if (pendingCompletionProgram) setPendingCompletionProgram(null);
-      else setActiveIndividualProgram(null);
+      setActiveIndividualProgram(null);
     }}>
       <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
         <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
@@ -515,44 +534,39 @@ export default function TeamProgramsScreen() {
             {!individualEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program and search.</Text> : null}
           </ScrollView>
           {individualSelectionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{individualSelectionError}</Text> : null}
-          <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8, flexDirection: 'row', gap: 8 }}>
-            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ flex: 1, minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
-              {savingItemId === activeIndividualProgram?.item_id && !pendingCompletionProgram ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId }}
-              disabled={!activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId}
-              onPress={() => { setCompletionError(''); setPendingCompletionProgram(activeIndividualProgram); }}
-              style={{ flex: 1, minHeight: 46, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.borderStrong, backgroundColor: activeIndividualProgram?.is_completed ? ui.colors.successSoft : ui.colors.surface, alignItems: 'center', justifyContent: 'center', opacity: !activeIndividualProgram?.assigned_participant_ids?.length || !!activeIndividualProgram?.is_completed || !!savingItemId ? 0.68 : 1 }}
-            >
-              {activeIndividualProgram?.is_completed ? <CheckCircle2 size={16} color={ui.colors.success} /> : null}
-              <Text style={{ color: activeIndividualProgram?.is_completed ? ui.colors.success : ui.colors.text, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{activeIndividualProgram?.is_completed ? 'Completed' : 'Mark completed'}</Text>
+          <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8 }}>
+            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
+              {savingItemId === activeIndividualProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
             </Pressable>
           </View>
         </View>
-        {pendingCompletionProgram ? (
-          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
-            <View style={{ width: '100%', maxWidth: 440, padding: 20, borderRadius: 16, backgroundColor: ui.colors.surface }}>
-              <View style={{ width: 42, height: 42, borderRadius: 21, marginBottom: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.warningSoft }}>
-                <CheckCircle2 size={22} color={ui.colors.warning} />
-              </View>
-              <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Mark program completed?</Text>
-              <Text style={{ color: muted, fontSize: 13, lineHeight: 20, marginTop: 8 }}>
-                Confirm that all {pendingCompletionProgram.assigned_participant_ids?.length ?? 0} assigned participants have completed this program and their assessment. You can mark it complete again if more participants are added later.
-              </Text>
-              {completionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{completionError}</Text> : null}
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
-                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setPendingCompletionProgram(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Cancel</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId ? 0.65 : 1 }}>
-                  {savingItemId === pendingCompletionProgram.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
-                </Pressable>
-              </View>
-            </View>
+      </View>
+    </Modal>
+  );
+
+  const completionConfirmation = (
+    <Modal visible={!!pendingCompletionProgram} transparent animationType="fade" onRequestClose={() => {
+      if (!savingItemId) setPendingCompletionProgram(null);
+    }}>
+      <View style={{ flex: 1, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
+        <View style={{ width: '100%', maxWidth: 440, padding: 20, borderRadius: 16, backgroundColor: ui.colors.surface }}>
+          <View style={{ width: 42, height: 42, borderRadius: 21, marginBottom: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.warningSoft }}>
+            <CheckCircle2 size={22} color={ui.colors.warning} />
           </View>
-        ) : null}
+          <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Mark program completed?</Text>
+          <Text style={{ color: muted, fontSize: 13, lineHeight: 20, marginTop: 8 }}>
+            Confirm that all {pendingCompletionProgram?.assigned_participant_ids?.length ?? 0} assigned participants have completed this program and their assessment. You can mark it complete again if more participants are added later.
+          </Text>
+          {completionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 10 }}>{completionError}</Text> : null}
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
+            <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setPendingCompletionProgram(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Cancel</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled={!!savingItemId || !pendingCompletionProgram} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId ? 0.65 : 1 }}>
+              {savingItemId === pendingCompletionProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
+            </Pressable>
+          </View>
+        </View>
       </View>
     </Modal>
   );
@@ -763,6 +777,7 @@ export default function TeamProgramsScreen() {
         </Pressable>
       </Modal>
       {individualEntryPicker}
+      {completionConfirmation}
       {generalEntryPicker}
       {participantView}
     </TeamLeaderAppShell>

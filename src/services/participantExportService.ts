@@ -86,8 +86,7 @@ const safeText = (value?: string | number | null) => String(value ?? '').trim();
 const registrationIsActive = (row: ExportAssignment) => !['rejected', 'cancelled', 'canceled'].includes(safeText(row.registration_status).toLowerCase());
 const itemLabel = (item?: ExportItem) => {
   if (!item) return 'Unnamed item';
-  const name = item.item_name_en || item.item_name_ml || 'Unnamed item';
-  return item.item_code ? `${item.item_code} · ${name}` : name;
+  return item.item_name_en || item.item_name_ml || 'Unnamed item';
 };
 
 function requireWebPdf() {
@@ -209,7 +208,7 @@ export function downloadTeamItemParticipantsPdf(args: {
   requireWebPdf();
   const people = new Map(args.participants.map((person) => [person.id, person]));
   const itemMap = new Map(args.items.map((item) => [item.id, item]));
-  const groups = new Map<string, { item: ExportItem; rows: { chest: string; name: string; category: string }[] }>();
+  const groups = new Map<string, { item: ExportItem; rows: { chest: string; name: string }[] }>();
 
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
     if (assignment.organisation_id && assignment.organisation_id !== args.teamId) return;
@@ -217,7 +216,7 @@ export function downloadTeamItemParticipantsPdf(args: {
     const item = itemMap.get(assignment.item_id);
     if (!person || !item) return;
     const group = groups.get(item.id) ?? { item, rows: [] };
-    group.rows.push({ chest: safeText(person.chest_number) || '—', name: safeText(person.name) || 'Unnamed participant', category: safeText(person.category_code) || '—' });
+    group.rows.push({ chest: safeText(person.chest_number) || '—', name: safeText(person.name) || 'Unnamed participant' });
     groups.set(item.id, group);
   });
   if (!groups.size) throw new Error('No active item assignments were found for this team.');
@@ -241,13 +240,13 @@ export function downloadTeamItemParticipantsPdf(args: {
     cursorY += 2;
     autoTable(doc, {
       startY: cursorY,
-      head: [['Sl. No.', 'Chest No.', 'Participant Name', 'Category']],
-      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name)).map((row, index) => [String(index + 1), row.chest, row.name, row.category]),
+      head: [['Sl. No.', 'Chest No.', 'Participant Name']],
+      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name)).map((row, index) => [String(index + 1), row.chest, row.name]),
       margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: PRINT_MARGIN, bottom: PRINT_MARGIN + 4 },
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 8, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.8, overflow: 'linebreak', minCellHeight: 6 },
       headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
-      columnStyles: { 0: { cellWidth: 16, halign: 'center' }, 1: { cellWidth: 26, halign: 'center' }, 2: { cellWidth: 115 }, 3: { cellWidth: 33 } },
+      columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 32, halign: 'center' }, 2: { cellWidth: 140 } },
       rowPageBreak: 'avoid',
       didDrawPage: () => {
         if (doc.getNumberOfPages() > 1) {
@@ -312,27 +311,26 @@ export function downloadItemVerificationPdf(args: {
     head: [],
     body: [[
       { content: 'ITEM', styles: { fontStyle: 'bold', halign: 'center' } }, itemLabel(args.item),
-      { content: 'CODE', styles: { fontStyle: 'bold', halign: 'center' } }, safeText(args.item.item_code) || '—',
       { content: 'TOTAL PARTICIPANTS', styles: { fontStyle: 'bold', halign: 'center' } },
       { content: String(rows.length), styles: { halign: 'center' } },
     ]],
     margin: { left: PRINT_MARGIN, right: PRINT_MARGIN },
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 7.5, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.6, minCellHeight: 7, overflow: 'linebreak' },
-    columnStyles: { 0: { cellWidth: 17 }, 1: { cellWidth: 59 }, 2: { cellWidth: 17 }, 3: { cellWidth: 31 }, 4: { cellWidth: 39 }, 5: { cellWidth: 27 } },
+    columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 95 }, 2: { cellWidth: 42 }, 3: { cellWidth: 35 } },
   });
   const headerY = ((doc as any).lastAutoTable?.finalY ?? 31) + 4;
   autoTable(doc, {
     startY: headerY,
-    head: [['Sl. No.', 'Chest No.', 'Participant Name', 'Team', 'System Status']],
-    body: rows.map(({ participant, status }, index) => [String(index + 1), safeText(participant.chest_number) || '—', safeText(participant.name) || 'Unnamed participant', safeText(participant.organisation_name) || '—', status]),
+    head: [['Sl. No.', 'Chest No.', 'Participant Name', 'System Status']],
+    body: rows.map(({ participant, status }, index) => [String(index + 1), safeText(participant.chest_number) || '—', safeText(participant.name) || 'Unnamed participant', status]),
     margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: PRINT_MARGIN, bottom: PRINT_MARGIN + 4 },
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 8, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 2.1, minCellHeight: 7.2, overflow: 'linebreak', valign: 'middle' },
     headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.35 },
-    columnStyles: { 0: { cellWidth: 16, halign: 'center' }, 1: { cellWidth: 27, halign: 'center' }, 2: { cellWidth: 69 }, 3: { cellWidth: 43 }, 4: { cellWidth: 35, halign: 'center' } },
+    columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 30, halign: 'center' }, 2: { cellWidth: 95 }, 3: { cellWidth: 47, halign: 'center' } },
     didParseCell: (hook) => {
-      if (hook.section === 'body' && hook.column.index === 4 && ['Rejected', 'Cancelled'].includes(String(hook.cell.raw))) {
+      if (hook.section === 'body' && hook.column.index === 3 && ['Rejected', 'Cancelled'].includes(String(hook.cell.raw))) {
         hook.cell.styles.fillColor = LIGHT_GRAY;
         hook.cell.styles.fontStyle = 'bold';
       }
@@ -343,12 +341,12 @@ export function downloadItemVerificationPdf(args: {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(8);
         doc.setTextColor(...INK);
-        doc.text(`${itemLabel(args.item)} · ${safeText(args.item.item_code)}`, PRINT_MARGIN, 6);
+        doc.text(itemLabel(args.item), PRINT_MARGIN, 6);
       }
     },
   });
   pageFooter(doc, PAGE_HEIGHT_F4);
-  const safeItem = (safeText(args.item.item_code) || safeText(args.item.item_name_en) || 'item').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '');
+  const safeItem = (safeText(args.item.item_name_en) || safeText(args.item.item_name_ml) || 'item').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '');
   doc.save(`item-verification-${safeItem}.pdf`);
   return { participantCount: rows.length };
 }

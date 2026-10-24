@@ -48,10 +48,10 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
   const eligibleIds = useMemo(() => new Set(eligible.map(person => person.id)), [eligible]);
   const min = Number(entry.item?.group_min_members ?? 0);
   const max = Number(entry.item?.group_max_members ?? 0);
-  // Configured member counts describe the competition; the roster RPC requires
-  // a non-empty eligible roster and a leader, without enforcing those counts.
-  const validationMessage = memberIds.length === 0
-    ? 'Keep at least one member in this group entry.'
+  const validationMessage = memberIds.length < Math.max(1, min)
+    ? `This competition requires at least ${Math.max(1, min)} members. Remove the whole entry if the roster cannot meet that size.`
+    : max > 0 && memberIds.length > max
+      ? `This competition allows no more than ${max} members.`
     : !leaderId || !memberIds.includes(leaderId)
       ? 'Choose a leader from the selected members before saving.'
       : memberIds.some(id => !eligibleIds.has(id))
@@ -128,7 +128,7 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
             </View>;
           })}
         </ScrollView>
-        <Text className="mt-2 font-poppins text-xs text-ui-text-muted">{memberIds.length} selected{min > 0 || max > 0 ? ` · Configured size: ${min > 0 ? min : '—'}${max > 0 && max !== min ? `–${max}` : ''} (reference only)` : ''}</Text>
+        <Text className="mt-2 font-poppins text-xs text-ui-text-muted">{memberIds.length} selected{min > 0 || max > 0 ? ` · Required size: ${min > 0 ? min : '1'}${max > 0 && max !== min ? `–${max}` : ''}` : ''}</Text>
         {!valid && <Text className="mt-1 font-poppins text-xs text-core-warning-amber-800">{validationMessage}</Text>}
         {!!error && <Text className="mt-2 font-poppins text-xs text-core-danger-red-700">{error}</Text>}
         <View className="mt-3 flex-row justify-end gap-2">

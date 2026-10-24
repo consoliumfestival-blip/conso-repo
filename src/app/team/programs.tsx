@@ -6,7 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
-import { TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { TeamLeaderGroupRosterMember, TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { festivalCategoryService } from '@/services/festivalCategoryService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
 
@@ -31,6 +31,11 @@ function categoryLabel(codes: string[] | null) {
 }
 
 type ProgramSort = 'default' | 'name_asc' | 'name_desc' | 'code_asc' | 'category_asc';
+
+type PendingDeselect =
+  | { kind: 'individual'; registrationId: string; participantName: string; participantIds: string[] }
+  | { kind: 'group-member'; registrationId: string; participantId: string; participantName: string; participantIds: string[]; isLeader: boolean; remainingMembers: TeamLeaderGroupRosterMember[] }
+  | { kind: 'group-entry'; registrationId: string; participantIds: string[] };
 
 export default function TeamProgramsScreen() {
   const ui = useTeamUi();
@@ -60,6 +65,10 @@ export default function TeamProgramsScreen() {
   const [individualMemberSearch, setIndividualMemberSearch] = useState('');
   const [activeGeneralProgram, setActiveGeneralProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [activeViewProgram, setActiveViewProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [pendingDeselect, setPendingDeselect] = useState<PendingDeselect | null>(null);
+  const [replacementLeaderId, setReplacementLeaderId] = useState<string | null>(null);
+  const [deselectError, setDeselectError] = useState('');
+  const [deselectBusy, setDeselectBusy] = useState(false);
   const [selectedGeneralParticipantIds, setSelectedGeneralParticipantIds] = useState<string[]>([]);
   const [generalSelectionError, setGeneralSelectionError] = useState('');
   const [generalMemberSearch, setGeneralMemberSearch] = useState('');
@@ -114,6 +123,13 @@ export default function TeamProgramsScreen() {
     queryKey: ['team-program-group-roster', context?.festival_id, activeViewProgram?.item_id],
     enabled: !!context && activeViewProgram?.entry_kind === 'general_team',
     queryFn: () => teamLeaderPortalService.getProgramGroupRoster(activeViewProgram!.item_id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const individualRosterQuery = useQuery({
+    queryKey: ['team-program-individual-roster', context?.festival_id, activeViewProgram?.item_id],
+    enabled: !!context && activeViewProgram?.entry_kind === 'participant',
+    queryFn: () => teamLeaderPortalService.getProgramIndividualRoster(activeViewProgram!.item_id),
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -205,12 +221,56 @@ export default function TeamProgramsScreen() {
         && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`.toLowerCase().includes(generalMemberSearch.trim().toLowerCase()),
       )
     : [];
-  const participantById = new Map(participants.map((person) => [person.id, person]));
-  const viewedIndividualParticipants = activeViewProgram?.entry_kind === 'participant'
-    ? (activeViewProgram.assigned_participant_ids ?? [])
-        .map((id) => participantById.get(id))
-        .filter((person): person is TeamLeaderParticipant => !!person)
-    : [];
+  const openDeselect = (entry: PendingDeselect) => {
+    setPendingDeselect(entry);
+    setReplacementLeaderId(null);
+    setDeselectError('');
+  };
+
+  const confirmDeselect = async () => {
+    if (!pendingDeselect || deselectBusy) return;
+    if (pendingDeselect.kind === 'group-member' && pendingDeselect.isLeader && !replacementLeaderId) {
+      setDeselectError('Choose a replacement group leader.');
+      return;
+    }
+    setDeselectBusy(true);
+    setDeselectError('');
+    try {
+      const result = pendingDeselect.kind === 'individual'
+        ? await teamLeaderPortalService.deselectIndividualRegistration(pendingDeselect.registrationId)
+        : pendingDeselect.kind === 'group-member'
+          ? await teamLeaderPortalService.removeGroupMember(
+            pendingDeselect.registrationId, pendingDeselect.participantId,
+            pendingDeselect.participantIds, replacementLeaderId ?? undefined,
+          )
+          : await teamLeaderPortalService.deleteGroupEntry(pendingDeselect.registrationId, pendingDeselect.participantIds);
+      if (result.status !== 'removed') {
+        setDeselectError(result.message || 'This assignment could not be removed. Reload and try again.');
+        return;
+      }
+      if (context?.festival_id && pendingDeselect.kind !== 'individual') {
+        await invalidateGeneralMembership(queryClient, context.festival_id, pendingDeselect.participantIds);
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] }),
+        queryClient.invalidateQueries({ queryKey: ['team-program-individual-roster', context?.festival_id] }),
+        queryClient.invalidateQueries({ queryKey: ['team-program-group-roster', context?.festival_id] }),
+        queryClient.invalidateQueries({ queryKey: ['team-leader-participant-programs', context?.festival_id] }),
+      ]);
+      setPendingDeselect(null);
+      setNotice({ kind: 'success', text: pendingDeselect.kind === 'group-entry' ? 'Group entry removed.' : 'Participant deselected from this competition.' });
+    } catch (error: any) {
+      setDeselectError(error?.message || 'Could not deselect this entry. Reload and try again.');
+    } finally {
+      setDeselectBusy(false);
+    }
+  };
+
+  const closeParticipantView = () => {
+    if (deselectBusy) return;
+    setPendingDeselect(null);
+    setActiveViewProgram(null);
+  };
 
   const openIndividualPicker = (program: TeamLeaderProgramOption) => {
     setActiveIndividualProgram(program);
@@ -547,7 +607,7 @@ export default function TeamProgramsScreen() {
   );
 
   const participantView = (
-    <Modal visible={!!activeViewProgram} transparent animationType="slide" onRequestClose={() => setActiveViewProgram(null)}>
+    <Modal visible={!!activeViewProgram} transparent animationType="slide" onRequestClose={closeParticipantView}>
       <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
         <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
@@ -555,21 +615,61 @@ export default function TeamProgramsScreen() {
               <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Participants</Text>
               <Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{activeViewProgram?.item_name_en || activeViewProgram?.item_name_ml || activeViewProgram?.item_code}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="Close participants" onPress={() => setActiveViewProgram(null)} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}><X size={20} color={muted} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close participants" onPress={closeParticipantView} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}><X size={20} color={muted} /></Pressable>
           </View>
           <ScrollView style={{ flexGrow: 0, minHeight: 100, maxHeight: isDesktop ? 440 : 360 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
             {activeViewProgram?.entry_kind === 'general_team' ? (
               groupRosterQuery.isLoading || groupRosterQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 20 }} color={orange} />
                 : groupRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load group participants.</Text><Pressable accessibilityRole="button" onPress={() => groupRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
-                  : groupRosterQuery.data?.length ? groupRosterQuery.data.map((member, index, rows) => <View key={`${member.registration_id}-${member.participant_id}`} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
-                      {index === 0 || rows[index - 1].registration_id !== member.registration_id ? <Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 5 }}>Group entry {member.entry_chest_number ? `· Chest ${member.entry_chest_number}` : ''}</Text> : null}
-                      <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{member.participant_name}{member.is_leader ? ' · Leader' : ''}</Text>
-                      <Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{member.participant_chest_number ? `Chest ${member.participant_chest_number}` : 'Chest number unavailable'}</Text>
-                    </View>)
+                  : groupRosterQuery.data?.length ? groupRosterQuery.data.map((member, index, rows) => {
+                    const entryMembers = rows.filter((row) => row.registration_id === member.registration_id);
+                    return <View key={`${member.registration_id}-${member.participant_id}`} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
+                      {index === 0 || rows[index - 1].registration_id !== member.registration_id ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
+                          <Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700', flex: 1 }}>Group entry {member.entry_chest_number ? `· Chest ${member.entry_chest_number}` : ''}</Text>
+                          <Pressable accessibilityRole="button" accessibilityLabel="Remove whole group entry" onPress={() => openDeselect({ kind: 'group-entry', registrationId: member.registration_id, participantIds: entryMembers.map((row) => row.participant_id) })} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 8 }}>
+                            <Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Remove group</Text>
+                          </Pressable>
+                        </View>
+                      ) : null}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{member.participant_name}{member.is_leader ? ' · Leader' : ''}</Text>
+                          <Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{member.participant_chest_number ? `Chest ${member.participant_chest_number}` : 'Chest number unavailable'}</Text>
+                        </View>
+                        <Pressable accessibilityRole="button" accessibilityLabel={`Deselect ${member.participant_name}`} onPress={() => openDeselect({ kind: 'group-member', registrationId: member.registration_id, participantId: member.participant_id, participantName: member.participant_name, participantIds: entryMembers.map((row) => row.participant_id), isLeader: member.is_leader, remainingMembers: entryMembers.filter((row) => row.participant_id !== member.participant_id) })} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 8 }}>
+                          <Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Deselect</Text>
+                        </Pressable>
+                      </View>
+                    </View>;
+                  })
                     : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No group entries yet.</Text>
-            ) : viewedIndividualParticipants.length ? viewedIndividualParticipants.map((person) => <View key={person.id} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>)
-              : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No participants assigned yet.</Text>}
+            ) : individualRosterQuery.isLoading || individualRosterQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 20 }} color={orange} />
+              : individualRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load participants.</Text><Pressable accessibilityRole="button" onPress={() => individualRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
+                : individualRosterQuery.data?.length ? individualRosterQuery.data.map((person) => <View key={person.registration_id} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ flex: 1 }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.participant_name}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{[person.participant_category_code, person.participant_chest_number ? `Chest ${person.participant_chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Deselect ${person.participant_name}`} onPress={() => openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] })} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Deselect</Text></Pressable>
+                </View>)
+                  : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No participants assigned yet.</Text>}
           </ScrollView>
+          {pendingDeselect ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
+            <View style={{ width: '100%', maxWidth: 440, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface, padding: 16, gap: 10 }}>
+              <Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '800' }}>Confirm deselect</Text>
+              <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>
+                {pendingDeselect.kind === 'group-entry' ? 'This removes the whole group entry and affects every teammate in it.' : `Remove ${pendingDeselect.participantName} from this competition?`}
+              </Text>
+              {pendingDeselect.kind === 'group-member' && pendingDeselect.isLeader ? <ScrollView style={{ flexGrow: 0, maxHeight: 180 }} contentContainerStyle={{ gap: 5 }}>
+                <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Choose a replacement leader</Text>
+                {pendingDeselect.remainingMembers.filter((member) => !!member.participant_chest_number).map((member) => <Pressable key={member.participant_id} accessibilityRole="radio" accessibilityState={{ checked: replacementLeaderId === member.participant_id }} onPress={() => setReplacementLeaderId(member.participant_id)} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: replacementLeaderId === member.participant_id ? ui.colors.primary : border, borderRadius: 8 }}><Text style={{ color: ui.colors.text, fontSize: 12 }}>{member.participant_name} · Chest {member.participant_chest_number}</Text></Pressable>)}
+                {!pendingDeselect.remainingMembers.some((member) => !!member.participant_chest_number) ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>No remaining member has a chest number to lead this group.</Text> : null}
+              </ScrollView> : null}
+              {deselectError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{deselectError}</Text> : null}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <Pressable accessibilityRole="button" disabled={deselectBusy} onPress={() => setPendingDeselect(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Keep</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={deselectBusy || (pendingDeselect.kind === 'group-member' && pendingDeselect.isLeader && !replacementLeaderId)} onPress={confirmDeselect} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.danger, alignItems: 'center', justifyContent: 'center', opacity: deselectBusy ? 0.6 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{deselectBusy ? 'Removing…' : 'Confirm remove'}</Text></Pressable>
+              </View>
+            </View>
+          </View> : null}
         </View>
       </View>
     </Modal>

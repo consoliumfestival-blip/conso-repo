@@ -15,7 +15,7 @@ export function GroupEntryDeleteDialog({ entry, festivalId, onClose, onDeleted }
     if (saving) return;
     setSaving(true); setError('');
     try {
-      const result = await generalEntryService.remove(entry.id);
+      const result = await generalEntryService.remove(entry.id, entry.members.map(member => member.participant_id));
       if (result.status !== 'removed') throw new Error(result.message || 'Entry not found. Refresh the page.');
       await Promise.allSettled([
         invalidateGeneralMembership(client, festivalId, result.member_ids ?? entry.members.map(member => member.participant_id)),

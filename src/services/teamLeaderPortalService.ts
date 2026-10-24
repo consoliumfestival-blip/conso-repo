@@ -94,6 +94,26 @@ export interface TeamLeaderGroupRosterMember {
   is_leader: boolean;
 }
 
+export interface TeamLeaderIndividualRosterMember {
+  registration_id: string;
+  participant_id: string;
+  participant_name: string;
+  participant_chest_number: string | null;
+  participant_category_code: string | null;
+  registration_status: string | null;
+}
+
+export interface TeamLeaderParticipantProgram {
+  item_id: string;
+  item_code: string | null;
+  item_name_en: string | null;
+  item_name_ml: string | null;
+  category_codes: string[] | null;
+  participation_type: string | null;
+  entry_kind: 'participant' | 'general_team';
+  registration_status: string | null;
+}
+
 async function readRpc<T>(name: string): Promise<T[]> {
   const { data, error } = await supabase.rpc(name);
   if (error) throw error;
@@ -135,11 +155,11 @@ export const teamLeaderPortalService = {
   },
   getParticipants: () => readRpc<TeamLeaderParticipant>('get_team_leader_participants'),
   getProgramsForParticipant: async (participantId: string) => {
-    const { data, error } = await supabase.rpc('get_team_leader_programs', {
+    const { data, error } = await supabase.rpc('get_team_leader_participant_programs', {
       p_participant_id: participantId,
     });
     if (error) throw error;
-    return (data ?? []) as TeamLeaderProgramOption[];
+    return (data ?? []) as TeamLeaderParticipantProgram[];
   },
   getProgramsForTeam: async () => {
     const [programs, completionRows] = await Promise.all([
@@ -167,6 +187,38 @@ export const teamLeaderPortalService = {
     });
     if (error) throw error;
     return (data ?? []) as TeamLeaderGroupRosterMember[];
+  },
+  getProgramIndividualRoster: async (itemId: string) => {
+    const { data, error } = await supabase.rpc('get_team_leader_program_individual_roster', {
+      p_item_id: itemId,
+    });
+    if (error) throw error;
+    return (data ?? []) as TeamLeaderIndividualRosterMember[];
+  },
+  deselectIndividualRegistration: async (registrationId: string) => {
+    const { data, error } = await supabase.rpc('safe_unassign_registration', {
+      p_registration_id: registrationId,
+    });
+    if (error) throw error;
+    return data as { status: 'removed' | 'blocked' | 'not_found'; message?: string };
+  },
+  removeGroupMember: async (registrationId: string, participantId: string, expectedMemberIds: string[], replacementLeaderId?: string) => {
+    const { data, error } = await supabase.rpc('safe_remove_group_member', {
+      p_registration_id: registrationId,
+      p_participant_id: participantId,
+      p_expected_member_ids: expectedMemberIds,
+      p_replacement_leader_id: replacementLeaderId ?? null,
+    });
+    if (error) throw error;
+    return data as { status: 'removed' | 'blocked' | 'not_found'; message?: string };
+  },
+  deleteGroupEntry: async (registrationId: string, expectedMemberIds: string[]) => {
+    const { data, error } = await supabase.rpc('safe_delete_group_entry_if_unchanged', {
+      p_registration_id: registrationId,
+      p_expected_member_ids: expectedMemberIds,
+    });
+    if (error) throw error;
+    return data as { status: 'removed' | 'blocked' | 'not_found'; message?: string };
   },
   markProgramCompleted: async (itemId: string) => {
     const { data, error } = await supabase.rpc('team_leader_mark_program_completed', {
@@ -208,10 +260,11 @@ export const teamLeaderPortalService = {
       body: { action: 'reset_password', user_id: userId, festival_id: festivalId },
     });
     if (error) throw error;
-    if (!data?.success || typeof data?.password !== 'string') {
-      throw new Error(data?.message || 'Password reset did not complete.');
+    if (!data?.success || typeof data?.password !== 'string' || !/^[0-9]{6}$/.test(data.password)
+      || typeof data?.username !== 'string' || !data.username.trim()) {
+      throw new Error(data?.message || 'The reset response did not contain a username and six-digit password. Check the account before reissuing credentials.');
     }
-    return data as { success: true; password: string; username: string };
+    return { ...data, username: data.username.trim() } as { success: true; password: string; username: string };
   },
 
   selfUpdateCredentials: async (
@@ -240,11 +293,16 @@ export const teamLeaderPortalService = {
         }
       }
       throw new Error(
-        typeof payload?.message === 'string' && payload.message
+        payload?.error === 'CREDENTIAL_CHANGE_NOT_REQUIRED'
+          ? 'Credential setup is already complete. Sign in again with your current password.'
+          : typeof payload?.message === 'string' && payload.message
           ? payload.message
           : error.message || 'Could not update Team Leader credentials.'
       );
     }
-    return data;
+    if (!data?.success || typeof data?.username !== 'string' || !data.username.trim()) {
+      throw new Error('Credential setup could not be confirmed. Sign in again with your new password.');
+    }
+    return { ...data, username: data.username.trim() };
   },
 };

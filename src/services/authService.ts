@@ -26,7 +26,19 @@ const friendlyError = (msg: string): string => {
   return msg;
 };
 
-const getRequiredProfile = async (userId: string) => {
+const getRequiredProfile = async (userId: string, preferRpc = false) => {
+  if (preferRpc) {
+    const { data: rpcRows, error: rpcError } = await supabase.rpc('get_my_login_profile');
+    const rpcProfile = rpcRows?.[0];
+    if (!rpcError && rpcProfile) return rpcProfile;
+
+    // Team Leader RLS intentionally blocks direct profile reads in current deployments.
+    // Keep the direct read only as a compatibility fallback for older deployments.
+    const directProfile = await authProvider.getProfile(userId);
+    if (!directProfile.error && directProfile.data) return directProfile.data;
+    throw new Error('Your session is saved, but account access could not be verified. Try again when online.');
+  }
+
   const directProfile = await authProvider.getProfile(userId);
   if (!directProfile.error && directProfile.data) return directProfile.data;
 
@@ -63,12 +75,14 @@ const resolveUserLogin = async (identifier: string, password: string, loginType?
   return { ...data, user: installedSession.user };
 };
 
-const buildLoginResult = async (resolved: { user?: any }): Promise<LoginResult> => {
+const buildLoginResult = async (resolved: { user?: any }, teamLeaderRoute = false): Promise<LoginResult> => {
   const userId = resolved.user?.id;
   if (!userId) throw new Error('Login failed. Please try again.');
 
-  const profile = await getRequiredProfile(userId);
-  await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false);
+  const profile = await getRequiredProfile(userId, teamLeaderRoute);
+  await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false, {
+    preserveTeamLeaderSession: teamLeaderRoute,
+  });
   return {
     user: resolved.user,
     tenant_id: profile.tenant_id,
@@ -77,18 +91,29 @@ const buildLoginResult = async (resolved: { user?: any }): Promise<LoginResult> 
   };
 };
 
-const assertTenantEnabled = async (tenantId: string | null | undefined, isSuperadmin?: boolean) => {
+const assertTenantEnabled = async (
+  tenantId: string | null | undefined,
+  isSuperadmin?: boolean,
+  options: { preserveTeamLeaderSession?: boolean } = {},
+) => {
   if (!tenantId) return;
   if (isSuperadmin) return;
-  const { data } = await supabase.rpc('get_my_access_status');
+  const { data, error } = await supabase.rpc('get_my_access_status');
+  if (error && options.preserveTeamLeaderSession) {
+    throw new Error('Your session is saved, but account access could not be verified. Try again when online.');
+  }
   const status = data ?? {};
   if (status.access_disabled) {
-    try {
-      await authProvider.signOut();
-    } catch {
-      // best-effort cleanup; the blocked-access error below is authoritative
+    if (!options.preserveTeamLeaderSession) {
+      try {
+        await authProvider.signOut();
+      } catch {
+        // best-effort cleanup; the blocked-access error below is authoritative
+      }
     }
-    throw new Error('Tenant access has been disabled. Please contact the festival administrator.');
+    const error = new Error('Tenant access has been disabled. Please contact the festival administrator.') as Error & { code?: string };
+    error.code = 'TENANT_ACCESS_DISABLED';
+    throw error;
   }
 };
 
@@ -102,7 +127,7 @@ export const authService = {
 
   async loginTeamLeader(username: string, password: string): Promise<LoginResult> {
     const resolved = await resolveUserLogin(username, password, 'team_leader');
-    return buildLoginResult(resolved);
+    return buildLoginResult(resolved, true);
   },
 
   async logout(): Promise<void> {
@@ -110,13 +135,20 @@ export const authService = {
     if (error) throw new Error(error.message);
   },
 
-  async getCurrentSession(): Promise<SessionResult> {
+  async logoutTeamLeader(): Promise<void> {
+    const { error } = await authProvider.signOut('local');
+    if (error) throw new Error(error.message);
+  },
+
+  async getCurrentSession(options: { teamLeaderRoute?: boolean } = {}): Promise<SessionResult> {
     const { data, error } = await authProvider.getSession();
     if (error) throw new Error(error.message);
     if (!data?.user) return null;
 
-    const profile = await getRequiredProfile(data.user.id);
-    await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false);
+    const profile = await getRequiredProfile(data.user.id, options.teamLeaderRoute);
+    await assertTenantEnabled(profile.tenant_id, profile.is_superadmin || false, {
+      preserveTeamLeaderSession: options.teamLeaderRoute,
+    });
     return {
       user: data.user,
       tenant_id: profile.tenant_id,

@@ -16,7 +16,7 @@ import { Separator } from '@/components/team/TeamSeparator';
 export default function ProfileScreen() {
   const ui = useTeamUi();
   const { context } = useTeamLeaderContext();
-  const { user, logout } = useAuthStore();
+  const { user, logoutTeamLeader } = useAuthStore();
   const router = useRouter();
 
   const handleLogout = () => {
@@ -25,9 +25,13 @@ export default function ProfileScreen() {
       {
         text: 'Sign Out',
         style: 'destructive',
-        onPress: () => {
-          logout();
-          router.replace('/team/login');
+        onPress: async () => {
+          try {
+            await logoutTeamLeader();
+            router.replace('/team/login');
+          } catch (error: any) {
+            Alert.alert('Sign Out Failed', error?.message || 'Please try again.');
+          }
         },
       },
     ]);

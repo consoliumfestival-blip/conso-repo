@@ -108,7 +108,7 @@ export function TeamLeaderAppShell({
   const isFocused = useIsFocused();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
+  const logoutTeamLeader = useAuthStore((s) => s.logoutTeamLeader);
   const { width } = useWindowDimensions();
   const { context } = useTeamLeaderContext();
   const ui = useTeamUi();
@@ -149,7 +149,7 @@ export function TeamLeaderAppShell({
   const themeActionLabel = mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode';
 
   const handleLogout = async () => {
-    await logout();
+    await logoutTeamLeader();
     router.replace("/team/login");
   };
 

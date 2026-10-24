@@ -26,6 +26,7 @@ export default function TeamLeaderLogin() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const setUser = useAuthStore((state) => state.setUser);
+  const logoutTeamLeader = useAuthStore((state) => state.logoutTeamLeader);
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 900;
@@ -46,7 +47,7 @@ export default function TeamLeaderLogin() {
     try {
       const result = await authService.loginTeamLeader(username.trim(), password);
       if (result.role !== 'team_leader') {
-        await authService.logout().catch(() => undefined);
+        await logoutTeamLeader().catch(() => undefined);
         setErrorMsg('This account does not have Team Leader access.');
         return;
       }
@@ -66,6 +67,9 @@ export default function TeamLeaderLogin() {
       setErrorMsg(/invalid (username|login credentials|credentials)/i.test(message)
         ? 'Incorrect username or password. Please check and try again.'
         : authService.friendlyError(message));
+      if (/session is saved/i.test(message)) {
+        void useAuthStore.getState().checkSession({ teamLeaderRoute: true });
+      }
     } finally {
       setLoading(false);
     }

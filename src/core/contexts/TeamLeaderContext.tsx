@@ -45,8 +45,14 @@ export function TeamLeaderProvider({ children }: { children: React.ReactNode }) 
     } catch (err: any) {
       console.error('Failed to fetch team leader context:', err);
       setError(err?.message || 'Failed to load portal context');
-      setContext(null);
-      setPortalEnabled(false);
+      // A definitive authorization failure must not leave previously loaded
+      // team data visible. Transient connectivity/server errors preserve it.
+      if (err?.status === 401 || err?.status === 403 || err?.code === '42501') {
+        setContext(null);
+        setPortalEnabled(false);
+      }
+      // Keep the last verified team context during a temporary network/RPC failure.
+      // A successful response with no active assignment still clears it above.
     } finally {
       setLoading(false);
     }
@@ -68,6 +74,13 @@ export function TeamLeaderProvider({ children }: { children: React.ReactNode }) 
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [fetchContext, initialized, role]);
+
+  useEffect(() => {
+    if (role !== 'team_leader' || typeof window === 'undefined') return;
+    const refreshWhenOnline = () => { void fetchContext(); };
+    window.addEventListener('online', refreshWhenOnline);
+    return () => window.removeEventListener('online', refreshWhenOnline);
+  }, [fetchContext, role]);
 
   return (
     <TeamLeaderContextProvider.Provider

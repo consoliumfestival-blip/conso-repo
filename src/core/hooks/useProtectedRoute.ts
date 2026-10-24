@@ -26,9 +26,10 @@ export function useProtectedRoute() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
-  const { user, role, is_superadmin, initialized } = useAuthStore();
+  const { user, role, is_superadmin, initialized, teamSessionStatus } = useAuthStore();
   const installedPortalMode = getInstalledPortalMode();
   const inTeamGroup = segments[0] === 'team';
+  const isRecoveringTeamSession = inTeamGroup && !user && teamSessionStatus !== 'idle';
   const inTeamLogin = inTeamGroup && pathname === '/team/login';
   const isTeamLeader = role === 'team_leader';
   const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
@@ -54,6 +55,7 @@ export function useProtectedRoute() {
 
   useEffect(() => {
     if (!initialized) return;
+    if (isRecoveringTeamSession) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -173,7 +175,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, teamManagementRouteAllowed, teamLeaderRouteBlocked, router]);
+  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
 
-  return mustBlockCoreRoute || mustBlockInstalledPortalRoute;
+  return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

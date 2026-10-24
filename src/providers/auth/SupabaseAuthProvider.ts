@@ -99,8 +99,10 @@ export class SupabaseAuthProvider implements AuthProvider {
     };
   }
 
-  async signOut(): Promise<AuthResult<void>> {
-    const { error } = await supabase.auth.signOut();
+  async signOut(scope?: 'global' | 'local' | 'others'): Promise<AuthResult<void>> {
+    const { error } = scope
+      ? await supabase.auth.signOut({ scope })
+      : await supabase.auth.signOut();
     return { data: undefined, error: normalizeError(error) };
   }
 

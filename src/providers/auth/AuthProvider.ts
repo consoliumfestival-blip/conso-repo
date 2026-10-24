@@ -15,7 +15,7 @@ export interface AuthProvider {
     session: { access_token: string; refresh_token: string };
   }>>;
   signInWithPassword(email: string, password: string): Promise<AuthResult<{ user: any }>>;
-  signOut(): Promise<AuthResult<void>>;
+  signOut(scope?: 'global' | 'local' | 'others'): Promise<AuthResult<void>>;
   getSession(): Promise<AuthResult<{ user: any } | null>>;
   getProfile(userId: string): Promise<AuthResult<AuthProfile>>;
 }

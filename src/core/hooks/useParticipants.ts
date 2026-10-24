@@ -10,7 +10,7 @@ export const usePublicCandidateProfile = (slug?: string | null) =>
     queryKey: ['publicCandidateProfile', slug],
     queryFn: () => participantService.getPublicCandidateProfile(slug!),
     enabled: !!slug,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
   });
 
 export const useParticipants = (participantId?: string) => {

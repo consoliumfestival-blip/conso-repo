@@ -64,7 +64,7 @@ function DashboardHeaderActions() {
 
 function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, totalEvents, now, mobile }: {
   teamName: string;
-  points: number;
+  points: number | null;
   rank?: number;
   todaysEvents: number;
   completedEvents: number;
@@ -95,7 +95,7 @@ function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, 
         <View style={{ flexDirection: mobile ? 'column' : 'row', alignItems: 'stretch', gap: mobile ? 16 : 22 }}>
           <View style={{ flex: mobile ? undefined : 1, minWidth: 0, justifyContent: 'center' }}>
             <Text style={{ color: 'rgba(255,255,255,0.66)', fontSize: 10, fontWeight: '600' }}>Total points</Text>
-            <Text accessibilityLabel={`Total points: ${points.toLocaleString()}`} adjustsFontSizeToFit numberOfLines={1} style={{ color: '#FFFFFF', fontSize: mobile ? 38 : 46, lineHeight: mobile ? 44 : 52, fontWeight: '800', marginTop: 2 }}>{points.toLocaleString()}</Text>
+            <Text accessibilityLabel={points === null ? 'Total points are not publicly available yet' : `Total points: ${points.toLocaleString()}`} adjustsFontSizeToFit numberOfLines={1} style={{ color: '#FFFFFF', fontSize: mobile ? 38 : 46, lineHeight: mobile ? 44 : 52, fontWeight: '800', marginTop: 2 }}>{points === null ? '—' : points.toLocaleString()}</Text>
           </View>
 
           <View style={{ flex: mobile ? undefined : 1.35, flexDirection: 'row', alignItems: 'stretch', gap: 8 }}>
@@ -195,7 +195,7 @@ export default function TeamLeaderDashboard() {
     <TeamLeaderAppShell hideMobileHeader mobileEdgeToEdge>
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
         <View>
-          <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? 0} rank={ownStanding && ownStanding.total_points > 0 ? ownStanding.rank : undefined} todaysEvents={todaysEvents.length} completedEvents={completedEvents} totalEvents={schedule.length} now={now} mobile={mobile} />
+          <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? null} rank={ownStanding && ownStanding.total_points > 0 ? ownStanding.rank : undefined} todaysEvents={todaysEvents.length} completedEvents={completedEvents} totalEvents={schedule.length} now={now} mobile={mobile} />
         </View>
 
         <View style={{ marginHorizontal: mobile ? 16 : 0 }}>

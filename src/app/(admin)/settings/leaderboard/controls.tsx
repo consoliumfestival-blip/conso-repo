@@ -86,6 +86,7 @@ export default function LeaderboardControlsPage() {
   const [certificateEnabled, setCertificateEnabled] = useState(false);
   const [posterTopCount, setPosterTopCount] = useState(3);
   const [showIndividualRankings, setShowIndividualRankings] = useState(true);
+  const [showCompetitionPointsGrades, setShowCompetitionPointsGrades] = useState(true);
   const [teamPointStatus, setTeamPointStatus] = useState<string>('');
   const [publicFestivalName, setPublicFestivalName] = useState<string>('');
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
@@ -133,6 +134,7 @@ export default function LeaderboardControlsPage() {
       setCertificateEnabled(settings.certificate_enabled);
       setPosterTopCount(settings.poster_top_count || 3);
       setShowIndividualRankings(settings.show_individual_rankings ?? true);
+      setShowCompetitionPointsGrades(settings.show_competition_points_grades ?? true);
       setTeamPointStatus(settings.team_point_status || '');
       setPublicFestivalName(settings.public_festival_name ?? activeFestival?.custom_name ?? '');
       setRankingMode(settings.ranking_mode || 'ALL');
@@ -155,6 +157,7 @@ export default function LeaderboardControlsPage() {
     certificate_enabled: certificateEnabled,
     poster_top_count: posterTopCount,
     show_individual_rankings: showIndividualRankings,
+    show_competition_points_grades: showCompetitionPointsGrades,
     team_point_status: teamPointStatus || null,
     public_festival_name: publicFestivalName.trim() || null,
     ranking_mode: rankingMode,
@@ -551,6 +554,25 @@ export default function LeaderboardControlsPage() {
                 disabled={updateSettingsMutation.isPending}
                 trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
                 thumbColor={showGradeSummary ? colors.teal : ui.colors.surface}
+              />
+            </View>
+
+            <View style={[styles.controlRow, isDesktop && styles.controlRowHalf]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.controlLabel}>Competition Points and Grades</Text>
+                <Text style={styles.controlHint}>Show event points and grades across public pages and the Team Leader portal</Text>
+              </View>
+              <Switch
+                value={showCompetitionPointsGrades}
+                onValueChange={async (value) => {
+                  const previous = showCompetitionPointsGrades;
+                  setShowCompetitionPointsGrades(value);
+                  const saved = await persistSetting({ show_competition_points_grades: value });
+                  if (!saved) setShowCompetitionPointsGrades(previous);
+                }}
+                disabled={updateSettingsMutation.isPending}
+                trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
+                thumbColor={showCompetitionPointsGrades ? colors.teal : ui.colors.surface}
               />
             </View>
 

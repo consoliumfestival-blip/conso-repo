@@ -21,7 +21,7 @@ export const useGetPublicLeaderboardSettings = (
     queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboardSettings(tenantId, festivalId),
     queryFn: () => leaderboardSettingsService.getPublicLeaderboardSettings(tenantId, festivalId),
     enabled: !!tenantId,
-    staleTime: 300000, // 5 minutes
+    staleTime: 0,
     gcTime: 1800000, // 30 minutes
   });
 };
@@ -38,6 +38,8 @@ export const useUpdateLeaderboardSettings = (tenantId: string, festivalId: strin
       queryClient.invalidateQueries({ queryKey: ['public-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['public-leaderboard-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public-published-results'] });
+      queryClient.invalidateQueries({ queryKey: ['publicCandidateProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['unitProfile'] });
     },
   });
 };

@@ -1,5 +1,5 @@
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { View } from 'react-native';
@@ -11,6 +11,7 @@ import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
+import { useFocusEffect } from 'expo-router';
 
 export default function ResultsScreen() {
   const ui = useTeamUi();
@@ -21,15 +22,24 @@ export default function ResultsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
-    if (!context) return;
+  useFocusEffect(useCallback(() => {
+    // Changing this key retries the focused results request.
+    void reloadKey;
+    if (!context?.assignment_id) return;
+    let cancelled = false;
     setLoadError(null);
     setLoading(true);
     teamLeaderPortalService.getPublishedResults().then((data) => {
+      if (cancelled) return;
       setResults(data);
       setLoading(false);
-    }).catch((error: any) => { setLoadError(error?.message || 'Please retry the results request.'); setLoading(false); });
-  }, [context, reloadKey]);
+    }).catch((error: any) => {
+      if (cancelled) return;
+      setLoadError(error?.message || 'Please retry the results request.');
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [context?.assignment_id, reloadKey]));
 
   if (contextLoading || loading) {
     return (
@@ -64,7 +74,7 @@ export default function ResultsScreen() {
             {filtered.length === 0 ? (
               <Card>
                 <CardContent style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No results to display</Text>
+                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>Public results will appear here when they are released.</Text>
                 </CardContent>
               </Card>
             ) : (

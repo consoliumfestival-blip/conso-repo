@@ -36,7 +36,7 @@ export type PublicPublishedResultRow = {
   participant_category_code: string | null;
   rank: number | null;
   grade: string | null;
-  points_awarded: number;
+  points_awarded: number | null;
   published_at: string | null;
   festival_level: string | null;
   item_code?: string;

@@ -1,5 +1,5 @@
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { View } from 'react-native';
@@ -8,6 +8,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
 import { Skeleton } from '@/components/team/TeamSkeleton';
+import { useFocusEffect } from 'expo-router';
 
 export default function MyTeamScreen() {
   const ui = useTeamUi();
@@ -15,13 +16,19 @@ export default function MyTeamScreen() {
   const [standings, setStandings] = useState<TeamLeaderStanding[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!context) return;
+  useFocusEffect(useCallback(() => {
+    if (!context?.assignment_id) return;
+    let cancelled = false;
+    setLoading(true);
     teamLeaderPortalService.getStandings().then((data) => {
+      if (cancelled) return;
       setStandings(data);
       setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [context]);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [context?.assignment_id]));
 
   if (contextLoading || loading) {
     return (
@@ -89,7 +96,7 @@ export default function MyTeamScreen() {
           <CardContent>
             {standings.length === 0 ? (
               <Text style={{ fontSize: 13, color: ui.colors.textMuted, textAlign: 'center', padding: 16 }}>
-                No standings available
+                Public standings will appear here when the leaderboard is released.
               </Text>
             ) : (
               <View style={{ gap: 4 }}>

@@ -69,6 +69,7 @@ export default function PublicUnitProfileScreen() {
 
   const profileQuery = useUnitProfile(unitId);
   const unitData = profileQuery.data;
+  const showCompetitionPointsGrades = unitData?.show_competition_points_grades !== false;
 
   // We can just omit tenantId and festivalId for now to get global
   const leaderboardQuery = usePublicLeaderboard(null, null);
@@ -207,6 +208,12 @@ export default function PublicUnitProfileScreen() {
     });
     
     if (!hasResult) return { label: 'Pending Results', color: palette.muted, icon: ShieldCheck };
+    if (!showCompetitionPointsGrades) {
+      if (maxRank === 1) return { label: '1st Rank', color: palette.yellow, icon: Trophy };
+      if (maxRank === 2) return { label: '2nd Rank', color: palette.blue, icon: Medal };
+      if (maxRank === 3) return { label: '3rd Rank', color: palette.green, icon: Medal };
+      return { label: 'Result published', color: palette.green, icon: Award };
+    }
     if (maxRank === 1) return { label: `1st Rank / ${totalPts} Pts`, color: palette.yellow, icon: Trophy };
     if (maxRank === 2) return { label: `2nd Rank / ${totalPts} Pts`, color: palette.blue, icon: Medal };
     if (maxRank === 3) return { label: `3rd Rank / ${totalPts} Pts`, color: palette.green, icon: Medal };

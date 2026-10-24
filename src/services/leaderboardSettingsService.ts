@@ -16,6 +16,7 @@ export type LeaderboardSettings = {
   certificate_enabled: boolean;
   poster_top_count: number;
   show_individual_rankings: boolean;
+  show_competition_points_grades: boolean;
   theme_config: Record<string, any>;
   team_point_status?: string | null;
   theme_config?: Record<string, any>;
@@ -29,6 +30,7 @@ export type PublicLeaderboardSettings = {
   festival_level: string | null;
   is_public_visible: boolean;
   show_individual_rankings: boolean;
+  show_competition_points_grades: boolean;
   team_point_status?: string | null;
   public_festival_name?: string | null;
   ranking_mode?: string;

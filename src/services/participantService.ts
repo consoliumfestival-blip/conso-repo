@@ -44,7 +44,7 @@ export type PublicCandidateProfile = {
     item_name_ml: string;
     rank: number | null;
     grade: string | null;
-    points_awarded: number;
+    points_awarded: number | null;
     published_at: string | null;
   }[];
 };

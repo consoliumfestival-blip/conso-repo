@@ -256,6 +256,7 @@ export default function IndividualRankingsPublicPage() {
   const settingsQ = useGetPublicLeaderboardSettings(tenantId);
   const festivalId = settingsQ.data?.festival_id;
   const festivalName = settingsQ.data?.public_festival_name?.trim() || 'Festival';
+  const showCompetitionPointsGrades = settingsQ.data?.show_competition_points_grades !== false;
 
   const resultsQ = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
 
@@ -296,6 +297,17 @@ export default function IndividualRankingsPublicPage() {
   }, [router]);
 
   const isLoading = resultsQ.isLoading || settingsQ.isLoading;
+
+  if (!isLoading && !showCompetitionPointsGrades) {
+    return (
+      <View style={styles.root}>
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ color: P.text, fontSize: 16, fontWeight: '700' }}>Individual rankings are temporarily hidden</Text>
+          <Text style={{ color: P.muted, marginTop: 8, textAlign: 'center' }}>They will appear when competition points and grades are made visible.</Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>

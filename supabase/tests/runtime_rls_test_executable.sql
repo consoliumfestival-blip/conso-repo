@@ -60,6 +60,14 @@ VALUES
   ('30000000-0000-0000-0000-000000000003'::uuid, '10000000-0000-0000-0000-000000000002'::uuid, 'TLTEST Festival B1', true, auth.uid())
 ON CONFLICT DO NOTHING;
 
+-- Public scoring remains hidden unless the festival leaderboard itself is public.
+INSERT INTO public.festival_leaderboard_settings (tenant_id, festival_id, is_public_visible)
+VALUES
+  ('10000000-0000-0000-0000-000000000001'::uuid, '30000000-0000-0000-0000-000000000001'::uuid, true),
+  ('10000000-0000-0000-0000-000000000002'::uuid, '30000000-0000-0000-0000-000000000003'::uuid, true)
+ON CONFLICT (tenant_id, festival_id) DO UPDATE
+SET is_public_visible = EXCLUDED.is_public_visible;
+
 -- Create Festival Teams
 INSERT INTO public.festival_teams (id, parent_tenant_id, festival_id, organisation_id, is_active, created_by)
 VALUES
@@ -335,12 +343,88 @@ SET LOCAL "auth.uid" = 'a0000000-0000-0000-0000-000000000001'::text;
 
 RAISE NOTICE 'TEST 9.1: get_team_leader_published_results() enforces triple gate';
 
-SELECT COUNT(*) as public_result_count FROM public.get_team_leader_published_results();
+DO $$
+DECLARE
+  team_result_count integer;
+  unexpected_result_count integer;
+BEGIN
+  SELECT count(*) INTO team_result_count
+  FROM public.get_team_leader_published_results();
+
+  SELECT count(*) INTO unexpected_result_count
+  FROM (
+    (
+      SELECT result_id FROM public.get_team_leader_published_results()
+      EXCEPT
+      SELECT public_result.result_id
+      FROM public.get_public_published_results(
+        '10000000-0000-0000-0000-000000000001'::uuid,
+        '30000000-0000-0000-0000-000000000001'::uuid,
+        true
+      ) AS public_result
+      WHERE public_result.organisation_id = '20000000-0000-0000-0000-000000000001'::uuid
+        AND public_result.participant_id IS NOT NULL
+    )
+    UNION ALL
+    (
+      SELECT public_result.result_id
+      FROM public.get_public_published_results(
+        '10000000-0000-0000-0000-000000000001'::uuid,
+        '30000000-0000-0000-0000-000000000001'::uuid,
+        true
+      ) AS public_result
+      WHERE public_result.organisation_id = '20000000-0000-0000-0000-000000000001'::uuid
+        AND public_result.participant_id IS NOT NULL
+      EXCEPT
+      SELECT result_id FROM public.get_team_leader_published_results()
+    )
+  ) AS result_difference;
+
+  IF team_result_count <> 2 OR unexpected_result_count <> 0 THEN
+    RAISE EXCEPTION 'Team Leader results (%) differ from public results (unexpected rows: %)',
+      team_result_count, unexpected_result_count;
+  END IF;
+END;
+$$;
 
 -- Should return only results where published=true AND result_status='published' AND public_visible=true
--- Expected: 3 results (rank 1, 2, 4 from Team A's festival, with all three flags set)
+-- Expected: the two public result IDs belonging to Team A. Team B's rows stay excluded.
 
 RAISE NOTICE 'GATE: Triple-gate test completed.';
+
+-- Hiding the public leaderboard must hide both its results and standings.
+RESET ROLE;
+UPDATE public.festival_leaderboard_settings
+SET is_public_visible = false
+WHERE tenant_id = '10000000-0000-0000-0000-000000000001'::uuid
+  AND festival_id = '30000000-0000-0000-0000-000000000001'::uuid;
+SET LOCAL ROLE authenticated;
+SET LOCAL "auth.uid" = 'a0000000-0000-0000-0000-000000000001'::text;
+
+DO $$
+DECLARE
+  team_result_count integer;
+  team_standing_count integer;
+BEGIN
+  SELECT count(*) INTO team_result_count
+  FROM public.get_team_leader_published_results();
+  SELECT count(*) INTO team_standing_count
+  FROM public.get_team_leader_standings();
+
+  IF team_result_count <> 0 OR team_standing_count <> 0 THEN
+    RAISE EXCEPTION 'Private leaderboard exposed % results and % standings',
+      team_result_count, team_standing_count;
+  END IF;
+END;
+$$;
+
+RESET ROLE;
+UPDATE public.festival_leaderboard_settings
+SET is_public_visible = true
+WHERE tenant_id = '10000000-0000-0000-0000-000000000001'::uuid
+  AND festival_id = '30000000-0000-0000-0000-000000000001'::uuid;
+SET LOCAL ROLE authenticated;
+SET LOCAL "auth.uid" = 'a0000000-0000-0000-0000-000000000001'::text;
 
 -- ============================================================================
 -- SECTION 10: STANDINGS PARITY

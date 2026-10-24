@@ -19,7 +19,7 @@ export type UnitParticipantRow = {
     results: {
       rank: number | null;
       grade: string | null;
-      points_awarded: number;
+      points_awarded: number | null;
     }[];
   }[];
 };
@@ -28,6 +28,7 @@ export type UnitProfileData = {
   id: string;
   name: string;
   parent_id: string | null;
+  show_competition_points_grades?: boolean;
   participants: UnitParticipantRow[];
   stats: {
     totalParticipants: number;

@@ -167,7 +167,8 @@ const accentByRank = (rank: number) => {
 const toOrganisationRows = (
   rows: LeaderboardRow[],
   publishedResults: PublicPublishedResultRow[],
-  label: string
+  label: string,
+  useOfficialTeamPoints = false
 ): RankingViewRow[] => {
   const orgStats = new Map<string, { points: number; results: number; firstPlaces: number }>();
   const seenGroupItems = new Set<string>();
@@ -183,7 +184,7 @@ const toOrganisationRows = (
 
     const current = orgStats.get(orgId) || { points: 0, results: 0, firstPlaces: 0 };
     orgStats.set(orgId, {
-      points: current.points + result.points_awarded,
+      points: current.points + (result.points_awarded ?? 0),
       results: current.results + 1,
       firstPlaces: current.firstPlaces + (result.rank === 1 ? 1 : 0)
     });
@@ -192,7 +193,9 @@ const toOrganisationRows = (
   return rows.map((row) => {
     const orgId = row.organisation_id ?? `organisation:${row.organisation_name}`;
     const stats = orgStats.get(orgId) || { points: 0, results: 0, firstPlaces: 0 };
-    const totalPoints = stats.points + (row.grace_marks_awarded || 0);
+    const totalPoints = useOfficialTeamPoints
+      ? row.total_points
+      : stats.points + (row.grace_marks_awarded || 0);
 
     return {
       id: orgId,
@@ -243,7 +246,7 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
 
     const existing = grouped.get(result.participant_id);
     if (existing) {
-      existing.points += result.points_awarded;
+      existing.points += result.points_awarded ?? 0;
       existing.resultCount += 1;
       existing.firstPlaces += result.rank === 1 ? 1 : 0;
       if (!existing.profileSlug && result.participant_profile_slug) existing.profileSlug = result.participant_profile_slug;
@@ -253,7 +256,7 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
       id: result.participant_id,
       name: result.participant_name || result.chest_number || 'Published participant',
       organisation: result.organisation_name,
-      points: result.points_awarded,
+      points: result.points_awarded ?? 0,
       resultCount: 1,
       firstPlaces: result.rank === 1 ? 1 : 0,
       category: result.participant_category_code,
@@ -289,7 +292,7 @@ const toItemSections = (results: PublicPublishedResultRow[]): ItemResultSection[
       name: result.participant_name || result.chest_number || 'Published participant',
       organisationName: result.organisation_name,
       rank: result.rank,
-      points: result.points_awarded,
+      points: result.points_awarded ?? 0,
       grade: result.grade,
       chestNumber: result.chest_number,
       accent: accentByRank(rank),
@@ -374,7 +377,8 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
 
   const tenantId = (Array.isArray(queryTenantId) ? queryTenantId[0] : queryTenantId) || authTenantId || null;
   const settingsQuery = useGetPublicLeaderboardSettings(tenantId);
-  const showIndividuals = settingsQuery.data?.show_individual_rankings === true;
+  const showCompetitionPointsGrades = settingsQuery.data?.show_competition_points_grades !== false;
+  const showIndividuals = settingsQuery.data?.show_individual_rankings === true && showCompetitionPointsGrades;
   const festivalId = settingsQuery.data?.festival_id;
   const publicFestivalName = settingsQuery.data?.public_festival_name?.trim() || 'Festival';
 
@@ -584,7 +588,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
     );
   }, [categoryFilteredResults, searchQuery]);
 
-  const organisationRows = useMemo(() => toOrganisationRows(organisationData, categoryFilteredResults, hierarchyLabel), [organisationData, categoryFilteredResults, hierarchyLabel]);
+  const organisationRows = useMemo(() => toOrganisationRows(organisationData, categoryFilteredResults, hierarchyLabel, !showCompetitionPointsGrades), [organisationData, categoryFilteredResults, hierarchyLabel, showCompetitionPointsGrades]);
   const filteredOrganisationRows = useMemo(() => {
     return organisationRows.filter((row) => includesQuery([row.name, row.subtitle], searchQuery));
   }, [organisationRows, searchQuery]);
@@ -1149,15 +1153,15 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
                       {row.organisationName}{row.chestNumber ? ` - Chest ${row.chestNumber}` : ''}
                     </Text>
                   </View>
-                  {row.grade ? (
+                  {showCompetitionPointsGrades && row.grade ? (
                     <View style={styles.gradePill}>
                       <Text style={styles.gradeText}>{row.grade}</Text>
                     </View>
                   ) : null}
-                  <View style={styles.rowPoints}>
+                  {showCompetitionPointsGrades && <View style={styles.rowPoints}>
                     <Text style={styles.rowPointsValue}>{row.points}</Text>
                     <Text style={styles.rowPointsLabel}>pts</Text>
-                  </View>
+                  </View>}
                 </TouchableOpacity>
               ))}
             </View>

@@ -21,7 +21,7 @@ export interface PublicResultRow {
   organisation_name: string;
   rank: number;
   grade: string | null;
-  points_awarded: number;
+  points_awarded: number | null;
 }
 
 export interface PublicScheduleRow {
@@ -44,7 +44,7 @@ export interface PublicParticipantRow {
   item_name_ml: string | null;
   rank: number | null;
   grade: string | null;
-  points_awarded: number;
+  points_awarded: number | null;
 }
 
 // Formats UTC date string to Kolkatta time for user display in context
@@ -149,7 +149,7 @@ export async function buildPublicFestivalContext(festivalId: string): Promise<st
         }
         
         if (row.rank !== null && row.rank !== undefined) {
-          const resultStr = `${itemDisplayName} (Rank: ${row.rank}${row.grade ? `, Grade: ${row.grade}` : ''})`;
+          const resultStr = `${itemDisplayName} (Rank: ${row.rank}${row.grade ? `, Grade: ${row.grade}` : ''}${row.points_awarded != null ? `, Points: ${row.points_awarded}` : ''})`;
           if (!pt.results.includes(resultStr)) {
             pt.results.push(resultStr);
           }
@@ -171,7 +171,7 @@ ${leaders.length > 0
 
     const resultsContext = `Latest 5 Published Results:
 ${results.length > 0
-  ? results.map(r => `- Event: "${r.item_name}" (${r.item_name_ml || ''}) | Winner: ${r.participant_name} from Unit ${r.organisation_name} | Rank: ${r.rank} | Grade: ${r.grade || 'No Grade'} | Points: ${r.points_awarded}`).join('\n')
+  ? results.map(r => `- Event: "${r.item_name}" (${r.item_name_ml || ''}) | Winner: ${r.participant_name} from Unit ${r.organisation_name} | Rank: ${r.rank}${r.grade ? ` | Grade: ${r.grade}` : ''}${r.points_awarded != null ? ` | Points: ${r.points_awarded}` : ''}`).join('\n')
   : '- No results published yet.'}`;
 
     const schedulesContext = `All Festival Event Schedules & Timelines:

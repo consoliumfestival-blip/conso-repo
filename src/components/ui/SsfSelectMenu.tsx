@@ -1,7 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
-import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View, ViewStyle } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { Check, ChevronDown, Search, X } from 'lucide-react-native';
 
 import { ui } from '@/constants/designSystem';
@@ -33,6 +33,8 @@ export interface SsfSelectMenuProps {
   compact?: boolean;
   active?: boolean;
   searchable?: boolean;
+  autoFocusSearch?: boolean;
+  keepInViewport?: boolean;
   searchPlaceholder?: string;
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   style?: ViewStyle;
@@ -51,6 +53,8 @@ export function SsfSelectMenu({
   compact = false,
   active = false,
   searchable,
+  autoFocusSearch = true,
+  keepInViewport = false,
   searchPlaceholder = 'Search options...',
   keyboardShouldPersistTaps = 'handled',
   style,
@@ -61,7 +65,18 @@ export function SsfSelectMenu({
   const [open, setOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
   const showSearch = searchable ?? options.length > 7;
+
+  useEffect(() => {
+    if (!keepInViewport || Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+    const updateHeight = () => setVisualViewportHeight(visualViewport.height);
+    updateHeight();
+    visualViewport.addEventListener('resize', updateHeight);
+    return () => visualViewport.removeEventListener('resize', updateHeight);
+  }, [keepInViewport]);
 
   const selectedOption = useMemo(
     () => options.find((option) => option.value === value),
@@ -93,8 +108,17 @@ export function SsfSelectMenu({
     12,
     Math.min(anchor?.x ?? 12, viewportWidth - menuWidth - 12),
   );
-  const roomBelow = viewportHeight - ((anchor?.y ?? 0) + (anchor?.height ?? 0));
-  const openAbove = roomBelow < estimatedMenuHeight + 16 && (anchor?.y ?? 0) > estimatedMenuHeight;
+  const usableViewportHeight = keepInViewport && visualViewportHeight !== null
+    ? Math.min(viewportHeight, visualViewportHeight)
+    : viewportHeight;
+  const roomBelow = usableViewportHeight - ((anchor?.y ?? 0) + (anchor?.height ?? 0));
+  const roomAbove = (anchor?.y ?? 0) - 12;
+  const openAbove = keepInViewport
+    ? roomBelow < estimatedMenuHeight + 16 && roomAbove > roomBelow
+    : roomBelow < estimatedMenuHeight + 16 && (anchor?.y ?? 0) > estimatedMenuHeight;
+  const visibleMenuHeight = keepInViewport
+    ? Math.min(maxMenuHeight, Math.max(80, openAbove ? roomAbove - 5 : roomBelow - 12))
+    : maxMenuHeight;
   const menuTop = openAbove
     ? Math.max(12, (anchor?.y ?? 12) - estimatedMenuHeight - 5)
     : (anchor?.y ?? 12) + (anchor?.height ?? 0) + 5;
@@ -138,7 +162,7 @@ export function SsfSelectMenu({
                   left: menuLeft,
                   top: menuTop,
                   width: menuWidth,
-                  maxHeight: maxMenuHeight,
+                  maxHeight: visibleMenuHeight,
                 },
               ]}
             >
@@ -150,7 +174,7 @@ export function SsfSelectMenu({
                     onChangeText={setSearchQuery}
                     placeholder={searchPlaceholder}
                     placeholderTextColor={ui.colors.textSubtle}
-                    autoFocus
+                    autoFocus={autoFocusSearch}
                     style={styles.searchInput}
                     accessibilityLabel={searchPlaceholder}
                   />

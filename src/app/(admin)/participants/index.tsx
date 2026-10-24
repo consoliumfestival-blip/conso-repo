@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useFestival } from '../../../core/hooks/useFestival';
+import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
 import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, GitCompare, RotateCcw, Trophy } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
@@ -13,12 +14,47 @@ import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { ParticipantExportModal, ParticipantExportKind, ExportChoice } from '@/components/participants/ParticipantExportModal';
 import { downloadItemVerificationPdf, downloadParticipantsCsv, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf, ExportAssignment, ExportItem, ExportParticipant, ExportSort, loadAdminGroupMembers } from '@/services/participantExportService';
 
+type CompactFilterProps = {
+  label: string;
+  items: (string | { id: string; label: string })[];
+  selectedValue: string;
+  onSelect: (value: string) => void;
+  width: number;
+  searchable?: boolean;
+  autoFocusSearch?: boolean;
+  keepInViewport?: boolean;
+};
+
+function CompactFilter({ label, items, selectedValue, onSelect, width, searchable, autoFocusSearch, keepInViewport }: CompactFilterProps) {
+  return (
+    <SsfSelectMenu
+      value={selectedValue}
+      onValueChange={onSelect}
+      accessibilityLabel={`Filter by ${label}`}
+      width={width}
+      compact
+      active={selectedValue !== 'All'}
+      searchable={searchable}
+      autoFocusSearch={autoFocusSearch}
+      keepInViewport={keepInViewport}
+      options={items.map((item) => ({
+        label: typeof item === 'string'
+          ? (item === 'All' ? `${label}: All` : `${label}: ${item}`)
+          : (item.id === 'All' ? `${label}: All` : item.label),
+        value: typeof item === 'string' ? item : item.id,
+      }))}
+    />
+  );
+}
+
 export default function ParticipantsList() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isDesktopTable = width >= 980;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
+  const isCollegeFest = activeFestival?.festival_template === 'college_fest';
+  const { data: festivalCategories = [] } = useFestivalCategories(isCollegeFest ? activeFestival?.id : undefined, true);
   const { useItems } = useFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(activeFestival?.id);
   const [isExporting, setIsExporting] = useState(false);
@@ -47,13 +83,19 @@ export default function ParticipantsList() {
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedGender, setSelectedGender] = useState<string>('All');
 
-  const categories = [
-    'All',
-    ...Array.from(new Set([
-      'LP', 'UP', 'HS', 'HSS', 'JUNIOR', 'SENIOR', 'CAMPUS', 'GENERAL',
-      ...participants.map((participant: any) => participant.category_code).filter(Boolean),
-    ])).sort((a, b) => (a === 'All' ? -1 : b === 'All' ? 1 : a.localeCompare(b))),
-  ];
+  const categories = isCollegeFest
+    ? [
+        'All',
+        ...festivalCategories
+          .filter((category) => category.code.toLowerCase() !== 'gn')
+          .map((category) => ({ id: category.code, label: category.name })),
+      ]
+    : [
+        'All',
+        ...Array.from(new Set(participants
+          .map((participant: any) => typeof participant.category_code === 'string' ? participant.category_code.trim() : '')
+          .filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+      ];
   const itemOptions = [
     { id: 'All', label: 'All items' },
     ...(activeItems as any[])
@@ -294,35 +336,6 @@ export default function ParticipantsList() {
     setSelectedCategory('All');
   };
 
-  const CompactFilter = ({
-    label,
-    items,
-    selectedValue,
-    onSelect,
-    width: filterWidth,
-  }: {
-    label: string;
-    items: (string | { id: string; label: string })[];
-    selectedValue: string;
-    onSelect: (value: string) => void;
-    width: number;
-  }) => (
-    <SsfSelectMenu
-      value={selectedValue}
-      onValueChange={onSelect}
-      accessibilityLabel={`Filter by ${label}`}
-      width={filterWidth}
-      compact
-      active={selectedValue !== 'All'}
-      options={items.map((item) => ({
-        label: typeof item === 'string'
-          ? (item === 'All' ? `${label}: All` : `${label}: ${item}`)
-          : (item.id === 'All' ? `${label}: All` : item.label),
-        value: typeof item === 'string' ? item : item.id,
-      }))}
-    />
-  );
-
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4" stickyHeaderIndices={[1]}>
       {/* Header */}
@@ -410,6 +423,9 @@ export default function ParticipantsList() {
             selectedValue={selectedCompetition}
             onSelect={selectCompetition}
             width={280}
+            searchable
+            autoFocusSearch={false}
+            keepInViewport
           />
           <CompactFilter
             label="Category"
@@ -417,6 +433,7 @@ export default function ParticipantsList() {
             selectedValue={selectedCategory}
             onSelect={setSelectedCategory}
             width={148}
+            searchable={false}
           />
           <CompactFilter
             label="Status"

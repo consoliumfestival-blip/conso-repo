@@ -50,7 +50,7 @@ test('individual deselect leaves no participant-item registration history', asyn
           jsonb_build_object('participant_id','${id(31)}','item_id','${id(13)}'),
           jsonb_build_object('participant_id','${id(31)}','item_id','${id(13)}'));
     `);
-    const migration = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20261024140000_safe_individual_deselect.sql'), 'utf8');
+    const migration = fs.readFileSync(path.resolve(__dirname, '../supabase/migrations/20261024022451_safe_individual_deselect.sql'), 'utf8');
     await db.exec(migration);
     const actor = async n => db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [n ? id(n) : '']);
     const count = async table => Number((await db.query(`SELECT count(*) n FROM ${table}`)).rows[0].n);

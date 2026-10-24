@@ -66,7 +66,7 @@ async function createDb() {
     CREATE CONSTRAINT TRIGGER roster_leader AFTER INSERT OR UPDATE OR DELETE ON group_members
       DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION group_entry_private.ensure_leader_membership();
   `);
-  await db.exec(fs.readFileSync(path.join(migrations, '20261024150000_safe_group_deselect.sql'), 'utf8'));
+  await db.exec(fs.readFileSync(path.join(migrations, '20261024022459_safe_group_deselect.sql'), 'utf8'));
   const actor = async n => db.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [n ? id(n) : '']);
   const seed = async () => db.exec(`
     INSERT INTO registrations VALUES('${id(50)}','${id(10)}','${id(11)}','${id(13)}','${id(12)}',NULL,

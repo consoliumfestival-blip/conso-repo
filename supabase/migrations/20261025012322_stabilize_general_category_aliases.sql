@@ -84,9 +84,7 @@ BEGIN
     'public.team_leader_assign_program(uuid,uuid)'::regprocedure
   ) INTO v_definition;
   v_definition := pg_catalog.replace(v_definition, E'\r\n', E'\n');
-  v_old := $old$IF NOT FOUND THEN
-    RAISE EXCEPTION 'This program is unavailable.' USING ERRCODE = '22023';
-  END IF;$old$;
+  v_old := $pattern$IF NOT FOUND THEN\s+RAISE EXCEPTION 'This program is unavailable\.' USING ERRCODE = '22023';\s+END IF;$pattern$;
   v_new := $new$IF NOT FOUND THEN
     RAISE EXCEPTION 'This program is unavailable.' USING ERRCODE = '22023';
   END IF;
@@ -102,11 +100,12 @@ BEGIN
     RAISE EXCEPTION 'General category is disabled for this festival.' USING ERRCODE = '23514';
   END IF;
 
-  $new$ || E'\n  SELECT EXISTS';
-  IF pg_catalog.strpos(v_definition, v_old) = 0 THEN
+  $new$;
+  v_patched := pg_catalog.regexp_replace(v_definition, v_old, v_new, 'g');
+  IF v_patched = v_definition THEN
     RAISE EXCEPTION 'Expected item validation block not found in team_leader_assign_program; aborting migration.';
   END IF;
-  EXECUTE pg_catalog.replace(v_definition, v_old, v_new);
+  EXECUTE v_patched;
 
   -- Admin registration writes obey the toggle. Updates to existing registration
   -- identity remain available to history/check-in workflows while disabled.

@@ -1,4 +1,5 @@
 import { supabase } from '../core/config/supabase';
+import { fetchPublicSchedules } from '../core/hooks/useSchedule';
 
 /**
  * Read-only boundary for the Admin Portal Assistant.
@@ -108,14 +109,13 @@ const readTenantSchedules = async (scope: AdminReadOnlyScope) => {
   return data || [];
 };
 
-const readPublicActiveFestival = async (festivalId: string) => {
-  const [{ data: schedules, error: schedulesError }, { data: results, error: resultsError }] = await Promise.all([
-    supabase.from('vw_public_schedule').select('item_code,item_name,item_name_ml,item_category_codes,venue_name,start_time,status').eq('festival_id', festivalId).order('start_time').limit(300),
+const readPublicActiveFestival = async (tenantId: string, festivalId: string) => {
+  const [schedules, { data: results, error: resultsError }] = await Promise.all([
+    fetchPublicSchedules(festivalId, tenantId),
     supabase.from('vw_public_results').select('item_name,item_name_ml,organisation_name,participant_name,rank,grade,points_awarded,published_at').eq('festival_id', festivalId).order('published_at', { ascending: false }).limit(300),
   ]);
-  if (schedulesError) throw schedulesError;
   if (resultsError) throw resultsError;
-  return { schedules: schedules || [], results: results || [] };
+  return { schedules: schedules.slice(0, 300), results: results || [] };
 };
 
 const formatOverview = (counts: CountResult[]) => counts.map((entry) => `${entry.count} ${entry.label}`).join(' · ');
@@ -125,7 +125,7 @@ export async function getAdminReadOnlyAgentResponse(message: string, scope: Admi
   const publicOnly = /\b(public|published)\b/.test(lower) && /\b(schedule|event|result|leaderboard)\b/.test(lower);
 
   if (publicOnly && scope.festivalId) {
-    const data = await readPublicActiveFestival(scope.festivalId);
+    const data = await readPublicActiveFestival(scope.tenantId, scope.festivalId);
     if (/result|leaderboard/.test(lower)) {
       return `Active festival public results: ${data.results.length} published rows available. Other tenants' private data is not included.`;
     }

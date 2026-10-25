@@ -1,4 +1,5 @@
 import { supabase } from '../core/config/supabase';
+import { fetchPublicSchedules } from '../core/hooks/useSchedule';
 
 export interface PublicFestivalStats {
   published_results_count: number;
@@ -69,6 +70,12 @@ function formatTime(timeStr: string | null): string {
  */
 export async function buildPublicFestivalContext(festivalId: string): Promise<string> {
   try {
+    const { data: festival, error: festivalError } = await supabase
+      .from('festival_calendar')
+      .select('tenant_id')
+      .eq('id', festivalId)
+      .maybeSingle();
+    if (festivalError || !festival?.tenant_id) throw festivalError || new Error('Festival not found');
     // 1. Fetch live status counts
     const { data: statsData, error: statsError } = await supabase
       .from('vw_public_live_status')
@@ -104,13 +111,15 @@ export async function buildPublicFestivalContext(festivalId: string): Promise<st
     const results: PublicResultRow[] = resultsData || [];
 
     // 4. Fetch all schedules to give complete calendar awareness (yesterday, today, completed, scheduled, live)
-    const { data: allSchedulesData } = await supabase
-      .from('vw_public_schedule')
-      .select('item_name, item_name_ml, venue_name, start_time, status, item_category_codes')
-      .eq('festival_id', festivalId)
-      .order('start_time', { ascending: true });
-
-    const allSchedules: PublicScheduleRow[] = allSchedulesData || [];
+    const allSchedules: PublicScheduleRow[] = (await fetchPublicSchedules(festivalId, festival.tenant_id))
+      .map((row: any) => ({
+        item_name: row.item_name,
+        item_name_ml: row.item_name_ml,
+        venue_name: row.venue_name,
+        start_time: row.start_time,
+        status: row.status,
+        item_category_codes: row.item_category_codes,
+      }));
 
     // 5. Fetch public participant summaries (name, chest number, items, public visible results)
     const { data: participantsData } = await supabase

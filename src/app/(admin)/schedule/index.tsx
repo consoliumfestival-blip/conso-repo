@@ -167,7 +167,7 @@ function ScheduleWorkflowBadges({
 
 export default function ScheduleDashboard() {
   const router = useRouter();
-  const { schedules, isLoadingSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus } = useSchedule();
+  const { schedules, isLoadingSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule();
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
@@ -186,6 +186,26 @@ export default function ScheduleDashboard() {
   const [selectedVenue, setSelectedVenue] = React.useState('All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
+  const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
+
+  const togglePublicVisibility = async (schedule: any) => {
+    if (schedule.is_public_visible === undefined) {
+      const message = 'Apply the public schedule visibility migration before changing this setting.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Database update required', message);
+      return;
+    }
+    if (updatingVisibilityId) return;
+    try {
+      setUpdatingVisibilityId(schedule.id);
+      await updateSchedule({ id: schedule.id, payload: { is_public_visible: !schedule.is_public_visible } });
+    } catch (error: any) {
+      if (Platform.OS === 'web') window.alert(error?.message || 'Unable to update public visibility.');
+      else Alert.alert('Update failed', error?.message || 'Unable to update public visibility.');
+    } finally {
+      setUpdatingVisibilityId(null);
+    }
+  };
 
   const categoriesList = React.useMemo(() => {
     const sourceItems = (activeItems as any[]).length > 0
@@ -903,6 +923,17 @@ export default function ScheduleDashboard() {
                   </View>
                 </View>
                 <View style={{ flex: 1.4 }} className="pr-3">
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
+                    disabled={!!updatingVisibilityId}
+                    onPress={() => togglePublicVisibility(schedule)}
+                    className="self-start border border-ui-border rounded-md px-2 py-1 mb-1 bg-core-surface-white"
+                  >
+                    <Text className="font-poppins-bold text-[9px] text-ui-text">
+                      {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
+                    </Text>
+                  </TouchableOpacity>
                   <ScheduleWorkflowBadges
                     status={schedule.status}
                     scheduleId={schedule.id}
@@ -1030,6 +1061,17 @@ export default function ScheduleDashboard() {
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
+                  disabled={!!updatingVisibilityId}
+                  onPress={() => togglePublicVisibility(schedule)}
+                  className="self-start border border-ui-border rounded-md px-2 py-1.5 mt-1.5 bg-core-surface-white"
+                >
+                  <Text className="font-poppins-bold text-[10px] text-ui-text">
+                    {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
+                  </Text>
+                </TouchableOpacity>
 
                 {/* Category Badges */}
                 {false && schedule.items?.category_codes && schedule.items.category_codes.length > 0 && (

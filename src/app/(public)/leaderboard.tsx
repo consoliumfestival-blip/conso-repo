@@ -465,14 +465,6 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
           );
         }
 
-        const scheduleCacheStr = await AsyncStorage.getItem('cache:public_schedule:' + tenantId);
-        if (scheduleCacheStr) {
-          queryClient.setQueryData(
-            ['public-schedules', tenantId, activeFestivalId],
-            JSON.parse(scheduleCacheStr)
-          );
-        }
-
       } catch (err) {
         console.warn('Failed to restore leaderboard local cache:', err);
       }
@@ -499,12 +491,6 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
     }
   }, [publishedResultsQuery.data, festivalId, tenantId]);
 
-  useEffect(() => {
-    if (scheduleQuery.data && festivalId) {
-      AsyncStorage.setItem('cache:public_schedule:' + tenantId, JSON.stringify(scheduleQuery.data)).catch(() => {});
-    }
-  }, [scheduleQuery.data, festivalId, tenantId]);
-
   // 3. Background prefetching of all other tabs' data to ensure instant transitions
   useEffect(() => {
     if (festivalId) {
@@ -525,8 +511,8 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
       // Prefetch schedules
       queryClient.prefetchQuery({
         queryKey: ['public-schedules', tenantId, festivalId],
-        queryFn: () => fetchPublicSchedules(festivalId),
-        staleTime: 300000,
+        queryFn: () => fetchPublicSchedules(festivalId, tenantId),
+        staleTime: 1000,
       });
 
     }

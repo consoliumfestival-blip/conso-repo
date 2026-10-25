@@ -101,52 +101,68 @@ export const useSchedule = () => {
 };
 
 export const fetchPublicSchedules = async (festivalId: string, tenantId?: string) => {
-  const [schedulesRes, verificationRes] = await Promise.all([
-    supabase
-      .from('vw_public_schedule')
-      .select('*')
-      .eq('festival_id', festivalId)
-      .order('start_time'),
-    tenantId ? supabase.rpc('get_public_verification_status', { p_tenant_id: tenantId }) : Promise.resolve({ data: [] })
-  ]);
+  if (!tenantId) throw new Error('Tenant ID is required to load public schedules');
 
-  if (schedulesRes.error) throw new Error(schedulesRes.error.message);
-  
-  const verificationMap = (verificationRes.data || []).reduce((acc: any, row: any) => {
-    acc[row.schedule_id] = row;
-    return acc;
-  }, {});
-
-  return (schedulesRes.data || []).map((row: any) => {
-    const vStatus = verificationMap[row.schedule_id] || {};
-    return {
-      ...row,
-      id: row.schedule_id,
-      is_published: row.is_published,
-      has_results: row.has_results || vStatus.has_results || false,
-      has_marks: vStatus.has_marks || false,
-      has_codes: vStatus.has_codes || false,
-      venues: row.venue_id ? { id: row.venue_id, name: row.venue_name, location: row.venue_location } : null,
-      items: {
-        id: row.item_id,
-        item_code: row.item_code,
-        item_name_en: row.item_name,
-        item_name_ml: row.item_name_ml,
-        item_type: row.item_type,
-        category_codes: row.item_category_codes || [],
-      },
-    };
+  const { data, error } = await supabase.rpc('get_public_schedules_scoped', {
+    p_tenant_id: tenantId,
+    p_festival_id: festivalId,
   });
+
+  if (error) {
+    // The web deployment may precede its database migration. Preserve the
+    // existing public schedule flow only while the new RPC is unavailable.
+    if (error.code !== 'PGRST202' && error.code !== '42883') throw new Error(error.message);
+    const [schedulesRes, verificationRes] = await Promise.all([
+      supabase.from('vw_public_schedule').select('*').eq('festival_id', festivalId).order('start_time'),
+      supabase.rpc('get_public_verification_status', { p_tenant_id: tenantId }),
+    ]);
+    if (schedulesRes.error) throw new Error(schedulesRes.error.message);
+    const verificationMap = new Map((verificationRes.data || []).map((row: any) => [row.schedule_id, row]));
+    return (schedulesRes.data || []).map((row: any) => {
+      const verification = verificationMap.get(row.schedule_id) as any;
+      return {
+        ...row,
+        id: row.schedule_id,
+        has_results: row.has_results || verification?.has_results || false,
+        has_marks: verification?.has_marks || false,
+        has_codes: verification?.has_codes || false,
+        venues: row.venue_id ? { id: row.venue_id, name: row.venue_name, location: row.venue_location } : null,
+        items: {
+          id: row.item_id,
+          item_code: row.item_code,
+          item_name_en: row.item_name,
+          item_name_ml: row.item_name_ml,
+          item_type: row.item_type,
+          category_codes: row.item_category_codes || [],
+        },
+      };
+    });
+  }
+
+  return ((data || []) as any[]).map((row) => ({
+    ...row,
+    id: row.schedule_id,
+    venues: row.venue_id ? { id: row.venue_id, name: row.venue_name, location: row.venue_location } : null,
+    items: {
+      id: row.item_id,
+      item_code: row.item_code,
+      item_name_en: row.item_name,
+      item_name_ml: row.item_name_ml,
+      item_type: row.item_type,
+      category_codes: row.item_category_codes || [],
+    },
+  }));
 };
 
 export const usePublicSchedule = (festivalId?: string | null, tenantId?: string | null) => {
   return useQuery({
-    queryKey: ['publicSchedule', festivalId, tenantId],
+    queryKey: ['public-schedules', tenantId, festivalId],
     queryFn: () => {
       if (!festivalId) throw new Error('Festival ID is required');
       return fetchPublicSchedules(festivalId, tenantId || undefined);
     },
-    enabled: !!festivalId,
-    staleTime: 1000, 
+    enabled: !!festivalId && !!tenantId,
+    staleTime: 1000,
+    refetchInterval: 60000,
   });
 };

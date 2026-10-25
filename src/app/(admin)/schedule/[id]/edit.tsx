@@ -1,7 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Switch } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { SsfCard } from '../../../../components/ui/SsfCard';
@@ -32,6 +32,7 @@ export default function EditSchedule() {
   const [endDate, setEndDate] = useState('');
   const [endTimeStr, setEndTimeStr] = useState('10:00');
   const [judgeCount, setJudgeCount] = useState(3);
+  const [isPublicVisible, setIsPublicVisible] = useState(false);
 
   useEffect(() => {
     if (schedule) {
@@ -63,6 +64,7 @@ export default function EditSchedule() {
       }
       
       setJudgeCount(schedule.expected_judge_count || 3);
+      setIsPublicVisible(schedule.is_public_visible !== false);
     }
   }, [schedule]);
 
@@ -92,6 +94,9 @@ export default function EditSchedule() {
   };
 
   const handleSave = async () => {
+    if (schedule?.is_public_visible === undefined && !isPublicVisible) {
+      return showAlert('Database update required', 'Apply the public schedule visibility migration before hiding this schedule.');
+    }
     if (!itemId || !venueId || !startDate || !startTimeStr || !endDate || !endTimeStr) {
       return showAlert('Error', 'Please fill all fields');
     }
@@ -127,6 +132,7 @@ export default function EditSchedule() {
           end_time: endDateTime.toISOString(),
           status: schedule?.status || 'scheduled',
           expected_judge_count: judgeCount,
+          ...(schedule.is_public_visible !== undefined ? { is_public_visible: isPublicVisible } : {}),
         }
       });
       goBack();
@@ -216,6 +222,14 @@ export default function EditSchedule() {
               <SmartTimeInput value={endTimeStr} onChange={setEndTimeStr} />
             </View>
           </View>
+        </View>
+
+        <View className="flex-row items-center justify-between gap-3 border border-ui-border rounded-lg p-3">
+          <View className="flex-1">
+            <Text className="font-poppins-bold text-sm text-ssf-text">Show on public schedule</Text>
+            <Text className="font-poppins text-xs text-ssf-text-muted">Only schedules enabled by admin appear publicly.</Text>
+          </View>
+          <Switch accessibilityLabel="Show schedule publicly" value={isPublicVisible} onValueChange={setIsPublicVisible} />
         </View>
 
         {/* Judge Count Selector */}

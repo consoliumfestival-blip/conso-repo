@@ -17,6 +17,7 @@ import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
+import { TeamScheduleParticipantsModal } from '@/components/team/TeamScheduleParticipantsModal';
 
 export default function ScheduleScreen() {
   const ui = useTeamUi();
@@ -28,6 +29,7 @@ export default function ScheduleScreen() {
   const [exportPickerOpen, setExportPickerOpen] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [selectedEvent, setSelectedEvent] = useState<TeamLeaderScheduleRow | null>(null);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const router = useRouter();
@@ -106,6 +108,7 @@ export default function ScheduleScreen() {
               <View style={{ gap: 8 }}>
                 {filtered.map((event) => (
                   <Card key={event.schedule_id}>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`View participants for ${event.item_name || event.item_code || 'event'}`} onPress={() => setSelectedEvent(event)}>
                     <CardContent style={{ padding: 12 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <View style={{ flex: 1 }}>
@@ -133,6 +136,7 @@ export default function ScheduleScreen() {
                         </Badge>
                       </View>
                     </CardContent>
+                    </Pressable>
                   </Card>
                 ))}
               </View>
@@ -140,6 +144,7 @@ export default function ScheduleScreen() {
           </TabsContent>
         </Tabs>
       </View>
+      {selectedEvent && context ? <TeamScheduleParticipantsModal key={`${context.assignment_id}:${context.festival_id}:${context.organisation_id}:${selectedEvent.schedule_id}`} event={selectedEvent} context={context} onClose={() => setSelectedEvent(null)} /> : null}
       <Modal visible={exportPickerOpen} transparent animationType="fade" onRequestClose={() => !isExporting && setExportPickerOpen(false)}>
         <Pressable onPress={() => !isExporting && setExportPickerOpen(false)} style={{ flex: 1, justifyContent: isMobile ? 'flex-end' : 'center', padding: isMobile ? 0 : 20, backgroundColor: ui.colors.overlay }}>
           <Pressable onPress={(event) => event.stopPropagation()} style={{ width: '100%', maxWidth: 460, alignSelf: 'center', padding: 18, borderTopLeftRadius: isMobile ? 22 : 18, borderTopRightRadius: isMobile ? 22 : 18, borderBottomLeftRadius: isMobile ? 0 : 18, borderBottomRightRadius: isMobile ? 0 : 18, backgroundColor: ui.colors.surface }}>

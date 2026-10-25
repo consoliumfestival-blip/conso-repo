@@ -1,0 +1,116 @@
+/* global __dirname */
+// Real Schedule screen/modal/PDF renderer with fixture-only RPC/auth/navigation.
+// PLAYWRIGHT_MODULE may point to an existing Playwright installation.
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const { build } = require(require.resolve('esbuild', { paths: [root, path.join(root, '.expo/verification')] }));
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const output = path.join(root, '.expo/popup-browser');
+fs.mkdirSync(output, { recursive: true });
+const stub = path.join(root, 'tests/fixtures/team-schedule-popup-stubs.tsx');
+const stubbed = ['expo-router', '@/core/contexts/TeamLeaderContext', '@/core/contexts/TeamLeaderThemeContext', '@/services/teamLeaderPortalService', '@/components/layout/TeamLeaderAppShell', '@/core/config/supabase', 'expo-file-system', 'expo-sharing'];
+(async () => {
+  await build({ entryPoints: [path.join(root, 'tests/fixtures/team-schedule-popup-entry.tsx')], bundle: true, platform: 'browser', format: 'iife', jsx: 'automatic', outfile: path.join(output, 'bundle.js'), alias: { 'react-native': 'react-native-web', 'lucide-react-native': 'lucide-react', ...Object.fromEntries(stubbed.map(name => [name, stub])) }, define: { __DEV__: 'true', 'process.env.NODE_ENV': '"development"' }, resolveExtensions: ['.web.tsx', '.tsx', '.web.ts', '.ts', '.web.js', '.js', '.json'] });
+  const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;min-height:100%;font-family:system-ui}*{box-sizing:border-box}</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>';
+  const server = http.createServer((req, res) => { res.setHeader('Content-Type', req.url === '/bundle.js' ? 'application/javascript' : 'text/html'); res.end(req.url === '/bundle.js' ? fs.readFileSync(path.join(output, 'bundle.js')) : html); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  server.unref();
+  const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
+  let checks = 0;
+  try {
+    const page = await browser.newPage({ acceptDownloads: true });
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    const open = async () => {
+      await page.getByRole('button', { name: 'View participants for Speech Competition' }).click();
+      // RN Web marks the modal active after its entry animation completes.
+      await page.getByRole('dialog').waitFor();
+    };
+    const mount = async options => { await page.evaluate(options => window.mountPopupFixture(options), options); await page.getByRole('button', { name: 'View participants for Speech Competition' }).waitFor(); };
+    const dialog = page.getByRole('region', { name: 'Speech Competition participants', exact: true });
+    for (const [width, height] of [[320,568],[390,844],[844,390],[768,1024],[1024,768],[1366,768]]) {
+      await page.setViewportSize({ width, height });
+      await mount({ complete: true }); await open();
+      await dialog.getByText('Check-in Completed', { exact: false }).waitFor();
+      const box = await dialog.boundingBox();
+      assert.ok(box.x >= 0 && box.y >= 0 && box.x + box.width <= width + 1 && box.y + box.height <= height + 1, `dialog bounds ${width}x${height}`);
+      const overflow = await dialog.evaluate(el => [...el.querySelectorAll('*')].filter(node => node.clientWidth && node.scrollWidth > node.clientWidth + 2 && getComputedStyle(node).overflowX === 'visible').length);
+      assert.equal(overflow, 0, `horizontal overflow ${width}x${height}`);
+      assert.ok(await dialog.getByRole('button', { name: 'Item Verification PDF' }).isVisible());
+      await page.screenshot({ path: path.join(output, `popup-${width}x${height}.png`) });
+      await dialog.getByRole('button', { name: 'Close participants' }).click();
+      await dialog.waitFor({ state: 'hidden' }); checks += 1;
+    }
+    await mount({ complete: false }); await open();
+    await dialog.getByText('Check-in Pending', { exact: false }).waitFor();
+    await page.screenshot({ path: path.join(output, 'popup-pending.png') });
+    assert.equal(await dialog.getByRole('button', { name: 'Item Verification PDF' }).count(), 0);
+    assert.equal(await dialog.getByRole('button', { name: /^(Verify|Reject|Delete|Cancel|Edit)$/ }).count(), 0); checks += 1;
+    await mount({ complete: true }); await open();
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).waitFor();
+    const downloadPromise = page.waitForEvent('download');
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).click();
+    const download = await downloadPromise;
+    const pdfPath = path.join(output, download.suggestedFilename());
+    await download.saveAs(pdfPath);
+    assert.equal(fs.readFileSync(pdfPath).subarray(0, 5).toString(), '%PDF-');
+    assert.equal(await page.evaluate(() => window.popupFixture.calls), 2); checks += 1;
+    await page.evaluate(() => { window.popupFixture.complete = false; });
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).click();
+    await dialog.getByText('Check-in Pending', { exact: false }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Item Verification PDF' }).count(), 0); checks += 1;
+    await mount({ error: true }); await open();
+    await dialog.getByText('Fixture network error').waitFor();
+    await page.evaluate(() => { window.popupFixture.error = false; });
+    await dialog.getByRole('button', { name: 'Retry' }).click();
+    await dialog.getByText('Check-in Pending', { exact: false }).waitFor(); checks += 1;
+    await mount({ empty: true }); await open();
+    await dialog.getByText('No students from your team are assigned to this event.').waitFor(); checks += 1;
+    await mount({ wrongItem: true, complete: true }); await open();
+    await dialog.getByText('The event participant scope changed. Close this popup and retry.').waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'Item Verification PDF' }).count(), 0); checks += 1;
+    await mount({ delay: 1000 }); await open();
+    await dialog.getByText('Loading participants…').waitFor();
+    await dialog.getByRole('button', { name: 'Close participants' }).click();
+    await page.waitForTimeout(1100); assert.equal(await dialog.count(), 0); checks += 1;
+    const replacementContext = { assignment_id: 'replacement', parent_tenant_id: 'tenant', festival_id: 'festival', festival_team_id: 'replacement', organisation_id: 'replacement-team', team_name: 'Replacement Team', festival_name: 'Fixture Festival' };
+    await mount({ delay: 1000, complete: true }); await open();
+    await dialog.getByText('Loading participants…').waitFor();
+    await page.evaluate(context => window.updatePopupFixture({ context, delay: 0 }), replacementContext);
+    await dialog.getByText('Replacement Team · Participants').waitFor();
+    await dialog.getByText('Replacement Participant 2', { exact: true }).waitFor();
+    await page.waitForTimeout(1100);
+    assert.equal(await dialog.getByText('Participant 2', { exact: true }).count(), 0); checks += 1;
+    await mount({ complete: true }); await open();
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).waitFor();
+    let lateDownload = false;
+    const recordDownload = () => { lateDownload = true; };
+    page.on('download', recordDownload);
+    await page.evaluate(() => { window.popupFixture.delay = 1000; });
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).click();
+    await dialog.getByText('Checking latest verification…').waitFor();
+    await page.evaluate(context => window.updatePopupFixture({ context, delay: 0 }), replacementContext);
+    await dialog.getByText('Replacement Participant 2', { exact: true }).waitFor();
+    await page.waitForTimeout(1100);
+    assert.equal(lateDownload, false);
+    page.off('download', recordDownload); checks += 1;
+    await mount({ dark: true, complete: true }); await open();
+    await dialog.getByRole('button', { name: 'Item Verification PDF' }).waitFor();
+    await page.screenshot({ path: path.join(output, 'popup-dark.png') });
+    await page.keyboard.press('Escape'); await dialog.waitFor({ state: 'hidden' }); checks += 1;
+    assert.equal(await page.evaluate(() => window.popupFixture.navigationCount), 0);
+    await page.getByRole('button', { name: 'Full Schedule', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.popupFixture.navigationCount), 1); checks += 1;
+    await page.getByRole('button', { name: 'Export team schedule PDFs' }).click();
+    await page.getByText('My Team Schedule', { exact: true }).waitFor();
+    const scheduleDownload = page.waitForEvent('download');
+    await page.getByText('My Team Schedule', { exact: true }).click();
+    assert.match((await scheduleDownload).suggestedFilename(), /^my-team-schedule-/); checks += 1;
+    assert.deepEqual(errors, []);
+    console.log(`Passed ${checks} browser scenarios; responsive screenshots and real PDF saved in .expo/popup-browser.`);
+  } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,6 +1,13 @@
 import { supabase } from '@/core/config/supabase';
 import type { TeamLeaderParticipantExportRow } from '@/services/participantExportService';
 
+export interface TeamLeaderScheduleParticipants {
+  schedule_id: string;
+  item_id: string;
+  checkin_complete: boolean;
+  participants: TeamLeaderParticipantExportRow[];
+}
+
 export interface TeamLeaderContext {
   assignment_id: string;
   parent_tenant_id: string;
@@ -267,6 +274,15 @@ export const teamLeaderPortalService = {
     return data as { registration_id: string; entry_chest_number: string; member_count: number };
   },
   getSchedule: () => readRpc<TeamLeaderScheduleRow>('get_team_leader_schedule'),
+  getScheduleParticipants: async (scheduleId: string): Promise<TeamLeaderScheduleParticipants> => {
+    const { data, error } = await supabase.rpc('get_team_leader_schedule_participants', { p_schedule_id: scheduleId });
+    if (error) throw error;
+    if (!data || data.schedule_id !== scheduleId || !Array.isArray(data.participants)
+      || typeof data.item_id !== 'string' || typeof data.checkin_complete !== 'boolean') {
+      throw new Error('Unable to read the event participant details. Please retry.');
+    }
+    return data as TeamLeaderScheduleParticipants;
+  },
   getPublishedResults: () => readRpc<TeamLeaderPublishedResult>('get_team_leader_published_results'),
   getStandings: () => readRpc<TeamLeaderStanding>('get_team_leader_standings'),
   getAnnouncements: () => readRpc<TeamLeaderAnnouncement>('get_team_leader_announcements'),

@@ -1,10 +1,11 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { useParticipants } from '../../../core/hooks/useParticipants';
+import { useAuthStore } from '../../../core/store/authStore';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
 import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, GitCompare, RotateCcw, Trophy } from 'lucide-react-native';
@@ -49,6 +50,10 @@ function CompactFilter({ label, items, selectedValue, onSelect, width, searchabl
 
 export default function ParticipantsList() {
   const router = useRouter();
+  const tenantId = useAuthStore(state => state.tenant_id);
+  const userId = useAuthStore(state => state.user?.id);
+  const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
+  const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
   const isDesktopTable = width >= 980;
   const { useActiveFestival } = useFestival();
@@ -67,6 +72,8 @@ export default function ParticipantsList() {
   const {
     participants,
     isLoadingList,
+    listError,
+    retryList,
     updateStatus,
     deleteMultiple,
     approveMultiple,
@@ -134,6 +141,18 @@ export default function ParticipantsList() {
   // Bulk action state
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const selectionScopeIsCurrent = selectionScope === currentSelectionScope;
+  const selectionScopeMatchesSession = () => {
+    const currentAuth = useAuthStore.getState();
+    return selectionScope === `${currentAuth.tenant_id ?? 'no-tenant'}:${currentAuth.user?.id ?? 'no-user'}`;
+  };
+
+  useEffect(() => {
+    if (selectionScope === currentSelectionScope) return;
+    setSelected(new Set());
+    setSelectMode(false);
+    setSelectionScope(currentSelectionScope);
+  }, [currentSelectionScope, selectionScope]);
 
   const processingBulk = isDeleting || isApprovingMultiple;
 
@@ -290,6 +309,7 @@ export default function ParticipantsList() {
   const selectAll = () => setSelected(new Set(filteredParticipants.map((p: any) => p.id)));
 
   const bulkUpdateAction = async (action: 'delete' | 'approve') => {
+    if (listError || !selectionScopeMatchesSession()) return;
     const ids = Array.from(selected);
     try {
       if (action === 'delete') {
@@ -306,7 +326,7 @@ export default function ParticipantsList() {
   };
 
   const confirmBulkAction = (action: 'delete' | 'approve') => {
-    if (selected.size === 0) return;
+    if (listError || !selectionScopeMatchesSession() || selected.size === 0) return;
     const msg = action === 'delete'
       ? `Delete ${selected.size} selected participant(s)? This cannot be undone.`
       : `Approve ${selected.size} selected participant(s)?`;
@@ -344,7 +364,7 @@ export default function ParticipantsList() {
       <View className="flex-row justify-between items-center mb-4">
         <View>
           <Text className="text-3xl font-poppins-black text-ssf-text">Participants</Text>
-          <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{filteredParticipants.length} showing</Text>
+          <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${filteredParticipants.length} showing`}</Text>
         </View>
         <ScrollView
           horizontal
@@ -370,10 +390,10 @@ export default function ParticipantsList() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
-            disabled={isExporting || isLoadingList || isLoadingItems || isLoadingRegistrations || !!registrationsError}
+            disabled={isExporting || isLoadingList || isLoadingItems || isLoadingRegistrations || !!registrationsError || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || isLoadingRegistrations || registrationsError ? 'opacity-60' : ''}`}
+            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || isLoadingRegistrations || registrationsError || listError ? 'opacity-60' : ''}`}
           >
             <FileDown size={16} color={ui.colors.onPrimary} />
             <Text className="font-poppins-bold text-xs text-core-on-primary-white">Export</Text>
@@ -462,7 +482,7 @@ export default function ParticipantsList() {
           )}
           <View className="h-9 px-3 rounded-lg bg-ui-muted items-center justify-center">
             <Text className="font-poppins-bold text-[10px] text-ui-text-muted">
-              {filteredParticipants.length} results
+              {listError ? 'Participants unavailable' : `${filteredParticipants.length} results`}
             </Text>
           </View>
         </ScrollView>
@@ -472,7 +492,7 @@ export default function ParticipantsList() {
       {/* Bulk action bar */}
       <View className="flex-row items-center justify-between mb-4 mt-2">
         {!selectMode ? (
-          <TouchableOpacity onPress={toggleSelectMode} className="flex-row items-center gap-x-2 px-3 py-2 bg-core-surface-white border border-ssf-border rounded-lg">
+          <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-2 px-3 py-2 bg-core-surface-white border border-ssf-border rounded-lg">
             <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
             <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
           </TouchableOpacity>
@@ -483,15 +503,15 @@ export default function ParticipantsList() {
                 <X size={18} color={ui.colors.textMuted} />
               </TouchableOpacity>
               <Text className="font-poppins-bold text-ssf-text">{selected.size} selected</Text>
-              <TouchableOpacity onPress={selectAll}>
+              <TouchableOpacity onPress={selectAll} disabled={!!listError || !selectionScopeIsCurrent}>
                 <Text className="font-poppins text-xs text-ui-primary-text">All</Text>
               </TouchableOpacity>
             </View>
             <View className="flex-row gap-x-2">
-              <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-core-danger-soft-red-100' : 'bg-core-surface-muted-gray-100'}`}>
+              <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0 || !!listError || !selectionScopeIsCurrent} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-core-danger-soft-red-100' : 'bg-core-surface-muted-gray-100'}`}>
                 <Trash2 size={16} color={selected.size > 0 ? coreColor('#DC2626', 'danger') : coreColor('#9CA3AF', 'textMuted')} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || selected.size === 0} className={`flex-row items-center gap-x-1 px-3 py-2 rounded-lg ${selected.size > 0 ? 'bg-ssf-primary' : 'bg-core-surface-strong-gray-200'}`}>
+              <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || selected.size === 0 || !!listError || !selectionScopeIsCurrent} className={`flex-row items-center gap-x-1 px-3 py-2 rounded-lg ${selected.size > 0 ? 'bg-ssf-primary' : 'bg-core-surface-strong-gray-200'}`}>
                 {processingBulk ? <ActivityIndicator color={coreColor("white", 'onPrimary')} size="small" /> : <CheckCircle size={16} color={selected.size > 0 ? coreColor('white', 'onPrimary') : coreColor('#9CA3AF', 'textMuted')} />}
                 <Text className={`font-poppins-bold text-xs ${selected.size > 0 ? 'text-core-on-primary-white' : 'text-core-text-muted-gray-400'}`}>Approve</Text>
               </TouchableOpacity>
@@ -505,6 +525,11 @@ export default function ParticipantsList() {
         {isLoadingList || isLoadingItems || isLoadingRegistrations ? (
           <View className="p-4">
             <SsfTableSkeleton rows={7} columns={6} compact={!isDesktopTable} />
+          </View>
+        ) : listError ? (
+          <View className="items-center justify-center py-10 px-4">
+            <Text className="text-core-danger-red-700 font-poppins mb-3">Could not load participants. The list may be incomplete.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={() => { void retryList(); }} className="rounded-lg border border-ui-border px-3 py-2"><Text className="font-poppins-bold text-xs text-ui-text">Retry participants</Text></TouchableOpacity>
           </View>
         ) : filteredParticipants.length === 0 ? (
           <View className="items-center justify-center py-10">

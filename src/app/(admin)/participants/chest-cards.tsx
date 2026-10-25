@@ -503,7 +503,7 @@ const chunkArray = <T,>(arr: T[], size: number): T[][] => {
 
 export default function ChestCardsPage() {
   const goBack = useGoBack('/(admin)/participants');
-  const { participants, isLoadingList } = useParticipants();
+  const { participants, isLoadingList, listError, retryList } = useParticipants();
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const { tenant_id: tenantId } = useAuthStore();
@@ -760,6 +760,14 @@ export default function ChestCardsPage() {
   };
 
   if (cardMode === 'groups' ? groupQuery.isLoading : isLoadingList) return <ActivityIndicator color={ui.colors.success} style={{ marginTop: 40 }} />;
+
+  if (cardMode === 'participants' && listError) return (
+    <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
+      <TouchableOpacity onPress={goBack} className="mb-5 flex-row items-center gap-2"><ArrowLeft size={18} color={ui.colors.text} /><Text className="font-poppins-bold text-ssf-text">Participants</Text></TouchableOpacity>
+      <Text className="font-poppins-bold text-sm text-core-danger-red-700">Could not load participants. Student cards are unavailable until the list loads.</Text>
+      <TouchableOpacity accessibilityRole="button" onPress={() => { void retryList(); }} className="mt-3 self-start rounded-lg border border-ui-border bg-core-surface-white px-3 py-2"><Text className="font-poppins-bold text-xs text-ui-text">Retry participants</Text></TouchableOpacity>
+    </ScrollView>
+  );
 
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">

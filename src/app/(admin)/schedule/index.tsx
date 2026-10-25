@@ -171,8 +171,8 @@ export default function ScheduleDashboard() {
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
-  const { participants, useFestivalRegistrations } = useParticipants();
-  const { data: allRegistrations = [], isLoading: isLoadingRegs, error: registrationsError } = useFestivalRegistrations(festival?.id);
+  const { participants, isLoadingList: isLoadingParticipants, listError: participantsError, retryList: retryParticipants, useFestivalRegistrations } = useParticipants();
+  const { data: allRegistrations = [], isLoading: isLoadingRegs, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
   const { judges } = useJudges();
 
   const { tenant_id } = useAuthStore();
@@ -360,9 +360,16 @@ export default function ScheduleDashboard() {
   }, [schedules, searchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, allRegistrations, allResults, allJudgeWorkflowStatuses]);
 
   const exportSchedulePdf = async (mode: AdminSchedulePdfMode) => {
-    if (registrationsError) {
-      if (Platform.OS === 'web') window.alert('Could not load all registrations. Retry before exporting the schedule PDF.');
-      else Alert.alert('Export unavailable', 'Could not load all registrations. Retry before exporting the schedule PDF.');
+    if (isLoadingParticipants || participantsError) {
+      const message = isLoadingParticipants ? 'Participant data is still loading. Retry the export when it finishes.' : 'Could not load participants. Retry before exporting the schedule PDF.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Export unavailable', message);
+      return;
+    }
+    if (isLoadingRegs || registrationsError) {
+      const message = isLoadingRegs ? 'Registration data is still loading. Retry the export when it finishes.' : 'Could not load all registrations. Retry before exporting the schedule PDF.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Export unavailable', message);
       return;
     }
     if (!filteredSchedules.length) {
@@ -470,6 +477,8 @@ export default function ScheduleDashboard() {
 
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
         <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>
+        {participantsError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Participant data could not be loaded for the schedule export.</Text><SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryParticipants(); }} /></View>}
+        {registrationsError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Registration data could not be loaded for the schedule export.</Text><SsfButton label="Retry registrations" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></View>}
         <View className="flex-row flex-wrap gap-2">
           {([
             ['master', 'Master Schedule'],
@@ -479,8 +488,8 @@ export default function ScheduleDashboard() {
             <TouchableOpacity
               key={mode}
               onPress={() => exportSchedulePdf(mode)}
-              disabled={isExportingSchedule}
-              className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
+              disabled={isExportingSchedule || isLoadingParticipants || !!participantsError || isLoadingRegs || !!registrationsError}
+              className={`px-3 py-2 rounded-lg border ${isExportingSchedule || isLoadingParticipants || participantsError || isLoadingRegs || registrationsError ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
             >
               <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : label}</Text>
             </TouchableOpacity>

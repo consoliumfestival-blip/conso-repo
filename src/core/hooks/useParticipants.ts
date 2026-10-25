@@ -15,10 +15,16 @@ export const usePublicCandidateProfile = (slug?: string | null) =>
 
 export const useParticipants = (participantId?: string) => {
   const queryClient = useQueryClient();
+  const tenantId = useAuthStore((state) => state.tenant_id);
+  const userId = useAuthStore((state) => state.user?.id);
 
   const listQuery = useQuery({
-    queryKey: ['participants'],
+    queryKey: ['participants', tenantId, userId],
     queryFn: () => participantService.listParticipants<any>(),
+    // The user session identifies an authenticated request; row visibility
+    // remains enforced by Supabase RLS and tenantId stays in the cache key.
+    // Superadmin profiles may legitimately have no tenant_id.
+    enabled: !!userId,
   });
 
   const detailQuery = useQuery({
@@ -270,6 +276,8 @@ export const useParticipants = (participantId?: string) => {
   return {
     participants: listQuery.data || [],
     isLoadingList: listQuery.isLoading,
+    listError: listQuery.error,
+    retryList: listQuery.refetch,
     
     participant: detailQuery.data,
     isLoadingDetail: detailQuery.isLoading,

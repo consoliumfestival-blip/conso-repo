@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Download, ExternalLink, X } from 'lucide-react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
+import { useAuthStore } from '@/core/store/authStore';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderParticipant } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
@@ -21,6 +22,8 @@ export default function ParticipantsScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const { context, loading: contextLoading } = useTeamLeaderContext();
+  const tenantId = useAuthStore((state) => state.tenant_id);
+  const userId = useAuthStore((state) => state.user?.id);
   const [participants, setParticipants] = useState<TeamLeaderParticipant[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -35,8 +38,8 @@ export default function ParticipantsScreen() {
   const [exportSort, setExportSort] = useState<ExportSort>('chest');
   const [exporting, setExporting] = useState(false);
   const participantProgramsQuery = useQuery({
-    queryKey: ['team-leader-participant-programs', context?.festival_id, selectedParticipant?.id],
-    enabled: !!context && !!selectedParticipant,
+    queryKey: ['team-leader-participant-programs', context?.festival_id, context?.assignment_id, context?.parent_tenant_id, context?.festival_team_id, context?.organisation_id, tenantId, userId, selectedParticipant?.id],
+    enabled: !!context && !!userId && !!selectedParticipant,
     queryFn: () => teamLeaderPortalService.getProgramsForParticipant(selectedParticipant!.id),
     staleTime: 0,
     refetchOnMount: 'always',

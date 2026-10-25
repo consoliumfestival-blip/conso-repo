@@ -35,8 +35,8 @@ export default function ItemActivationSettings() {
     }
     return collegeCategories;
   }, [collegeCategories, festival?.general_category_enabled, isCollegeFest]);
-  const { data: activeCodes, isLoading } = useActiveItems(festival?.id);
-  const { data: persistedItems = [], isLoading: persistedItemsLoading } = useSelectableItems(festival?.id);
+  const { data: activeCodes, isLoading, error: activeItemsError, refetch: retryActiveItems } = useActiveItems(festival?.id);
+  const { data: persistedItems = [], isLoading: persistedItemsLoading, error: selectableItemsError, refetch: retrySelectableItems } = useSelectableItems(festival?.id);
   const applyItemChanges = useApplyItemChanges(festival?.id);
   const updateCompetitionItem = useUpdateCompetitionItem(festival?.id);
 
@@ -134,6 +134,7 @@ export default function ItemActivationSettings() {
     const combined = availableItems;
     const list = combined.filter(item =>
       String(item.item_name_ml ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      String(item.item_name_en ?? '').toLowerCase().includes(search.toLowerCase()) ||
       String(item.item_code ?? '').toLowerCase().includes(search.toLowerCase())
     );
 
@@ -149,6 +150,7 @@ export default function ItemActivationSettings() {
   const allItems = useMemo(() => {
     return availableItems.filter(item =>
       String(item.item_name_ml ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      String(item.item_name_en ?? '').toLowerCase().includes(search.toLowerCase()) ||
       String(item.item_code ?? '').toLowerCase().includes(search.toLowerCase())
     );
   }, [availableItems, search]);
@@ -292,6 +294,7 @@ export default function ItemActivationSettings() {
   };
 
   const handleSave = async () => {
+    if (activeItemsError || selectableItemsError || !activeCodes || !draftFestivalId) return;
     try {
       const selectedSet = new Set(selectedCodes);
       const originalSet = new Set(selectionBase);
@@ -316,6 +319,15 @@ export default function ItemActivationSettings() {
     return (
       <View className="flex-1 bg-ssf-bg items-center justify-center">
         <Text className="font-poppins text-ui-text-muted">Loading...</Text>
+      </View>
+    );
+  }
+
+  if (activeItemsError || selectableItemsError) {
+    return (
+      <View className="flex-1 bg-ssf-bg items-center justify-center px-4">
+        <Text className="font-poppins text-core-danger-red-700">Could not load item settings. Your selection was not changed.</Text>
+        <Button variant="outline" size="sm" onPress={() => { void retryActiveItems(); void retrySelectableItems(); }}>Retry loading items</Button>
       </View>
     );
   }

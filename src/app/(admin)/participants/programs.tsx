@@ -58,9 +58,9 @@ export default function ProgramsScreen() {
     () => new Set((visibleOrganisations.data ?? []).map(organisation => organisation.id)),
     [visibleOrganisations.data],
   );
-  const { data: items = [], isLoading: itemsLoading } = useItems(festival?.id);
+  const { data: items = [], isLoading: itemsLoading, error: itemsError, refetch: retryItems } = useItems(festival?.id);
   const applyItemChanges = useApplyItemChanges(festival?.id);
-  const { participants, isLoadingList: participantsLoading, registerParticipant, deleteRegistration, useFestivalRegistrations } = useParticipants();
+  const { participants, isLoadingList: participantsLoading, listError: participantsError, retryList: retryParticipants, registerParticipant, deleteRegistration, useFestivalRegistrations } = useParticipants();
   const { data: festivalRegistrations = [], isLoading: registrationsLoading, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
   const registrationsUnavailable = registrationsLoading || !!registrationsError;
   const [section, setSection] = useState<'individual' | 'group'>(typeof edit === 'string' ? 'group' : 'individual');
@@ -209,7 +209,7 @@ export default function ProgramsScreen() {
 
   const cardComplete = (itemId: string, category: string, kind: string) => programIntakeComplete(statuses.data ?? [], itemId, category, kind);
   const setComplete = async (complete: boolean) => {
-    if (!festival || !activeCard || saving) return;
+    if (!festival || !activeCard || saving || itemsError || statuses.error) return;
     setSaving(true); setError(''); setNotice('');
     try {
       const { error: rpcError } = await supabase.rpc('set_program_intake_status', {
@@ -225,6 +225,7 @@ export default function ProgramsScreen() {
 
   const addSelected = async () => {
     if (!festival || !activeCard || saving || selectedIds.length === 0) return;
+    if (itemsError || participantsError) return;
     if (activeCard.kind === 'participant' && registrationsUnavailable) return;
     setSaving(true); setError(''); setNotice('');
     try {
@@ -347,7 +348,7 @@ export default function ProgramsScreen() {
         <View>
           <Text className="font-poppins-bold text-[10px] uppercase tracking-widest text-ui-text-muted">Festival · {festival.custom_name || festival.level} {festival.festival_year}</Text>
           <Text className="mt-1 font-poppins-black text-2xl text-ui-text">Programs</Text>
-          <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{sectionCards.length} programs · {doneCount} completed</Text>
+          <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{itemsError ? 'Programs unavailable' : `${sectionCards.length} programs`} · {itemsError || statuses.error ? 'Completion unavailable' : `${doneCount} completed`}</Text>
         </View>
         <View className="flex-row flex-wrap items-center gap-2">
           {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
@@ -356,6 +357,8 @@ export default function ProgramsScreen() {
         </View>
       </View>
       {!!notice && <Text className="mb-3 font-poppins text-xs text-core-success-emerald-700">{notice}</Text>}
+      {itemsError && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load programs.</Text><SsfButton label="Retry programs" variant="outline" size="sm" onPress={() => { void retryItems(); }} /></SsfCard>}
+      {participantsError && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load participants. Assignment is unavailable until they load.</Text><SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryParticipants(); }} /></SsfCard>}
       <View className="mb-3 flex-row flex-wrap items-center gap-2 rounded-xl border border-ui-border bg-core-surface-white p-2">
         <View className="h-10 min-w-[210px] flex-1 flex-row items-center rounded-lg border border-ui-border px-3">
           <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={search} onChangeText={setSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
@@ -363,20 +366,20 @@ export default function ProgramsScreen() {
         </View>
         {([['type', typeFilter], ['stage', stageFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} onPress={() => setFilterPicker(key)} className="h-10 min-w-[112px] flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button"><Text className="font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
       </View>
-      <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>
-      {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{statuses.error.message}</Text></SsfCard>}
+      {!itemsError && !statuses.error && <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>}
+      {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Completion status could not be loaded: {statuses.error.message}</Text><SsfButton label="Retry completion status" variant="outline" size="sm" onPress={() => { void statuses.refetch(); }} /></SsfCard>}
       {registrationsError && section === 'individual' && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load all participant assignments.</Text><SsfButton label="Retry assignments" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></SsfCard>}
       {section === 'group' && entries.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{formatGeneralEntryError(entries.error, 'load')}</Text></SsfCard>}
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
+      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.kind === 'participant' && card.item.max_participants_per_team != null
           ? Array.from(itemAssignmentsByTeam.get(card.item.id)?.values() ?? []).filter(count => count > card.item.max_participants_per_team!).length
           : 0;
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className="rounded-xl border border-ui-border bg-core-surface-white p-3 shadow-sm">
-          <View className="min-h-[76px] flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{complete ? 'Complete' : 'Open'}</Text></View></View>
+          <View className="min-h-[76px] flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete && !statuses.error ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete && !statuses.error ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{statuses.error ? 'Status unavailable' : complete ? 'Complete' : 'Open'}</Text></View></View>
           <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
           {!registrationsUnavailable && overLimitTeams > 0 && <View className="mb-2 flex-row items-start gap-2 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-2"><AlertTriangle size={14} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[11px] text-core-danger-red-700">{overLimitTeams} team(s) exceed the limit of {card.item.max_participants_per_team}. Existing assignments can be deselected in View participants.</Text></View>}
           <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : registrationsUnavailable ? 'Assignments unavailable' : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>
@@ -443,7 +446,7 @@ export default function ProgramsScreen() {
           </View>}
           {cardModalMode === 'assign' && <>
             {activeCard?.kind === 'general_team' && selectedIds.length > 0 && generalSelectionError && <Text className="mt-2 font-poppins text-xs text-core-warning-amber-700">{generalSelectionError}</Text>}
-            <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || !selectedIds.length || hasSelectionOverLimit || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving}/></View>
+          <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || !!participantsError || !!itemsError || !selectedIds.length || hasSelectionOverLimit || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving || !!itemsError || !!statuses.error}/></View>
           </>}
         </View>
       </View>

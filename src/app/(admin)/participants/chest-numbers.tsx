@@ -216,7 +216,7 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
 
 function CategoryChestNumbers({ festival }: { festival: { id: string; chest_number_template?: 'category' | 'team'; chest_number_category_range?: 100 | 1000 } }) {
   const goBack = useGoBack('/(admin)/participants');
-  const { participants, isLoadingList, regenerateChestNumbers, isRegeneratingChestNumbers } = useParticipants();
+  const { participants, isLoadingList, listError, retryList, regenerateChestNumbers, isRegeneratingChestNumbers } = useParticipants();
   const [notice, setNotice] = useState('');
   const isTeamTemplate = festival?.chest_number_template === 'team';
 
@@ -288,6 +288,11 @@ function CategoryChestNumbers({ festival }: { festival: { id: string; chest_numb
 
       {isLoadingList ? (
         <SsfTableSkeleton rows={6} columns={3} compact />
+      ) : listError ? (
+        <SsfCard>
+          <Text className="font-poppins text-sm text-core-danger-red-700">Could not load participants. Chest-number totals may be incomplete.</Text>
+          <Button variant="outline" size="sm" onPress={() => { void retryList(); }}>Retry participants</Button>
+        </SsfCard>
       ) : categoryStats.length === 0 ? (
         <SsfCard><Text className="font-poppins text-ssf-text-muted">No participants found for this festival.</Text></SsfCard>
       ) : categoryStats.map((stat) => (

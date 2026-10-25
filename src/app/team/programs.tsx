@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
+import { useAuthStore } from '@/core/store/authStore';
 import { TeamLeaderGroupRosterMember, TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { festivalCategoryService } from '@/services/festivalCategoryService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
@@ -38,6 +39,17 @@ type PendingDeselect =
   | { kind: 'group-entry'; registrationId: string; participantIds: string[] };
 
 export default function TeamProgramsScreen() {
+  const { context } = useTeamLeaderContext();
+  const tenantId = useAuthStore((state) => state.tenant_id);
+  const userId = useAuthStore((state) => state.user?.id);
+  const role = useAuthStore((state) => state.role);
+  // Reset drafts only when the verified team assignment actually changes,
+  // never when the provider refreshes the same context object.
+  const scopeKey = JSON.stringify([context?.assignment_id, context?.parent_tenant_id, context?.festival_id, context?.festival_team_id, context?.organisation_id, tenantId, userId, role]);
+  return <TeamProgramsContent key={scopeKey} />;
+}
+
+function TeamProgramsContent() {
   const ui = useTeamUi();
   const orange = ui.colors.primary;
   const muted = ui.colors.textMuted;
@@ -47,9 +59,22 @@ export default function TeamProgramsScreen() {
   const isPhone = width < 600;
   const queryClient = useQueryClient();
   const { context, loading: contextLoading } = useTeamLeaderContext();
+  const tenantId = useAuthStore((state) => state.tenant_id);
+  const userId = useAuthStore((state) => state.user?.id);
+  const teamFestivalId = context?.festival_id;
+  const teamOrganisationId = context?.organisation_id;
+  // Team-scoped RPC results must not be reused across assignments or teams.
+  const teamScopeKey = [context?.assignment_id, context?.parent_tenant_id, context?.festival_team_id, context?.organisation_id, tenantId, userId] as const;
+  const teamLeaderProgramsKey = ['team-leader-programs', context?.festival_id, ...teamScopeKey] as const;
+  const itemLimitStatusKey = ['team-leader-item-limit-status', context?.festival_id, ...teamScopeKey] as const;
+  const groupEligibilityKey = (itemId: string) => ['team-group-eligible-members', context?.festival_id, ...teamScopeKey, itemId] as const;
+  const groupRosterKeyPrefix = ['team-program-group-roster', context?.festival_id, ...teamScopeKey] as const;
+  const individualRosterKeyPrefix = ['team-program-individual-roster', context?.festival_id, ...teamScopeKey] as const;
   const [participants, setParticipants] = useState<TeamLeaderParticipant[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [participantError, setParticipantError] = useState<string | null>(null);
+  const [participantRetry, setParticipantRetry] = useState(0);
+  const participantsLoaded = useRef(false);
   const [programSearch, setProgramSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [genderFilter, setGenderFilter] = useState('All genders');
@@ -73,42 +98,47 @@ export default function TeamProgramsScreen() {
   const [generalSelectionError, setGeneralSelectionError] = useState('');
   const [generalMemberSearch, setGeneralMemberSearch] = useState('');
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const participantsUnavailable = participantsLoading || !!participantError;
 
   useEffect(() => {
     if (contextLoading) return;
-    if (!context) {
+    if (!teamFestivalId || !teamOrganisationId || !userId) {
       setParticipants([]);
+      participantsLoaded.current = false;
       setParticipantError('Team details are unavailable. Please sign in again or contact the festival administrator.');
       setParticipantsLoading(false);
       return;
     }
 
     let cancelled = false;
-    setParticipantsLoading(true);
+    // Keep the page and its open pickers mounted during background refreshes.
+    setParticipantsLoading(!participantsLoaded.current);
     setParticipantError(null);
     teamLeaderPortalService.getParticipants()
       .then((rows) => {
         if (cancelled) return;
         setParticipants(rows.filter((person) => person.status !== 'rejected'));
+        participantsLoaded.current = true;
       })
       .catch((error: any) => {
         if (cancelled) return;
+        if (!participantsLoaded.current) setParticipants([]);
         setParticipantError(error?.message || 'Unable to load your team participants.');
       })
       .finally(() => {
         if (!cancelled) setParticipantsLoading(false);
       });
     return () => { cancelled = true; };
-  }, [context, contextLoading]);
+  }, [context, contextLoading, teamFestivalId, teamOrganisationId, participantRetry, userId]);
 
   const programsQuery = useQuery({
-    queryKey: ['team-leader-programs', context?.festival_id],
-    enabled: !!context,
+    queryKey: teamLeaderProgramsKey,
+    enabled: !!context && !!userId,
     queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
   const itemLimitStatusQuery = useQuery({
-    queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id],
-    enabled: !!context,
+    queryKey: itemLimitStatusKey,
+    enabled: !!context && !!userId,
     queryFn: () => teamLeaderPortalService.getItemLimitStatus(),
   });
   const itemLimitStatusById = useMemo(
@@ -123,7 +153,7 @@ export default function TeamProgramsScreen() {
     if (refreshedProgram && refreshedProgram !== activeIndividualProgram) {
       setActiveIndividualProgram(refreshedProgram);
     }
-  }, [activeIndividualProgram?.item_id, programsQuery.data]);
+  }, [activeIndividualProgram, programsQuery.data]);
   const festivalCategoriesQuery = useQuery({
     queryKey: ['team-leader-festival-categories', context?.festival_id],
     enabled: !!context?.festival_id,
@@ -131,22 +161,22 @@ export default function TeamProgramsScreen() {
     staleTime: 5 * 60 * 1000,
   });
   const groupEligibilityQuery = useQuery({
-    queryKey: ['team-group-eligible-members', context?.festival_id, activeGeneralProgram?.item_id],
-    enabled: !!context && !!activeGeneralProgram,
+    queryKey: groupEligibilityKey(activeGeneralProgram?.item_id ?? ''),
+    enabled: !!context && !!userId && !!activeGeneralProgram,
     queryFn: () => teamLeaderPortalService.getEligibleGroupMemberIds(activeGeneralProgram!.item_id),
     staleTime: 0,
     refetchOnMount: 'always',
   });
   const groupRosterQuery = useQuery({
-    queryKey: ['team-program-group-roster', context?.festival_id, activeViewProgram?.item_id],
-    enabled: !!context && activeViewProgram?.entry_kind === 'general_team',
+    queryKey: [...groupRosterKeyPrefix, activeViewProgram?.item_id],
+    enabled: !!context && !!userId && activeViewProgram?.entry_kind === 'general_team',
     queryFn: () => teamLeaderPortalService.getProgramGroupRoster(activeViewProgram!.item_id),
     staleTime: 0,
     refetchOnMount: 'always',
   });
   const individualRosterQuery = useQuery({
-    queryKey: ['team-program-individual-roster', context?.festival_id, activeViewProgram?.item_id],
-    enabled: !!context && activeViewProgram?.entry_kind === 'participant',
+    queryKey: [...individualRosterKeyPrefix, activeViewProgram?.item_id],
+    enabled: !!context && !!userId && activeViewProgram?.entry_kind === 'participant',
     queryFn: () => teamLeaderPortalService.getProgramIndividualRoster(activeViewProgram!.item_id),
     staleTime: 0,
     refetchOnMount: 'always',
@@ -237,7 +267,7 @@ export default function TeamProgramsScreen() {
         .toLowerCase().includes(individualMemberSearch.trim().toLowerCase()))
     : [];
   const generalEligibleIds = new Set(groupEligibilityQuery.data ?? []);
-  const generalEligibleParticipants = activeGeneralProgram && groupEligibilityQuery.isSuccess
+  const generalEligibleParticipants = activeGeneralProgram && groupEligibilityQuery.data
     ? participants.filter((person) =>
         generalEligibleIds.has(person.id)
         && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`.toLowerCase().includes(generalMemberSearch.trim().toLowerCase()),
@@ -274,11 +304,11 @@ export default function TeamProgramsScreen() {
         await invalidateGeneralMembership(queryClient, context.festival_id, pendingDeselect.participantIds);
       }
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] }),
-        queryClient.invalidateQueries({ queryKey: ['team-program-individual-roster', context?.festival_id] }),
-        queryClient.invalidateQueries({ queryKey: ['team-program-group-roster', context?.festival_id] }),
-        queryClient.invalidateQueries({ queryKey: ['team-leader-participant-programs', context?.festival_id] }),
-        queryClient.invalidateQueries({ queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id] }),
+        queryClient.invalidateQueries({ queryKey: teamLeaderProgramsKey }),
+        queryClient.invalidateQueries({ queryKey: individualRosterKeyPrefix }),
+        queryClient.invalidateQueries({ queryKey: groupRosterKeyPrefix }),
+        queryClient.invalidateQueries({ queryKey: ['team-leader-participant-programs', context?.festival_id, ...teamScopeKey] }),
+        queryClient.invalidateQueries({ queryKey: itemLimitStatusKey }),
       ]);
       setPendingDeselect(null);
       setNotice({ kind: 'success', text: pendingDeselect.kind === 'group-entry' ? 'Group entry removed.' : 'Participant deselected from this competition.' });
@@ -326,20 +356,20 @@ export default function TeamProgramsScreen() {
 
   const toggleGeneralParticipant = (participantId: string) => {
     setGeneralSelectionError('');
-    if (selectedGeneralParticipantIds.includes(participantId)) {
-      setSelectedGeneralParticipantIds(selectedGeneralParticipantIds.filter((id) => id !== participantId));
-      return;
-    }
     const max = Number(activeGeneralProgram?.group_max_members ?? 0);
-    if (max > 0 && selectedGeneralParticipantIds.length >= max) {
-      setGeneralSelectionError(`This program allows up to ${max} students.`);
-      return;
-    }
-    setSelectedGeneralParticipantIds([...selectedGeneralParticipantIds, participantId]);
+    setSelectedGeneralParticipantIds((current) => {
+      if (current.includes(participantId)) return current.filter((id) => id !== participantId);
+      if (max > 0 && current.length >= max) return current;
+      return [...current, participantId];
+    });
   };
 
   const createGeneralEntry = async () => {
     if (!activeGeneralProgram || savingItemId) return;
+    if (participantsUnavailable) {
+      setGeneralSelectionError('Student data is unavailable. Retry loading students before creating this entry.');
+      return;
+    }
     if (!groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.some(id => !generalEligibleIds.has(id))) {
       setGeneralSelectionError('Refresh the eligible students before creating this group entry.');
       return;
@@ -356,10 +386,10 @@ export default function TeamProgramsScreen() {
       const created = await teamLeaderPortalService.createGeneralEntry(activeGeneralProgram.item_id, selectedGeneralParticipantIds);
       if (context?.festival_id) await invalidateGeneralMembership(queryClient, context.festival_id, selectedGeneralParticipantIds);
       await queryClient.invalidateQueries({
-        queryKey: ['team-leader-programs', context?.festival_id],
+        queryKey: teamLeaderProgramsKey,
       });
       await queryClient.invalidateQueries({
-        queryKey: ['team-group-eligible-members', context?.festival_id, activeGeneralProgram.item_id],
+        queryKey: groupEligibilityKey(activeGeneralProgram.item_id),
       });
       setActiveGeneralProgram(null);
       setSelectedGeneralParticipantIds([]);
@@ -381,7 +411,15 @@ export default function TeamProgramsScreen() {
 
   const assignSelectedProgram = async () => {
     if (!activeIndividualProgram || savingItemId || !selectedIndividualParticipantIds.length) return;
+    if (participantsUnavailable) {
+      setIndividualSelectionError('Student data is unavailable. Retry loading students before assigning this program.');
+      return;
+    }
     const program = activeIndividualProgram;
+    if (selectedIndividualParticipantIds.some(id => !individualEligibleIds.has(id) || individualAssignedIds.has(id))) {
+      setIndividualSelectionError('Some selected students are no longer available for this program. Clear the selection and choose eligible students again.');
+      return;
+    }
     const status = getItemLimitStatus(program.item_id);
     if (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching || !status) {
       setIndividualSelectionError('Could not verify the current team limit. Refresh and try again.');
@@ -398,9 +436,9 @@ export default function TeamProgramsScreen() {
     try {
       const result = await teamLeaderPortalService.assignProgramParticipants(selectedIndividualParticipantIds, program.item_id);
       await queryClient.invalidateQueries({
-        queryKey: ['team-leader-programs', context?.festival_id],
+        queryKey: teamLeaderProgramsKey,
       });
-      await queryClient.invalidateQueries({ queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id] });
+      await queryClient.invalidateQueries({ queryKey: itemLimitStatusKey });
       setSelectedIndividualParticipantIds([]);
       setNotice({ kind: 'success', text: `${result.assigned_count} participant(s) added to ${program.item_name_en || program.item_name_ml || program.item_code || 'the program'}.` });
     } catch (error: any) {
@@ -417,7 +455,7 @@ export default function TeamProgramsScreen() {
     setCompletionError('');
     try {
       const result = await teamLeaderPortalService.markProgramCompleted(program.item_id);
-      await queryClient.invalidateQueries({ queryKey: ['team-leader-programs', context?.festival_id] });
+      await queryClient.invalidateQueries({ queryKey: teamLeaderProgramsKey });
       setPendingCompletionProgram(null);
       setNotice({ kind: 'success', text: `${program.item_name_en || program.item_name_ml || program.item_code || 'Program'} marked complete for ${result.participant_count} participants.` });
     } catch (error: any) {
@@ -484,7 +522,7 @@ export default function TeamProgramsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={isGeneral ? (assigned ? `${name} team entry already added` : `Select students for ${name}`) : `Add participants to ${name}`}
-          disabled={busy || (isGeneral && (assigned || !program.is_eligible))}
+          disabled={busy || participantsLoading || !!participantError || participants.length === 0 || (isGeneral && (assigned || !program.is_eligible))}
           onPress={() => isGeneral ? openGeneralPicker(program) : openIndividualPicker(program)}
           style={{
             minHeight: 42,
@@ -554,6 +592,7 @@ export default function TeamProgramsScreen() {
           <Text style={{ color: muted, fontSize: 11, marginTop: 10 }}>
             {individualEligibleParticipants.length} eligible · {selectedIndividualParticipantIds.length} selected
           </Text>
+           {participantsUnavailable ? <View style={{ marginTop: 8, padding: 9, borderRadius: 8, backgroundColor: ui.colors.dangerSoft }}><Text style={{ color: ui.colors.danger, fontSize: 11 }}>{participantError || 'Student data is refreshing. Please wait before assigning.'}</Text>{participantError ? <Pressable accessibilityRole="button" onPress={() => setParticipantRetry((current) => current + 1)} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Retry students</Text></Pressable> : null}</View> : null}
           {itemLimitStatusQuery.isLoading || itemLimitStatusQuery.isFetching ? <Text style={{ color: muted, fontSize: 11, marginTop: 6 }}>Checking team limit…</Text> : null}
           {itemLimitStatusQuery.isError || (itemLimitStatusQuery.isSuccess && !individualLimitStatus) ? <View style={{ marginTop: 8, padding: 9, borderRadius: 8, backgroundColor: ui.colors.dangerSoft }}><Text style={{ color: ui.colors.danger, fontSize: 11 }}>Could not verify the current team limit. Try again before adding students.</Text><Pressable accessibilityRole="button" onPress={() => void itemLimitStatusQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Retry</Text></Pressable></View> : null}
           {individualLimitStatus?.max_participants_per_team != null ? <View style={{ marginTop: 8, padding: 9, borderRadius: 8, backgroundColor: individualRemaining === 0 ? ui.colors.dangerSoft : ui.colors.surfaceMuted }}><Text style={{ color: individualRemaining === 0 ? ui.colors.danger : ui.colors.text, fontSize: 11, fontWeight: '700' }}>{individualLimitStatus.participant_count} / {individualLimitStatus.max_participants_per_team} students assigned to your team.{individualLimitStatus.participant_count > individualLimitStatus.max_participants_per_team ? ' Over the limit; remove extra assignments in View Participants.' : individualRemaining === 0 ? ' No new assignments can be added.' : ''}</Text></View> : null}
@@ -582,7 +621,7 @@ export default function TeamProgramsScreen() {
           </ScrollView>
           {individualSelectionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{individualSelectionError}</Text> : null}
           <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8 }}>
-            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining ? 0.55 : 1 }}>
+            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId || participantsUnavailable || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId || participantsUnavailable || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining ? 0.55 : 1 }}>
               {savingItemId === activeIndividualProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
             </Pressable>
           </View>
@@ -636,29 +675,34 @@ export default function TeamProgramsScreen() {
               <X size={20} color={muted} />
             </Pressable>
           </View>
+          {participantsUnavailable ? <View style={{ marginBottom: 8, padding: 9, borderRadius: 8, backgroundColor: ui.colors.dangerSoft }}><Text style={{ color: ui.colors.danger, fontSize: 11 }}>{participantError || 'Student data is refreshing. Please wait before creating this entry.'}</Text>{participantError ? <Pressable accessibilityRole="button" onPress={() => setParticipantRetry((current) => current + 1)} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Retry students</Text></Pressable> : null}</View> : null}
           <View style={{ minHeight: 42, borderWidth: 1, borderColor: border, borderRadius: 10, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Search size={16} color={muted} />
             <TextInput value={generalMemberSearch} onChangeText={setGeneralMemberSearch} placeholder="Search name or chest number" placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: isPhone ? 44 : 40, color: ui.colors.text, fontSize: 13 }} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 140, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 12, paddingBottom: 8 }}>
-            {groupEligibilityQuery.isLoading || groupEligibilityQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 18 }} color={orange} /> : null}
+            {groupEligibilityQuery.isLoading ? <ActivityIndicator style={{ marginVertical: 18 }} color={orange} /> : null}
+            {groupEligibilityQuery.isFetching && !groupEligibilityQuery.isLoading ? <Text style={{ color: muted, fontSize: 11, paddingVertical: 5 }}>Refreshing eligible students… Your selections are kept.</Text> : null}
             {groupEligibilityQuery.isError ? <View style={{ paddingVertical: 12, gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to check eligible students. Please retry.</Text><Pressable accessibilityRole="button" onPress={() => groupEligibilityQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View> : null}
-            {groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching ? generalEligibleParticipants.map((person) => {
+            {groupEligibilityQuery.data ? generalEligibleParticipants.map((person) => {
               const selected = selectedGeneralParticipantIds.includes(person.id);
+              const maxMembers = Number(activeGeneralProgram?.group_max_members ?? 0);
+              const maxReached = maxMembers > 0 && selectedGeneralParticipantIds.length >= maxMembers;
+              const selectionDisabled = !selected && maxReached;
               return (
-                <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggleGeneralParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: selectionDisabled }} disabled={selectionDisabled} onPress={() => toggleGeneralParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: selectionDisabled ? 0.6 : 1 }}>
                   <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: selected ? orange : ui.colors.borderStrong, backgroundColor: selected ? orange : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>{selected ? <Check size={15} color={ui.colors.onPrimary} /> : null}</View>
                   <View style={{ flex: 1 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.name || 'Participant'}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 2 }}>{[person.category_code, person.chest_number ? `Chest ${person.chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>
                 </Pressable>
               );
             }) : null}
-            {groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching && !generalEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program.</Text> : null}
+            {groupEligibilityQuery.data && !groupEligibilityQuery.isLoading && !generalEligibleParticipants.length ? <Text style={{ paddingVertical: 18, textAlign: 'center', color: muted, fontSize: 13 }}>No eligible students match this program.</Text> : null}
           </ScrollView>
           <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, gap: 9 }}>
             <Text style={{ color: generalSelectionError ? ui.colors.danger : muted, fontSize: 12 }}>
               {generalSelectionError || `${selectedGeneralParticipantIds.length} selected · ${activeGeneralProgram?.group_min_members ?? 1} required minimum${Number(activeGeneralProgram?.group_max_members) > 0 ? ` · ${activeGeneralProgram?.group_max_members} maximum` : ''}`}
             </Text>
-            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
+            <Pressable accessibilityRole="button" disabled={!activeGeneralProgram || participantsUnavailable || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId} onPress={createGeneralEntry} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !activeGeneralProgram || participantsUnavailable || !groupEligibilityQuery.isSuccess || groupEligibilityQuery.isFetching || selectedGeneralParticipantIds.length < Number(activeGeneralProgram.group_min_members ?? 1) || (Number(activeGeneralProgram.group_max_members) > 0 && selectedGeneralParticipantIds.length > Number(activeGeneralProgram.group_max_members)) || !!savingItemId ? 0.55 : 1 }}>
               {savingItemId === activeGeneralProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800' }}>Create group entry</Text>}
             </Pressable>
           </View>
@@ -736,7 +780,7 @@ export default function TeamProgramsScreen() {
     </Modal>
   );
 
-  if (contextLoading || participantsLoading) {
+  if (contextLoading) {
     return <TeamLeaderAppShell><View style={{ flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={orange} /></View></TeamLeaderAppShell>;
   }
 
@@ -758,7 +802,7 @@ export default function TeamProgramsScreen() {
           <View>
             <Text style={{ color: muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Festival · {context?.festival_name || context?.team_name || 'Team portal'}</Text>
             <Text style={{ color: ui.colors.text, fontSize: 26, fontWeight: '800', marginTop: 3 }}>Programs</Text>
-            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{availableProgramCount} programs · {activeProgramCount} {programKind === 'participant' ? 'completed' : 'with team entries'}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{programsQuery.isError ? 'Programs unavailable' : programsQuery.isLoading ? 'Loading programs' : `${availableProgramCount} programs · ${activeProgramCount} ${programKind === 'participant' ? 'completed' : 'with team entries'}`}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {(['participant', 'general_team'] as const).map((kind) => {
@@ -770,10 +814,11 @@ export default function TeamProgramsScreen() {
           </View>
         </View>
 
-        {participantError ? <View style={{ marginBottom: 12, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 13 }}>{participantError}</Text></View> : null}
-        {!participantError && participants.length === 0 ? <View style={{ marginBottom: 12, padding: 20, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>No students are available</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 5 }}>Ask the festival administrator to add students to your team.</Text></View> : null}
+        {participantError ? <View style={{ marginBottom: 12, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 13 }}>{participantError}</Text><Pressable accessibilityRole="button" onPress={() => setParticipantRetry((current) => current + 1)} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>Retry students</Text></Pressable></View> : null}
+        {participantsLoading ? <ActivityIndicator color={orange} style={{ marginBottom: 12 }} /> : null}
+        {!participantsLoading && !participantError && participants.length === 0 ? <View style={{ marginBottom: 12, padding: 20, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>No students are available</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 5 }}>Ask the festival administrator to add students to your team.</Text></View> : null}
 
-        {participants.length > 0 ? <>
+        <>
           <View style={{ marginBottom: 12, padding: 8, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             <View style={{ minWidth: isPhone ? 0 : 210, width: isPhone ? '100%' : undefined, height: isPhone ? 44 : 40, flex: isPhone ? undefined : 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Search size={16} color={muted} />
@@ -792,22 +837,22 @@ export default function TeamProgramsScreen() {
             </Pressable>
           </View>
 
-          <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
+          {programsQuery.isSuccess ? <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}</Text>
               <Text style={{ color: ui.colors.primary, fontSize: 12, fontWeight: '700' }}>{progressPercent}%</Text>
             </View>
             <View style={{ height: 6, marginTop: 9, overflow: 'hidden', borderRadius: 99, backgroundColor: ui.colors.surfaceMuted }}><View style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 99, backgroundColor: ui.colors.primary }} /></View>
-          </View>
+          </View> : null}
           {programKind === 'general_team' ? <Text style={{ marginBottom: 8, marginTop: 4, color: muted, fontSize: 11 }}>Create a group entry using eligible students from your team. The first selected student is the group leader.</Text> : null}
           {notice ? <View style={{ marginBottom: 10, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 9, backgroundColor: notice.kind === 'success' ? ui.colors.primarySoft : ui.colors.dangerSoft, borderWidth: 1, borderColor: notice.kind === 'success' ? ui.colors.borderStrong : ui.colors.borderStrong }}><Text style={{ color: notice.kind === 'success' ? ui.colors.primary : ui.colors.danger, fontSize: 12 }}>{notice.text}</Text></View> : null}
-          {programsQuery.isError ? <View style={{ marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text></View> : null}
+          {programsQuery.isError ? <View style={{ marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text><Pressable accessibilityRole="button" onPress={() => { void programsQuery.refetch(); }} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>Retry programs</Text></Pressable></View> : null}
           {programsQuery.isLoading ? <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={orange} /></View> : null}
           {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ marginTop: 4, padding: 18, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch || categoryFilter !== 'All categories' || genderFilter !== 'All genders' ? 'Try changing your search or filters.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match participants in your team. A registration restriction may also prevent entry.'}</Text></View> : null}
           {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
             {visiblePrograms.map((program) => programCard(program, cardWidth))}
           </View> : null}
-        </> : null}
+        </>
       </ScrollView>
 
       <Modal visible={!!filterPicker} transparent animationType="fade" onRequestClose={() => setFilterPicker(null)}>

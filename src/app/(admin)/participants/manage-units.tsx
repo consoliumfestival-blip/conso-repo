@@ -61,6 +61,23 @@ export default function ManageUnits() {
   // Selection State
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [targetUnitId, setTargetUnitId] = useState<string>('');
+  const currentSelectionScope = `${tenantId}:${userId ?? 'no-user'}`;
+  const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
+  const selectionScopeIsCurrent = selectionScope === currentSelectionScope;
+  const selectionScopeMatchesSession = () => {
+    const currentAuth = useAuthStore.getState();
+    return selectionScope === `${currentAuth.tenant_id || ''}:${currentAuth.user?.id || 'no-user'}`;
+  };
+
+  useEffect(() => {
+    if (selectionScope === currentSelectionScope) return;
+    setSelectedIds(new Set());
+    setTargetUnitId('');
+    setPreviewReport(null);
+    setIsPreviewOpen(false);
+    setConfirmInputText('');
+    setSelectionScope(currentSelectionScope);
+  }, [currentSelectionScope, selectionScope]);
 
   // UI Modals & Processing States
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -71,7 +88,7 @@ export default function ManageUnits() {
   const [progressState, setProgressState] = useState({ processed: 0, total: 0, currentChunk: 0, totalChunks: 0 });
 
   // Load Participants list via React Query
-  const { participants, isLoadingList, useFestivalRegistrations } = useParticipants();
+  const { participants, isLoadingList, listError, retryList, useFestivalRegistrations } = useParticipants();
 
   // Load Organisations list
   const [organisations, setOrganisations] = useState<any[]>([]);
@@ -189,6 +206,14 @@ export default function ManageUnits() {
 
   // Preview Reassignment Modal Handler
   const handlePreviewAssignment = async () => {
+    if (!selectionScopeMatchesSession()) {
+      showAlert('Session changed', 'Select participants again under the current account before previewing.');
+      return;
+    }
+    if (listError) {
+      showAlert('Participants unavailable', 'Retry loading participants before previewing a reassignment.');
+      return;
+    }
     if (selectedIds.size === 0) {
       showAlert('No Selection', 'Please select at least one participant.');
       return;
@@ -255,6 +280,14 @@ export default function ManageUnits() {
   // Execute Reassignment Chunk-Queue
   const handleExecuteAssignment = async () => {
     if (!previewReport) return;
+    if (!selectionScopeMatchesSession()) {
+      showAlert('Session changed', 'Select participants and preview the reassignment again under the current account.');
+      return;
+    }
+    if (listError) {
+      showAlert('Participants unavailable', 'Retry loading participants and preview the reassignment again.');
+      return;
+    }
     const requiresHardConfirm = previewReport.validIds.length > 300;
 
     if (requiresHardConfirm && confirmInputText.toLowerCase() !== 'confirm') {
@@ -544,6 +577,11 @@ export default function ManageUnits() {
                 <View><Text className="font-poppins text-sm text-core-danger-red-700">Could not load event registrations. Retry before selecting participants.</Text><SsfButton label="Retry registrations" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></View>
               ) : isLoadingList || isLoadingRegs ? (
                 <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} className="my-10" />
+              ) : listError ? (
+                <View className="items-center justify-center py-10 border border-ssf-border rounded-xl">
+                  <Text className="font-poppins text-sm text-core-danger-red-700">Could not load participants.</Text>
+                  <SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryList(); }} />
+                </View>
               ) : filteredParticipants.length === 0 ? (
                 <View className="items-center justify-center py-20 border border-dashed border-ssf-border rounded-xl bg-core-surface-muted-slate-50">
                   <Text className="text-ssf-text-muted font-poppins text-sm mb-2">No records match your filters.</Text>

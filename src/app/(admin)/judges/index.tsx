@@ -34,6 +34,7 @@ import { SsfInput } from '../../../components/ui/SsfInput';
 import { useJudges } from '../../../core/hooks/useJudges';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { useAuthStore } from '../../../core/store/authStore';
+import { getCategoryFilterOptions } from '../../../core/utils/categoryFilterOptions';
 import { judgeTokenService } from '../../../services/judgeTokenService';
 import { useSchedule } from '../../../core/hooks/useSchedule';
 import { supabase } from '../../../core/config/supabase';
@@ -216,7 +217,12 @@ export default function JudgesPage() {
   const [selectedVenue, setSelectedVenue] = useState('All');
   const [selectedAssignedJudge, setSelectedAssignedJudge] = useState('All');
 
-  const categoriesList = ['All', 'LP', 'UP', 'HS', 'HSS', 'JUNIOR', 'SENIOR', 'CAMPUS', 'GENERAL'];
+  const categoriesList = getCategoryFilterOptions(
+    (schedules as any[]).flatMap((schedule) => {
+      const categories = schedule.items?.category_codes;
+      return Array.isArray(categories) ? categories : [categories];
+    }),
+  );
 
   const filteredSchedules = useMemo(() => {
     return (schedules as any[]).filter(schedule => {

@@ -113,12 +113,7 @@ BEGIN
     'public.validate_registration_category_compatibility()'::regprocedure
   ) INTO v_definition;
   v_definition := pg_catalog.replace(v_definition, E'\r\n', E'\n');
-  v_old := $old$  IF EXISTS (
-    SELECT 1 FROM unnest(v_item_categories) AS category_code
-    WHERE upper(btrim(category_code)) = 'GN' OR upper(btrim(category_code)) = 'GENERAL'
-  ) THEN
-    RETURN NEW;
-  END IF;$old$;
+  v_old := $pattern$IF EXISTS \(\s*SELECT 1 FROM unnest\(v_item_categories\) AS category_code\s*WHERE upper\(btrim\(category_code\)\) = 'GN' OR upper\(btrim\(category_code\)\) = 'GENERAL'\s*\) THEN\s*RETURN NEW;\s*END IF;$pattern$;
   v_new := $new$  IF EXISTS (
     SELECT 1 FROM unnest(v_item_categories) AS category_code
     WHERE group_entry_private.is_general_category_code(category_code)
@@ -133,10 +128,11 @@ BEGIN
     END IF;
     RETURN NEW;
   END IF;$new$;
-  IF pg_catalog.strpos(v_definition, v_old) = 0 THEN
+  v_patched := pg_catalog.regexp_replace(v_definition, v_old, v_new, 'g');
+  IF v_patched = v_definition THEN
     RAISE EXCEPTION 'Expected open-category registration block not found; aborting migration.';
   END IF;
-  EXECUTE pg_catalog.replace(v_definition, v_old, v_new);
+  EXECUTE v_patched;
 END;
 $migration$;
 

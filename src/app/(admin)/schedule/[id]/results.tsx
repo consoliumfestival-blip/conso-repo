@@ -18,6 +18,7 @@ import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useSchedule } from '../../../../core/hooks/useSchedule';
 import { useEntrySizes } from '../../../../core/hooks/useEntrySizes';
 import { useFestival } from '../../../../core/hooks/useFestival';
+import { isGeneralCategoryCode } from '../../../../core/utils/generalCategory';
 import {
   calculateFlexiblePoints,
   calculateGradeFromConfig,
@@ -91,7 +92,7 @@ export default function ResultsPage() {
 
   const isGeneralItem = React.useMemo(() => {
     const codes = (schedule?.items?.category_codes as string[]) || [];
-    return codes.includes('GN') || codes.includes('GENERAL');
+    return codes.some(isGeneralCategoryCode);
   }, [schedule?.items?.category_codes]);
 
   // ── Mode selection ────────────────────────────────────────────────────────

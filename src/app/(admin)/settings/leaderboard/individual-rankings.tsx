@@ -23,6 +23,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategories';
+import { isGeneralCategoryCode } from '../../../../core/utils/generalCategory';
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { participantService } from '../../../../services/participantService';
@@ -87,10 +88,12 @@ export default function IndividualRankingsPage() {
   const [statusFilter, setStatusFilter] = useState<'published' | 'all'>('published');
   const [openingProfileKey, setOpeningProfileKey] = useState<string | null>(null);
 
-  const categoryOptions = useMemo(
-    () => ['all', ...festivalCategories.map((category) => category.code.toLowerCase())],
-    [festivalCategories],
-  );
+  const categoryOptions = useMemo(() => [
+    'all',
+    ...Array.from(new Set(festivalCategories
+      .filter((category) => !isGeneralCategoryCode(category.code))
+      .map((category) => category.code.toLowerCase()))),
+  ], [festivalCategories]);
 
   const itemCategoryCodes = useMemo(() => new Map(
     festivalItems.map((item: any) => [
@@ -114,12 +117,14 @@ export default function IndividualRankingsPage() {
       if (statusFilter === 'published' && r.public_visible !== true) return false;
 
       // 3. Category match based on item name/ml prefix
+      const itemCodes = itemCategoryCodes.get(r.item_id ?? '') || [];
       const categoryMatch = selectedCategory === 'all'
-        || itemCategoryCodes.get(r.item_id ?? '')?.includes(selectedCategory) === true;
+        || (isGeneralCategoryCode(selectedCategory)
+          ? itemCodes.some(isGeneralCategoryCode)
+          : itemCodes.includes(selectedCategory));
         
       // 4. Exclude General items from individual rankings
-      const itemCodes = itemCategoryCodes.get(r.item_id ?? '') || [];
-      const isGeneral = itemCodes.includes('GN') || itemCodes.includes('GENERAL');
+      const isGeneral = itemCodes.some(isGeneralCategoryCode);
       if (isGeneral) return false;
 
       return categoryMatch;

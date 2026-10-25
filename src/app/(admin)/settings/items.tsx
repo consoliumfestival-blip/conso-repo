@@ -1,6 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
+import { isGeneralCategoryCode } from '@/core/utils/generalCategory';
 import React, { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, Text, ScrollView, Alert, TextInput, TouchableOpacity, useWindowDimensions, Platform } from 'react-native';
@@ -30,7 +31,7 @@ export default function ItemActivationSettings() {
   );
   const itemCategoryOptions = useMemo(() => {
     if (!isCollegeFest || festival?.general_category_enabled !== true) {
-      return collegeCategories.filter(category => category.code.toUpperCase() !== 'GN');
+      return collegeCategories.filter(category => !isGeneralCategoryCode(category.code));
     }
     return collegeCategories;
   }, [collegeCategories, festival?.general_category_enabled, isCollegeFest]);

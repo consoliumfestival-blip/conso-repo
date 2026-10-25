@@ -1,4 +1,5 @@
 import { RegistrationRule, RuleContext, RuleResult } from './types';
+import { isGeneralCategoryCode } from '../utils/generalCategory';
 
 // REG-01: Participant item-count limits are intentionally removed.
 // Eligibility and duplicate-item rules remain active below.
@@ -27,8 +28,7 @@ export const CategoryMatchRule: RegistrationRule = {
     const matchesCategory = itemCodes.includes(pCat) || 
                             itemCodes.includes(pCatShort) || 
                             itemCodes.includes(pCatLong) || 
-                            itemCodes.includes('GN') ||
-                            itemCodes.includes('GENERAL');
+                            itemCodes.some(isGeneralCategoryCode);
     
     if (!matchesCategory) {
       if (participant.is_post_hs_religious && (

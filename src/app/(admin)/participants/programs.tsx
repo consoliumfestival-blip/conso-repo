@@ -17,10 +17,16 @@ import { supabase } from '../../../core/config/supabase';
 import { formatGeneralEntryError, GeneralTeamEntry, generalEntryService, getGeneralTeamSelectionError } from '../../../services/generalEntryService';
 import { invalidateGeneralMembership } from '../../../core/utils/invalidateGeneralMembership';
 import { isGroupCompetition, matchesCompetitionCategory, programIntakeComplete } from '../../../core/utils/groupParticipation';
+import { isGeneralCategoryCode } from '../../../core/utils/generalCategory';
 
 type ProgramItem = { id: string; item_code: string; item_name_en?: string; item_name_ml?: string; category_codes?: string[] | string | null; participation_type?: string; item_type?: string | null; gender?: string | null; is_active?: boolean; group_min_members?: number | null; group_max_members?: number | null };
 type IntakeStatus = { item_id: string; category_code: string; entry_kind: 'participant' | 'general_team'; is_complete: boolean };
 const generalCodes = new Set(['GN', 'GENERAL']);
+
+function normalizedCategory(code: string) {
+  const normalized = code.trim().toUpperCase();
+  return isGeneralCategoryCode(normalized) ? 'GENERAL' : normalized;
+}
 
 function codesFor(item: ProgramItem) {
   return (Array.isArray(item.category_codes) ? item.category_codes : item.category_codes ? [item.category_codes] : [])
@@ -110,13 +116,13 @@ export default function ProgramsScreen() {
   const filterOptions = useMemo(() => ({
     type: ['All types', ...Array.from(new Set(sectionCards.map(card => card.item.participation_type).filter(Boolean).map(value => String(value).toLowerCase()))).sort()],
     stage: ['All stages', ...Array.from(new Set(sectionCards.map(card => card.item.item_type).filter(Boolean).map(value => String(value)))).sort()],
-    category: ['All categories', ...Array.from(new Set(sectionCards.map(card => card.category))).sort()],
+    category: ['All categories', ...Array.from(new Set(sectionCards.map(card => normalizedCategory(card.category)))).sort()],
   }), [sectionCards]);
   const programCards = useMemo(() => sectionCards.filter(card =>
     (!search.trim() || `${card.item.item_name_en ?? ''} ${card.item.item_name_ml ?? ''} ${card.item.item_code}`.toLowerCase().includes(search.trim().toLowerCase()))
       && (typeFilter === 'All types' || card.item.participation_type?.toLowerCase() === typeFilter)
       && (stageFilter === 'All stages' || card.item.item_type === stageFilter)
-      && (categoryFilter === 'All categories' || card.category === categoryFilter)
+      && (categoryFilter === 'All categories' || normalizedCategory(card.category) === categoryFilter)
   ), [sectionCards, search, typeFilter, stageFilter, categoryFilter]);
 
   const doneCount = sectionCards.filter(card => programIntakeComplete(statuses.data ?? [], card.item.id, card.category, card.kind)).length;
@@ -230,10 +236,10 @@ export default function ProgramsScreen() {
     ? activeAssignedParticipants
     : [...activeAssignedParticipants, ...eligibleParticipants.filter(person => !activeAssignedIds.has(person.id))])
     .filter(person =>
-    (participantCategoryFilter === 'All categories' || String(person.category_code || '').trim().toUpperCase() === participantCategoryFilter)
+    (participantCategoryFilter === 'All categories' || normalizedCategory(String(person.category_code || '')) === participantCategoryFilter)
       && `${person.name ?? ''} ${person.chest_number ?? ''} ${person.organisations?.name ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()));
   const participantCategoryOptions = Array.from(new Set(eligibleParticipants
-    .map(person => String(person.category_code || '').trim().toUpperCase()).filter(Boolean))).sort();
+    .map(person => normalizedCategory(String(person.category_code || ''))).filter(Boolean))).sort();
   const existingGeneralCount = (itemId: string) => currentRegistrations.filter(entry => (entry as any).item?.id === itemId).length;
   const individualAssignedCount = (itemId: string, category: string) => festivalRegistrations.filter((row: any) =>
     row.item_id === itemId && row.participant_id && row.status !== 'rejected'
@@ -296,7 +302,7 @@ export default function ProgramsScreen() {
           <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={search} onChangeText={setSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
           {!!search && <TouchableOpacity onPress={() => setSearch('')} accessibilityLabel="Clear search"><X size={15} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>}
         </View>
-        {([['type', typeFilter], ['stage', stageFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} onPress={() => setFilterPicker(key)} className="h-10 min-w-[112px] flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button"><Text className="font-poppins text-xs text-ui-text" numberOfLines={1}>{value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
+        {([['type', typeFilter], ['stage', stageFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} onPress={() => setFilterPicker(key)} className="h-10 min-w-[112px] flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button"><Text className="font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
       </View>
       <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>
       {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{statuses.error.message}</Text></SsfCard>}

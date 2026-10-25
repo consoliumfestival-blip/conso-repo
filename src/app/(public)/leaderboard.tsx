@@ -43,6 +43,7 @@ import { fetchPublicSchedules, usePublicSchedule } from '../../core/hooks/useSch
 import PublicAiChatbot from '../../components/leaderboard/PublicAiChatbot';
 import { useAuthStore } from '../../core/store/authStore';
 import { Bell } from 'lucide-react-native';
+import { isGeneralCategoryCode } from '../../core/utils/generalCategory';
 import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEADERBOARD_QUERY_KEYS } from '../../constants/leaderboard';
@@ -241,7 +242,7 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
 
     // Exclude General categories from individual rankings
     const catCodes = result.item_category_codes || [];
-    const isGeneral = catCodes.includes('GN') || catCodes.includes('GENERAL');
+    const isGeneral = catCodes.some(isGeneralCategoryCode);
     if (isGeneral) return;
 
     const existing = grouped.get(result.participant_id);
@@ -524,11 +525,13 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
   const categoryOptions = useMemo(() => {
     const codes = new Set<string>();
     publishedResults.forEach((result) => {
-      result.item_category_codes.forEach((code) => codes.add(code));
-      if (result.participant_category_code) codes.add(result.participant_category_code);
+      result.item_category_codes.forEach((code) => codes.add(isGeneralCategoryCode(code) ? 'GENERAL' : code));
+      if (result.participant_category_code) {
+        codes.add(isGeneralCategoryCode(result.participant_category_code) ? 'GENERAL' : result.participant_category_code);
+      }
     });
     schedules.forEach((schedule) => {
-      (schedule.items?.category_codes ?? []).forEach((code: string) => codes.add(code));
+      (schedule.items?.category_codes ?? []).forEach((code: string) => codes.add(isGeneralCategoryCode(code) ? 'GENERAL' : code));
     });
     return ['All', ...Array.from(codes).sort((a, b) => a.localeCompare(b))];
   }, [publishedResults, schedules]);
@@ -555,6 +558,10 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
 
   const categoryMatches = useCallback((result: PublicPublishedResultRow) => {
     if (categoryFilter === 'All') return true;
+    if (isGeneralCategoryCode(categoryFilter)) {
+      return isGeneralCategoryCode(result.participant_category_code)
+        || result.item_category_codes.some(isGeneralCategoryCode);
+    }
     return result.participant_category_code === categoryFilter || result.item_category_codes.includes(categoryFilter);
   }, [categoryFilter]);
 
@@ -613,9 +620,9 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
         venueName.toLowerCase().includes(searchQuery.toLowerCase())
       ) : true;
 
-      const matchesCategory = categoryFilter === 'All' ? true : (
-        s.items?.category_codes?.includes(categoryFilter) || false
-      );
+      const matchesCategory = categoryFilter === 'All' ? true : isGeneralCategoryCode(categoryFilter)
+        ? (s.items?.category_codes ?? []).some(isGeneralCategoryCode)
+        : (s.items?.category_codes?.includes(categoryFilter) || false);
 
       return matchesSearch && matchesCategory;
     });
@@ -1011,7 +1018,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
               onPress={() => setCategoryFilter(option)}
               style={[styles.categoryChip, active && styles.categoryChipActive]}
             >
-              <Text style={[styles.categoryText, active && styles.categoryTextActive]}>{option}</Text>
+              <Text style={[styles.categoryText, active && styles.categoryTextActive]}>{option === 'All' ? option : isGeneralCategoryCode(option) ? 'General' : option}</Text>
             </TouchableOpacity>
           );
         })}

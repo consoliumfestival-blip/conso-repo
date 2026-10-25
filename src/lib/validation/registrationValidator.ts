@@ -1,4 +1,5 @@
 import { Item, Participant, Registration, Festival } from '../../types';
+import { isGeneralCategoryCode } from '../../core/utils/generalCategory';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -14,11 +15,11 @@ export class RegistrationValidator {
     existingRegistrations: Registration[],
     newItem: Item
   ): ValidationResult {
-    if (newItem.category_codes.includes('GN')) {
+    if (newItem.category_codes.some(isGeneralCategoryCode)) {
       return { isValid: true, errors: [], warnings: [] };
     }
     const nonGeneralCount = existingRegistrations.filter(
-      r => !r.item.category_codes.includes('GN')
+      r => !r.item.category_codes.some(isGeneralCategoryCode)
     ).length;
     if (nonGeneralCount >= 4) {
       return {

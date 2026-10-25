@@ -86,9 +86,7 @@ BEGIN
   v_definition := pg_catalog.replace(v_definition, E'\r\n', E'\n');
   v_old := $old$IF NOT FOUND THEN
     RAISE EXCEPTION 'This program is unavailable.' USING ERRCODE = '22023';
-  END IF;
-
-  SELECT EXISTS$old$;
+  END IF;$old$;
   v_new := $new$IF NOT FOUND THEN
     RAISE EXCEPTION 'This program is unavailable.' USING ERRCODE = '22023';
   END IF;
@@ -104,7 +102,7 @@ BEGIN
     RAISE EXCEPTION 'General category is disabled for this festival.' USING ERRCODE = '23514';
   END IF;
 
-  SELECT EXISTS$new$;
+  $new$ || E'\n  SELECT EXISTS';
   IF pg_catalog.strpos(v_definition, v_old) = 0 THEN
     RAISE EXCEPTION 'Expected item validation block not found in team_leader_assign_program; aborting migration.';
   END IF;

@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { useParticipants } from '../../../core/hooks/useParticipants';
+import { getCategoryFilterOptions } from '../../../core/utils/categoryFilterOptions';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useAuthStore } from '../../../core/store/authStore';
 import { participantService } from '../../../services/participantService';
@@ -112,7 +113,9 @@ export default function ManageUnits() {
     enabled: !!tenantId && activeTab === 'history',
   });
 
-  const categories = ['All', 'LP', 'UP', 'HS', 'HSS', 'JUNIOR', 'SENIOR', 'CAMPUS', 'GENERAL'];
+  const categories = getCategoryFilterOptions(
+    participants.map((participant: any) => participant.category_code),
+  );
 
   // Filtered Participants
   const filteredParticipants = useMemo(() => {

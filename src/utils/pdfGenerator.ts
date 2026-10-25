@@ -3,6 +3,14 @@ import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { UnitProfileData } from '../services/unitProfileService';
 
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character] as string));
+
 export const generateUnitReport = async (unitData: UnitProfileData, totalPoints: number = 0) => {
   try {
     // 1. Group data by item
@@ -57,7 +65,7 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
       <html>
       <head>
         <meta charset="utf-8">
-        <title>${unitData.name} - Report</title>
+        <title>${escapeHtml(unitData.name)} - Report</title>
         <style>
           body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -78,7 +86,8 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
           }
           .item-section {
             margin-bottom: 30px;
-            page-break-inside: avoid;
+            break-inside: auto;
+            page-break-inside: auto;
           }
           .item-header {
             background-color: #f3f4f6;
@@ -90,21 +99,32 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
             margin: 0;
             font-size: 16px;
             color: #1f2937;
+            overflow-wrap: anywhere;
+            word-break: normal;
           }
           .item-cat {
+            display: block;
             font-size: 12px;
             color: #6b7280;
+            margin-top: 3px;
+            overflow-wrap: anywhere;
           }
           table {
             width: 100%;
             border-collapse: collapse;
             font-size: 13px;
+            table-layout: fixed;
           }
           th, td {
             border: 1px solid #e5e7eb;
             padding: 8px 12px;
             text-align: left;
+            vertical-align: top;
+            overflow-wrap: anywhere;
+            word-break: normal;
           }
+          thead { display: table-header-group; }
+          tr { break-inside: avoid; page-break-inside: avoid; }
           th {
             background-color: #f9fafb;
             color: #4b5563;
@@ -126,7 +146,7 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
         </style>
       </head>
       <body>
-        <h1>${unitData.name}</h1>
+        <h1>${escapeHtml(unitData.name)}</h1>
         <div class="meta">
           Unit Summary Report<br/>
           Total Participants: ${unitData.stats.totalParticipants} | Total Points: ${totalPoints}
@@ -135,27 +155,27 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
         ${groupedItems.map(item => `
           <div class="item-section">
             <div class="item-header">
-              <h2 class="item-title">${item.itemName}</h2>
-              <span class="item-cat">${item.category}</span>
+              <h2 class="item-title">${escapeHtml(item.itemName)}</h2>
+              <span class="item-cat">${escapeHtml(item.category)}</span>
             </div>
             <table>
               <thead>
                 <tr>
-                  <th width="15%">Chest No</th>
-                  <th width="35%">Name</th>
-                  <th width="25%">Status</th>
-                  <th width="25%">Result</th>
+                  <th style="width:15%">Chest No</th>
+                  <th style="width:35%">Name</th>
+                  <th style="width:25%">Status</th>
+                  <th style="width:25%">Result</th>
                 </tr>
               </thead>
               <tbody>
                 ${item.participants.sort((a, b) => a.name.localeCompare(b.name)).map(p => `
                   <tr>
-                    <td>${p.chestNo}</td>
-                    <td>${p.name}</td>
+                    <td>${escapeHtml(p.chestNo)}</td>
+                    <td>${escapeHtml(p.name)}</td>
                     <td class="${p.status.includes('Absent') ? 'absent' : (p.status.includes('Attended') ? 'attended' : '')}">
-                      ${p.status}
+                      ${escapeHtml(p.status)}
                     </td>
-                    <td>${p.resultStr}</td>
+                    <td>${escapeHtml(p.resultStr)}</td>
                   </tr>
                 `).join('')}
               </tbody>

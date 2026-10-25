@@ -83,6 +83,22 @@ const PAGE_HEIGHT_F4 = 330;
 const PRINT_MARGIN = 10;
 
 const safeText = (value?: string | number | null) => String(value ?? '').trim();
+const MAX_PDF_HEADER_LINES = 2;
+
+function wrappedHeaderLines(doc: jsPDF, value: string, maxWidth: number) {
+  const lines = doc.splitTextToSize(value, maxWidth) as string[];
+  if (lines.length <= MAX_PDF_HEADER_LINES) return lines;
+  const visible = lines.slice(0, MAX_PDF_HEADER_LINES);
+  visible[MAX_PDF_HEADER_LINES - 1] = `${visible[MAX_PDF_HEADER_LINES - 1].replace(/[.\s]+$/, '')}…`;
+  return visible;
+}
+
+function drawRepeatedHeader(doc: jsPDF, value: string) {
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...INK);
+  doc.text(wrappedHeaderLines(doc, value, PAGE_WIDTH - PRINT_MARGIN * 2), PRINT_MARGIN, 6);
+}
 const registrationIsActive = (row: ExportAssignment) => !['rejected', 'cancelled', 'canceled'].includes(safeText(row.registration_status).toLowerCase());
 const itemLabel = (item?: ExportItem) => {
   if (!item) return 'Unnamed item';
@@ -208,7 +224,7 @@ export function downloadTeamItemParticipantsPdf(args: {
   requireWebPdf();
   const people = new Map(args.participants.map((person) => [person.id, person]));
   const itemMap = new Map(args.items.map((item) => [item.id, item]));
-  const groups = new Map<string, { item: ExportItem; rows: { chest: string; name: string }[] }>();
+  const groups = new Map<string, { item: ExportItem; rows: { chest: string; category: string; name: string }[] }>();
 
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
     if (assignment.organisation_id && assignment.organisation_id !== args.teamId) return;
@@ -216,7 +232,11 @@ export function downloadTeamItemParticipantsPdf(args: {
     const item = itemMap.get(assignment.item_id);
     if (!person || !item) return;
     const group = groups.get(item.id) ?? { item, rows: [] };
-    group.rows.push({ chest: safeText(person.chest_number) || '—', name: safeText(person.name) || 'Unnamed participant' });
+    group.rows.push({
+      chest: safeText(person.chest_number) || '—',
+      category: safeText(person.category_code) || '—',
+      name: safeText(person.name) || 'Unnamed participant',
+    });
     groups.set(item.id, group);
   });
   if (!groups.size) throw new Error('No active item assignments were found for this team.');
@@ -236,28 +256,29 @@ export function downloadTeamItemParticipantsPdf(args: {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     doc.setTextColor(...INK);
-    doc.text(itemLabel(item), PRINT_MARGIN, cursorY);
-    cursorY += 2;
+    const titleLines = doc.splitTextToSize(itemLabel(item), PAGE_WIDTH - PRINT_MARGIN * 2) as string[];
+    doc.text(titleLines, PRINT_MARGIN, cursorY);
+    cursorY += Math.max(5, titleLines.length * 4.2 + 1);
     autoTable(doc, {
       startY: cursorY,
-      head: [['Sl. No.', 'Chest No.', 'Participant Name']],
-      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name)).map((row, index) => [String(index + 1), row.chest, row.name]),
-      margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: PRINT_MARGIN, bottom: PRINT_MARGIN + 4 },
+      head: [['Sl. No.', 'Chest No.', 'Category', 'Participant Name']],
+      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name)).map((row, index) => [String(index + 1), row.chest, row.category, row.name]),
+      margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: 16, bottom: PRINT_MARGIN + 4 },
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 8, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.8, overflow: 'linebreak', minCellHeight: 6 },
       headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
-      columnStyles: { 0: { cellWidth: 18, halign: 'center' }, 1: { cellWidth: 32, halign: 'center' }, 2: { cellWidth: 140 } },
+      columnStyles: {
+        0: { cellWidth: 14, halign: 'center' },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 122 },
+      },
       didParseCell: (hook) => {
-        if (hook.section === 'body' && hook.column.index === 2) hook.cell.styles.fontSize = 9;
+        if (hook.section === 'body' && hook.column.index === 3) hook.cell.styles.fontSize = 9;
       },
       rowPageBreak: 'avoid',
-      didDrawPage: () => {
-        if (doc.getNumberOfPages() > 1) {
-          doc.setFont('helvetica', 'bold');
-          doc.setFontSize(8);
-          doc.setTextColor(...INK);
-          doc.text(`${safeText(args.teamName)} · ${itemLabel(item)}`, PRINT_MARGIN, 6);
-        }
+      didDrawPage: (hook) => {
+        if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName)} · ${itemLabel(item)}`);
       },
     });
     cursorY = ((doc as any).lastAutoTable?.finalY ?? cursorY + 10) + 7;
@@ -340,13 +361,8 @@ export function downloadItemVerificationPdf(args: {
       }
     },
     rowPageBreak: 'avoid',
-    didDrawPage: () => {
-      if (doc.getNumberOfPages() > 1) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(...INK);
-        doc.text(itemLabel(args.item), PRINT_MARGIN, 6);
-      }
+    didDrawPage: (hook) => {
+      if (hook.pageNumber > 1) drawRepeatedHeader(doc, itemLabel(args.item));
     },
   });
   pageFooter(doc, PAGE_HEIGHT_F4);

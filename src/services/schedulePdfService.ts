@@ -63,6 +63,14 @@ const formatTime = (value?: string | null) => value
   ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   : '-';
 
+const headerLines = (doc: jsPDF, value: string, maxWidth: number) => {
+  const lines = doc.splitTextToSize(value, maxWidth) as string[];
+  if (lines.length <= 2) return lines;
+  const visible = lines.slice(0, 2);
+  visible[1] = `${visible[1].replace(/[.\s]+$/, '')}…`;
+  return visible;
+};
+
 const itemLabel = (schedule: ScheduleRow) => {
   const item = schedule.items;
   const name = item?.item_name_en || item?.item_name_ml || 'Unnamed item';
@@ -116,7 +124,7 @@ const writeHeader = (doc: jsPDF, title: string, subtitle: string) => {
   doc.text(title, 14, 10);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text(subtitle, 14, 17);
+  doc.text(headerLines(doc, subtitle, width - 28), 14, 17);
   doc.setFontSize(8);
   doc.text('Official Schedule', width - 14, 10, { align: 'right' });
 };
@@ -178,11 +186,17 @@ export function downloadBlankSchedulePdf(input: BlankSchedulePdfInput) {
   doc.text('Blank Competition Schedule', 14, 13);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(input.festivalName || 'Festival Schedule', 14, 19);
-  doc.text(input.tenantName ? `Tenant: ${input.tenantName}` : input.allTenants ? 'All Tenants' : '', width - 14, 19, { align: 'right' });
+  doc.setFontSize(8.5);
+  const festivalLines = headerLines(doc, input.festivalName || 'Festival Schedule', width - 28);
+  doc.text(festivalLines, 14, 19);
+  const tenantLabel = input.tenantName ? `Tenant: ${input.tenantName}` : input.allTenants ? 'All Tenants' : '';
+  const tenantLines = tenantLabel ? headerLines(doc, tenantLabel, width - 28) : [];
+  const tenantY = 19 + festivalLines.length * 4;
+  if (tenantLines.length) doc.text(tenantLines, 14, tenantY);
+  const tableStartY = Math.max(30, tenantY + tenantLines.length * 4 + 2);
 
   autoTable(doc, {
-    startY: 26,
+    startY: tableStartY,
     head: [['No.', 'Competition', 'Category', 'Date', 'Time', 'Venue / Stage', 'Notes']],
     body: rows.map((row, index) => [String(index + 1), ...row]),
     margin: { left: 14, right: 14, bottom: 18 },
@@ -205,7 +219,7 @@ export function downloadBlankSchedulePdf(input: BlankSchedulePdfInput) {
     },
     columnStyles: {
       0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 62, fontStyle: 'bold' },
+      1: { cellWidth: 61, fontStyle: 'bold' },
       2: { cellWidth: 30 },
       3: { cellWidth: 28 },
       4: { cellWidth: 28 },

@@ -1065,7 +1065,10 @@ export default function ScheduleDashboard() {
                   accessibilityRole="button"
                   accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
                   disabled={!!updatingVisibilityId}
-                  onPress={() => togglePublicVisibility(schedule)}
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    togglePublicVisibility(schedule);
+                  }}
                   className="self-start border border-ui-border rounded-md px-2 py-1.5 mt-1.5 bg-core-surface-white"
                 >
                   <Text className="font-poppins-bold text-[10px] text-ui-text">

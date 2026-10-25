@@ -73,8 +73,9 @@ export default function ProgramsScreen() {
   const [participantCategoryFilter, setParticipantCategoryFilter] = useState('All categories');
   const [typeFilter, setTypeFilter] = useState('All types');
   const [stageFilter, setStageFilter] = useState('All stages');
+  const [statusFilter, setStatusFilter] = useState('All statuses');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
-  const [filterPicker, setFilterPicker] = useState<'type' | 'stage' | 'category' | null>(null);
+  const [filterPicker, setFilterPicker] = useState<'type' | 'stage' | 'status' | 'category' | null>(null);
   const [itemToDeactivate, setItemToDeactivate] = useState<ProgramItem | null>(null);
   const [showTeamProgress, setShowTeamProgress] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
@@ -117,14 +118,16 @@ export default function ProgramsScreen() {
   const filterOptions = useMemo(() => ({
     type: ['All types', ...Array.from(new Set(sectionCards.map(card => card.item.participation_type).filter(Boolean).map(value => String(value).toLowerCase()))).sort()],
     stage: ['All stages', ...Array.from(new Set(sectionCards.map(card => card.item.item_type).filter(Boolean).map(value => value === 'stage' ? 'On Stage' : 'Off Stage'))).sort()],
+    status: ['All statuses', 'Complete', 'Open'],
     category: ['All categories', ...Array.from(new Set(sectionCards.map(card => normalizedCategory(card.category)))).sort()],
   }), [sectionCards]);
   const programCards = useMemo(() => sectionCards.filter(card =>
     (!search.trim() || `${card.item.item_name_en ?? ''} ${card.item.item_name_ml ?? ''} ${card.item.item_code}`.toLowerCase().includes(search.trim().toLowerCase()))
       && (typeFilter === 'All types' || card.item.participation_type?.toLowerCase() === typeFilter)
       && (stageFilter === 'All stages' || card.item.item_type === (stageFilter === 'On Stage' ? 'stage' : 'offstage'))
+      && (statusFilter === 'All statuses' || !!statuses.error || programIntakeComplete(statuses.data ?? [], card.item.id, card.category, card.kind) === (statusFilter === 'Complete'))
       && (categoryFilter === 'All categories' || normalizedCategory(card.category) === categoryFilter)
-  ), [sectionCards, search, typeFilter, stageFilter, categoryFilter]);
+  ), [sectionCards, search, typeFilter, stageFilter, statusFilter, categoryFilter, statuses.data, statuses.error]);
 
   const doneCount = sectionCards.filter(card => programIntakeComplete(statuses.data ?? [], card.item.id, card.category, card.kind)).length;
   const eligibleParticipants = useMemo(() => (participants as any[]).filter(person =>
@@ -332,12 +335,15 @@ export default function ProgramsScreen() {
   if (!festival) return <View className="flex-1 p-5"><Text className="font-poppins text-ui-text">Select or activate a festival first.</Text></View>;
 
   const sectionLabel = section === 'individual' ? 'Individual' : 'Group items';
+  const isPhone = width < 600;
+  const hasActiveFilters = typeFilter !== 'All types' || stageFilter !== 'All stages' || statusFilter !== 'All statuses' || categoryFilter !== 'All categories';
   const cardWidth = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
   const pickerOptions = filterPicker ? filterOptions[filterPicker] : [];
-  const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : categoryFilter;
+  const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : filterPicker === 'status' ? statusFilter : categoryFilter;
   const setPickerValue = (value: string) => {
     if (filterPicker === 'type') setTypeFilter(value);
     if (filterPicker === 'stage') setStageFilter(value);
+    if (filterPicker === 'status') setStatusFilter(value);
     if (filterPicker === 'category') setCategoryFilter(value);
     setFilterPicker(null);
   };
@@ -360,11 +366,12 @@ export default function ProgramsScreen() {
       {itemsError && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load programs.</Text><SsfButton label="Retry programs" variant="outline" size="sm" onPress={() => { void retryItems(); }} /></SsfCard>}
       {participantsError && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load participants. Assignment is unavailable until they load.</Text><SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryParticipants(); }} /></SsfCard>}
       <View className="mb-3 flex-row flex-wrap items-center gap-2 rounded-xl border border-ui-border bg-core-surface-white p-2">
-        <View className="h-10 min-w-[210px] flex-1 flex-row items-center rounded-lg border border-ui-border px-3">
+        <View className="h-10 flex-row items-center rounded-lg border border-ui-border px-3" style={{ minWidth: isPhone ? 0 : 210, width: isPhone ? '100%' : undefined, flex: isPhone ? undefined : 1, height: isPhone ? 44 : 40 }}>
           <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={search} onChangeText={setSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
           {!!search && <TouchableOpacity onPress={() => setSearch('')} accessibilityLabel="Clear search"><X size={15} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>}
         </View>
-        {([['type', typeFilter], ['stage', stageFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} onPress={() => setFilterPicker(key)} className="h-10 min-w-[112px] flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button"><Text className="font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
+        {([['stage', stageFilter], ['status', statusFilter], ['type', typeFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} disabled={key === 'status' && !!statuses.error} onPress={() => setFilterPicker(key)} className="h-10 flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" style={{ minWidth: isPhone ? 0 : 112, width: isPhone ? '48%' : undefined, flexGrow: isPhone ? 1 : 0, height: isPhone ? 44 : 40, opacity: key === 'status' && statuses.error ? 0.5 : 1 }} accessibilityRole="button" accessibilityLabel={`${key} filter, currently ${key === 'status' && statuses.error ? 'unavailable' : value}`}><Text className="min-w-0 flex-1 font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'status' && statuses.error ? 'Status unavailable' : key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
+        {hasActiveFilters ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setTypeFilter('All types'); setStageFilter('All stages'); setStatusFilter('All statuses'); setCategoryFilter('All categories'); }} className="min-h-11 justify-center px-2" style={{ width: isPhone ? '100%' : undefined, alignItems: isPhone ? 'flex-end' : 'center' }}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Clear filters</Text></TouchableOpacity> : null}
       </View>
       {!itemsError && !statuses.error && <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>}
       {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Completion status could not be loaded: {statuses.error.message}</Text><SsfButton label="Retry completion status" variant="outline" size="sm" onPress={() => { void statuses.refetch(); }} /></SsfCard>}
@@ -373,7 +380,7 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
+      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.kind === 'participant' && card.item.max_participants_per_team != null
           ? Array.from(itemAssignmentsByTeam.get(card.item.id)?.values() ?? []).filter(count => count > card.item.max_participants_per_team!).length
@@ -390,7 +397,7 @@ export default function ProgramsScreen() {
     </ScrollView>
 
     <Modal visible={!!filterPicker} transparent animationType="fade" onRequestClose={() => setFilterPicker(null)}>
-      <View className="flex-1 justify-center bg-core-surface-strong-black/40 p-4"><View className="max-h-[75%] rounded-xl bg-core-surface-white p-4"><View className="mb-3 flex-row items-center justify-between"><Text className="font-poppins-bold text-base text-ui-text">Filter programs</Text><TouchableOpacity onPress={() => setFilterPicker(null)} accessibilityLabel="Close filter"><X size={19} color={coreColor("#475569", 'text')}/></TouchableOpacity></View><ScrollView>{pickerOptions.map(option => <TouchableOpacity key={option} onPress={() => setPickerValue(option)} className="border-b border-ui-border py-3"><Text className={`font-poppins text-sm ${pickerValue === option ? 'font-poppins-bold text-core-success-emerald-800' : 'text-ui-text'}`}>{option}</Text></TouchableOpacity>)}</ScrollView></View></View>
+      <View className="flex-1 bg-core-surface-strong-black/40" style={{ justifyContent: isPhone ? 'flex-end' : 'center', padding: isPhone ? 0 : 16 }}><View className="max-h-[75%] bg-core-surface-white p-4" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: isPhone ? 0 : 16, borderBottomRightRadius: isPhone ? 0 : 16, paddingBottom: isPhone ? 24 : 16 }}><View className="mb-3 flex-row items-center justify-between"><Text className="font-poppins-bold text-base text-ui-text">Filter programs</Text><TouchableOpacity onPress={() => setFilterPicker(null)} accessibilityLabel="Close filter" className="min-h-11 min-w-11 items-center justify-center"><X size={19} color={coreColor("#475569", 'text')}/></TouchableOpacity></View><ScrollView>{pickerOptions.map(option => <TouchableOpacity key={option} onPress={() => setPickerValue(option)} className="min-h-11 justify-center border-b border-ui-border"><Text className={`font-poppins text-sm ${pickerValue === option ? 'font-poppins-bold text-core-success-emerald-800' : 'text-ui-text'}`}>{option}</Text></TouchableOpacity>)}</ScrollView></View></View>
     </Modal>
 
     <Modal visible={!!itemToDeactivate} transparent animationType="fade" onRequestClose={() => !deactivating && setItemToDeactivate(null)}>

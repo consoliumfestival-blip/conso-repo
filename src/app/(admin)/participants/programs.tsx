@@ -61,7 +61,8 @@ export default function ProgramsScreen() {
   const { data: items = [], isLoading: itemsLoading } = useItems(festival?.id);
   const applyItemChanges = useApplyItemChanges(festival?.id);
   const { participants, isLoadingList: participantsLoading, registerParticipant, deleteRegistration, useFestivalRegistrations } = useParticipants();
-  const { data: festivalRegistrations = [] } = useFestivalRegistrations(festival?.id);
+  const { data: festivalRegistrations = [], isLoading: registrationsLoading, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
+  const registrationsUnavailable = registrationsLoading || !!registrationsError;
   const [section, setSection] = useState<'individual' | 'group'>(typeof edit === 'string' ? 'group' : 'individual');
   const [editingEntry, setEditingEntry] = useState<GeneralTeamEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<GeneralTeamEntry | null>(null);
@@ -170,6 +171,7 @@ export default function ProgramsScreen() {
 
   const addSelected = async () => {
     if (!festival || !activeCard || saving || selectedIds.length === 0) return;
+    if (activeCard.kind === 'participant' && registrationsUnavailable) return;
     setSaving(true); setError(''); setNotice('');
     try {
       if (activeCard.kind === 'general_team') {
@@ -198,6 +200,7 @@ export default function ProgramsScreen() {
 
   const deselectSelected = async () => {
     if (!festival || !activeCard || activeCard.kind !== 'participant' || saving || selectedIds.length === 0) return;
+    if (registrationsUnavailable) return;
     setSaving(true); setError(''); setNotice('');
     try {
       const selectedRows = activeAssignedRegistrations.filter((row: any) => selectedIds.includes(row.participant_id));
@@ -230,6 +233,7 @@ export default function ProgramsScreen() {
   };
 
   const openCard = (card: typeof programCards[number], mode: 'details' | 'assign') => {
+    if (card.kind === 'participant' && registrationsUnavailable) return;
     setActiveCard(card); setCardModalMode(mode); setSelectedIds([]); setConfirmDeselect(false); setSearch(''); setParticipantCategoryFilter('All categories'); setError(''); setNotice('');
   };
   const visibleParticipants = (cardModalMode === 'details'
@@ -306,6 +310,7 @@ export default function ProgramsScreen() {
       </View>
       <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>
       {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{statuses.error.message}</Text></SsfCard>}
+      {registrationsError && section === 'individual' && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load all participant assignments.</Text><SsfButton label="Retry assignments" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></SsfCard>}
       {section === 'group' && entries.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{formatGeneralEntryError(entries.error, 'load')}</Text></SsfCard>}
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
@@ -315,9 +320,9 @@ export default function ProgramsScreen() {
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className="rounded-xl border border-ui-border bg-core-surface-white p-3 shadow-sm">
           <View className="min-h-[76px] flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{complete ? 'Complete' : 'Open'}</Text></View></View>
           <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type}</Text></View>}</View>
-          <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>
-          <View className="flex-row gap-2"><TouchableOpacity onPress={() => openCard(card, 'details')} className="flex-1 items-center rounded-md border border-ui-border px-2 py-2"><Text className="font-poppins-bold text-[11px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} className="flex-row items-center justify-center gap-1 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2 py-2"><Trash2 size={13} color={coreColor("#B91C1C", 'danger')}/><Text className="font-poppins-bold text-[11px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
-          <TouchableOpacity onPress={() => openCard(card, 'assign')} className="mt-2 items-center rounded-md bg-core-primary-emerald-800 px-2 py-2.5"><Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Assign participants</Text></TouchableOpacity>
+          <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : registrationsUnavailable ? 'Assignments unavailable' : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>
+          <View className="flex-row gap-2"><TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'details')} className="flex-1 items-center rounded-md border border-ui-border px-2 py-2"><Text className="font-poppins-bold text-[11px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} className="flex-row items-center justify-center gap-1 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2 py-2"><Trash2 size={13} color={coreColor("#B91C1C", 'danger')}/><Text className="font-poppins-bold text-[11px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
+          <TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'assign')} className="mt-2 items-center rounded-md bg-core-primary-emerald-800 px-2 py-2.5"><Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Assign participants</Text></TouchableOpacity>
         </View>;
       })}</View>}
     </ScrollView>

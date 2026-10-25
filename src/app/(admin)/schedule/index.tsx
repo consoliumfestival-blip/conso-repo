@@ -172,7 +172,7 @@ export default function ScheduleDashboard() {
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
   const { participants, useFestivalRegistrations } = useParticipants();
-  const { data: allRegistrations = [], isLoading: isLoadingRegs } = useFestivalRegistrations(festival?.id);
+  const { data: allRegistrations = [], isLoading: isLoadingRegs, error: registrationsError } = useFestivalRegistrations(festival?.id);
   const { judges } = useJudges();
 
   const { tenant_id } = useAuthStore();
@@ -360,6 +360,11 @@ export default function ScheduleDashboard() {
   }, [schedules, searchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, allRegistrations, allResults, allJudgeWorkflowStatuses]);
 
   const exportSchedulePdf = async (mode: AdminSchedulePdfMode) => {
+    if (registrationsError) {
+      if (Platform.OS === 'web') window.alert('Could not load all registrations. Retry before exporting the schedule PDF.');
+      else Alert.alert('Export unavailable', 'Could not load all registrations. Retry before exporting the schedule PDF.');
+      return;
+    }
     if (!filteredSchedules.length) {
       if (Platform.OS === 'web') window.alert('No schedules found for the current filters.');
       else Alert.alert('No schedules', 'No schedules found for the current filters.');
@@ -461,6 +466,7 @@ export default function ScheduleDashboard() {
         <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
         <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{filteredSchedules.length} showing</Text>
       </View>
+        {registrationsError && <Text className="font-poppins text-sm text-core-danger-red-700 mb-4">Participant registrations could not be loaded. Assignment counts and status indicators may be incomplete.</Text>}
 
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
         <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>

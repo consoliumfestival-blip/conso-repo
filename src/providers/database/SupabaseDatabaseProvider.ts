@@ -235,11 +235,28 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   }
 
   async listRegistrationsByFestival<T>(festivalId: string): Promise<ListResult<T>> {
-    const { data, error } = await supabase
-      .from('registrations')
-      .select('id, item_id, participant_id, organisation_id, tenant_id, festival_id, status, is_verified, code_letter')
-      .eq('festival_id', festivalId);
-    return { data: (data as T[]) ?? [], error: normalizeError(error) };
+    const registrations: T[] = [];
+    let lastId: string | null = null;
+    // Keep each request below the Data API row limit. An ordered cursor avoids
+    // offset shifts while registrations are added or removed during loading.
+    while (true) {
+      let query = supabase
+        .from('registrations')
+        .select('id, item_id, participant_id, organisation_id, tenant_id, festival_id, status, is_verified, code_letter')
+        .eq('festival_id', festivalId)
+        .order('id', { ascending: true })
+        .limit(500);
+      if (lastId) query = query.gt('id', lastId);
+      const { data, error } = await query;
+      if (error) return { data: [], error: normalizeError(error) };
+      if (!data?.length) return { data: registrations, error: null };
+      registrations.push(...(data as T[]));
+      const nextId = data[data.length - 1].id;
+      if (!nextId || nextId === lastId) {
+        return { data: [], error: new Error('Registration pagination did not advance.') };
+      }
+      lastId = nextId;
+    }
   }
 
   async updateRegistration<T>(registrationId: string, updates: Record<string, unknown>): Promise<QueryResult<T>> {

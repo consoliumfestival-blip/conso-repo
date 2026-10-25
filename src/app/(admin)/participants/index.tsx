@@ -74,7 +74,7 @@ export default function ParticipantsList() {
     isDeleting,
     isApprovingMultiple
   } = useParticipants();
-  const { data: festivalRegistrations = [], isLoading: isLoadingRegistrations } = useFestivalRegistrations(activeFestival?.id);
+  const { data: festivalRegistrations = [], isLoading: isLoadingRegistrations, error: registrationsError } = useFestivalRegistrations(activeFestival?.id);
 
   // Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -168,6 +168,7 @@ export default function ParticipantsList() {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   const openExport = () => {
+    if (registrationsError || isLoadingRegistrations) return;
     if (!exportTeamId && exportTeams[0]) setExportTeamId(exportTeams[0].id);
     if (!exportItemId && exportItems[0]) setExportItemId(exportItems[0].id);
     setIsExportOpen(true);
@@ -175,6 +176,7 @@ export default function ParticipantsList() {
 
   const runExport = async () => {
     try {
+      if (registrationsError || isLoadingRegistrations) throw new Error('Wait for participant assignments to load before exporting.');
       setIsExporting(true);
       if (exportKind === 'csv') {
         await downloadParticipantsCsv(filteredParticipants.map((participant: any): ExportParticipant => ({
@@ -368,10 +370,10 @@ export default function ParticipantsList() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
-            disabled={isExporting || isLoadingList || isLoadingItems || isLoadingRegistrations}
+            disabled={isExporting || isLoadingList || isLoadingItems || isLoadingRegistrations || !!registrationsError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || isLoadingRegistrations ? 'opacity-60' : ''}`}
+            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || isLoadingRegistrations || registrationsError ? 'opacity-60' : ''}`}
           >
             <FileDown size={16} color={ui.colors.onPrimary} />
             <Text className="font-poppins-bold text-xs text-core-on-primary-white">Export</Text>

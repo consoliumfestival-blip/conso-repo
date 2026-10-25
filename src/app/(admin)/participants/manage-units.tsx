@@ -70,7 +70,7 @@ export default function ManageUnits() {
   const [progressState, setProgressState] = useState({ processed: 0, total: 0, currentChunk: 0, totalChunks: 0 });
 
   // Load Participants list via React Query
-  const { participants, isLoadingList } = useParticipants();
+  const { participants, isLoadingList, useFestivalRegistrations } = useParticipants();
 
   // Load Organisations list
   const [organisations, setOrganisations] = useState<any[]>([]);
@@ -89,15 +89,15 @@ export default function ManageUnits() {
   // Load Items list
   const { data: items = [] } = useItems(festivalId);
 
-  // Load registrations for item if item filter is selected
-  const { useItemRegistrations } = useParticipants();
-  const { data: itemRegistrations = [], isLoading: isLoadingRegs } = useItemRegistrations(
-    selectedItemId !== 'All' ? selectedItemId : undefined
+  // The root account can see registrations owned by child teams. Filter the
+  // same festival-visible list used by Programs, instead of root tenant rows.
+  const { data: festivalRegistrations = [], isLoading: isLoadingRegs, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(
+    selectedItemId !== 'All' ? festivalId : undefined
   );
 
   const registeredParticipantIds = useMemo(() => {
-    return new Set(itemRegistrations.map((r: any) => r.participant_id));
-  }, [itemRegistrations]);
+    return new Set(festivalRegistrations.filter((r: any) => r.item_id === selectedItemId).map((r: any) => r.participant_id));
+  }, [festivalRegistrations, selectedItemId]);
 
   // Load Batches & Audit Logs
   const batchesQuery = useQuery({
@@ -537,7 +537,9 @@ export default function ManageUnits() {
                 </View>
               </View>
 
-              {isLoadingList ? (
+              {registrationsError && selectedItemId !== 'All' ? (
+                <View><Text className="font-poppins text-sm text-core-danger-red-700">Could not load event registrations. Retry before selecting participants.</Text><SsfButton label="Retry registrations" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></View>
+              ) : isLoadingList || isLoadingRegs ? (
                 <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} className="my-10" />
               ) : filteredParticipants.length === 0 ? (
                 <View className="items-center justify-center py-20 border border-dashed border-ssf-border rounded-xl bg-core-surface-muted-slate-50">

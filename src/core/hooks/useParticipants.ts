@@ -79,12 +79,13 @@ export const useParticipants = (participantId?: string) => {
   };
 
   const useFestivalRegistrations = (festivalId: string | undefined) => {
+    const { tenant_id, user } = useAuthStore();
     useCodeLetterUpdates(festivalId ? `festival:${festivalId}` : null,
       () => invalidateCodeLetters(queryClient, { festivalId }));
     return useQuery({
-      queryKey: ['festivalRegistrations', festivalId],
+      queryKey: ['festivalRegistrations', festivalId, tenant_id, user?.id],
       queryFn: () => participantService.listRegistrationsByFestival<any>(festivalId!),
-      enabled: !!festivalId,
+      enabled: !!festivalId && !!tenant_id && !!user?.id,
     });
   };
 

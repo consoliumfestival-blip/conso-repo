@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/team/TeamSkeleton';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getTeamDashboardEventsToday, getTeamDashboardUpcomingEvents, isTeamEventInProgress } from '@/core/utils/teamDashboardFlow';
 import { getCompletedScheduleCount, getScheduleLifecycleLabel } from '@/core/utils/scheduleLifecycle';
+import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
 
 const dashboardGlassSurface = Platform.OS === 'web' ? {
   backdropFilter: 'blur(4px)',
@@ -218,6 +219,7 @@ export default function TeamLeaderDashboard() {
               return <View key={event.schedule_id} style={{ minWidth: 0, padding: 12, borderRadius: 14, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, flexDirection: mobile ? 'column' : 'row', alignItems: mobile ? 'flex-start' : 'center', justifyContent: 'space-between', gap: 8 }}>
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{event.item_name || event.item_code || 'Competition'}</Text>
+                  <Text numberOfLines={1} style={{ color: ui.colors.primary, fontSize: 10, fontWeight: '600', marginTop: 2 }}>Category: {getTeamLeaderScheduleCategoryLabel(event.category_codes)}</Text>
                   <Text style={{ color: ui.colors.textMuted, fontSize: 11, lineHeight: 15, marginTop: 4 }}>{event.start_time ? new Date(event.start_time).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Time to be announced'}{event.venue_name ? ` · ${event.venue_name}` : ''}</Text>
                 </View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, width: mobile ? '100%' : undefined }}>

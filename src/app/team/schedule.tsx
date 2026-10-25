@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/Team
 import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
+import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
 
 export default function ScheduleScreen() {
   const ui = useTeamUi();
@@ -110,6 +111,9 @@ export default function ScheduleScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
                             {event.item_name || event.item_code || 'Event'}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: ui.colors.primary, fontWeight: '600', marginTop: 2 }}>
+                            Category: {getTeamLeaderScheduleCategoryLabel(event.category_codes)}
                           </Text>
                           <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
                             {event.start_time ? new Date(event.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}

@@ -72,6 +72,7 @@ export interface TeamLeaderProgramOption {
   item_name_en: string | null;
   item_name_ml: string | null;
   category_codes: string[] | null;
+  item_type?: string | null;
   gender: string | null;
   participation_type: string | null;
   group_min_members: number | null;
@@ -83,6 +84,7 @@ export interface TeamLeaderProgramOption {
   eligible_participant_ids?: string[] | null;
   assigned_participant_ids?: string[] | null;
   is_completed?: boolean;
+  assignment_locked?: boolean;
 }
 
 export interface TeamLeaderGroupRosterMember {
@@ -176,7 +178,7 @@ export const teamLeaderPortalService = {
   },
   getProgramsForTeam: async () => {
     const [programs, completionRows] = await Promise.all([
-      supabase.rpc('get_team_leader_programs_for_team'),
+      supabase.rpc('get_team_leader_programs_for_team_with_locks'),
       supabase.rpc('get_team_leader_completed_program_ids'),
     ]);
     if (programs.error) throw programs.error;

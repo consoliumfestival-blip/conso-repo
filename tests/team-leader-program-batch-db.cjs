@@ -35,10 +35,13 @@ function read(file) {
       read('supabase/tests/team_leader_multi_participant_transaction.sql'),
       read('supabase/migrations/20261023200000_team_leader_program_completion.sql'),
       read('supabase/tests/team_leader_program_completion_transaction.sql'),
+      read('supabase/tests/team_leader_stage_assignment_lock_setup.sql'),
+      read('supabase/migrations/20261025162150_team_leader_stage_assignment_locks.sql'),
+      read('supabase/tests/team_leader_stage_assignment_locks.sql'),
     ].join('\n');
     const output = docker(['exec', '-i', container, 'psql', '-X', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres'], sql);
     const passed = output.split('\n').filter((line) => /PASS:/.test(line));
-    if (passed.length < 5) throw new Error(`Expected at least 5 contract assertions; saw ${passed.length}.\n${output}`);
+    if (passed.length < 10) throw new Error(`Expected at least 10 contract assertions; saw ${passed.length}.\n${output}`);
     console.log(passed.join('\n'));
     console.log(`Passed ${passed.length} Team Leader multi-participant PostgreSQL contract assertions.`);
   } finally {

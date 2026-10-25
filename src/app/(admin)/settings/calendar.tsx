@@ -1,6 +1,6 @@
 import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, Platform, Alert, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CheckCircle2 } from 'lucide-react-native';
 import { useFestival } from '../../../core/hooks/useFestival';
@@ -25,6 +25,8 @@ export default function FestivalCalendarSettings() {
     chest_number_category_range: 100 as 100 | 1000,
     chest_number_template: 'category' as 'category' | 'team',
     gender_mode: 'both' as 'boys_only' | 'girls_only' | 'both',
+    team_leader_on_stage_locked: false,
+    team_leader_off_stage_locked: false,
   });
 
   const [saved, setSaved] = useState(false);
@@ -41,6 +43,8 @@ export default function FestivalCalendarSettings() {
         chest_number_category_range: festival.chest_number_category_range ?? 100,
         chest_number_template: festival.chest_number_template ?? 'category',
         gender_mode: festival.gender_mode ?? 'both',
+        team_leader_on_stage_locked: festival.team_leader_on_stage_locked ?? false,
+        team_leader_off_stage_locked: festival.team_leader_off_stage_locked ?? false,
       });
     }
   }, [festival]);
@@ -203,6 +207,41 @@ export default function FestivalCalendarSettings() {
                 {option.label}
               </Button>
             ))}
+          </View>
+        </CardContent>
+      </Card>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Team Leader Program Locks</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Text className="mb-3 text-xs font-poppins text-ui-text-muted">
+            When locked, Team Leaders can view participants but cannot add, edit, deselect, remove, or mark programs complete for that stage.
+          </Text>
+          <View className="gap-3">
+            <View className="flex-row items-center justify-between gap-4 rounded-lg border border-ui-border bg-white px-3 py-2.5">
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-sm text-ui-text">Lock On Stage programs</Text>
+                <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Read-only for Team Leaders</Text>
+              </View>
+              <Switch
+                accessibilityLabel="Lock Team Leader On Stage programs"
+                value={formData.team_leader_on_stage_locked}
+                onValueChange={(value) => setFormData((current) => ({ ...current, team_leader_on_stage_locked: value }))}
+              />
+            </View>
+            <View className="flex-row items-center justify-between gap-4 rounded-lg border border-ui-border bg-white px-3 py-2.5">
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-sm text-ui-text">Lock Off Stage programs</Text>
+                <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Read-only for Team Leaders</Text>
+              </View>
+              <Switch
+                accessibilityLabel="Lock Team Leader Off Stage programs"
+                value={formData.team_leader_off_stage_locked}
+                onValueChange={(value) => setFormData((current) => ({ ...current, team_leader_off_stage_locked: value }))}
+              />
+            </View>
           </View>
         </CardContent>
       </Card>

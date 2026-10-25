@@ -1,3 +1,5 @@
+import { isGeneralCategoryCode } from './generalCategory';
+
 type GroupItem = { participation_type?: string | null; category_codes?: string[] | string | null };
 
 export const isGroupCompetition = (item?: GroupItem | null) =>
@@ -9,7 +11,7 @@ const category = (value: string) => aliases[value.trim().toUpperCase()] || value
 export function matchesCompetitionCategory(participantCategory: string, itemCategory: string, postHsReligious = false) {
   const target = category(itemCategory);
   if (postHsReligious && target === 'HS') return false;
-  return ['GN', 'GENERAL'].includes(target) || category(participantCategory) === target
+  return isGeneralCategoryCode(target) || category(participantCategory) === target
     || (postHsReligious && ['JR', 'SR'].includes(target));
 }
 

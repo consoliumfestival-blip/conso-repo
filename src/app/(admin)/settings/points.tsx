@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, Switch, Text, TouchableOpacity, V
 import { useRouter } from 'expo-router';
 import { CheckCircle2, Circle, Eye, ListChecks, Plus, Trash2 } from 'lucide-react-native';
 import { ui } from '@/constants/designSystem';
+import { isGeneralCategoryCode } from '@/core/utils/generalCategory';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfInput } from '../../../components/ui/SsfInput';
@@ -67,11 +68,13 @@ export default function PointsSettings() {
   }, [festival?.id, record?.config_version]);
   const errors = useMemo(() => validateFlexiblePointsConfig(form), [form]);
   const enabledCategoryCodes = useMemo(() => new Set(enabledCategories
-    .filter(category => category.code.toUpperCase() !== 'GN' || festival?.general_category_enabled === true)
-    .map(category => category.code.trim().toUpperCase())), [enabledCategories, festival?.general_category_enabled]);
+    .filter(category => !isGeneralCategoryCode(category.code) || festival?.general_category_enabled === true)
+    .map(category => isGeneralCategoryCode(category.code) ? 'GN' : category.code.trim().toUpperCase())), [enabledCategories, festival?.general_category_enabled]);
   const isEnabledCompetition = (item: any) => {
     if (!Array.isArray(item.category_codes) || item.category_codes.length !== 1) return false;
-    return !isCollegeFest || enabledCategoryCodes.has(String(item.category_codes[0]).trim().toUpperCase());
+    const itemCategory = String(item.category_codes[0]).trim().toUpperCase();
+    if (isCollegeFest && isGeneralCategoryCode(itemCategory)) return festival?.general_category_enabled === true;
+    return !isCollegeFest || enabledCategoryCodes.has(itemCategory);
   };
   const selectableItems = (items as any[]).filter(isEnabledCompetition);
   const visibleItems = selectableItems.filter(item => [item.item_code, item.item_name_en, item.item_name_ml]

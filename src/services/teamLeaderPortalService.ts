@@ -115,6 +115,12 @@ export interface TeamLeaderParticipantProgram {
   registration_status: string | null;
 }
 
+export interface TeamLeaderItemLimitStatus {
+  item_id: string;
+  participant_count: number;
+  max_participants_per_team: number | null;
+}
+
 async function readRpc<T>(name: string): Promise<T[]> {
   const { data, error } = await supabase.rpc(name);
   if (error) throw error;
@@ -155,6 +161,7 @@ export const teamLeaderPortalService = {
     return data ?? { portal_primary_color: null, portal_accent_color: null };
   },
   getParticipants: () => readRpc<TeamLeaderParticipant>('get_team_leader_participants'),
+  getItemLimitStatus: () => readRpc<TeamLeaderItemLimitStatus>('get_team_leader_item_limit_status'),
   getParticipantExportRows: async () => {
     const { data, error } = await supabase.rpc('get_team_leader_participant_export_rows');
     if (error) throw error;

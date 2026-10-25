@@ -95,6 +95,8 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       p_item_name_ml: input.itemNameMl,
       p_category_codes: input.categoryCodes,
       p_group_member_count: input.groupMemberCount,
+      p_item_type: input.itemType,
+      p_max_participants_per_team: input.maxParticipantsPerTeam,
       p_expected_updated_at: input.expectedUpdatedAt,
     });
     return { data: undefined, error: normalizeError(error) };
@@ -242,7 +244,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     while (true) {
       let query = supabase
         .from('registrations')
-        .select('id, item_id, participant_id, organisation_id, tenant_id, festival_id, status, is_verified, code_letter')
+        .select('id, item_id, participant_id, organisation_id, tenant_id, festival_id, entry_kind, status, is_verified, code_letter')
         .eq('festival_id', festivalId)
         .order('id', { ascending: true })
         .limit(500);

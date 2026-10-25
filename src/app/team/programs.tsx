@@ -3,7 +3,7 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
+import { AlertTriangle, ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderGroupRosterMember, TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
@@ -106,6 +106,16 @@ export default function TeamProgramsScreen() {
     enabled: !!context,
     queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
   });
+  const itemLimitStatusQuery = useQuery({
+    queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id],
+    enabled: !!context,
+    queryFn: () => teamLeaderPortalService.getItemLimitStatus(),
+  });
+  const itemLimitStatusById = useMemo(
+    () => new Map((itemLimitStatusQuery.data ?? []).map(status => [status.item_id, status])),
+    [itemLimitStatusQuery.data],
+  );
+  const getItemLimitStatus = (itemId: string) => itemLimitStatusById.get(itemId);
 
   useEffect(() => {
     if (!activeIndividualProgram) return;
@@ -217,6 +227,10 @@ export default function TeamProgramsScreen() {
 
   const individualEligibleIds = new Set(activeIndividualProgram?.eligible_participant_ids ?? []);
   const individualAssignedIds = new Set(activeIndividualProgram?.assigned_participant_ids ?? []);
+  const individualLimitStatus = activeIndividualProgram ? getItemLimitStatus(activeIndividualProgram.item_id) : undefined;
+  const individualRemaining = individualLimitStatus?.max_participants_per_team == null
+    ? Number.POSITIVE_INFINITY
+    : Math.max(0, individualLimitStatus.max_participants_per_team - individualLimitStatus.participant_count);
   const individualEligibleParticipants = activeIndividualProgram
     ? participants.filter((person) => individualEligibleIds.has(person.id)
       && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`
@@ -264,6 +278,7 @@ export default function TeamProgramsScreen() {
         queryClient.invalidateQueries({ queryKey: ['team-program-individual-roster', context?.festival_id] }),
         queryClient.invalidateQueries({ queryKey: ['team-program-group-roster', context?.festival_id] }),
         queryClient.invalidateQueries({ queryKey: ['team-leader-participant-programs', context?.festival_id] }),
+        queryClient.invalidateQueries({ queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id] }),
       ]);
       setPendingDeselect(null);
       setNotice({ kind: 'success', text: pendingDeselect.kind === 'group-entry' ? 'Group entry removed.' : 'Participant deselected from this competition.' });
@@ -281,6 +296,7 @@ export default function TeamProgramsScreen() {
   };
 
   const openIndividualPicker = (program: TeamLeaderProgramOption) => {
+    void itemLimitStatusQuery.refetch();
     setActiveIndividualProgram(program);
     setSelectedIndividualParticipantIds([]);
     setIndividualSelectionError('');
@@ -290,9 +306,14 @@ export default function TeamProgramsScreen() {
 
   const toggleIndividualParticipant = (participantId: string) => {
     setIndividualSelectionError('');
-    setSelectedIndividualParticipantIds((current) => current.includes(participantId)
-      ? current.filter((id) => id !== participantId)
-      : [...current, participantId]);
+    setSelectedIndividualParticipantIds((current) => {
+      if (current.includes(participantId)) return current.filter((id) => id !== participantId);
+      const status = activeIndividualProgram ? getItemLimitStatus(activeIndividualProgram.item_id) : undefined;
+      if (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching || !status) return current;
+      if (status.max_participants_per_team != null
+        && status.participant_count + current.length >= status.max_participants_per_team) return current;
+      return [...current, participantId];
+    });
   };
 
   const openGeneralPicker = (program: TeamLeaderProgramOption) => {
@@ -361,6 +382,16 @@ export default function TeamProgramsScreen() {
   const assignSelectedProgram = async () => {
     if (!activeIndividualProgram || savingItemId || !selectedIndividualParticipantIds.length) return;
     const program = activeIndividualProgram;
+    const status = getItemLimitStatus(program.item_id);
+    if (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching || !status) {
+      setIndividualSelectionError('Could not verify the current team limit. Refresh and try again.');
+      return;
+    }
+    if (status.max_participants_per_team != null
+      && status.participant_count + selectedIndividualParticipantIds.length > status.max_participants_per_team) {
+      setIndividualSelectionError('This selection exceeds your team limit. Remove an assignment or select fewer students.');
+      return;
+    }
     setSavingItemId(program.item_id);
     setIndividualSelectionError('');
     setNotice(null);
@@ -369,6 +400,7 @@ export default function TeamProgramsScreen() {
       await queryClient.invalidateQueries({
         queryKey: ['team-leader-programs', context?.festival_id],
       });
+      await queryClient.invalidateQueries({ queryKey: ['team-leader-item-limit-status', context?.festival_id, context?.organisation_id] });
       setSelectedIndividualParticipantIds([]);
       setNotice({ kind: 'success', text: `${result.assigned_count} participant(s) added to ${program.item_name_en || program.item_name_ml || program.item_code || 'the program'}.` });
     } catch (error: any) {
@@ -401,6 +433,12 @@ export default function TeamProgramsScreen() {
     const assigned = isGeneral ? program.team_entry_count > 0 : program.is_assigned && !program.is_eligible;
     const busy = savingItemId === program.item_id;
     const name = program.item_name_en || program.item_name_ml || program.item_code || 'Program';
+    const limitStatus = !isGeneral ? getItemLimitStatus(program.item_id) : undefined;
+    const overLimit = limitStatus?.max_participants_per_team != null
+      && limitStatus.participant_count > limitStatus.max_participants_per_team;
+    const limitDetails = limitStatus?.max_participants_per_team == null
+      ? null
+      : 'Your team: ' + limitStatus.participant_count + ' / ' + limitStatus.max_participants_per_team + ' participants';
     const groupRange = `${program.group_min_members ?? 1}${Number(program.group_max_members) > 0 ? `–${program.group_max_members}` : '+'} students`;
     const detail = isGeneral
       ? `${program.item_code ? `${program.item_code} · ` : ''}${groupRange}${program.team_entry_count ? ` · ${program.team_entry_count} team ${program.team_entry_count === 1 ? 'entry' : 'entries'}` : ''}`
@@ -439,6 +477,8 @@ export default function TeamProgramsScreen() {
               </View>)}
           </View>
           <Text numberOfLines={2} style={{ color: muted, fontSize: 11, marginBottom: 12 }}>{detail}</Text>
+          {limitDetails ? <Text style={{ color: overLimit ? ui.colors.danger : muted, fontSize: 11, marginBottom: 6, fontWeight: overLimit ? '700' : '400' }}>{limitDetails}</Text> : null}
+          {overLimit ? <View style={{ padding: 8, borderRadius: 8, backgroundColor: ui.colors.dangerSoft, marginBottom: 10, flexDirection: 'row', alignItems: 'flex-start', gap: 7 }}><AlertTriangle size={14} color={ui.colors.danger}/><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700', flex: 1 }}>Over the team limit. Remove extra assignments using View Participants. Existing entries remain available.</Text></View> : null}
         </View>
         <View style={{ gap: 8 }}>
         <Pressable
@@ -514,12 +554,19 @@ export default function TeamProgramsScreen() {
           <Text style={{ color: muted, fontSize: 11, marginTop: 10 }}>
             {individualEligibleParticipants.length} eligible · {selectedIndividualParticipantIds.length} selected
           </Text>
+          {itemLimitStatusQuery.isLoading || itemLimitStatusQuery.isFetching ? <Text style={{ color: muted, fontSize: 11, marginTop: 6 }}>Checking team limit…</Text> : null}
+          {itemLimitStatusQuery.isError || (itemLimitStatusQuery.isSuccess && !individualLimitStatus) ? <View style={{ marginTop: 8, padding: 9, borderRadius: 8, backgroundColor: ui.colors.dangerSoft }}><Text style={{ color: ui.colors.danger, fontSize: 11 }}>Could not verify the current team limit. Try again before adding students.</Text><Pressable accessibilityRole="button" onPress={() => void itemLimitStatusQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Retry</Text></Pressable></View> : null}
+          {individualLimitStatus?.max_participants_per_team != null ? <View style={{ marginTop: 8, padding: 9, borderRadius: 8, backgroundColor: individualRemaining === 0 ? ui.colors.dangerSoft : ui.colors.surfaceMuted }}><Text style={{ color: individualRemaining === 0 ? ui.colors.danger : ui.colors.text, fontSize: 11, fontWeight: '700' }}>{individualLimitStatus.participant_count} / {individualLimitStatus.max_participants_per_team} students assigned to your team.{individualLimitStatus.participant_count > individualLimitStatus.max_participants_per_team ? ' Over the limit; remove extra assignments in View Participants.' : individualRemaining === 0 ? ' No new assignments can be added.' : ''}</Text></View> : null}
+          <View style={{ flexDirection: 'row', gap: 14, marginTop: 8 }}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || individualLimitStatus.max_participants_per_team != null || !!savingItemId }} disabled={(!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || individualLimitStatus.max_participants_per_team != null || !!savingItemId} onPress={() => setSelectedIndividualParticipantIds(individualEligibleParticipants.filter(person => !individualAssignedIds.has(person.id)).map(person => person.id))} style={{ minHeight: 40, justifyContent: 'center', opacity: !individualLimitStatus || individualLimitStatus.max_participants_per_team != null ? 0.45 : 1 }}><Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700' }}>Select all shown</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setSelectedIndividualParticipantIds([])} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: muted, fontSize: 11, fontWeight: '700' }}>Clear selection</Text></Pressable>
+          </View>
           <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0, minHeight: 120, maxHeight: isDesktop ? 420 : 330 }} contentContainerStyle={{ gap: 8, paddingTop: 10, paddingBottom: 8 }}>
             {individualEligibleParticipants.map((person) => {
               const alreadyAssigned = individualAssignedIds.has(person.id);
               const selected = selectedIndividualParticipantIds.includes(person.id);
               return (
-                <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: alreadyAssigned }} disabled={alreadyAssigned || !!savingItemId} onPress={() => toggleIndividualParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: alreadyAssigned ? ui.colors.success : selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: alreadyAssigned ? ui.colors.successSoft : selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: alreadyAssigned ? 0.82 : 1 }}>
+                <Pressable key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected, disabled: alreadyAssigned || (!selected && ((!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length >= individualRemaining)) }} disabled={alreadyAssigned || !!savingItemId || (!selected && ((!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length >= individualRemaining))} onPress={() => toggleIndividualParticipant(person.id)} style={{ minHeight: 54, paddingHorizontal: 11, paddingVertical: 8, borderWidth: 1, borderColor: alreadyAssigned ? ui.colors.success : selected ? ui.colors.borderStrong : border, borderRadius: 10, backgroundColor: alreadyAssigned ? ui.colors.successSoft : selected ? ui.colors.primarySoft : ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, opacity: alreadyAssigned ? 0.82 : 1 }}>
                   <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 1, borderColor: alreadyAssigned ? ui.colors.success : selected ? orange : ui.colors.borderStrong, backgroundColor: selected ? orange : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
                     {selected ? <Check size={15} color={ui.colors.onPrimary} /> : alreadyAssigned ? <Check size={15} color={ui.colors.success} /> : null}
                   </View>
@@ -535,7 +582,7 @@ export default function TeamProgramsScreen() {
           </ScrollView>
           {individualSelectionError ? <Text style={{ color: ui.colors.danger, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{individualSelectionError}</Text> : null}
           <View style={{ borderTopWidth: 1, borderTopColor: border, paddingTop: 12, marginTop: 8 }}>
-            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId ? 0.55 : 1 }}>
+            <Pressable accessibilityRole="button" disabled={!selectedIndividualParticipantIds.length || !!savingItemId || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining} onPress={assignSelectedProgram} style={{ minHeight: 46, borderRadius: 10, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: !selectedIndividualParticipantIds.length || !!savingItemId || (!itemLimitStatusQuery.isSuccess || itemLimitStatusQuery.isFetching) || !individualLimitStatus || selectedIndividualParticipantIds.length > individualRemaining ? 0.55 : 1 }}>
               {savingItemId === activeIndividualProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>{`Add selected (${selectedIndividualParticipantIds.length})`}</Text>}
             </Pressable>
           </View>

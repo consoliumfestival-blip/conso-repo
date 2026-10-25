@@ -16,6 +16,8 @@ export type CompetitionItemUpdate = {
   itemNameMl: string;
   categoryCodes: string[];
   groupMemberCount: number | null;
+  itemType: 'stage' | 'offstage' | null;
+  maxParticipantsPerTeam: number | null;
   expectedUpdatedAt: string | null;
 };
 

@@ -46,10 +46,20 @@ export default function ItemActivationSettings() {
   const [draftFestivalId, setDraftFestivalId] = useState<string | null>(null);
   const [customItems, setCustomItems] = useState<any[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [customForm, setCustomForm] = useState({ code: 'CUST-', name: '', cat: 'GN', type: 'individual', groupSize: '' });
+  const [customForm, setCustomForm] = useState({
+    code: 'CUST-', name: '', cat: 'GN', type: 'individual', groupSize: '',
+    itemType: null as 'stage' | 'offstage' | null,
+    participantLimitMode: 'unlimited' as 'unlimited' | 'limited',
+    maxParticipantsPerTeam: '',
+  });
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ name: '', categoryText: '', categoryCodes: [] as string[], groupSize: '' });
+  const [editForm, setEditForm] = useState({
+    name: '', categoryText: '', categoryCodes: [] as string[], groupSize: '',
+    itemType: null as 'stage' | 'offstage' | null,
+    participantLimitMode: 'unlimited' as 'unlimited' | 'limited',
+    maxParticipantsPerTeam: '',
+  });
   const tenantFilterStorageKey = `items-show-tenant-only:${currentTenantId || 'unknown'}`;
   const [showTenantItemsOnly, setShowTenantItemsOnly] = useState(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -174,6 +184,9 @@ export default function ItemActivationSettings() {
       categoryText: categories.join(', '),
       categoryCodes: categories,
       groupSize,
+      itemType: item.item_type === 'stage' || item.item_type === 'offstage' ? item.item_type : null,
+      participantLimitMode: Number(item.max_participants_per_team) > 0 ? 'limited' : 'unlimited',
+      maxParticipantsPerTeam: item.max_participants_per_team == null ? '' : String(item.max_participants_per_team),
     });
   };
 
@@ -197,6 +210,14 @@ export default function ItemActivationSettings() {
       }
       groupMemberCount = count;
     }
+    const maxParticipantsPerTeam = editingItem.participation_type === 'individual' && editForm.participantLimitMode === 'limited'
+      ? Number(editForm.maxParticipantsPerTeam) : null;
+    if (editingItem.participation_type === 'individual' && editForm.participantLimitMode === 'limited'
+      && (!/^\d+$/.test(editForm.maxParticipantsPerTeam.trim()) || !Number.isSafeInteger(maxParticipantsPerTeam)
+        || maxParticipantsPerTeam! < 1 || maxParticipantsPerTeam! > 2147483647)) {
+      Alert.alert('Error', 'Enter a positive whole-number participant limit.');
+      return;
+    }
 
     const cleanedName = editForm.name.trim();
     if (isDraftCustomItem(editingItem)) {
@@ -205,6 +226,8 @@ export default function ItemActivationSettings() {
         item_name_ml: cleanedName,
         item_name_en: !item.item_name_en || item.item_name_en === item.item_name_ml ? cleanedName : item.item_name_en,
         category_codes: uniqueCategoryCodes,
+        item_type: editForm.itemType,
+        max_participants_per_team: maxParticipantsPerTeam,
         ...(groupMemberCount == null ? {} : { group_min_members: groupMemberCount, group_max_members: groupMemberCount }),
       }));
       setEditingItem(null);
@@ -221,6 +244,8 @@ export default function ItemActivationSettings() {
         itemNameMl: cleanedName,
         categoryCodes: uniqueCategoryCodes,
         groupMemberCount,
+        itemType: editForm.itemType,
+        maxParticipantsPerTeam,
         expectedUpdatedAt: editingItem.updated_at ?? null,
       });
       Alert.alert('Success', 'Competition details saved.');
@@ -244,17 +269,26 @@ export default function ItemActivationSettings() {
       Alert.alert('Error', 'Enter the number of members for this group competition.');
       return;
     }
+    const maxParticipantsPerTeam = customForm.type === 'individual' && customForm.participantLimitMode === 'limited'
+      ? Number(customForm.maxParticipantsPerTeam) : null;
+    if (customForm.type === 'individual' && customForm.participantLimitMode === 'limited'
+      && (!/^\d+$/.test(customForm.maxParticipantsPerTeam.trim()) || !Number.isSafeInteger(maxParticipantsPerTeam)
+        || maxParticipantsPerTeam! < 1 || maxParticipantsPerTeam! > 2147483647)) {
+      Alert.alert('Error', 'Enter a positive whole-number participant limit.');
+      return;
+    }
     const newItems = categories.map(category => {
       const id = createRequestId();
       return { id, item_code: `${category.toUpperCase()}-C${id.slice(0, 8).toUpperCase()}`,
         item_name_ml: customForm.name.trim(), category_codes: [category], participation_type: customForm.type, source: 'custom',
+        item_type: customForm.itemType, max_participants_per_team: maxParticipantsPerTeam,
         ...(customForm.type === 'group' ? { group_min_members: groupSize, group_max_members: groupSize } : {}) };
     });
     setCustomItems([...customItems, ...newItems]);
     setSelectedCodes([...selectedCodes, ...newItems.map(item => item.item_code)]);
     setIsAddModalOpen(false);
     setCategoryMenuOpen(false);
-    setCustomForm({ code: '', name: '', cat: isCollegeFest ? (itemCategoryOptions[0]?.code || '') : 'GN', type: 'individual', groupSize: '' });
+    setCustomForm({ code: '', name: '', cat: isCollegeFest ? (itemCategoryOptions[0]?.code || '') : 'GN', type: 'individual', groupSize: '', itemType: null, participantLimitMode: 'unlimited', maxParticipantsPerTeam: '' });
   };
 
   const handleSave = async () => {
@@ -484,7 +518,8 @@ export default function ItemActivationSettings() {
       {/* Add Custom Item Modal */}
       <Modal visible={isAddModalOpen} transparent animationType="slide">
         <View className="flex-1 bg-core-surface-strong-black/50 justify-end">
-          <View className="bg-core-surface-white p-6 rounded-t-3xl min-h-[50%]">
+          <View className="bg-core-surface-white p-6 rounded-t-3xl min-h-[50%] max-h-[90%]">
+            <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 8 }}>
             <Text className="text-xl font-poppins-bold text-ui-text mb-4">Add Custom Item</Text>
 
             <View className="mb-4">
@@ -565,10 +600,27 @@ export default function ItemActivationSettings() {
                 placeholder="Enter the number of members" />
             </View>}
 
+            <View className="mb-5">
+              <Label>Stage</Label>
+              <View className="mt-2 flex-row gap-2">
+                <Button variant={customForm.itemType === 'stage' ? 'default' : 'outline'} size="sm" onPress={() => setCustomForm(current => ({ ...current, itemType: 'stage' }))}>On Stage</Button>
+                <Button variant={customForm.itemType === 'offstage' ? 'default' : 'outline'} size="sm" onPress={() => setCustomForm(current => ({ ...current, itemType: 'offstage' }))}>Off Stage</Button>
+              </View>
+            </View>
+            {customForm.type === 'individual' && <View className="mb-5">
+              <Label>Participants per team</Label>
+              <View className="mt-2 flex-row gap-2">
+                <Button variant={customForm.participantLimitMode === 'unlimited' ? 'default' : 'outline'} size="sm" onPress={() => setCustomForm(current => ({ ...current, participantLimitMode: 'unlimited', maxParticipantsPerTeam: '' }))}>No Limit</Button>
+                <Button variant={customForm.participantLimitMode === 'limited' ? 'default' : 'outline'} size="sm" onPress={() => setCustomForm(current => ({ ...current, participantLimitMode: 'limited' }))}>Set Limit</Button>
+              </View>
+              {customForm.participantLimitMode === 'limited' && <Input className="mt-2" keyboardType="numeric" value={customForm.maxParticipantsPerTeam} onChangeText={maxParticipantsPerTeam => setCustomForm(current => ({ ...current, maxParticipantsPerTeam }))} placeholder="Maximum students from one team" />}
+            </View>}
+
             <View className="gap-3">
               <Button onPress={handleAddCustom}>Add to List</Button>
               <Button variant="outline" onPress={() => setIsAddModalOpen(false)}>Cancel</Button>
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -648,6 +700,25 @@ export default function ItemActivationSettings() {
                       Current setting: {getGroupMemberLabel(editingItem)}. Enter a number to set the exact group size.
                     </Text>
                   )}
+                </View>
+              )}
+
+              <View className="mb-5">
+                <Label>Stage</Label>
+                <View className="mt-2 flex-row gap-2">
+                  <Button variant={editForm.itemType === 'stage' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, itemType: 'stage' }))}>On Stage</Button>
+                  <Button variant={editForm.itemType === 'offstage' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, itemType: 'offstage' }))}>Off Stage</Button>
+                </View>
+                {editForm.itemType && <TouchableOpacity className="mt-2 min-h-9 self-start justify-center" onPress={() => setEditForm(current => ({ ...current, itemType: null }))}><Text className="font-poppins text-xs text-ui-text-muted">Clear stage setting</Text></TouchableOpacity>}
+              </View>
+              {editingItem?.participation_type === 'individual' && (
+                <View className="mb-5">
+                  <Label>Participants per team</Label>
+                  <View className="mt-2 flex-row gap-2">
+                    <Button variant={editForm.participantLimitMode === 'unlimited' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, participantLimitMode: 'unlimited', maxParticipantsPerTeam: '' }))}>No Limit</Button>
+                    <Button variant={editForm.participantLimitMode === 'limited' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, participantLimitMode: 'limited' }))}>Set Limit</Button>
+                  </View>
+                  {editForm.participantLimitMode === 'limited' && <Input className="mt-2" keyboardType="numeric" value={editForm.maxParticipantsPerTeam} onChangeText={maxParticipantsPerTeam => setEditForm(current => ({ ...current, maxParticipantsPerTeam }))} placeholder="Maximum students from one team" />}
                 </View>
               )}
 

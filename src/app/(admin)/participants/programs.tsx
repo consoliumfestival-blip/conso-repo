@@ -3,7 +3,7 @@ import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
@@ -19,7 +19,7 @@ import { invalidateGeneralMembership } from '../../../core/utils/invalidateGener
 import { isGroupCompetition, matchesCompetitionCategory, programIntakeComplete } from '../../../core/utils/groupParticipation';
 import { isGeneralCategoryCode } from '../../../core/utils/generalCategory';
 
-type ProgramItem = { id: string; item_code: string; item_name_en?: string; item_name_ml?: string; category_codes?: string[] | string | null; participation_type?: string; item_type?: string | null; gender?: string | null; is_active?: boolean; group_min_members?: number | null; group_max_members?: number | null };
+type ProgramItem = { id: string; item_code: string; item_name_en?: string; item_name_ml?: string; category_codes?: string[] | string | null; participation_type?: string; item_type?: string | null; max_participants_per_team?: number | null; gender?: string | null; is_active?: boolean; group_min_members?: number | null; group_max_members?: number | null };
 type IntakeStatus = { item_id: string; category_code: string; entry_kind: 'participant' | 'general_team'; is_complete: boolean };
 const generalCodes = new Set(['GN', 'GENERAL']);
 
@@ -116,13 +116,13 @@ export default function ProgramsScreen() {
 
   const filterOptions = useMemo(() => ({
     type: ['All types', ...Array.from(new Set(sectionCards.map(card => card.item.participation_type).filter(Boolean).map(value => String(value).toLowerCase()))).sort()],
-    stage: ['All stages', ...Array.from(new Set(sectionCards.map(card => card.item.item_type).filter(Boolean).map(value => String(value)))).sort()],
+    stage: ['All stages', ...Array.from(new Set(sectionCards.map(card => card.item.item_type).filter(Boolean).map(value => value === 'stage' ? 'On Stage' : 'Off Stage'))).sort()],
     category: ['All categories', ...Array.from(new Set(sectionCards.map(card => normalizedCategory(card.category)))).sort()],
   }), [sectionCards]);
   const programCards = useMemo(() => sectionCards.filter(card =>
     (!search.trim() || `${card.item.item_name_en ?? ''} ${card.item.item_name_ml ?? ''} ${card.item.item_code}`.toLowerCase().includes(search.trim().toLowerCase()))
       && (typeFilter === 'All types' || card.item.participation_type?.toLowerCase() === typeFilter)
-      && (stageFilter === 'All stages' || card.item.item_type === stageFilter)
+      && (stageFilter === 'All stages' || card.item.item_type === (stageFilter === 'On Stage' ? 'stage' : 'offstage'))
       && (categoryFilter === 'All categories' || normalizedCategory(card.category) === categoryFilter)
   ), [sectionCards, search, typeFilter, stageFilter, categoryFilter]);
 
@@ -134,14 +134,43 @@ export default function ProgramsScreen() {
   ), [participants, festival?.id, visibleOrganisationIds, activeCard?.category, activeCard?.item.gender]);
   const currentRegistrations = entries.data ?? [];
   const participantById = useMemo(() => new Map((participants as any[]).map(person => [person.id, person])), [participants]);
+  const itemAssignmentsByTeam = useMemo(() => {
+    const counts = new Map<string, Map<string, number>>();
+    festivalRegistrations.forEach((row: any) => {
+      if (!row.item_id || !row.participant_id || row.entry_kind !== 'participant' || row.status === 'rejected' || row.status === 'cancelled') return;
+      const organisationId = row.organisation_id || participantById.get(row.participant_id)?.organisation_id;
+      if (!organisationId) return;
+      const byTeam = counts.get(row.item_id) ?? new Map<string, number>();
+      byTeam.set(organisationId, (byTeam.get(organisationId) || 0) + 1);
+      counts.set(row.item_id, byTeam);
+    });
+    return counts;
+  }, [festivalRegistrations, participantById]);
   const activeAssignedRegistrations = useMemo(() => festivalRegistrations.filter((row: any) =>
     activeCard?.kind === 'participant' && row.item_id === activeCard.item.id && row.participant_id && row.status !== 'rejected'
       && matchesCompetitionCategory(String(participantById.get(row.participant_id)?.category_code || ''), activeCard.category)
   ), [festivalRegistrations, activeCard, participantById]);
+  const activeItemAssignmentsByTeam = activeCard?.kind === 'participant'
+    ? itemAssignmentsByTeam.get(activeCard.item.id) ?? new Map<string, number>()
+    : new Map<string, number>();
   const activeAssignedIds = useMemo(() => new Set(activeAssignedRegistrations.map((row: any) => row.participant_id)), [activeAssignedRegistrations]);
+  const activeItemAssignedIds = useMemo(() => new Set(festivalRegistrations
+    .filter((row: any) => activeCard?.kind === 'participant' && row.item_id === activeCard.item.id
+      && row.participant_id && row.status !== 'rejected' && row.status !== 'cancelled')
+    .map((row: any) => row.participant_id)), [festivalRegistrations, activeCard]);
   const activeAssignedParticipants = useMemo(() => Array.from(activeAssignedIds)
     .map(id => participantById.get(id)).filter(Boolean), [activeAssignedIds, participantById]);
   const chosenParticipants = eligibleParticipants.filter(person => selectedIds.includes(person.id));
+  const selectedCountsByTeam = new Map<string, number>();
+  chosenParticipants.forEach(person => {
+    if (person.organisation_id) selectedCountsByTeam.set(person.organisation_id, (selectedCountsByTeam.get(person.organisation_id) || 0) + 1);
+  });
+  const activeParticipantLimit = activeCard?.kind === 'participant' ? activeCard.item.max_participants_per_team ?? null : null;
+  const hasSelectionOverLimit = activeParticipantLimit != null && Array.from(selectedCountsByTeam.entries()).some(([organisationId, count]) =>
+    (activeItemAssignmentsByTeam.get(organisationId) || 0) + count > activeParticipantLimit
+  );
+  const overLimitTeamCount = activeParticipantLimit == null ? 0 : Array.from(activeItemAssignmentsByTeam.values())
+    .filter(count => count > activeParticipantLimit).length;
   const orgIds = new Set(chosenParticipants.map(person => person.organisation_id).filter(Boolean));
   const requiredMin = Number(activeCard?.item.group_min_members ?? 0);
   const requiredMax = Number(activeCard?.item.group_max_members ?? 0);
@@ -152,6 +181,31 @@ export default function ProgramsScreen() {
     maxMembers: requiredMax,
   }) : null;
   const generalSizeValid = activeCard?.kind === 'general_team' && !generalSelectionError;
+
+  const selectAllEligibleWithoutLimit = () => {
+    if (activeParticipantLimit != null) return;
+    setSelectedIds(eligibleParticipants.filter(person => !activeItemAssignedIds.has(person.id)).map(person => person.id));
+    setError('');
+  };
+  const toggleSelectedParticipant = (person: any) => {
+    const selected = selectedIds.includes(person.id);
+    if (selected) {
+      setSelectedIds(selectedIds.filter(id => id !== person.id));
+      setError('');
+      return;
+    }
+    const organisationId = person.organisation_id;
+    const currentCount = organisationId
+      ? (activeItemAssignmentsByTeam.get(organisationId) || 0)
+        + (selectedCountsByTeam.get(organisationId) || 0)
+      : 0;
+    if (activeParticipantLimit != null && currentCount >= activeParticipantLimit) {
+      setError('This team has reached the participant limit for this item. Remove an existing assignment before adding another.');
+      return;
+    }
+    setSelectedIds([...selectedIds, person.id]);
+    setError('');
+  };
 
   const cardComplete = (itemId: string, category: string, kind: string) => programIntakeComplete(statuses.data ?? [], itemId, category, kind);
   const setComplete = async (complete: boolean) => {
@@ -181,6 +235,7 @@ export default function ProgramsScreen() {
         await invalidateGeneralMembership(queryClient, festival.id, selectedIds);
         await queryClient.invalidateQueries({ queryKey: ['scheduleRegistrations'] });
       } else {
+        if (hasSelectionOverLimit) throw new Error('The selected students exceed the participant limit for one or more teams.');
         const failures: string[] = [];
         let added = 0;
         for (const person of eligibleParticipants.filter(candidate => selectedIds.includes(candidate.id))) {
@@ -317,9 +372,13 @@ export default function ProgramsScreen() {
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
       {programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
+        const overLimitTeams = card.kind === 'participant' && card.item.max_participants_per_team != null
+          ? Array.from(itemAssignmentsByTeam.get(card.item.id)?.values() ?? []).filter(count => count > card.item.max_participants_per_team!).length
+          : 0;
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className="rounded-xl border border-ui-border bg-core-surface-white p-3 shadow-sm">
           <View className="min-h-[76px] flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{complete ? 'Complete' : 'Open'}</Text></View></View>
-          <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type}</Text></View>}</View>
+          <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
+          {!registrationsUnavailable && overLimitTeams > 0 && <View className="mb-2 flex-row items-start gap-2 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-2"><AlertTriangle size={14} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[11px] text-core-danger-red-700">{overLimitTeams} team(s) exceed the limit of {card.item.max_participants_per_team}. Existing assignments can be deselected in View participants.</Text></View>}
           <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : registrationsUnavailable ? 'Assignments unavailable' : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>
           <View className="flex-row gap-2"><TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'details')} className="flex-1 items-center rounded-md border border-ui-border px-2 py-2"><Text className="font-poppins-bold text-[11px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} className="flex-row items-center justify-center gap-1 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2 py-2"><Trash2 size={13} color={coreColor("#B91C1C", 'danger')}/><Text className="font-poppins-bold text-[11px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
           <TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'assign')} className="mt-2 items-center rounded-md bg-core-primary-emerald-800 px-2 py-2.5"><Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Assign participants</Text></TouchableOpacity>
@@ -361,15 +420,17 @@ export default function ProgramsScreen() {
           {activeCard?.kind === 'general_team' && <Text className="mb-2 font-poppins text-xs text-ui-text-muted">Choose {requiredMin}{requiredMax > requiredMin ? `–${requiredMax}` : ''} eligible members from one team. The first selected member becomes the leader.</Text>}
           {activeCard?.kind === 'general_team' && selectedIds.length > 0 && <Text className="mb-2 font-poppins-bold text-xs text-core-success-emerald-800">Leader: {participantById.get(selectedIds[0])?.name || 'Participant'} · {participantById.get(selectedIds[0])?.chest_number || 'No chest number'}</Text>}
           {activeCard?.kind === 'participant' && <Text className="mb-2 font-poppins text-xs text-ui-text-muted">{cardModalMode === 'details' ? `Showing only participants assigned to this ${activeCard.category} program.` : `Showing only ${activeCard.category} participants. Existing assignments appear first.`}</Text>}
+          {activeCard?.kind === 'participant' && activeParticipantLimit != null && <View className={`mb-2 rounded-lg border p-2 ${overLimitTeamCount ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-ui-border bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-xs ${overLimitTeamCount ? 'text-core-danger-red-700' : 'text-ui-text'}`}>{overLimitTeamCount ? `${overLimitTeamCount} team(s) exceed the limit of ${activeParticipantLimit}. Existing assignments can be deselected here.` : `Maximum ${activeParticipantLimit} participant(s) per team.`}</Text></View>}
           <View className="mb-2 h-10 flex-row items-center rounded-lg border border-ui-border px-3"><Search size={15} color={coreColor("#64748B", 'textMuted')}/><TextInput value={search} onChangeText={setSearch} placeholder="Search name, chest number or organisation" className="ml-2 flex-1 font-poppins text-sm outline-none" /></View>
           {activeCard?.kind === 'general_team' && <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2 max-h-10 flex-none"><View className="flex-row items-center gap-2"><TouchableOpacity onPress={() => setParticipantCategoryFilter('All categories')} className={`rounded-full border px-3 py-2 ${participantCategoryFilter === 'All categories' ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${participantCategoryFilter === 'All categories' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>All categories</Text></TouchableOpacity>{participantCategoryOptions.map(category => <TouchableOpacity key={category} onPress={() => setParticipantCategoryFilter(category)} className={`rounded-full border px-3 py-2 ${participantCategoryFilter === category ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${participantCategoryFilter === category ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{category}</Text></TouchableOpacity>)}</View></ScrollView>}
           <Text className="mb-2 font-poppins text-xs text-ui-text-muted">{visibleParticipants.length} participants{cardModalMode === 'assign' ? ` · ${selectedIds.length} selected` : ''}</Text>
+          {cardModalMode === 'assign' && activeCard?.kind === 'participant' && <View className="mb-1 flex-row gap-3"><TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: activeParticipantLimit != null || saving }} disabled={activeParticipantLimit != null || saving} onPress={selectAllEligibleWithoutLimit} className={`min-h-10 justify-center ${activeParticipantLimit != null ? 'opacity-40' : ''}`}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Select all eligible</Text></TouchableOpacity><TouchableOpacity accessibilityRole="button" disabled={saving} onPress={() => setSelectedIds([])} className="min-h-10 justify-center"><Text className="font-poppins-bold text-xs text-ui-text-muted">Clear selection</Text></TouchableOpacity></View>}
           <ScrollView className="min-h-0 flex-1" style={{ flex: 1, minHeight: 80 }} keyboardShouldPersistTaps="handled">
             {visibleParticipants.length ? visibleParticipants.map(person => {
               const chosen = selectedIds.includes(person.id);
               const alreadyAssigned = activeCard?.kind === 'participant' && activeAssignedIds.has(person.id);
               const selectable = cardModalMode === 'details' ? alreadyAssigned : !alreadyAssigned;
-              return <TouchableOpacity key={person.id} disabled={!selectable} onPress={() => setSelectedIds(ids => chosen ? ids.filter(id => id !== person.id) : [...ids, person.id])} className={`mb-1 flex-row items-center rounded-lg border px-3 py-2 ${alreadyAssigned ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50' : chosen ? 'border-core-primary-emerald-500 bg-core-success-soft-emerald-50' : 'border-ui-border bg-core-surface-white'}`}><View className={`mr-3 h-5 w-5 items-center justify-center rounded border ${chosen ? 'border-core-success-emerald-600 bg-core-success-action-emerald-600' : alreadyAssigned ? 'border-core-success-emerald-500 bg-core-surface-white' : 'border-core-border-slate-300'}`}>{chosen && <Check size={13} color={coreColor("white", 'onPrimary')}/>}{alreadyAssigned && !chosen && <Check size={13} color={coreColor("#047857", 'success')}/>}</View><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text">{person.name}</Text><Text className="font-poppins text-xs text-ui-text-muted">{person.chest_number || 'No chest number'} · {person.organisations?.name || 'Organisation unavailable'}{activeCard?.kind === 'general_team' ? ` · ${person.category_code || 'No category'}` : ''}</Text></View>{alreadyAssigned && cardModalMode === 'assign' && <Text className="ml-2 font-poppins-bold text-[10px] text-core-success-emerald-800">Already assigned</Text>}</TouchableOpacity>;
+              return <TouchableOpacity key={person.id} disabled={!selectable} onPress={() => activeCard?.kind === 'participant' && cardModalMode === 'assign' ? toggleSelectedParticipant(person) : setSelectedIds(ids => chosen ? ids.filter(id => id !== person.id) : [...ids, person.id])} className={`mb-1 flex-row items-center rounded-lg border px-3 py-2 ${alreadyAssigned ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50' : chosen ? 'border-core-primary-emerald-500 bg-core-success-soft-emerald-50' : 'border-ui-border bg-core-surface-white'}`}><View className={`mr-3 h-5 w-5 items-center justify-center rounded border ${chosen ? 'border-core-success-emerald-600 bg-core-success-action-emerald-600' : alreadyAssigned ? 'border-core-success-emerald-500 bg-core-surface-white' : 'border-core-border-slate-300'}`}>{chosen && <Check size={13} color={coreColor("white", 'onPrimary')}/>}{alreadyAssigned && !chosen && <Check size={13} color={coreColor("#047857", 'success')}/>}</View><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text">{person.name}</Text><Text className="font-poppins text-xs text-ui-text-muted">{person.chest_number || 'No chest number'} · {person.organisations?.name || 'Organisation unavailable'}{activeCard?.kind === 'general_team' ? ` · ${person.category_code || 'No category'}` : ''}</Text></View>{alreadyAssigned && cardModalMode === 'assign' && <Text className="ml-2 font-poppins-bold text-[10px] text-core-success-emerald-800">Already assigned</Text>}</TouchableOpacity>;
             }) : <Text className="py-4 font-poppins text-sm text-ui-text-muted">No eligible participants in this category.</Text>}
           </ScrollView>
           </>}
@@ -382,7 +443,7 @@ export default function ProgramsScreen() {
           </View>}
           {cardModalMode === 'assign' && <>
             {activeCard?.kind === 'general_team' && selectedIds.length > 0 && generalSelectionError && <Text className="mt-2 font-poppins text-xs text-core-warning-amber-700">{generalSelectionError}</Text>}
-            <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || !selectedIds.length || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving}/></View>
+            <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || !selectedIds.length || hasSelectionOverLimit || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving}/></View>
           </>}
         </View>
       </View>

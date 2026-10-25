@@ -23,10 +23,12 @@ export interface Item {
   item_code: string;
   item_name_ml: string;
   participation_type: 'individual' | 'group';
+  item_type?: 'stage' | 'offstage' | null;
   category_codes: string[];
   duration_minutes?: number;
   group_min_members?: number;
   group_max_members?: number;
+  max_participants_per_team?: number | null;
   level_availability?: string[];
   daf_allowed?: boolean;
   white_dress_required?: boolean;

@@ -248,7 +248,7 @@ export async function downloadAdminSchedulePdf(input: AdminSchedulePdfInput) {
   const selectedCodes = requestedCategory && requestedCategory !== 'ALL'
     ? categoryAliases[requestedCategory] || [requestedCategory]
     : null;
-  const itemFilteredSchedules = requestedItemId && requestedItemId !== 'ALL'
+  const itemFilteredSchedules = requestedItemId && requestedItemId.toUpperCase() !== 'ALL'
     ? input.schedules.filter((schedule) => schedule.item_id === requestedItemId)
     : input.schedules;
   const schedules = selectedCodes

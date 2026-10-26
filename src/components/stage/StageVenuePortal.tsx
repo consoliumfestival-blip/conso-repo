@@ -32,7 +32,7 @@ import { SsfButton } from '@/components/ui/SsfButton';
 import { SsfCard } from '@/components/ui/SsfCard';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 import { stageManagementService, StageRegistrationRow, StageScheduleRow } from '@/services/stageManagementService';
-import { codeLetterTarget, codeLetterPreview } from '@/core/utils/codeLetters';
+import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '@/core/utils/codeLetters';
 import { invalidateCodeLetters } from '@/core/utils/invalidateCodeLetters';
 import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
@@ -239,8 +239,8 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     if (!selectedSchedule || !editingEntry) return;
     const letter = letterDraft.trim().toUpperCase();
     setLetterError('');
-    if (!/^[A-Z]$/.test(letter)) {
-      setLetterError('Enter one letter from A to Z.');
+    if (!/^[A-Z]+$/.test(letter)) {
+      setLetterError('Enter one or more letters from A to Z.');
       return;
     }
     const target = codeLetterTarget(eventRegistrations(selectedSchedule.id), editingEntry.id, letter);
@@ -310,7 +310,12 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
 
   if (selectedSchedule) {
     const allEntries = eventRegistrations(selectedSchedule.id);
-    const visibleEntries = allEntries.filter((entry) => {
+    const orderedEntries = mode === 'codes'
+      ? [...allEntries].sort((left, right) => left.code_letter && right.code_letter
+        ? compareCodeLetters(left.code_letter, right.code_letter)
+        : left.code_letter ? -1 : right.code_letter ? 1 : (left.participant_chest_number || '').localeCompare(right.participant_chest_number || ''))
+      : allEntries;
+    const visibleEntries = orderedEntries.filter((entry) => {
       const query = entrySearch.trim().toLocaleLowerCase();
       if (!query) return true;
       return [entry.participant_name, entry.participant_chest_number, entry.organisation_name,
@@ -515,7 +520,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
             <SsfCard className="w-full max-w-sm p-5">
               <Text className="font-poppins-bold text-lg text-ssf-text">{editingEntry.code_letter ? 'Edit Code Letter' : 'Assign Code Letter'}</Text>
               <Text className="mb-4 mt-1 font-poppins text-sm text-ssf-text-muted">{editingEntry.participant_name}</Text>
-              <TextInput value={letterDraft} editable={!busyId} onChangeText={(value) => setLetterDraft(value.slice(-1).toUpperCase().replace(/[^A-Z]/g, ''))} placeholder="A-Z" maxLength={1} autoCapitalize="characters" className="h-10 rounded-xl border border-ssf-border text-center font-poppins-black text-xl text-ssf-text" />
+              <TextInput value={letterDraft} editable={!busyId} onChangeText={(value) => setLetterDraft(value.toUpperCase().replace(/[^A-Z]/g, ''))} placeholder="A-Z, AA, AB..." autoCapitalize="characters" className="h-10 rounded-xl border border-ssf-border text-center font-poppins-black text-xl text-ssf-text" />
               <Text className="mt-2 font-poppins text-xs text-ssf-text-muted">{codeLetterPreview(editingEntry.code_letter, letterDraft,
                 codeLetterTarget(eventRegistrations(selectedSchedule.id), editingEntry.id, letterDraft)?.participant_name || undefined)}</Text>
               {letterError ? <Text className="mt-2 font-poppins text-xs text-core-danger-red-600">{letterError}</Text> : null}

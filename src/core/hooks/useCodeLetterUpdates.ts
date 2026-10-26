@@ -5,7 +5,7 @@ import { supabase } from '../config/supabase';
 // Deduplicate channels when multiple hooks on the same page need the same topic.
 const subscriptions = new Map<string, { listeners: Set<() => void>; close: () => void }>();
 
-function listen(topic: string, listener: () => void) {
+function listen(topic: string, listener: () => void, skipInitialSubscriptionRefresh = false) {
   let subscription = subscriptions.get(topic);
   if (!subscription) {
     const listeners = new Set<() => void>();
@@ -15,9 +15,17 @@ function listen(topic: string, listener: () => void) {
       // A swap/draw changes multiple rows in one transaction: fetch only once.
       timer = setTimeout(() => listeners.forEach((notify) => notify()), 150);
     };
+    let hasSubscribed = false;
     const channel = supabase.channel(topic)
       .on('broadcast', { event: 'changed' }, refresh)
-      .subscribe((status) => { if (status === 'SUBSCRIBED') refresh(); });
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return;
+        if (skipInitialSubscriptionRefresh && !hasSubscribed) {
+          hasSubscribed = true;
+          return;
+        }
+        refresh();
+      });
     subscription = { listeners, close: () => {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
@@ -34,7 +42,7 @@ function listen(topic: string, listener: () => void) {
   };
 }
 
-export function useCodeLetterUpdates(topic: string | null | undefined, onChange: () => void | Promise<unknown>) {
+export function useCodeLetterUpdates(topic: string | null | undefined, onChange: () => void | Promise<unknown>, labelTopic?: string | null, skipInitialSubscriptionRefresh = false) {
   const callback = useRef(onChange);
   callback.current = onChange;
   useEffect(() => {
@@ -42,7 +50,9 @@ export function useCodeLetterUpdates(topic: string | null | undefined, onChange:
     const refresh = () => { void Promise.resolve().then(() => callback.current()).catch(() => {
       // Fetch paths retain their own error state. Never discard drafts on errors.
     }); };
-    const stop = listen(`code-letters:${topic}`, refresh);
+    // Consumers may opt into a dedicated hint topic without adding a second
+    // subscription or changing the default topic used by existing pages.
+    const stop = listen(labelTopic ?? `code-letters:${topic}`, refresh, skipInitialSubscriptionRefresh);
     const appState = Platform.OS !== 'web'
       ? AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); }) : undefined;
     const visibility = () => { if (document.visibilityState === 'visible') refresh(); };
@@ -52,5 +62,5 @@ export function useCodeLetterUpdates(topic: string | null | undefined, onChange:
       appState?.remove();
       if (Platform.OS === 'web' && typeof document !== 'undefined') document.removeEventListener('visibilitychange', visibility);
     };
-  }, [topic]);
+  }, [topic, labelTopic, skipInitialSubscriptionRefresh]);
 }

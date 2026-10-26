@@ -13,6 +13,7 @@ import { pointsService } from '../../services/pointsService';
 import { GradeThresholds } from '../../core/utils/flexiblePointsEngine';
 import { calculateGrade } from '../../services/judgeService';
 import { useCodeLetterUpdates } from '../../core/hooks/useCodeLetterUpdates';
+import { compareCodeLetters } from '../../core/utils/codeLetters';
 import {
   getScoringRulesForItem,
   formatCriteriaForUI,
@@ -37,10 +38,19 @@ export default function JudgeMarksPage() {
     if (error) return;
     // Refresh labels only: keep the active registration, mark drafts, input
     // focus, submission state and the in-flight sync queue bound to their IDs.
-    const letters = new Map((data ?? []).map((row: any) => [row.id, row.code_letter]));
-    setRegistrations((current) => current.map((row) => letters.has(row.id)
-      ? { ...row, code_letter: letters.get(row.id) } : row));
-  });
+    const labels = new Map((data ?? []).map((row: any) => [row.id, {
+      code_letter: row.code_letter,
+      chest_number: row.participants?.chest_number ?? null,
+    }]));
+    setRegistrations((current) => current.map((row) => {
+      const label = labels.get(row.id);
+      return label ? {
+        ...row,
+        code_letter: label.code_letter,
+        participants: { ...row.participants, chest_number: label.chest_number },
+      } : row;
+    }));
+  }, session?.schedule_id ? `judge-labels:schedule:${session.schedule_id}` : null, true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [eventCriteria, setEventCriteria] = useState<any[]>([]);
@@ -166,7 +176,8 @@ export default function JudgeMarksPage() {
           registrationsError.message || 'Could not load participants for this event.'
         );
       }
-      const regs = data ?? [];
+      const regs = [...(data ?? [])].sort((left, right) =>
+        compareCodeLetters(left.code_letter ?? '', right.code_letter ?? ''));
       setRegistrations(regs);
 
       try {
@@ -608,9 +619,12 @@ export default function JudgeMarksPage() {
                   <Text style={{
                     color: isCurrent ? '#FFF' : '#334155',
                     fontFamily: isCurrent ? 'Poppins_900Black' : 'Poppins_700Bold',
-                    fontSize: 16,
+                    fontSize: 14,
                   }}>
                     {reg.code_letter}
+                  </Text>
+                  <Text style={{ color: isCurrent ? '#E2E8F0' : '#64748B', fontFamily: 'Poppins_600SemiBold', fontSize: 9, marginTop: 1 }}>
+                    {reg.participants?.chest_number || 'No chest'}
                   </Text>
                   {isRegMarked && (
                     <View style={{
@@ -642,7 +656,7 @@ export default function JudgeMarksPage() {
               <View className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex-row gap-x-3 items-center mb-4">
                 <AlertCircle size={16} color="#D97706" />
                 <Text className="font-poppins text-amber-800 text-[11px] leading-4 flex-1">
-                  Confidential evaluation by Code Letter. Participant names are hidden.
+                  Participant names and photos remain hidden. The chest number is shown beside each code to identify entries.
                 </Text>
               </View>
 
@@ -654,6 +668,7 @@ export default function JudgeMarksPage() {
                   </View>
                   <View>
                     <Text className="font-poppins-bold text-slate-900 text-sm">Code: {activeReg?.code_letter}</Text>
+                    <Text className="font-poppins text-xs text-slate-500 mt-0.5">Chest number: {activeReg?.participants?.chest_number || '—'}</Text>
                     <Text className="font-poppins text-xs text-slate-500 mt-0.5">
                       {allDone ? '🎉 Marked completely' : '⚠️ Pending scores'}
                     </Text>
@@ -863,7 +878,7 @@ export default function JudgeMarksPage() {
       <View className="mx-4 mt-3 bg-amber-50 border border-amber-200 rounded-xl px-3 h-11 flex-row gap-x-2 items-center">
         <AlertCircle size={16} color="#B45309" />
         <Text className="font-poppins text-amber-700 text-xs flex-1">
-          You are evaluating by Code Letter only. Participant identities are confidential.
+          Participant names and photos are hidden. Chest numbers appear with codes to identify entries.
         </Text>
       </View>
 
@@ -898,6 +913,7 @@ export default function JudgeMarksPage() {
                     </View>
                     <View>
                       <Text className="font-poppins-bold text-ui-text text-sm">Code: {reg.code_letter}</Text>
+                      <Text className="font-poppins text-ui-text-muted text-xs mt-0.5">Chest number: {reg.participants?.chest_number || '—'}</Text>
                       {allDone && (
                         <View className="flex-row items-center gap-x-1 mt-0.5">
                           <CheckCircle2 size={12} color="#10B981" />

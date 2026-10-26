@@ -4,6 +4,7 @@ import { uploadService } from './storage/uploadService';
 import { stageManagementService } from './stageManagementService';
 import { getCollegeFestChestPrefix, isCollegeFestCategory } from '../core/festival/templatePolicy';
 import { supabase } from '../core/config/supabase';
+import { codeLetterAt, codeLetterOrder } from '../core/utils/codeLetters';
 
 export type ParticipantStatus = 'pending' | 'approved' | 'rejected';
 
@@ -192,14 +193,12 @@ export const participantService = {
 
     let startIndex = 0;
     if (assignedRegs.length > 0) {
-      let maxCharCode = 64;
       for (const r of assignedRegs) {
-        if (r.code_letter && r.code_letter.length === 1) {
-          const code = r.code_letter.charCodeAt(0);
-          if (code > maxCharCode) maxCharCode = code;
-        }
+        if (!r.code_letter || !/^[A-Z]+$/.test(r.code_letter)) continue;
+        const next = codeLetterOrder(r.code_letter) + 1n;
+        if (next > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('The assigned code is outside the supported draw range.');
+        startIndex = Math.max(startIndex, Number(next));
       }
-      startIndex = maxCharCode - 64; 
     }
 
     // Determine how many new letters we need. We'll grab a larger pool in case of conflicts
@@ -233,9 +232,9 @@ export const participantService = {
     const { data: conflictsMap, error: conflictErr } = await participantRepository.getParticipantConflicts(participantIds, scheduleId);
     if (conflictErr) throw new Error(conflictErr.message);
 
-    // We generate a sufficient pool of candidate letters starting from startIndex
-    const poolSize = unassignedRegs.length; // Exact letters needed
-    const candidatePool = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').slice(startIndex, startIndex + poolSize);
+    // Generate one code per entry with no fixed alphabet-size limit.
+    const poolSize = unassignedRegs.length;
+    const candidatePool = Array.from({ length: poolSize }, (_, index) => codeLetterAt(startIndex + index));
     
     // Shuffle the available letters
     for (let i = candidatePool.length - 1; i > 0; i--) {
@@ -266,10 +265,19 @@ export const participantService = {
             assignedLetter = safeCandidates[0];
           } else {
             // Sort by priority (maximum rotation separation)
+            const separation = (candidate: string) => {
+              const candidateOrder = codeLetterOrder(candidate);
+              return Array.from(participantConflicts).reduce<bigint | null>((minimum, conflict) => {
+                if (!/^[A-Z]+$/.test(conflict)) return minimum;
+                const distance = codeLetterOrder(conflict) - candidateOrder;
+                const absoluteDistance = distance < 0n ? -distance : distance;
+                return minimum === null || absoluteDistance < minimum ? absoluteDistance : minimum;
+              }, null) ?? 0n;
+            };
             safeCandidates.sort((a, b) => {
-              const scoreA = Math.min(...Array.from(participantConflicts).map(c => Math.abs(c.charCodeAt(0) - a.charCodeAt(0))));
-              const scoreB = Math.min(...Array.from(participantConflicts).map(c => Math.abs(c.charCodeAt(0) - b.charCodeAt(0))));
-              return scoreB - scoreA; // Descending order
+              const scoreA = separation(a);
+              const scoreB = separation(b);
+              return scoreA > scoreB ? -1 : scoreA < scoreB ? 1 : 0;
             });
             assignedLetter = safeCandidates[0];
             smartPriorityApplied = true;

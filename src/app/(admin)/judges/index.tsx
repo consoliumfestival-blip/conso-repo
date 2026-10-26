@@ -42,6 +42,7 @@ import QRCode from 'react-native-qrcode-svg';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { ConsoliumLogo } from '../../../components/ui/ConsoliumLogo';
+import { codeLetterAt } from '../../../core/utils/codeLetters';
 
 export default function JudgesPage() {
   const router = useRouter();
@@ -1482,7 +1483,7 @@ export default function JudgesPage() {
                 </View>
                 <View style={{ flex: 1, borderRightWidth: 1, borderColor: '#000080', justifyContent: 'center', alignItems: 'center' }}>
                   <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#000080' }}>
-                    {String.fromCharCode(65 + i)}
+                    {codeLetterAt(i)}
                   </Text>
                 </View>
                 <View style={{ flex: 2 }} />

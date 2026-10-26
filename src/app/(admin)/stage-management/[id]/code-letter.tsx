@@ -10,7 +10,7 @@ import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users } from 'lucide-react-native';
 import { useAuthStore } from '../../../../core/store/authStore';
-import { codeLetterTarget, codeLetterPreview } from '../../../../core/utils/codeLetters';
+import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '../../../../core/utils/codeLetters';
 
 export default function CodeLetterGeneration() {
   const { id } = useLocalSearchParams();
@@ -32,7 +32,7 @@ export default function CodeLetterGeneration() {
     return (registrations || [])
       .filter((r: any) => r.status !== 'rejected' && r.is_verified === true)
       .sort((a: any, b: any) => {
-        if (a.code_letter && b.code_letter) return a.code_letter.localeCompare(b.code_letter);
+        if (a.code_letter && b.code_letter) return compareCodeLetters(a.code_letter, b.code_letter);
         if (a.code_letter) return -1;
         if (b.code_letter) return 1;
         return (a.participants?.chest_number || '').localeCompare(b.participants?.chest_number || '');
@@ -189,8 +189,8 @@ export default function CodeLetterGeneration() {
   const validateAndSaveEdit = async () => {
     setEditError('');
     const letter = newLetter.trim().toUpperCase();
-    if (!letter.match(/^[A-Z]$/)) {
-      setEditError('Please enter a single valid letter (A-Z).');
+    if (!letter.match(/^[A-Z]+$/)) {
+      setEditError('Enter one or more letters from A to Z.');
       return;
     }
 
@@ -501,9 +501,8 @@ export default function CodeLetterGeneration() {
               value={newLetter}
               editable={!stage.isUpdatingCodeLetter}
               onChangeText={setNewLetter}
-              placeholder="Enter letter (A-Z)"
+              placeholder="Enter code (A-Z, AA, AB...)"
               className="h-10 border border-ssf-border rounded-xl px-3 font-poppins-black text-xl text-center uppercase mb-2"
-              maxLength={1}
               autoCapitalize="characters"
             />
             <Text className="font-poppins text-xs text-ssf-text-muted mb-2">{codeLetterPreview(editingReg?.code_letter ?? null, newLetter,

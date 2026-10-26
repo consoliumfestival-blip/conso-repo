@@ -102,15 +102,15 @@ const categoryAliases: Record<string, string[]> = {
 
 const buildParticipantMap = (participants: ParticipantRow[]) => new Map(participants.map((participant) => [participant.id, participant]));
 
-const registrationsForSchedule = (
+const registrationsForSchedule = (schedule: ScheduleRow, registrations: RegistrationRow[]) => registrations
+  .filter((registration) => registration.item_id === schedule.item_id && registration.festival_id === schedule.festival_id)
+  .filter((registration) => registration.status !== 'rejected');
+
+const participantsForSchedule = (
   schedule: ScheduleRow,
   registrations: RegistrationRow[],
   participantMap: Map<string, ParticipantRow>,
-) => registrations
-  .filter((registration) => {
-    if (registration.status === 'rejected') return false;
-    return registration.schedule_id === schedule.id;
-  })
+) => registrationsForSchedule(schedule, registrations)
   .map((registration) => registration.participant_id ? participantMap.get(registration.participant_id) : null)
   .filter(Boolean) as ParticipantRow[];
 
@@ -269,7 +269,7 @@ export async function downloadAdminSchedulePdf(input: AdminSchedulePdfInput) {
   if (input.mode === 'organisation') {
     const grouped = new Map<string, { organisation: string; schedule: ScheduleRow; participants: ParticipantRow[] }[]>();
     rows.forEach((schedule) => {
-      const participants = registrationsForSchedule(schedule, registrations, participantMap);
+      const participants = participantsForSchedule(schedule, registrations, participantMap);
       const byOrganisation = new Map<string, ParticipantRow[]>();
       participants.forEach((participant) => {
         const name = participant.organisations?.name || participant.organisation_id || 'Unassigned organisation';
@@ -317,19 +317,16 @@ export async function downloadAdminSchedulePdf(input: AdminSchedulePdfInput) {
   } else {
     writeHeader(doc, title, subtitle);
     const body = rows.map((schedule) => {
-      const participants = registrationsForSchedule(schedule, registrations, participantMap);
-      const scopedRegistrations = registrations.filter((registration) => {
-        return registration.schedule_id === schedule.id;
-      });
-      const verified = scopedRegistrations.filter((registration) => registration.status !== 'rejected' && registration.is_verified).length;
+      const scopedRegistrations = registrationsForSchedule(schedule, registrations);
+      const verified = scopedRegistrations.filter((registration) => registration.is_verified === true).length;
       return [
         formatDate(schedule.start_time),
         `${formatTime(schedule.start_time)} - ${formatTime(schedule.end_time)}`,
         itemLabel(schedule),
         categoryLabel(schedule),
         schedule.venues?.name || '-',
-        String(participants.length || scopedRegistrations.filter((registration) => registration.status !== 'rejected').length),
-        `${verified}/${participants.length || '-'}`,
+        String(scopedRegistrations.length),
+        `${verified}/${scopedRegistrations.length || '-'}`,
         schedule.status || 'scheduled',
       ];
     });

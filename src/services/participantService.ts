@@ -115,14 +115,6 @@ export const participantService = {
     return data;
   },
 
-  async getParticipantGeneralResults<T>(participantId: string): Promise<T[]> {
-    const { data, error } = await supabase.rpc('get_participant_general_results', {
-      p_participant_id: participantId,
-    });
-    throwIfError(error);
-    return (data as T[]) ?? [];
-  },
-
   async getRegistrationsByItem<T>(itemId: string, tenantId: string, festivalId?: string): Promise<T[]> {
     const { data, error } = await participantRepository.getRegistrationsByItem<T>(itemId, tenantId, festivalId);
     throwIfError(error);

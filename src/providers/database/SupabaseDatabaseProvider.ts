@@ -165,11 +165,32 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   }
 
   async getParticipantRegistrations<T>(participantId: string): Promise<ListResult<T>> {
-    const { data, error } = await supabase
-      .from('registrations')
-      .select('*, items(*)')
-      .eq('participant_id', participantId);
-    return { data: (data as T[]) ?? [], error: normalizeError(error) };
+    const [participantRows, groupMembershipRows] = await Promise.all([
+      supabase
+        .from('registrations')
+        .select('*, items(*)')
+        .eq('participant_id', participantId),
+      supabase
+        .from('group_members')
+        .select('registration:registrations!inner(*, items(*))')
+        .eq('participant_id', participantId),
+    ]);
+
+    const error = participantRows.error || groupMembershipRows.error;
+    if (error) return { data: [], error: normalizeError(error) };
+
+    const registrations = [
+      ...((participantRows.data ?? []) as any[]),
+      ...((groupMembershipRows.data ?? []) as any[]).flatMap((membership: any) => {
+        const registration = membership.registration;
+        return Array.isArray(registration) ? registration : registration ? [registration] : [];
+      }),
+    ];
+    const uniqueRegistrations = Array.from(
+      new Map(registrations.map((registration: any) => [registration.id, registration])).values(),
+    );
+
+    return { data: uniqueRegistrations as T[], error: null };
   }
 
   async getRegistrationsByItem<T>(itemId: string, tenantId: string, festivalId?: string): Promise<ListResult<T>> {

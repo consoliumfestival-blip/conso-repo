@@ -121,8 +121,6 @@ export default function ParticipantDetails() {
     participant,
     isLoadingDetail,
     registrations: events,
-    generalTeamResults,
-    isLoadingGeneralTeamResults,
     updateStatus,
     updateParticipant,
     deleteParticipant,
@@ -164,6 +162,10 @@ export default function ParticipantDetails() {
   );
   const [publicSectionExpanded, setPublicSectionExpanded] = useState(false);
   const [eventsSectionExpanded, setEventsSectionExpanded] = useState(isDesktopProfile);
+  const [eventParticipationType, setEventParticipationType] = useState<'individual' | 'group'>('individual');
+  const assignedItems = events.filter((event: any) =>
+    (event.items?.participation_type === 'group' ? 'group' : 'individual') === eventParticipationType,
+  );
   const festivalLevel = String(festival?.level || '').trim().toLowerCase();
   const currentOrganisation = organisations.find((organisation) => organisation.tenant_id === validTenantId);
   const availableOrganisations = festival?.chest_number_template === 'team' || festivalLevel === 'sector' || festivalLevel === 'division'
@@ -886,40 +888,7 @@ export default function ParticipantDetails() {
         <View
           className={isDesktopProfile ? 'flex-row items-start gap-2' : 'gap-y-3'}
         >
-      {(isLoadingGeneralTeamResults || generalTeamResults.length > 0) && (
-        <SsfCard className="mb-3 w-full p-3" style={{ borderRadius: 10 }}>
-          <View className="mb-3 flex-row items-center">
-            <View className="h-10 w-10 items-center justify-center rounded-lg bg-core-success-soft-emerald-50">
-              <Trophy size={17} color={ui.colors.success} />
-            </View>
-            <View className="ml-2.5">
-              <Text className="font-poppins-bold text-base">General Team Results</Text>
-              <Text className="font-poppins text-[10px] text-ssf-text-muted">
-                Team competition and placement only
-              </Text>
-            </View>
-          </View>
-          {isLoadingGeneralTeamResults ? (
-            <Text className="font-poppins text-xs text-ssf-text-muted">Loading team results…</Text>
-          ) : generalTeamResults.map((result: any) => (
-            <View key={result.registration_id} className="flex-row items-center border-b border-core-border-slate-100 py-2 last:border-b-0">
-              <View className="flex-1">
-                <Text className="font-poppins-bold text-[13px]">{result.item_name_en || result.item_code || 'General competition'}</Text>
-                <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">
-                  {result.item_code || 'GN'} · Team entry {result.entry_chest_number || '—'}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="font-poppins-bold text-xs text-core-success-emerald-700">
-                  {result.rank ? `Rank ${result.rank}` : 'Not ranked'}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </SsfCard>
-      )}
-
-          <View style={isDesktopProfile ? { flex: 1 } : undefined}>
+      <View style={isDesktopProfile ? { flex: 1 } : undefined}>
       <SsfCard
         className="mb-0 w-full p-3"
         style={{ borderRadius: 10 }}
@@ -1022,9 +991,9 @@ export default function ParticipantDetails() {
               <Trophy size={17} color={ui.colors.warning} />
             </View>
             <View className="ml-2.5">
-              <Text className="font-poppins-bold text-base">Registered Events</Text>
+              <Text className="font-poppins-bold text-base">Assigned Items</Text>
               <Text className="font-poppins text-[10px] text-ssf-text-muted">
-                {events.length} {events.length === 1 ? 'event' : 'events'} assigned
+                {assignedItems.length} {eventParticipationType} {assignedItems.length === 1 ? 'item' : 'items'}
               </Text>
             </View>
             <View className="ml-auto mr-3">
@@ -1034,29 +1003,47 @@ export default function ParticipantDetails() {
             </View>
           </TouchableOpacity>
         </View>
-        {eventsSectionExpanded && (events.length === 0 ? (
-           <View className="items-center rounded-xl border border-dashed border-core-border-slate-200 bg-core-surface-muted-slate-50 px-4 py-8">
-             <Trophy size={26} color={coreColor("#CBD5E1", 'text')} />
-             <Text className="mt-2 font-poppins-bold text-xs text-ssf-text-muted">No events assigned yet</Text>
-           </View>
-        ) : (
-           <View className="gap-y-2">
-             {events.map((ev: any, index: number) => (
-               <View key={ev.id} className="flex-row items-center border-b border-core-border-slate-100 py-3 last:border-b-0">
-                  <View className="h-8 w-8 items-center justify-center rounded-lg bg-core-surface-white">
-                    <Text className="font-poppins-bold text-[11px] text-core-success-emerald-700">{index + 1}</Text>
-                  </View>
-                  <View className="ml-3 flex-1">
-                    <Text className="font-poppins-bold text-[13px]">{ev.items?.item_name_en || 'Unknown Event'}</Text>
-                    <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">{ev.level || 'Festival'} level</Text>
-                  </View>
-                  {ev.items?.item_code && (
-                    <View className="rounded-lg border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-2 py-1">
-                      <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">{ev.items.item_code}</Text>
+        {eventsSectionExpanded && (
+          <View className="gap-y-3">
+            <SsfSelectMenu
+              value={eventParticipationType}
+              onValueChange={(value) => setEventParticipationType(value as 'individual' | 'group')}
+              options={[
+                { label: 'Individual', value: 'individual' },
+                { label: 'Group', value: 'group' },
+              ]}
+              compact
+              accessibilityLabel="Filter assigned items by participation type"
+            />
+            {assignedItems.length === 0 ? (
+              <View className="items-center rounded-xl border border-dashed border-core-border-slate-200 bg-core-surface-muted-slate-50 px-4 py-6">
+                <Trophy size={26} color={coreColor("#CBD5E1", 'text')} />
+                <Text className="mt-2 font-poppins-bold text-xs text-ssf-text-muted">
+                  {events.length === 0 ? 'No items assigned yet' : `No ${eventParticipationType} items assigned`}
+                </Text>
+              </View>
+            ) : (
+              <View className="gap-y-2">
+                {assignedItems.map((ev: any, index: number) => (
+                  <View key={ev.id} className="flex-row items-center border-b border-core-border-slate-100 py-3 last:border-b-0">
+                    <View className="h-8 w-8 items-center justify-center rounded-lg bg-core-surface-white">
+                      <Text className="font-poppins-bold text-[11px] text-core-success-emerald-700">{index + 1}</Text>
                     </View>
-                  )}
-                </View>
-             ))}
+                    <View className="ml-3 flex-1">
+                      <Text className="font-poppins-bold text-[13px]">{ev.items?.item_name_en || 'Unknown Event'}</Text>
+                      <Text className="font-poppins text-[10px] uppercase text-ssf-text-muted">{ev.level || 'Festival'} level</Text>
+                    </View>
+                    {ev.items?.item_code && (
+                      <View className="rounded-lg border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-2 py-1">
+                        <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">{ev.items.item_code}</Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
            </View>
         ))}
       </SsfCard>

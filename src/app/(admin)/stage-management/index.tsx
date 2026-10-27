@@ -19,6 +19,16 @@ const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
     && registration.festival_id === schedule.festival_id
   );
 
+const isPastSchedule = (schedule: any, now: number) => {
+  const lifecycleStatus = normalizeScheduleLifecycleStatus(schedule.status);
+  if (lifecycleStatus === 'completed') return true;
+  if (lifecycleStatus === 'ongoing') return false;
+  if (!schedule.end_time) return false;
+
+  const endTime = Date.parse(schedule.end_time);
+  return Number.isFinite(endTime) && endTime <= now;
+};
+
 function ScheduleWorkflowBadges({ registrations = [], status, isShuffleLocked }: { registrations?: any[]; status?: string | null; isShuffleLocked?: boolean }) {
   const activeRegs = registrations.filter((r: any) => r.status !== 'rejected');
   const verifiedRegs = activeRegs.filter((r: any) => r.is_verified);
@@ -89,8 +99,15 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState(venueIdOverride || 'All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
+  const [selectedSchedulePeriod, setSelectedSchedulePeriod] = React.useState<'upcoming' | 'past'>('upcoming');
+  const [scheduleFilterNow, setScheduleFilterNow] = React.useState(() => Date.now());
   const [copiedVenueId, setCopiedVenueId] = React.useState<string | null>(null);
   const [copiedPinVenueId, setCopiedPinVenueId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const interval = setInterval(() => setScheduleFilterNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const openStagePortal = (venueId: string) => {
     const path = `/stage-management/venue/${venueId}`;
@@ -156,6 +173,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
 
   const filteredSchedules = React.useMemo(() => {
     return schedules.filter((schedule: any) => {
+      const isPast = isPastSchedule(schedule, scheduleFilterNow);
+      const matchesSchedulePeriod = selectedSchedulePeriod === 'past' ? isPast : !isPast;
+
       // 1. Search Query Filter
       let matchesSearch = true;
       if (searchQuery.trim()) {
@@ -214,9 +234,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
         }
       }
       
-      return matchesSearch && matchesCategory && matchesVenue && matchesStatus;
+      return matchesSchedulePeriod && matchesSearch && matchesCategory && matchesVenue && matchesStatus;
     });
-  }, [schedules, searchQuery, selectedCategory, selectedVenue, selectedStatus, allRegistrations]);
+  }, [schedules, scheduleFilterNow, selectedSchedulePeriod, searchQuery, selectedCategory, selectedVenue, selectedStatus, allRegistrations]);
 
   if (!initialized || (!hasStageAccess && stage.contextQuery.isLoading)) {
     return (
@@ -450,7 +470,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       <View className="flex-row justify-between items-center mb-4">
         <View>
           <Text className="text-xl font-poppins-black text-ui-text">{activeVenue?.name || 'All Stages'}</Text>
-          <Text className="font-poppins text-xs text-ssf-text-muted mt-1">{filteredSchedules.length} scheduled events</Text>
+          <Text className="font-poppins text-xs text-ssf-text-muted mt-1">
+            {filteredSchedules.length} {selectedSchedulePeriod === 'upcoming' ? 'upcoming' : 'past'} events
+          </Text>
         </View>
         <View className="flex-row gap-x-3">
           <TouchableOpacity
@@ -481,7 +503,9 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
         <View className="flex-1 min-w-[140px] bg-core-surface-white border border-ui-border p-3 rounded-xl flex-row items-center justify-between">
           <View>
             <Text className="font-poppins-black text-ui-text text-lg">{filteredSchedules.length}</Text>
-            <Text className="font-poppins text-ui-text-muted text-xs">Scheduled Events</Text>
+            <Text className="font-poppins text-ui-text-muted text-xs">
+              {selectedSchedulePeriod === 'upcoming' ? 'Upcoming Events' : 'Past Events'}
+            </Text>
           </View>
           <Calendar color={coreColor("#0F766E", 'primaryText')} size={22} />
         </View>
@@ -544,12 +568,25 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 value: item.id,
               }))}
             />
-            {(selectedCategory !== 'All' || selectedVenue !== venueIdOverride || selectedStatus !== 'All') && (
+            <SsfSelectMenu
+              value={selectedSchedulePeriod}
+              onValueChange={(value) => setSelectedSchedulePeriod(value as 'upcoming' | 'past')}
+              accessibilityLabel="Filter schedules by time"
+              width={isMobile ? Math.max(220, width - 56) : 180}
+              compact
+              active={selectedSchedulePeriod !== 'upcoming'}
+              options={[
+                { label: 'When: Upcoming', value: 'upcoming' },
+                { label: 'When: Past', value: 'past' },
+              ]}
+            />
+            {(selectedCategory !== 'All' || selectedVenue !== venueIdOverride || selectedStatus !== 'All' || selectedSchedulePeriod !== 'upcoming') && (
               <TouchableOpacity
                 onPress={() => {
                   setSelectedCategory('All');
                   setSelectedVenue(venueIdOverride || 'All');
                   setSelectedStatus('All');
+                  setSelectedSchedulePeriod('upcoming');
                 }}
                 className="h-9 px-3 rounded-lg border border-ui-border bg-core-surface-white flex-row items-center justify-center"
               >
@@ -778,6 +815,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
               setSelectedCategory('All');
               setSelectedVenue('All');
               setSelectedStatus('All');
+              setSelectedSchedulePeriod('upcoming');
             }} 
             className="mt-4"
           >

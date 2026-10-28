@@ -1044,8 +1044,6 @@ export default function ParticipantDetails() {
             )}
           </View>
         )}
-           </View>
-        ))}
       </SsfCard>
           </View>
         </View>

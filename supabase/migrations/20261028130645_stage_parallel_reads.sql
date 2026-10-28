@@ -2,7 +2,7 @@
 -- These functions are intentionally available to every tenant, but always
 -- derive tenant scope from the authenticated admin or the venue PIN.
 
-CREATE FUNCTION public.stage_management_schedule_summary_v2(p_festival_id uuid)
+CREATE OR REPLACE FUNCTION public.stage_management_schedule_summary_v2(p_festival_id uuid)
 RETURNS TABLE(schedule_id uuid, active_count integer, verified_count integer,
               coded_count integer, rejected_count integer)
 LANGUAGE plpgsql STABLE SECURITY DEFINER
@@ -43,7 +43,7 @@ BEGIN
 END;
 $function$;
 
-CREATE FUNCTION public.stage_venue_portal_summary_v2(p_venue_id uuid, p_pin text)
+CREATE OR REPLACE FUNCTION public.stage_venue_portal_summary_v2(p_venue_id uuid, p_pin text)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO ''
@@ -106,7 +106,7 @@ BEGIN
 END;
 $function$;
 
-CREATE FUNCTION public.stage_venue_portal_schedule_detail_v2(p_venue_id uuid, p_pin text, p_schedule_id uuid)
+CREATE OR REPLACE FUNCTION public.stage_venue_portal_schedule_detail_v2(p_venue_id uuid, p_pin text, p_schedule_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO ''

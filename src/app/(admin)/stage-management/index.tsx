@@ -13,6 +13,8 @@ import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 import type { StageRegistrationSummary } from '../../../services/stageManagementService';
+import { stageManagementService } from '../../../services/stageManagementService';
+import { useQuery } from '@tanstack/react-query';
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
   registrations.filter((registration: any) =>
@@ -71,10 +73,8 @@ function ScheduleWorkflowBadges({ registrations = [], summary, status, isShuffle
   );
 }
 
-export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?: string } = {}) {
+function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { venueIdOverride?: string; optimizedRead: boolean }) {
   const router = useRouter();
-  const params = useLocalSearchParams();
-  const optimizedRead = params.read === 'v2';
   const { user, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = !!user && (role === 'admin' || is_superadmin);
 
@@ -979,6 +979,30 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       )}
     </ScrollView>
   );
+}
+
+export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?: string } = {}) {
+  const params = useLocalSearchParams();
+  const router = useRouter();
+  const { user, role, is_superadmin, initialized } = useAuthStore();
+  const hasStageAccess = initialized && !!user && (role === 'admin' || is_superadmin);
+  const modeQuery = useQuery({
+    queryKey: ['stage-management-read-mode', user?.id],
+    queryFn: () => stageManagementService.getManagementReadMode(),
+    enabled: hasStageAccess,
+    retry: false,
+    staleTime: 15_000,
+  });
+
+  React.useEffect(() => {
+    if (!modeQuery.data) return;
+    const canonical = modeQuery.data === 'v2' ? 'v2' : undefined;
+    if (params.read !== canonical) router.replace(`/stage-management${canonical ? '?read=v2' : ''}` as any);
+  }, [modeQuery.data, params.read, router]);
+
+  if (!hasStageAccess || modeQuery.isPending) return <View className="flex-1 items-center justify-center bg-ssf-bg"><Text>Loading Stage management...</Text></View>;
+  if (modeQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><Text>Stage mode unavailable. Refresh to retry.</Text></View>;
+  return <StageManagementDashboardContent venueIdOverride={venueIdOverride} optimizedRead={modeQuery.data === 'v2'} />;
 }
 
 export default StageManagementDashboard;

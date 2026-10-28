@@ -147,6 +147,24 @@ export const stageManagementService = {
     return data as { venue: { id: string; name: string; location: string | null }; schedules: StageScheduleRow[]; registrations: (StageRegistrationRow & { entry_kind?: string; members?: { name: string; chest_number: string | null }[] })[] };
   },
 
+  async getVenueReadMode(venueId: string): Promise<'v1' | 'v2'> {
+    const { data, error } = await supabase.rpc('stage_venue_portal_read_mode', { p_venue_id: venueId });
+    throwIfError(error);
+    return data === 'v2' ? 'v2' : 'v1';
+  },
+
+  async getManagementReadMode(): Promise<'v1' | 'v2'> {
+    const { data, error } = await supabase.rpc('stage_management_read_mode');
+    throwIfError(error);
+    return data === 'v2' ? 'v2' : 'v1';
+  },
+
+  async isMainAdminDashboardEnabled(): Promise<boolean> {
+    const { data, error } = await supabase.rpc('main_admin_dashboard_enabled');
+    throwIfError(error);
+    return data === true;
+  },
+
   async getVenuePortalSummaryV2(venueId: string, pin: string) {
     const { data, error } = await supabase.rpc('stage_venue_portal_summary_v2', { p_venue_id: venueId, p_pin: pin });
     throwIfError(error);

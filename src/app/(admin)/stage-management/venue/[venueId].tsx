@@ -7,5 +7,5 @@ export default function VenueStageManagementPage() {
   const venueId = Array.isArray(params.venueId) ? params.venueId[0] : params.venueId;
 
   if (!venueId || !/^[0-9a-f-]{36}$/i.test(venueId)) return null;
-  return <StageVenuePortal venueId={venueId} />;
+  return <StageVenuePortal venueId={venueId} optimizedRead={params.read === 'v2'} />;
 }

@@ -37,6 +37,18 @@ export type StageVenueRow = {
   pin?: string;
 };
 
+export type StageRegistrationSummary = {
+  schedule_id: string;
+  active_count: number;
+  verified_count: number;
+  coded_count: number;
+  rejected_count: number;
+};
+
+export type StageVenueSummarySchedule = StageScheduleRow & {
+  registration_summary: Omit<StageRegistrationSummary, 'schedule_id'>;
+};
+
 export type StageRegistrationRow = {
   entry_kind?: 'participant' | 'general_team';
   entry_chest_number?: string | null;
@@ -133,6 +145,28 @@ export const stageManagementService = {
     throwIfError(error);
     throwIfPortalError(data);
     return data as { venue: { id: string; name: string; location: string | null }; schedules: StageScheduleRow[]; registrations: (StageRegistrationRow & { entry_kind?: string; members?: { name: string; chest_number: string | null }[] })[] };
+  },
+
+  async getVenuePortalSummaryV2(venueId: string, pin: string) {
+    const { data, error } = await supabase.rpc('stage_venue_portal_summary_v2', { p_venue_id: venueId, p_pin: pin });
+    throwIfError(error);
+    throwIfPortalError(data);
+    return data as { venue: { id: string; name: string; location: string | null }; schedules: StageVenueSummarySchedule[] };
+  },
+
+  async getVenuePortalScheduleDetailV2(venueId: string, pin: string, scheduleId: string) {
+    const { data, error } = await supabase.rpc('stage_venue_portal_schedule_detail_v2', {
+      p_venue_id: venueId, p_pin: pin, p_schedule_id: scheduleId,
+    });
+    throwIfError(error);
+    throwIfPortalError(data);
+    return data as { registrations: StageRegistrationRow[] };
+  },
+
+  async getScheduleSummariesV2(festivalId: string): Promise<StageRegistrationSummary[]> {
+    const { data, error } = await supabase.rpc('stage_management_schedule_summary_v2', { p_festival_id: festivalId });
+    throwIfError(error);
+    return (data as StageRegistrationSummary[] | null) ?? [];
   },
 
   async venuePortalUpdateRegistration(venueId: string, pin: string, scheduleId: string, registrationId: string, action: 'verify' | 'unverify' | 'reject' | 'restore') {

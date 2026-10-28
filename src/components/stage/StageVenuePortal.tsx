@@ -31,7 +31,7 @@ import {
 import { SsfButton } from '@/components/ui/SsfButton';
 import { SsfCard } from '@/components/ui/SsfCard';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
-import { stageManagementService, StageRegistrationRow, StageScheduleRow } from '@/services/stageManagementService';
+import { stageManagementService, StageRegistrationRow, StageScheduleRow, StageVenueSummarySchedule } from '@/services/stageManagementService';
 import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '@/core/utils/codeLetters';
 import { invalidateCodeLetters } from '@/core/utils/invalidateCodeLetters';
 import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
@@ -69,13 +69,16 @@ const timeText = (value: string | null) => value
   ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   : '—';
 
-function WorkflowBadges({ registrations, status, isShuffleLocked }: { registrations: PortalRegistration[]; status?: string | null; isShuffleLocked?: boolean }) {
+function WorkflowBadges({ registrations, summary, status, isShuffleLocked }: { registrations: PortalRegistration[]; summary?: StageVenueSummarySchedule['registration_summary']; status?: string | null; isShuffleLocked?: boolean }) {
   const active = registrations.filter((row) => row.status !== 'rejected');
   const verified = active.filter((row) => row.is_verified);
-  const checkinDone = (active.length > 0 && active.every((row) => row.is_verified)) || isShuffleLocked;
-  const checkinPending = active.length > 0 && active.some((row) => !row.is_verified);
-  const codesDone = (verified.length > 0 && verified.every((row) => !!row.code_letter)) || isShuffleLocked;
-  const codesPending = verified.length > 0 && verified.some((row) => !row.code_letter);
+  const activeCount = summary?.active_count ?? active.length;
+  const verifiedCount = summary?.verified_count ?? verified.length;
+  const codedCount = summary?.coded_count ?? verified.filter((row) => !!row.code_letter).length;
+  const checkinDone = (activeCount > 0 && activeCount === verifiedCount) || isShuffleLocked;
+  const checkinPending = activeCount > verifiedCount;
+  const codesDone = (verifiedCount > 0 && verifiedCount === codedCount) || isShuffleLocked;
+  const codesPending = verifiedCount > codedCount;
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
@@ -101,7 +104,7 @@ function Badge({ label, tone }: { label: string; tone: 'green' | 'amber' | 'blue
   );
 }
 
-export default function StageVenuePortal({ venueId }: { venueId: string }) {
+export default function StageVenuePortal({ venueId, optimizedRead = false }: { venueId: string; optimizedRead?: boolean }) {
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -119,21 +122,31 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
   const [letterError, setLetterError] = React.useState('');
 
   const venueQuery = useQuery({
-    queryKey: ['stage-venue-portal', venueId, pin],
-    queryFn: () => stageManagementService.getVenuePortalData(venueId, pin),
+    queryKey: optimizedRead ? ['stage-venue-portal', venueId, pin, 'v2'] : ['stage-venue-portal', venueId, pin],
+    queryFn: async () => optimizedRead
+      ? { ...await stageManagementService.getVenuePortalSummaryV2(venueId, pin), registrations: [] as StageRegistrationRow[] }
+      : stageManagementService.getVenuePortalData(venueId, pin),
     enabled: !!pin,
+    retry: false,
+    staleTime: 0,
+  });
+  const detailQuery = useQuery({
+    queryKey: ['stage-venue-portal-detail-v2', venueId, pin, selectedScheduleId],
+    queryFn: () => stageManagementService.getVenuePortalScheduleDetailV2(venueId, pin, selectedScheduleId!),
+    enabled: optimizedRead && !!pin && !!selectedScheduleId && venueQuery.isSuccess,
     retry: false,
     staleTime: 0,
   });
   React.useEffect(() => applyPortalPwaMetadata('stage', venueQuery.data?.venue.name, venueId), [venueQuery.data?.venue.name, venueId]);
   const schedules = venueQuery.data?.schedules ?? [];
   const registrations = (venueQuery.data?.registrations ?? []) as PortalRegistration[];
-  useCodeLetterUpdates(pin ? `venue:${venueId}` : null, () => venueQuery.refetch());
-  const selectedSchedule = schedules.find((row) => row.id === selectedScheduleId) ?? null;
-
   const refresh = async () => {
     await venueQuery.refetch();
+    if (optimizedRead && selectedScheduleId) await detailQuery.refetch();
   };
+  useCodeLetterUpdates(pin ? `venue:${venueId}` : null, refresh);
+  const selectedSchedule = schedules.find((row) => row.id === selectedScheduleId) ?? null;
+  const isRefreshing = venueQuery.isRefetching || (optimizedRead && detailQuery.isRefetching);
 
   const submitPin = () => {
     if (!/^\d{4}$/.test(pinInput)) {
@@ -148,7 +161,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     setBusyId(id);
     try {
       const result = await operation();
-      await venueQuery.refetch();
+      await refresh();
       const warning = (result as { conflictsUnavoidable?: boolean } | null)?.conflictsUnavoidable
         ? '\nSome overlapping-event letter conflicts remain. Review the assigned order.' : '';
       message('Updated', successText + warning);
@@ -159,7 +172,9 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     }
   };
 
-  const eventRegistrations = (scheduleId: string) => registrations.filter((row) => row.schedule_id === scheduleId);
+  const eventRegistrations = (scheduleId: string) => optimizedRead
+    ? (selectedScheduleId === scheduleId ? (detailQuery.data?.registrations ?? []) as PortalRegistration[] : [])
+    : registrations.filter((row) => row.schedule_id === scheduleId);
   const categories = ['All', ...Array.from(new Set(schedules.flatMap((row) => row.category_codes ?? []))).sort()];
   const statuses = [
     { id: 'All', name: 'All Statuses' },
@@ -176,10 +191,14 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
     const text = search.trim().toLocaleLowerCase();
     const rowRegs = eventRegistrations(schedule.id).filter((row) => row.status !== 'rejected');
     const verified = rowRegs.filter((row) => row.is_verified);
-    const checkinDone = rowRegs.length > 0 && rowRegs.every((row) => row.is_verified);
-    const checkinPending = rowRegs.length > 0 && rowRegs.some((row) => !row.is_verified);
-    const codesDone = verified.length > 0 && verified.every((row) => !!row.code_letter);
-    const codesPending = verified.length > 0 && verified.some((row) => !row.code_letter);
+    const summary = optimizedRead ? (schedule as StageVenueSummarySchedule).registration_summary : undefined;
+    const activeCount = summary?.active_count ?? rowRegs.length;
+    const verifiedCount = summary?.verified_count ?? verified.length;
+    const codedCount = summary?.coded_count ?? verified.filter((row) => !!row.code_letter).length;
+    const checkinDone = activeCount > 0 && activeCount === verifiedCount;
+    const checkinPending = activeCount > verifiedCount;
+    const codesDone = verifiedCount > 0 && verifiedCount === codedCount;
+    const codesPending = verifiedCount > codedCount;
     const categoryMatch = selectedCategory === 'All' || (schedule.category_codes ?? []).includes(selectedCategory);
     const textMatch = !text || [schedule.item_name_en, schedule.item_name_ml, schedule.item_code, ...(schedule.category_codes ?? [])]
       .some((value) => String(value ?? '').toLocaleLowerCase().includes(text));
@@ -253,6 +272,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
       await stageManagementService.venuePortalUpdateCodeLetter(venueId, pin, selectedSchedule.id, editingEntry.id, letter,
         editingEntry.code_letter, target?.id ?? null);
       await invalidateCodeLetters(queryClient, { venueId, scheduleId: selectedSchedule.id });
+      if (optimizedRead) await detailQuery.refetch();
       setEditingEntry(null);
       setLetterDraft('');
       message('Updated', target ? 'Code letters swapped and fixed for future draws.' : 'Code letter assigned and fixed for future draws.');
@@ -297,7 +317,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
           <SsfButton
             label="Try another PIN"
             onPress={() => {
-              queryClient.removeQueries({ queryKey: ['stage-venue-portal', venueId, pin], exact: true });
+              queryClient.removeQueries({ queryKey: optimizedRead ? ['stage-venue-portal', venueId, pin, 'v2'] : ['stage-venue-portal', venueId, pin], exact: true });
               setPin('');
               setPinInput('');
             }}
@@ -309,6 +329,8 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
   }
 
   if (selectedSchedule) {
+    if (optimizedRead && detailQuery.isLoading) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator size="large" color={coreColor("#0F766E", 'primaryText')} /></View>;
+    if (optimizedRead && detailQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><SsfCard className="w-full max-w-md p-5"><Text className="font-poppins-bold text-lg text-ssf-text">Unable to load event</Text><Text className="mt-2 font-poppins text-sm text-ssf-text-muted">{(detailQuery.error as Error).message}</Text><SsfButton label="Retry" onPress={() => { void detailQuery.refetch(); }} className="mt-4" /><SsfButton label="Back to events" variant="outline" onPress={() => setSelectedScheduleId(null)} className="mt-2" /></SsfCard></View>;
     const allEntries = eventRegistrations(selectedSchedule.id);
     const orderedEntries = mode === 'codes'
       ? [...allEntries].sort((left, right) => left.code_letter && right.code_letter
@@ -330,7 +352,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
 
     return (
       <View className="flex-1 bg-ssf-bg">
-        <ScrollView className="flex-1 px-3 py-3" refreshControl={<RefreshControl refreshing={venueQuery.isRefetching} onRefresh={refresh} />}>
+        <ScrollView className="flex-1 px-3 py-3" refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}>
           <View className="mb-4 flex-row items-center">
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back to stage events" onPress={() => setSelectedScheduleId(null)} className={`${isMobile ? 'mr-2 h-11 w-11 rounded-xl' : 'mr-3 h-9 w-9 rounded-lg'} shrink-0 items-center justify-center border border-ui-border bg-core-surface-white`}>
               <ArrowLeft size={18} color={coreColor("#0F172A", 'overlay')} />
@@ -539,7 +561,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
   const filteredWorkflow = selectedStatus !== 'All';
 
   return (
-      <ScrollView className={`flex-1 bg-ssf-bg ${isMobile ? 'px-3 py-3' : 'px-4 py-6'}`} refreshControl={<RefreshControl refreshing={venueQuery.isRefetching} onRefresh={refresh} />}>
+      <ScrollView className={`flex-1 bg-ssf-bg ${isMobile ? 'px-3 py-3' : 'px-4 py-6'}`} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}>
       <View className="mb-5 flex-row items-center justify-between gap-3">
         <View className="flex-1 flex-row items-center gap-3">
           <ConsoliumLogo size={isMobile ? 38 : 46} />
@@ -617,7 +639,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
               <View style={{ flex: 1.4 }} className="pr-3"><Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{schedule.item_name_en || 'Unknown Event'}</Text><Text numberOfLines={1} className="mt-0.5 font-poppins text-[10px] text-ui-text-muted">{schedule.item_name_ml || schedule.item_code || '—'}</Text></View>
               <View style={{ flex: 1 }} className="items-start pr-3"><View className="rounded-md border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50 px-2 py-1"><Text numberOfLines={1} className="font-poppins-bold text-[9px] text-core-success-emerald-700">{schedule.venue_name || venueQuery.data?.venue.name || 'Stage'}</Text></View>{!!schedule.category_codes?.length ? <Text className="mt-1 font-poppins-bold text-[9px] text-core-primary-text-teal-700">{schedule.category_codes.join(', ')}</Text> : null}</View>
               <View style={{ flex: 1 }} className="pr-3"><View className="flex-row items-center"><Calendar size={12} color={coreColor("#64748B", 'textMuted')} /><Text className="ml-1.5 font-poppins text-[10px] text-ui-text-muted">{dateText(schedule.start_time)}</Text></View><View className="mt-1 flex-row items-center"><Clock size={12} color={coreColor("#64748B", 'textMuted')} /><Text className="ml-1.5 font-poppins text-[10px] text-ui-text-muted">{timeText(schedule.start_time)} – {timeText(schedule.end_time)}</Text></View></View>
-              <View style={{ flex: 1.3 }} className="pr-3"><WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} /></View>
+              <View style={{ flex: 1.3 }} className="pr-3"><WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} summary={optimizedRead ? (schedule as StageVenueSummarySchedule).registration_summary : undefined} /></View>
               <View style={{ width: 235 }} className="flex-row justify-end gap-x-2"><PortalAction label="Check-in" onPress={() => openSchedule(schedule, 'checkin')} /><PortalAction label="Code Letters" primary onPress={() => openSchedule(schedule, 'codes')} /><ScheduleLifecycleActions scheduleName={schedule.item_name_en || 'Event'} status={schedule.status} disabled={busyId === `status-${schedule.id}`} onStatusChange={(status, expectedStatus) => runMutation(`status-${schedule.id}`, () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, status, expectedStatus), `Event status changed to ${getScheduleLifecycleLabel(status)}.`)} /></View>
             </View>
           ))}
@@ -633,7 +655,7 @@ export default function StageVenuePortal({ venueId }: { venueId: string }) {
                 {!!schedule.category_codes?.length ? <View className="mt-2 flex-row flex-wrap gap-1">{schedule.category_codes.map((code) => <View key={code} className="rounded-full border border-ssf-primary/20 bg-ssf-primary/10 px-2 py-0.5"><Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text></View>)}</View> : null}
               </View>
               <View className="mb-3 flex-row flex-wrap items-center gap-x-4 gap-y-1"><View className="flex-row items-center gap-x-1"><Clock size={13} color={coreColor("#6B7280", 'text')} /><Text className="font-poppins text-xs text-core-text-gray-600">{timeText(schedule.start_time)} – {timeText(schedule.end_time)}</Text></View><View className="flex-row items-center gap-x-1"><Calendar size={13} color={coreColor("#6B7280", 'text')} /><Text className="font-poppins text-xs text-core-text-gray-600">{dateText(schedule.start_time)}</Text></View></View>
-              <WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} />
+              <WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} summary={optimizedRead ? (schedule as StageVenueSummarySchedule).registration_summary : undefined} />
               <View className="mt-3 flex-row gap-x-2 border-t border-core-border-gray-100 pt-3"><SsfButton label="Check-In" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'checkin')} /><SsfButton label="Code Letters" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'codes')} /><ScheduleLifecycleActions scheduleName={schedule.item_name_en || 'Event'} status={schedule.status} disabled={busyId === `status-${schedule.id}`} onStatusChange={(status, expectedStatus) => runMutation(`status-${schedule.id}`, () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, status, expectedStatus), `Event status changed to ${getScheduleLifecycleLabel(status)}.`)} /></View>
             </SsfCard>
           ))}

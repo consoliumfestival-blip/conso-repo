@@ -1,7 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../core/hooks/useStageManagement';
@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../core/store/authStore';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
+import type { StageRegistrationSummary } from '../../../services/stageManagementService';
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
   registrations.filter((registration: any) =>
@@ -29,15 +30,18 @@ const isPastSchedule = (schedule: any, now: number) => {
   return Number.isFinite(endTime) && endTime <= now;
 };
 
-function ScheduleWorkflowBadges({ registrations = [], status, isShuffleLocked }: { registrations?: any[]; status?: string | null; isShuffleLocked?: boolean }) {
+function ScheduleWorkflowBadges({ registrations = [], summary, status, isShuffleLocked }: { registrations?: any[]; summary?: StageRegistrationSummary; status?: string | null; isShuffleLocked?: boolean }) {
   const activeRegs = registrations.filter((r: any) => r.status !== 'rejected');
   const verifiedRegs = activeRegs.filter((r: any) => r.is_verified);
+  const activeCount = summary?.active_count ?? activeRegs.length;
+  const verifiedCount = summary?.verified_count ?? verifiedRegs.length;
+  const codedCount = summary?.coded_count ?? verifiedRegs.filter((r: any) => r.code_letter !== null && r.code_letter !== undefined).length;
   
-  const checkinDone = (activeRegs.length > 0 && activeRegs.every((r: any) => r.is_verified)) || isShuffleLocked;
-  const checkinPending = activeRegs.length > 0 && activeRegs.some((r: any) => !r.is_verified);
+  const checkinDone = (activeCount > 0 && verifiedCount === activeCount) || isShuffleLocked;
+  const checkinPending = activeCount > verifiedCount;
   
-  const codesShuffled = (verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined)) || isShuffleLocked;
-  const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined);
+  const codesShuffled = (verifiedCount > 0 && codedCount === verifiedCount) || isShuffleLocked;
+  const codesPending = verifiedCount > codedCount;
 
   const badges: { label: string; bg: string; text: string }[] = [];
 
@@ -69,15 +73,18 @@ function ScheduleWorkflowBadges({ registrations = [], status, isShuffleLocked }:
 
 export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?: string } = {}) {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const optimizedRead = params.read === 'v2';
   const { user, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = !!user && (role === 'admin' || is_superadmin);
 
-  const stage = useStageManagement();
+  const stage = useStageManagement({ summaryOnly: optimizedRead });
   const schedules = React.useMemo(() => stage.schedules || [], [stage.schedules]);
   const venues = React.useMemo(() => stage.venues || [], [stage.venues]);
   const allRegistrations = React.useMemo(() => stage.registrations || [], [stage.registrations]);
+  const summariesBySchedule = React.useMemo(() => new Map(stage.summaries.map((row) => [row.schedule_id, row])), [stage.summaries]);
   const isLoadingSchedules = stage.contextQuery.isLoading || stage.schedulesQuery.isLoading;
-  const isLoadingRegs = stage.registrationsQuery.isLoading;
+  const isLoadingRegs = optimizedRead ? stage.summaryQuery.isLoading : stage.registrationsQuery.isLoading;
   const isLoadingVenues = stage.venuesQuery.isLoading;
   const isLoadingFest = stage.contextQuery.isLoading;
   
@@ -90,10 +97,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
     await Promise.all([
       stage.schedulesQuery.refetch(),
       stage.venuesQuery.refetch(),
-      stage.registrationsQuery.refetch()
+      optimizedRead ? stage.summaryQuery.refetch() : stage.registrationsQuery.refetch()
     ]);
     setRefreshing(false);
-  }, [stage.schedulesQuery, stage.venuesQuery, stage.registrationsQuery]);
+  }, [stage.schedulesQuery, stage.venuesQuery, stage.registrationsQuery, stage.summaryQuery, optimizedRead]);
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
@@ -110,7 +117,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   }, []);
 
   const openStagePortal = (venueId: string) => {
-    const path = `/stage-management/venue/${venueId}`;
+    const path = `/stage-management/venue/${venueId}${optimizedRead ? '?read=v2' : ''}`;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(path, '_blank', 'noopener,noreferrer');
       return;
@@ -119,7 +126,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   };
 
   const copyStageLink = async (venueId: string) => {
-    const path = `/stage-management/venue/${venueId}`;
+    const path = `/stage-management/venue/${venueId}${optimizedRead ? '?read=v2' : ''}`;
     const url = Platform.OS === 'web' ? getCurrentOriginAppUrl(path) : null;
 
     try {
@@ -211,15 +218,19 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       let matchesStatus = true;
       if (selectedStatus !== 'All') {
         const lifecycleStatus = normalizeScheduleLifecycleStatus(schedule.status);
+        const summary = optimizedRead ? summariesBySchedule.get(schedule.id) : undefined;
         const scheduleRegs = getRegistrationsForSchedule(allRegistrations, schedule)
           .filter((registration: any) => registration.status !== 'rejected');
         const verifiedRegs = scheduleRegs.filter((r: any) => r.is_verified);
         
-        const checkinDone = scheduleRegs.length > 0 && scheduleRegs.every((r: any) => r.is_verified);
-        const checkinPending = scheduleRegs.length > 0 && scheduleRegs.some((r: any) => !r.is_verified);
+        const activeCount = summary?.active_count ?? scheduleRegs.length;
+        const verifiedCount = summary?.verified_count ?? verifiedRegs.length;
+        const codedCount = summary?.coded_count ?? verifiedRegs.filter((r: any) => r.code_letter !== null && r.code_letter !== undefined).length;
+        const checkinDone = activeCount > 0 && verifiedCount === activeCount;
+        const checkinPending = activeCount > verifiedCount;
         
-        const codesShuffled = verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined);
-        const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined);
+        const codesShuffled = verifiedCount > 0 && codedCount === verifiedCount;
+        const codesPending = verifiedCount > codedCount;
 
         if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
           matchesStatus = lifecycleStatus === selectedStatus;
@@ -236,7 +247,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
       
       return matchesSchedulePeriod && matchesSearch && matchesCategory && matchesVenue && matchesStatus;
     });
-  }, [schedules, scheduleFilterNow, selectedSchedulePeriod, searchQuery, selectedCategory, selectedVenue, selectedStatus, allRegistrations]);
+  }, [schedules, scheduleFilterNow, selectedSchedulePeriod, searchQuery, selectedCategory, selectedVenue, selectedStatus, allRegistrations, summariesBySchedule, optimizedRead]);
 
   if (!initialized || (!hasStageAccess && stage.contextQuery.isLoading)) {
     return (
@@ -275,7 +286,11 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
     );
   }
 
-  const stageError = stage.contextQuery.error || stage.schedulesQuery.error || stage.venuesQuery.error || stage.registrationsQuery.error;
+  const missingSummary = optimizedRead && stage.summaryQuery.isSuccess
+    && schedules.some((schedule: any) => !summariesBySchedule.has(schedule.id));
+  const stageError = stage.contextQuery.error || stage.schedulesQuery.error || stage.venuesQuery.error
+    || (optimizedRead ? stage.summaryQuery.error : stage.registrationsQuery.error)
+    || (missingSummary ? new Error('The new Stage summary is incomplete. Use the existing Stage page until it is checked.') : null);
   if (stageError) {
     return (
       <View className="flex-1 bg-ssf-bg justify-center items-center px-4">
@@ -859,7 +874,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 </View>
               </View>
               <View style={{ flex: 1.3 }} className="pr-3">
-                <ScheduleWorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={getRegistrationsForSchedule(allRegistrations, schedule)} />
+                <ScheduleWorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={getRegistrationsForSchedule(allRegistrations, schedule)} summary={optimizedRead ? summariesBySchedule.get(schedule.id) : undefined} />
               </View>
               <View style={{ width: 235 }} className="flex-row justify-end gap-x-2">
                 <TouchableOpacity
@@ -935,6 +950,7 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
                 status={schedule.status}
                 isShuffleLocked={schedule.is_shuffle_locked}
                 registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
+                summary={optimizedRead ? summariesBySchedule.get(schedule.id) : undefined}
               />
 
               {/* Action buttons — 2×2 grid on mobile */}

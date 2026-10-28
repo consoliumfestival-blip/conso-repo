@@ -34,7 +34,7 @@ const mapRegistration = (row: any) => ({
   },
 });
 
-export const useStageManagement = (options: { scheduleId?: string } = {}) => {
+export const useStageManagement = (options: { scheduleId?: string; summaryOnly?: boolean } = {}) => {
   const queryClient = useQueryClient();
   const { user, tenant_id, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = initialized && !!user && (role === 'admin' || is_superadmin);
@@ -47,12 +47,22 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
 
   const context = contextQuery.data;
   useCodeLetterUpdates(context?.festival_id ? `festival:${context.festival_id}` : null,
-    () => invalidateCodeLetters(queryClient, { festivalId: context?.festival_id }));
+    () => {
+      void queryClient.invalidateQueries({ queryKey: ['stage-management-summary-v2'] });
+      return invalidateCodeLetters(queryClient, { festivalId: context?.festival_id });
+    });
   const schedulesQuery = useQuery({
     queryKey: ['stage-management-schedules', context?.tenant_id, context?.festival_id],
     queryFn: async () => (context ? (await stageManagementService.getSchedules(context.festival_id)).map(mapSchedule) : []),
     enabled: hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
     staleTime: 15_000,
+  });
+
+  const summaryQuery = useQuery({
+    queryKey: ['stage-management-summary-v2', context?.tenant_id, context?.festival_id],
+    queryFn: () => stageManagementService.getScheduleSummariesV2(context!.festival_id),
+    enabled: !!options.summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
+    staleTime: 10_000,
   });
 
   const venuesQuery = useQuery({
@@ -76,7 +86,7 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
       );
       return rows.map(mapRegistration);
     },
-    enabled: hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
+    enabled: !options.summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
     staleTime: 10_000,
   });
 
@@ -85,6 +95,7 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
       stageManagementService.updateRegistration(input.scheduleId, input.registrationId, input.action),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stage-management-registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['stage-management-summary-v2'] });
     },
   });
 
@@ -92,6 +103,7 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
     mutationFn: (input: { scheduleId: string; registrationId: string; codeLetter: string; expectedLetter: string | null; expectedSwapId: string | null }) =>
       stageManagementService.updateCodeLetter(input.scheduleId, input.registrationId, input.codeLetter, input.expectedLetter, input.expectedSwapId),
     onSuccess: (_data, input) => {
+      void queryClient.invalidateQueries({ queryKey: ['stage-management-summary-v2'] });
       return invalidateCodeLetters(queryClient, { scheduleId: input.scheduleId, festivalId: context?.festival_id });
     },
   });
@@ -119,6 +131,8 @@ export const useStageManagement = (options: { scheduleId?: string } = {}) => {
     venuesQuery,
     registrations: registrationsQuery.data ?? [],
     registrationsQuery,
+    summaries: summaryQuery.data ?? [],
+    summaryQuery,
     updateRegistration: updateRegistrationMutation.mutateAsync,
     isUpdatingRegistration: updateRegistrationMutation.isPending,
     updateCodeLetter: updateCodeLetterMutation.mutateAsync,

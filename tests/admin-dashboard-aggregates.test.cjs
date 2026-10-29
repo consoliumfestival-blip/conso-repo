@@ -1,0 +1,40 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { PGlite } = require('@electric-sql/pglite');
+const fs = require('node:fs');
+const path = require('node:path');
+const id = n => `00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+test('dashboard aggregates preserve caller RLS, festival scope and team identities', async () => {
+ const db = new PGlite();
+ try {
+ await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE SCHEMA auth;
+ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS 'SELECT current_setting(''test.user'')::uuid';
+ GRANT USAGE ON SCHEMA auth TO authenticated; GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
+ CREATE TABLE organisations(id uuid PRIMARY KEY,tenant_id uuid,name text,org_type text);
+ CREATE TABLE festival_calendar(id uuid PRIMARY KEY,tenant_id uuid);
+ CREATE TABLE participants(id uuid PRIMARY KEY,tenant_id uuid,festival_id uuid,organisation_id uuid,category_code text);
+ CREATE TABLE items(id uuid,tenant_id uuid,festival_id uuid,is_active boolean);
+ CREATE TABLE schedules(id uuid,tenant_id uuid,festival_id uuid,status text);
+ CREATE FUNCTION public.get_visible_organisations(uuid) RETURNS SETOF organisations LANGUAGE sql SECURITY INVOKER AS 'SELECT * FROM public.organisations WHERE tenant_id=$1';
+ GRANT SELECT ON ALL TABLES IN SCHEMA public TO authenticated;
+ INSERT INTO organisations VALUES ('${id(10)}','${id(1)}','Same','team'),('${id(11)}','${id(1)}','Same','team'),('${id(12)}','${id(2)}','Other','team');
+ INSERT INTO festival_calendar VALUES ('${id(20)}','${id(1)}'),('${id(21)}','${id(1)}'),('${id(22)}','${id(2)}');
+ INSERT INTO participants VALUES ('${id(30)}','${id(1)}','${id(20)}','${id(10)}','JR'),('${id(31)}','${id(1)}','${id(20)}','${id(11)}','SR'),('${id(32)}','${id(1)}','${id(21)}','${id(10)}','JR'),('${id(33)}','${id(2)}','${id(22)}','${id(12)}','SR');
+ INSERT INTO items VALUES ('${id(40)}','${id(1)}','${id(20)}',true),('${id(41)}','${id(1)}','${id(20)}',false);
+ INSERT INTO schedules VALUES ('${id(50)}','${id(1)}','${id(20)}','ongoing'),('${id(51)}','${id(1)}','${id(20)}','completed');`);
+ for (const table of ['organisations','festival_calendar','participants','items','schedules']) await db.exec(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY; CREATE POLICY own ON ${table} TO authenticated USING (tenant_id=current_setting('test.tenant')::uuid);`);
+ await db.exec(fs.readFileSync(path.join(__dirname,'../supabase/migrations/20261029031911_admin_dashboard_aggregates.sql'),'utf8'));
+ await db.exec(`SET ROLE authenticated; SELECT set_config('test.user','${id(99)}',false); SELECT set_config('test.tenant','${id(1)}',false);`);
+ const load = async (tenant,festival) => (await db.query('SELECT admin_dashboard_aggregates($1,$2) AS data',[tenant,festival])).rows[0].data;
+ const data = await load(id(1),id(20));
+ assert.equal(data.participantsCount,2); assert.equal(data.itemsCount,1); assert.equal(data.activeSchedulesCount,1);
+ assert.equal(data.unitGraph.length,2); assert.notEqual(data.unitGraph[0].id,data.unitGraph[1].id);
+ assert.equal(data.categoryGraph.reduce((sum,row)=>sum+row.count,0),2);
+ assert.equal((await load(id(1),id(21))).participantsCount,1);
+ await assert.rejects(load(id(1),id(22)),/Festival unavailable/);
+ await assert.rejects(load(id(2),id(22)),/Festival unavailable/);
+ assert.equal((await load(id(2),null)).participantsCount,0);
+ await db.exec('RESET ROLE; SET ROLE anon');
+ await assert.rejects(load(id(1),id(20)),/permission denied/);
+ } finally { await db.close(); }
+});

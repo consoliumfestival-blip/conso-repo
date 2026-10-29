@@ -23,13 +23,11 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
-  Clock,
   Home,
   ListFilter,
   Medal,
   Megaphone,
   Menu,
-  RefreshCw,
   Search,
   Settings,
   ShieldCheck,
@@ -197,18 +195,6 @@ function formatTime(value: number | string | Date = Date.now()) {
     hour: '2-digit',
     minute: '2-digit',
   });
-}
-
-function formatRelativeTime(value: string) {
-  const timestamp = new Date(value).getTime();
-  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
-  if (elapsedMinutes < 1) return 'Just now';
-  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
-  const elapsedHours = Math.floor(elapsedMinutes / 60);
-  if (elapsedHours < 24) return `${elapsedHours}h ago`;
-  const elapsedDays = Math.floor(elapsedHours / 24);
-  if (elapsedDays < 7) return `${elapsedDays}d ago`;
-  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function MetricCard({ label, value, delta, trend, icon: Icon, iconBg, iconColor, delay }: MetricCardProps) {
@@ -394,8 +380,8 @@ export default function AdminDashboardContent() {
   const refreshing = isRefetching;
   const orgData = data ? { name: data.orgName, type: data.orgType } : null;
   const stats = data
-    ? { participants: data.participantsCount, items: data.itemsCount, pendingRegs: data.pendingRegsCount }
-    : { participants: 0, items: 0, pendingRegs: 0 };
+    ? { participants: data.participantsCount, items: data.itemsCount }
+    : { participants: 0, items: 0 };
 
   const orgName = orgData?.name ?? 'Organisation';
   const orgType = orgData?.type ?? 'Admin';
@@ -416,7 +402,7 @@ export default function AdminDashboardContent() {
       : 'Admin';
 
   const onRefresh = () => {
-    refetch();
+    if (!isRefetching) void refetch();
   };
 
   const navigationItems: NavigationItem[] = [
@@ -450,19 +436,11 @@ export default function AdminDashboardContent() {
         .slice(0, 6)
     : [];
 
-  const activityItems = (data?.recentRegistrations ?? []).map((registration) => ({
-    id: registration.id,
-    title: registration.participantName,
-    detail: `${registration.itemName} • ${registration.organisationName}`,
-    time: formatRelativeTime(registration.createdAt),
-    icon: Users,
-    bg: dashboardColors.primarySoft,
-    color: coreColor(EMERALD_DARK, 'primaryText'),
-  }));
-
   if (isLoading && !refreshing) {
     return <SsfDashboardSkeleton />;
   }
+
+  if (!data && isError) return <PageAccessControl pageKey="admin_dashboard"><View style={{ padding: 20 }}><Text>Dashboard unavailable.</Text><TouchableOpacity accessibilityRole="button" onPress={onRefresh}><Text>Retry dashboard</Text></TouchableOpacity></View></PageAccessControl>;
 
   return (
     <PageAccessControl pageKey="admin_dashboard">
@@ -657,9 +635,9 @@ export default function AdminDashboardContent() {
                 </View>
 
                 <View style={{ alignItems: isDesktop ? 'flex-end' : 'flex-start', marginTop: isDesktop ? 0 : 14 }}>
-                  <TouchableOpacity onPress={onRefresh} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Update Dashboard" disabled={isRefetching} onPress={onRefresh} style={{ minHeight: 40, maxWidth: '100%', flexWrap: 'wrap', paddingHorizontal: 12, borderWidth: 1, borderColor: BORDER, borderRadius: 8, flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
                     <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Last updated: {updatedAt}</Text>
-                    <RefreshCw color={MUTED} size={13} style={{ marginLeft: 8 }} />
+                    <Text style={{ color: EMERALD, fontFamily: 'Poppins_700Bold', marginLeft: 8 }}>{isRefetching ? 'Updating…' : 'Update Dashboard'}</Text>
                   </TouchableOpacity>
                   <View style={{ width: 194, height: 38, borderRadius: 10, borderWidth: 1, borderColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.6), backgroundColor: ui.colors.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: isError ? DANGER : SUCCESS, marginRight: 10 }} />
@@ -675,9 +653,8 @@ export default function AdminDashboardContent() {
             </Animated.View>
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta={`${data?.participantsLast7Days ?? 0} added in last 7 days`} trend="neutral" icon={Users} iconBg={dashboardColors.primarySoft} iconColor={dashboardColors.primaryText} delay={80} />
+              <MetricCard label="Participants" value={stats.participants.toLocaleString()} delta="Festival participants" trend="neutral" icon={Users} iconBg={dashboardColors.primarySoft} iconColor={dashboardColors.primaryText} delay={80} />
               <MetricCard label="Items" value={stats.items.toLocaleString()} delta="Active festival items" trend="neutral" icon={Trophy} iconBg={ui.colors.warningSoft} iconColor={WARNING} delay={140} />
-              <MetricCard label="Pending Registrations" value={stats.pendingRegs.toLocaleString()} delta={`${data?.pendingRegsLast7Days ?? 0} created in last 7 days`} trend="neutral" icon={Clock} iconBg={ui.colors.destructiveSoft} iconColor={DANGER} delay={200} />
               <MetricCard label="Active Schedules" value={(data?.activeSchedulesCount ?? 0).toLocaleString()} delta="Scheduled or ongoing events" trend="neutral" icon={Calendar} iconBg={ui.colors.infoSoft} iconColor={INFO} delay={260} />
             </View>
 
@@ -743,7 +720,7 @@ export default function AdminDashboardContent() {
                             const dash = `${segment * circumference} ${circumference}`;
                             const circle = (
                               <Circle
-                                key={item.name}
+                                key={item.id ?? item.name}
                                 cx="74"
                                 cy="74"
                                 r={radius}
@@ -772,7 +749,7 @@ export default function AdminDashboardContent() {
                       {data.categoryGraph.slice(0, 7).map((item, index) => {
                         const pct = categoryTotal > 0 ? ((item.count / categoryTotal) * 100).toFixed(1) : '0.0';
                         return (
-                          <View key={item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                               <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryColors[index % categoryColors.length], marginRight: 10 }} />
                               <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 10 }}>{item.name}</Text>
@@ -806,7 +783,7 @@ export default function AdminDashboardContent() {
                             const dash = `${segment * circumference} ${circumference}`;
                             const circle = (
                               <Circle
-                                key={item.name}
+                                key={item.id ?? item.name}
                                 cx="74"
                                 cy="74"
                                 r={radius}
@@ -835,7 +812,7 @@ export default function AdminDashboardContent() {
                       {data.unitGraph.slice(0, 7).map((item, index) => {
                         const pct = unitTotal > 0 ? ((item.count / unitTotal) * 100).toFixed(1) : '0.0';
                         return (
-                          <View key={item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                               <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryColors[(index + 3) % categoryColors.length], marginRight: 10 }} />
                               <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 10, flex: 1 }}>{item.name}</Text>
@@ -853,37 +830,7 @@ export default function AdminDashboardContent() {
                 <EmptyAnalytics title="Participants by Team" />
               ))}
 
-              <Animated.View entering={FadeInUp.duration(460).delay(500).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: 1, minWidth: 292, minHeight: 222, padding: 16 }]}>
-                <SectionHeader title="Recent Registrations" action="View All" onAction={() => router.push('/(admin)/participants' as any)} />
-                <View style={{ gap: 12 }}>
-                  {activityItems.length === 0 ? (
-                    <View style={{ minHeight: 140, alignItems: 'center', justifyContent: 'center' }}>
-                      <Users color={coreColor("#CBD5E1", 'text')} size={30} />
-                      <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, marginTop: 8 }}>
-                        No recent registrations
-                      </Text>
-                    </View>
-                  ) : (
-                    activityItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <View key={item.id} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                          <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                            <Icon color={item.color} size={15} />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                              <Text style={{ flex: 1, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11 }}>{item.title}</Text>
-                              <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 9, marginLeft: 8 }}>{item.time}</Text>
-                            </View>
-                            <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10, marginTop: 1 }}>{item.detail}</Text>
-                          </View>
-                        </View>
-                      );
-                    })
-                  )}
-                </View>
-              </Animated.View>
+
             </View>
 
             <Text style={{ textAlign: 'center', fontFamily: 'Poppins_400Regular', color: ui.colors.textMuted, fontSize: 12.5, marginTop: 24, marginBottom: 24 }}>

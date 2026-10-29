@@ -1,0 +1,9 @@
+# Admin Dashboard aggregate reads
+
+Dashboard remains behind the existing fail-closed feature flag. Apply `20261029031911_admin_dashboard_aggregates.sql` before releasing/enabling the new frontend. No production migration or enable operation is part of this local implementation.
+
+The dashboard-specific service now calls one read-only `SECURITY INVOKER` RPC. Its participant CTE is materialized once and reused for the total, category groups and organisation-ID groups. Item and active-schedule counts retain the existing active/status rules. Existing RLS and visible-organisation filtering apply. Active-festival reads retain festival scoping; with no active festival, tenant filtering is retained. No registration analytics are requested. The legacy provider method remains available but has no active dashboard consumer.
+
+Cache keys include authenticated user, tenant and resolved festival. Initial scope load fetches once; focus, reconnect, polling, mount refetch and retries are disabled for the aggregate query. Explicit Update Dashboard refreshes the single aggregate snapshot; concurrent clicks share an in-flight promise. Failed refreshes preserve cached data and its successful timestamp. The shared active-festival query still detects scope changes according to its existing behavior.
+
+Local SQL tests use synthetic RLS. During the release review, deployed function signature/body and invoker/execute permissions matched this migration. A live read-only transaction using the Consol Demo admin's authenticated database role and JWT context returned the expected retained fields successfully; the global dashboard flag remained false. This was database-role verification, not an authenticated browser HTTP smoke test. Browser/PostgREST checks, mobile layout and production performance under load remain pending. Rollback frontend first before dropping the additive RPC. No table, policy, record, mutation or operational hook is changed.

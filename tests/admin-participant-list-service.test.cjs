@@ -193,5 +193,3 @@ test('team membership HTTP reads require an inner registration join and festival
   assert.equal(memberships[0].searchParams.get('registrations.festival_id'), 'eq.festival-a');
   assert.equal(memberships[0].searchParams.get('participant_id'), 'in.(person-a)');
 });
-
-

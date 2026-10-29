@@ -47,14 +47,19 @@ test('overview preserves registration/badge counts, canonical marks, RLS and fes
 });
 test('Schedule overview disconnects N+1 reads and loads export data only in click handler',()=>{
  const page=fs.readFileSync('src/app/(admin)/schedule/index.tsx','utf8');
+ const hook=fs.readFileSync('src/core/hooks/useSchedule.ts','utf8');
  for(const name of ['useParticipants','useJudges','useMarkEntries','useResults','get_judge_management_status','useFestivalRegistrations'])assert.ok(!page.includes(name),name);
  const exportStart=page.indexOf('const exportSchedulePdf');
  assert.ok(page.indexOf('participantService.listParticipants')>exportStart);
  assert.ok(page.indexOf('participantService.listRegistrationsByFestival')>exportStart);
- assert.equal((page.match(/refetchInterval:30000/g)||[]).length,1);
- assert.ok(page.includes("['schedules',tenant_id,festival?.id,'workflow',user?.id]"));
- assert.ok(page.includes('cancelRefetch:false'));
+ assert.ok(page.includes('scheduleOverviewService.allFiltered(exportFilters)'));
+ assert.ok(hook.includes("'overview-page'"));
+ assert.ok(hook.includes('refetchInterval: options?.overviewPage ? 30000 : false'));
+ assert.ok(hook.includes('options.overviewPage.page'));
+ assert.ok(hook.includes('options.overviewPage.pageSize'));
+ assert.ok(hook.includes("queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] })"));
  assert.ok(page.includes('enabled:isFocused'));
+ assert.ok(page.includes('setTimeout(() => setDebouncedSearchQuery(searchQuery.trim()), 300)'));
  assert.ok(page.includes('exportLock.current'));
  assert.ok(!page.includes('placeholderData'));
 });

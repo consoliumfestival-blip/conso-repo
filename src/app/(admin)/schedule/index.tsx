@@ -1,14 +1,14 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 
 import { useSchedule } from '../../../core/hooks/useSchedule';
-import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy } from 'lucide-react-native';
+import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
 
@@ -22,30 +22,9 @@ import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService'
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
-const getItemCategoryCodes = (schedule: any): string[] => {
-  const rawCodes = schedule?.items?.category_codes;
-  const codes = Array.isArray(rawCodes) ? rawCodes : rawCodes ? [rawCodes] : [];
-  return codes.map((code) => String(code).trim()).filter(Boolean);
-};
-
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
   return norm === 'GN' ? 'GENERAL' : norm;
-};
-
-const categoryAliases: Record<string, string[]> = {
-  LP: ['LP'],
-  UP: ['UP'],
-  HS: ['HS'],
-  HSS: ['HSS'],
-  JUNIOR: ['JUNIOR', 'JR'],
-  JR: ['JUNIOR', 'JR'],
-  SENIOR: ['SENIOR', 'SR'],
-  SR: ['SENIOR', 'SR'],
-  CAMPUS: ['CAMPUS', 'CA'],
-  CA: ['CAMPUS', 'CA'],
-  GENERAL: ['GENERAL', 'GN'],
-  GN: ['GENERAL', 'GN'],
 };
 
 function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: {
@@ -121,28 +100,74 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: 
 
 export default function ScheduleDashboard() {
   const router = useRouter();
-  const { schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule({ overview: true });
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
   const { tenant_id, user } = useAuthStore();
   const isFocused = useIsFocused();
-  const workflow=useQuery({
-   queryKey:['schedules',tenant_id,festival?.id,'workflow',user?.id],
-   queryFn:({signal})=>scheduleOverviewService.workflow(tenant_id!,festival!.id,signal),
-   enabled:isFocused && !!tenant_id && !!user?.id && !!festival?.id,
-   refetchInterval:30000,refetchIntervalInBackground:false,retry:false,
-  });
-  const workflowMap=React.useMemo(()=>new Map((workflow.data ?? []).map(row=>[row.schedule_id,row])),[workflow.data]);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
   const [mobileActionMenuId, setMobileActionMenuId] = React.useState<string | null>(null);
   const [selectedItem, setSelectedItem] = React.useState('All');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState('All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
+  const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const [calendarMonth, setCalendarMonth] = React.useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+  });
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const scheduleTimezone = React.useMemo(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata'; }
+    catch { return 'Asia/Kolkata'; }
+  }, []);
+  const availableDatesQuery=useQuery({
+   queryKey:['schedule-available-dates',tenant_id,festival?.id,user?.id,scheduleTimezone],
+   queryFn:({signal})=>scheduleOverviewService.availableDates(tenant_id!,festival!.id,scheduleTimezone,signal),
+   enabled:isFocused && !!tenant_id && !!user?.id && !!festival?.id,
+   staleTime:5*60*1000,retry:false,
+  });
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  React.useEffect(() => {
+    setPage(1);
+  }, [tenant_id, festival?.id, debouncedSearchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, selectedDate, pageSize]);
+
+  const isSearchDebouncing = searchQuery.trim() !== debouncedSearchQuery;
+  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule({
+    overviewPage: {
+      search: debouncedSearchQuery,
+      itemId: selectedItem === 'All' ? null : selectedItem,
+      category: selectedCategory === 'All' ? null : selectedCategory,
+      venueId: selectedVenue === 'All' ? null : selectedVenue,
+      date: selectedDate,
+      workflowStatus: selectedStatus === 'All' ? null : selectedStatus,
+      page,
+      pageSize,
+      timezone: scheduleTimezone,
+      enabled: isFocused && !isSearchDebouncing,
+    },
+  });
+  const workflowMap=React.useMemo(()=>new Map(schedules.map((row: any)=>[row.id,{
+    schedule_id:row.id,
+    active_count:Number(row.active_count ?? 0),
+    verified_count:Number(row.verified_count ?? 0),
+    coded_count:Number(row.coded_count ?? 0),
+    rejected_count:Number(row.rejected_count ?? 0),
+    assigned_judges:Number(row.assigned_judges ?? 0),
+    submitted_judges:Number(row.submitted_judges ?? 0),
+    marks_completed:Boolean(row.marks_completed),
+    has_manual_result:Boolean(row.has_manual_result),
+    has_published_result:Boolean(row.has_published_result),
+  }])),[schedules]);
   const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
@@ -212,73 +237,37 @@ export default function ScheduleDashboard() {
     { id: 'published', name: 'Published to Admin Leaderboard' },
   ];
 
-  const filteredSchedules = React.useMemo(() => {
-    return schedules.filter((schedule: any) => {
-      // 1. Search Query Filter
-      let matchesSearch = true;
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const matchNameEn = schedule.items?.item_name_en?.toLowerCase().includes(query);
-        const matchNameMl = schedule.items?.item_name_ml?.toLowerCase().includes(query);
-        const matchCategory = getItemCategoryCodes(schedule).some((code) =>
-          code.toLowerCase().includes(query)
-        );
-        matchesSearch = matchNameEn || matchNameMl || matchCategory;
-      }
-      
-      // 2. Item Filter
-      const matchesItem = selectedItem === 'All' || schedule.item_id === selectedItem;
+  const filteredSchedules = isSearchDebouncing ? [] : schedules;
+  const displayedFilteredCount = isSearchDebouncing ? 0 : totalFilteredSchedules;
+  const pageCount = Math.max(1, Math.ceil(displayedFilteredCount / pageSize));
+  React.useEffect(() => {
+    if (page > pageCount) setPage(pageCount);
+  }, [page, pageCount]);
 
-      // 3. Item Category Filter
-      let matchesCategory = true;
-      if (selectedCategory !== 'All') {
-        const selectedCodes = categoryAliases[normalizeCategory(selectedCategory)] || [normalizeCategory(selectedCategory)];
-        const scheduleCodes = getItemCategoryCodes(schedule).map(normalizeCategory);
-        matchesCategory = scheduleCodes.some((code) => selectedCodes.includes(code));
-      }
-      
-      // 4. Venue Filter
-      let matchesVenue = true;
-      if (selectedVenue !== 'All') {
-        matchesVenue = schedule.venue_id === selectedVenue || schedule.venues?.id === selectedVenue;
-      }
+  const exportFilters = {
+    tenantId: tenant_id!, festivalId: festival!.id,
+    search: debouncedSearchQuery,
+    itemId: selectedItem === 'All' ? null : selectedItem,
+    category: selectedCategory === 'All' ? null : selectedCategory,
+    venueId: selectedVenue === 'All' ? null : selectedVenue,
+    date: selectedDate,
+    workflowStatus: selectedStatus === 'All' ? null : selectedStatus,
+    timezone: scheduleTimezone,
+  };
 
-      // 5. Status/Workflow Filter
-      let matchesStatus = true;
-      if (selectedStatus !== 'All') {
-        const row=workflowMap.get(schedule.id);
-        if (!row && !['scheduled','ongoing','completed'].includes(selectedStatus)) return false;
-        const active=row?.active_count ?? 0,verified=row?.verified_count ?? 0,coded=row?.coded_count ?? 0;
-        const checkinDone=active>0 && active===verified,checkinPending=active>verified;
-        const codesShuffled=verified>0 && verified===coded,codesPending=verified>coded;
-        const isPublished=row?.has_published_result===true;
-        const marksSubmitted=row?.marks_completed===true || isPublished;
-        if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
-          matchesStatus = normalizeScheduleLifecycleStatus(schedule.status) === selectedStatus;
-        } else if (selectedStatus === 'checkin_pending') {
-          matchesStatus = checkinPending;
-        } else if (selectedStatus === 'checkin_done') {
-          matchesStatus = checkinDone;
-        } else if (selectedStatus === 'codes_pending') {
-          matchesStatus = codesPending;
-        } else if (selectedStatus === 'codes_done') {
-          matchesStatus = codesShuffled;
-        } else if (selectedStatus === 'marks_pending') {
-          matchesStatus = !marksSubmitted;
-        } else if (selectedStatus === 'marks_done') {
-          matchesStatus = marksSubmitted;
-        } else if (selectedStatus === 'published') {
-          matchesStatus = isPublished;
-        }
-      }
-      
-      return matchesSearch && matchesItem && matchesCategory && matchesVenue && matchesStatus;
-    });
-  }, [schedules, searchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, workflowMap]);
+  const dateSet = React.useMemo(() => new Set((availableDatesQuery.data ?? []).map((date) => String(date).slice(0, 10))), [availableDatesQuery.data]);
+  const calendarYear = calendarMonth.getUTCFullYear();
+  const calendarMonthIndex = calendarMonth.getUTCMonth();
+  const calendarDays = new Date(Date.UTC(calendarYear, calendarMonthIndex + 1, 0)).getUTCDate();
+  const calendarOffset = new Date(Date.UTC(calendarYear, calendarMonthIndex, 1)).getUTCDay();
+  const monthLabel = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(calendarMonth);
+  const calendarCells = Array.from({ length: calendarOffset + calendarDays }, (_, index) =>
+    index < calendarOffset ? null : `${calendarYear}-${String(calendarMonthIndex + 1).padStart(2, '0')}-${String(index - calendarOffset + 1).padStart(2, '0')}`
+  );
 
   const exportSchedulePdf = async (mode: AdminSchedulePdfMode) => {
-    if (exportLock.current) return;
-    if (!filteredSchedules.length) {
+    if (exportLock.current || isSearchDebouncing) return;
+    if (!totalFilteredSchedules) {
       if (Platform.OS === 'web') window.alert('No schedules found for the current filters.');
       else Alert.alert('No schedules', 'No schedules found for the current filters.');
       return;
@@ -286,13 +275,13 @@ export default function ScheduleDashboard() {
     try {
       exportLock.current = true;
       setIsExportingSchedule(true);
-      const [allRegistrations,participants,{downloadAdminSchedulePdf}]=await Promise.all([participantService.listRegistrationsByFestival<any>(festival!.id),participantService.listParticipants<any>(),import('../../../services/schedulePdfService')]);
+      const [allSchedules,allRegistrations,participants,{downloadAdminSchedulePdf}]=await Promise.all([scheduleOverviewService.allFiltered(exportFilters),participantService.listRegistrationsByFestival<any>(festival!.id),participantService.listParticipants<any>(),import('../../../services/schedulePdfService')]);
       await downloadAdminSchedulePdf({
         mode,
         itemId: selectedItem,
         itemCategory: selectedCategory,
         festivalName: festival?.custom_name || (festival?.festival_year ? `Festival ${festival.festival_year}` : null),
-        schedules: filteredSchedules as any,
+        schedules: allSchedules as any,
         registrations: allRegistrations as any,
         participants: participants as any,
       });
@@ -371,7 +360,7 @@ export default function ScheduleDashboard() {
     }
   };
 
-  if (isLoadingSchedules || isLoadingVenues || isLoadingFest || isLoadingItems) {
+  if (isLoadingVenues || isLoadingFest || isLoadingItems) {
     return (
       <View className="flex-1 bg-ssf-bg p-5">
         <SsfTableSkeleton rows={8} columns={6} />
@@ -384,12 +373,11 @@ export default function ScheduleDashboard() {
       <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
         <View className="mb-4">
         <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
-        <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{filteredSchedules.length} showing</Text>
+        <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{isSearchDebouncing ? 'Updating results…' : totalFilteredSchedules === 0 ? '0 schedules' : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}</Text>
       </View>
 
       {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
-      {!!festival?.id && workflow.isPending && <Text className="font-poppins text-xs mb-2">Loading workflow…</Text>}
-      {workflow.isError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">{workflow.data ? 'Workflow refresh failed; showing the last update.' : 'Workflow could not be loaded.'}</Text><SsfButton label="Retry workflow" size="sm" variant="outline" onPress={()=>{void workflow.refetch({cancelRefetch:false});}} /></View>}
+      {availableDatesQuery.isError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Available schedule dates could not be loaded.</Text><SsfButton label="Retry dates" size="sm" variant="outline" onPress={()=>{void availableDatesQuery.refetch();}} /></View>}
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
         <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>
         <View className="flex-row flex-wrap gap-2">
@@ -401,10 +389,10 @@ export default function ScheduleDashboard() {
             <TouchableOpacity
               key={mode}
               onPress={() => exportSchedulePdf(mode)}
-              disabled={isExportingSchedule}
+              disabled={isExportingSchedule || isSearchDebouncing}
               className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
             >
-              <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : label}</Text>
+              <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : isSearchDebouncing ? 'Updating…' : label}</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity
@@ -443,7 +431,7 @@ export default function ScheduleDashboard() {
           accessibilityHint="Opens schedule creation"
         >
           <View>
-            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{schedules.length}</Text>
+            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{totalSchedules}</Text>
             <Text className="font-poppins text-core-success-emerald-800 text-xs">Scheduled Events</Text>
           </View>
           <Calendar color={coreColor("#047857", 'success')} size={22} />
@@ -476,7 +464,7 @@ export default function ScheduleDashboard() {
           className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
           placeholder="Search by item name or category (e.g. LP, UP)..."
           value={searchQuery}
-          onChangeText={setSearchQuery}
+              onChangeText={(value) => { setSearchQuery(value); setPage(1); }}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -490,7 +478,7 @@ export default function ScheduleDashboard() {
           <View className="flex-row flex-wrap items-center gap-2">
             <SsfSelectMenu
               value={selectedItem}
-              onValueChange={setSelectedItem}
+              onValueChange={(value) => { setSelectedItem(value); setPage(1); }}
               accessibilityLabel="Filter by item"
               searchable
               searchPlaceholder="Search item..."
@@ -504,7 +492,7 @@ export default function ScheduleDashboard() {
             />
             <SsfSelectMenu
               value={selectedCategory}
-              onValueChange={setSelectedCategory}
+              onValueChange={(value) => { setSelectedCategory(value); setPage(1); }}
               accessibilityLabel="Filter by item category"
               width={isMobile ? Math.max(120, (width - 72) / 2) : 148}
               compact
@@ -516,7 +504,7 @@ export default function ScheduleDashboard() {
             />
             <SsfSelectMenu
               value={selectedVenue}
-              onValueChange={setSelectedVenue}
+              onValueChange={(value) => { setSelectedVenue(value); setPage(1); }}
               accessibilityLabel="Filter by venue"
               searchable
               searchPlaceholder="Search venue..."
@@ -530,7 +518,7 @@ export default function ScheduleDashboard() {
             />
             <SsfSelectMenu
               value={selectedStatus}
-              onValueChange={setSelectedStatus}
+              onValueChange={(value) => { setSelectedStatus(value); setPage(1); }}
               accessibilityLabel="Filter by status"
               width={isMobile ? Math.max(220, width - 56) : 210}
               compact
@@ -540,13 +528,25 @@ export default function ScheduleDashboard() {
                 value: item.id,
               }))}
             />
-            {(selectedItem !== 'All' || selectedCategory !== 'All' || selectedVenue !== 'All' || selectedStatus !== 'All') && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={selectedDate ? `Date filter: ${selectedDate}` : 'Filter by schedule date'}
+              onPress={() => setCalendarOpen(true)}
+              className={`h-9 px-3 rounded-lg border flex-row items-center justify-center ${selectedDate ? 'border-ui-primary bg-core-info-soft-blue-50' : 'border-ui-border bg-core-surface-white'}`}
+            >
+              <Calendar size={13} color={selectedDate ? coreColor('#1D4ED8', 'primaryText') : ui.colors.textMuted} />
+              <Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">{selectedDate || 'Date: All'}</Text>
+            </TouchableOpacity>
+            {(selectedItem !== 'All' || selectedCategory !== 'All' || selectedVenue !== 'All' || selectedStatus !== 'All' || !!selectedDate) && (
               <TouchableOpacity
                 onPress={() => {
                   setSelectedItem('All');
                   setSelectedCategory('All');
                   setSelectedVenue('All');
                   setSelectedStatus('All');
+                  setSelectedDate(null);
+                  setSearchQuery('');
+                  setPage(1);
                 }}
                 className="h-9 px-3 rounded-lg border border-ui-border bg-core-surface-white flex-row items-center justify-center"
               >
@@ -555,7 +555,7 @@ export default function ScheduleDashboard() {
               </TouchableOpacity>
             )}
             <View className="h-9 px-3 rounded-lg bg-ui-muted items-center justify-center">
-              <Text className="font-poppins-bold text-[10px] text-ui-text-muted">{filteredSchedules.length} results</Text>
+              <Text className="font-poppins-bold text-[10px] text-ui-text-muted">{isSearchDebouncing ? 'Updating…' : totalFilteredSchedules} results</Text>
             </View>
           </View>
         </View>
@@ -786,7 +786,13 @@ export default function ScheduleDashboard() {
         </View>
       </View>
 
-      {schedules.length === 0 ? (
+      {isSearchDebouncing ? (
+        <SsfCard className="items-center py-6">
+          <Text className="font-poppins text-xs text-ssf-text-muted">Updating schedule results…</Text>
+        </SsfCard>
+      ) : isLoadingSchedules && !hasScheduleData ? (
+        <SsfTableSkeleton rows={6} columns={5} />
+      ) : isErrorSchedules && !hasScheduleData ? null : totalSchedules === 0 ? (
         <SsfCard className="items-center py-10">
           <Calendar size={48} color={ui.colors.border} className="mb-4" />
           <Text className="font-poppins text-ssf-text-muted text-center">No schedules created yet.</Text>
@@ -796,7 +802,7 @@ export default function ScheduleDashboard() {
             className="mt-4"
           />
         </SsfCard>
-      ) : filteredSchedules.length === 0 ? (
+      ) : totalFilteredSchedules === 0 ? (
         <SsfCard className="items-center py-10">
           <Search size={48} color={ui.colors.border} className="mb-4" />
           <Text className="font-poppins text-ssf-text-muted text-center">
@@ -805,9 +811,12 @@ export default function ScheduleDashboard() {
           <TouchableOpacity 
             onPress={() => {
               setSearchQuery('');
+              setSelectedItem('All');
               setSelectedCategory('All');
               setSelectedVenue('All');
               setSelectedStatus('All');
+              setSelectedDate(null);
+              setPage(1);
             }} 
             className="mt-4"
           >
@@ -849,6 +858,7 @@ export default function ScheduleDashboard() {
                       {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
+                  {schedule.is_overdue_unstarted && <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700 mt-1">Scheduled time passed · Not started</Text>}
                 </View>
                 <View style={{ flex: 1.4 }} className="pr-3">
                   <TouchableOpacity
@@ -1029,6 +1039,7 @@ export default function ScheduleDashboard() {
                     {new Date(schedule.start_time).toLocaleDateString()}
                   </Text>
                 </View>
+                {schedule.is_overdue_unstarted && <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Scheduled time passed · Not started</Text>}
               </View>
 
               <ScheduleWorkflowBadges 
@@ -1077,7 +1088,56 @@ export default function ScheduleDashboard() {
         </View>
         )
       )}
+      {hasScheduleData && totalSchedules > 0 && !isSearchDebouncing && (
+        <View className="flex-row items-center justify-between flex-wrap gap-2 mt-4 mb-8 bg-core-surface-white border border-ui-border rounded-lg px-3 py-2">
+          <Text className="font-poppins text-[10px] text-ui-text-muted">
+            {totalFilteredSchedules === 0 ? 'No matching schedules' : `Showing ${Math.min((page - 1) * pageSize + 1, totalFilteredSchedules)}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}
+          </Text>
+          <View className="flex-row items-center gap-2">
+            <SsfSelectMenu
+              value={String(pageSize)}
+              onValueChange={(value) => { setPageSize(Number(value)); setPage(1); }}
+              accessibilityLabel="Schedules per page"
+              width={92}
+              compact
+              options={[25, 50, 100].map((size) => ({ label: `${size} / page`, value: String(size) }))}
+            />
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Previous schedule page" disabled={page <= 1} onPress={() => setPage((current) => Math.max(1, current - 1))} className={`h-9 px-3 rounded-lg border flex-row items-center ${page <= 1 ? 'border-core-border-gray-200 bg-core-surface-muted-gray-100' : 'border-ui-border bg-core-surface-white'}`}>
+              <ChevronLeft size={15} color={page <= 1 ? ui.colors.border : ui.colors.text} />
+              {!isMobile && <Text className="ml-1 font-poppins-bold text-[10px] text-ui-text">Previous</Text>}
+            </TouchableOpacity>
+            <Text className="font-poppins-bold text-[10px] text-ui-text">{page} / {pageCount}</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Next schedule page" disabled={page >= pageCount} onPress={() => setPage((current) => Math.min(pageCount, current + 1))} className={`h-9 px-3 rounded-lg border flex-row items-center ${page >= pageCount ? 'border-core-border-gray-200 bg-core-surface-muted-gray-100' : 'border-ui-border bg-core-surface-white'}`}>
+              {!isMobile && <Text className="mr-1 font-poppins-bold text-[10px] text-ui-text">Next</Text>}
+              <ChevronRight size={15} color={page >= pageCount ? ui.colors.border : ui.colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
       </ScrollView>
+      <Modal transparent visible={calendarOpen} animationType="fade" onRequestClose={() => setCalendarOpen(false)}>
+        <View className="flex-1 bg-black/40 items-center justify-center px-4">
+          <View className="w-full max-w-sm bg-core-surface-white border border-ui-border rounded-xl p-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="font-poppins-bold text-base text-ui-text">Schedule date</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close date picker" onPress={() => setCalendarOpen(false)} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border"><X size={16} color={ui.colors.textMuted} /></TouchableOpacity>
+            </View>
+            <View className="flex-row items-center justify-between mb-3">
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setCalendarMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1)))} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border"><ChevronLeft size={16} color={ui.colors.text} /></TouchableOpacity>
+              <Text className="font-poppins-bold text-sm text-ui-text">{monthLabel}</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Next month" onPress={() => setCalendarMonth((month) => new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1)))} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border"><ChevronRight size={16} color={ui.colors.text} /></TouchableOpacity>
+            </View>
+            <View className="flex-row mb-1">{['S','M','T','W','T','F','S'].map((day,index)=><View key={`${day}-${index}`} style={{width:'14.2857%'}} className="h-8 items-center justify-center"><Text className="font-poppins-bold text-[10px] text-ui-text-muted">{day}</Text></View>)}</View>
+            <View className="flex-row flex-wrap">
+              {calendarCells.map((date,index)=>date ? <TouchableOpacity key={date} disabled={!dateSet.has(date)} accessibilityRole="button" accessibilityLabel={`Select ${date}`} onPress={()=>{setSelectedDate(date);setPage(1);setCalendarOpen(false);}} style={{width:'14.2857%'}} className={`h-10 items-center justify-center rounded-lg ${selectedDate===date?'bg-ui-primary':dateSet.has(date)?'bg-core-surface-white':'bg-core-surface-white opacity-40'}`}><Text className={`font-poppins text-xs ${selectedDate===date?'text-core-on-primary-white':dateSet.has(date)?'text-ui-text':'text-ui-text-muted'}`}>{Number(date.slice(-2))}</Text></TouchableOpacity>:<View key={`empty-${index}`} style={{width:'14.2857%'}} className="h-10" />)}
+            </View>
+            <View className="flex-row items-center justify-between mt-3">
+              <TouchableOpacity accessibilityRole="button" onPress={()=>{setSelectedDate(null);setPage(1);setCalendarOpen(false);}} className="h-9 px-3 items-center justify-center rounded-lg border border-ui-border"><Text className="font-poppins-bold text-[10px] text-ui-text">All dates</Text></TouchableOpacity>
+              <Text className="font-poppins text-[10px] text-ui-text-muted">{availableDatesQuery.isLoading?'Loading dates…':`${dateSet.size} scheduled dates`}</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }

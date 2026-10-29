@@ -1,4 +1,4 @@
-import { scheduleOverviewService } from '../../services/scheduleOverviewService';
+import { scheduleOverviewService, type ScheduleOverviewFilters } from '../../services/scheduleOverviewService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { scheduleService } from '../../services/scheduleService';
 import { useAuthStore } from '../store/authStore';
@@ -6,7 +6,10 @@ import { supabase } from '../config/supabase';
 import { useFestival } from './useFestival';
 import { scheduleLifecycleService } from '../../services/scheduleLifecycleService';
 
-export const useSchedule = (options?: { overview?: boolean }) => {
+export const useSchedule = (options?: {
+  overview?: boolean;
+  overviewPage?: ScheduleOverviewFilters & { page: number; pageSize: number; enabled?: boolean; timezone: string };
+}) => {
   const { tenant_id, user } = useAuthStore();
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
@@ -39,9 +42,24 @@ export const useSchedule = (options?: { overview?: boolean }) => {
 
   // Schedules
   const schedulesQuery = useQuery({
-    queryKey: options?.overview ? ['schedules', tenant_id, activeFestival?.id, 'overview', user?.id] : ['schedules', tenant_id, activeFestival?.id],
-    queryFn: () => options?.overview ? scheduleOverviewService.schedules(tenant_id!, activeFestival!.id) : scheduleService.listSchedules<any>(tenant_id!, activeFestival?.id),
-    enabled: !!tenant_id && (!options?.overview || !!activeFestival?.id),
+    queryKey: options?.overviewPage
+      ? ['schedules', tenant_id, activeFestival?.id, 'overview-page', user?.id,
+        options.overviewPage.search ?? '', options.overviewPage.itemId ?? null,
+        options.overviewPage.category ?? null, options.overviewPage.venueId ?? null,
+        options.overviewPage.date ?? null, options.overviewPage.workflowStatus ?? null,
+        options.overviewPage.timezone, options.overviewPage.page, options.overviewPage.pageSize]
+      : options?.overview ? ['schedules', tenant_id, activeFestival?.id, 'overview', user?.id] : ['schedules', tenant_id, activeFestival?.id],
+    queryFn: ({ signal }) => options?.overviewPage
+      ? scheduleOverviewService.page({
+        ...options.overviewPage,
+        tenantId: tenant_id!,
+        festivalId: activeFestival!.id,
+      }, signal)
+      : options?.overview ? scheduleOverviewService.schedules(tenant_id!, activeFestival!.id) : scheduleService.listSchedules<any>(tenant_id!, activeFestival?.id),
+    enabled: !!tenant_id && (!options?.overview || !!activeFestival?.id)
+      && (!options?.overviewPage || (!!activeFestival?.id && options.overviewPage.enabled !== false)),
+    refetchInterval: options?.overviewPage ? 30000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const createScheduleMutation = useMutation({
@@ -84,7 +102,16 @@ export const useSchedule = (options?: { overview?: boolean }) => {
     deleteVenue: deleteVenueMutation.mutateAsync,
     isDeletingVenue: deleteVenueMutation.isPending,
 
-    schedules: schedulesQuery.data || [],
+    schedules: options?.overviewPage
+      ? (schedulesQuery.data as any)?.rows ?? []
+      : schedulesQuery.data || [],
+    totalSchedules: options?.overviewPage
+      ? Number((schedulesQuery.data as any)?.festivalTotalCount ?? 0)
+      : (schedulesQuery.data?.length ?? 0),
+    totalFilteredSchedules: options?.overviewPage
+      ? Number((schedulesQuery.data as any)?.totalCount ?? 0)
+      : (schedulesQuery.data?.length ?? 0),
+    hasScheduleData: schedulesQuery.data !== undefined,
     isLoadingSchedules: schedulesQuery.isLoading,
     isErrorSchedules: schedulesQuery.isError,
     refetchSchedules: schedulesQuery.refetch,

@@ -35,6 +35,9 @@ const mapRegistration = (row: any) => ({
 });
 
 export const useStageManagement = (options: { scheduleId?: string; summaryOnly?: boolean } = {}) => {
+  // Overview reads default to summaries. Detail screens retain scoped rosters;
+  // the explicit false used by the reversible v1 page remains supported.
+  const summaryOnly = options.summaryOnly ?? !options.scheduleId;
   const queryClient = useQueryClient();
   const { user, tenant_id, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = initialized && !!user && (role === 'admin' || is_superadmin);
@@ -61,7 +64,7 @@ export const useStageManagement = (options: { scheduleId?: string; summaryOnly?:
   const summaryQuery = useQuery({
     queryKey: ['stage-management-summary-v2', context?.tenant_id, context?.festival_id],
     queryFn: () => stageManagementService.getScheduleSummariesV2(context!.festival_id),
-    enabled: !!options.summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
+    enabled: summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
     staleTime: 10_000,
   });
 
@@ -86,7 +89,7 @@ export const useStageManagement = (options: { scheduleId?: string; summaryOnly?:
       );
       return rows.map(mapRegistration);
     },
-    enabled: !options.summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
+    enabled: !summaryOnly && hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
     staleTime: 10_000,
   });
 

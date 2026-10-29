@@ -141,6 +141,9 @@ export const stageManagementService = {
   },
 
   async getVenuePortalData(venueId: string, pin: string) {
+    if (await this.getVenueReadMode(venueId) !== 'v1') {
+      throw new Error('This Stage link uses v2. Refresh the page.');
+    }
     const { data, error } = await supabase.rpc('stage_venue_portal_data_with_letters', { p_venue_id: venueId, p_pin: pin });
     throwIfError(error);
     throwIfPortalError(data);
@@ -226,6 +229,9 @@ export const stageManagementService = {
   },
 
   async getRegistrations(options: { scheduleId?: string; festivalId?: string }): Promise<StageRegistrationRow[]> {
+    if (!options.scheduleId && await this.getManagementReadMode() !== 'v1') {
+      throw new Error('Stage overview uses v2 summaries. Refresh the page.');
+    }
     let { data, error } = await supabase.rpc('get_stage_management_registrations_with_letters', {
       p_schedule_id: options.scheduleId ?? null,
       p_festival_id: options.festivalId ?? null,

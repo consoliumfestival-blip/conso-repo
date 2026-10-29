@@ -55,6 +55,6 @@ test('Schedule overview disconnects N+1 reads and loads export data only in clic
  assert.ok(page.includes("['schedules',tenant_id,festival?.id,'workflow',user?.id]"));
  assert.ok(page.includes('cancelRefetch:false'));
  assert.ok(page.includes('enabled:isFocused'));
- assert.ok(page.includes('exportLock.current')); 
+ assert.ok(page.includes('exportLock.current'));
  assert.ok(!page.includes('placeholderData'));
 });

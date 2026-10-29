@@ -1,3 +1,4 @@
+import { scheduleOverviewService } from '../../services/scheduleOverviewService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { scheduleService } from '../../services/scheduleService';
 import { useAuthStore } from '../store/authStore';
@@ -5,8 +6,8 @@ import { supabase } from '../config/supabase';
 import { useFestival } from './useFestival';
 import { scheduleLifecycleService } from '../../services/scheduleLifecycleService';
 
-export const useSchedule = () => {
-  const { tenant_id } = useAuthStore();
+export const useSchedule = (options?: { overview?: boolean }) => {
+  const { tenant_id, user } = useAuthStore();
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const queryClient = useQueryClient();
@@ -15,7 +16,7 @@ export const useSchedule = () => {
   const venuesQuery = useQuery({
     queryKey: ['venues', tenant_id, activeFestival?.id],
     queryFn: () => scheduleService.listVenues<any>(tenant_id!, activeFestival?.id),
-    enabled: !!tenant_id,
+    enabled: !!tenant_id && (!options?.overview || !!activeFestival?.id),
   });
 
   const createVenueMutation = useMutation({
@@ -38,9 +39,9 @@ export const useSchedule = () => {
 
   // Schedules
   const schedulesQuery = useQuery({
-    queryKey: ['schedules', tenant_id, activeFestival?.id],
-    queryFn: () => scheduleService.listSchedules<any>(tenant_id!, activeFestival?.id),
-    enabled: !!tenant_id,
+    queryKey: options?.overview ? ['schedules', tenant_id, activeFestival?.id, 'overview', user?.id] : ['schedules', tenant_id, activeFestival?.id],
+    queryFn: () => options?.overview ? scheduleOverviewService.schedules(tenant_id!, activeFestival!.id) : scheduleService.listSchedules<any>(tenant_id!, activeFestival?.id),
+    enabled: !!tenant_id && (!options?.overview || !!activeFestival?.id),
   });
 
   const createScheduleMutation = useMutation({

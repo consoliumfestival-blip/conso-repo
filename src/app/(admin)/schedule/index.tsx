@@ -3,20 +3,22 @@ import { ui } from '@/constants/designSystem';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
-import { AdminScheduleChatBot } from '../../../components/ui/AdminScheduleChatBot';
+
 import { useSchedule } from '../../../core/hooks/useSchedule';
 import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy } from 'lucide-react-native';
-import { useJudges } from '../../../core/hooks/useJudges';
-import { useParticipants } from '../../../core/hooks/useParticipants';
+import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
+import { participantService } from '../../../services/participantService';
+
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../core/store/authStore';
-import { supabase } from '../../../core/config/supabase';
+
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
-import { downloadAdminSchedulePdf, downloadBlankSchedulePdf, AdminSchedulePdfMode } from '../../../services/schedulePdfService';
+import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
@@ -30,12 +32,6 @@ const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
   return norm === 'GN' ? 'GENERAL' : norm;
 };
-
-const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
-  registrations.filter((registration: any) =>
-    registration.item_id === schedule.item_id
-    && registration.festival_id === schedule.festival_id
-  );
 
 const categoryAliases: Record<string, string[]> = {
   LP: ['LP'],
@@ -52,58 +48,16 @@ const categoryAliases: Record<string, string[]> = {
   GN: ['GENERAL', 'GN'],
 };
 
-function ScheduleWorkflowBadges({
-  status,
-  scheduleId,
-  registrations = [],
-  isShuffleLocked,
-  compact = false,
-}: {
-  status?: string | null;
-  scheduleId: string;
-  registrations?: any[];
-  isShuffleLocked?: boolean;
-  compact?: boolean;
+function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: {
+ status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean; compact?: boolean;
 }) {
-  const { useJudgeSubmissionSummary, useMarkEntries, useResults } = useJudges();
-  const { data: summary } = useJudgeSubmissionSummary(scheduleId);
-  const { data: markEntries } = useMarkEntries(scheduleId, 30000);
-  const { data: results } = useResults(scheduleId);
-  const resultRows = (results as any[]) ?? [];
-  const hasInternalPublished = resultRows.some((row) =>
-    row.published === true || row.result_status === 'published'
-  );
-  const hasManualSubmitted = resultRows.some((row) =>
-    row.collection_method === 'manual' && (row.published === true || row.result_status === 'published')
-  );
-
-  const activeRegs = registrations.filter((r: any) => r.status !== 'rejected');
-  const verifiedRegs = activeRegs.filter((r: any) => r.is_verified);
-  
-  const checkinDone = (activeRegs.length > 0 && activeRegs.every((r: any) => r.is_verified)) || isShuffleLocked;
-  const checkinPending = activeRegs.length > 0 && activeRegs.some((r: any) => !r.is_verified) && !isShuffleLocked;
-  
-  const codesShuffled = (verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined)) || isShuffleLocked;
-  const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined) && !isShuffleLocked;
-
-  const rows = (summary as any[]) ?? [];
-  const eligibleRegistrationIds = new Set(verifiedRegs
-    .filter((registration: any) => !!registration.code_letter)
-    .map((registration: any) => registration.id));
-  const finalRegistrationsByJudge = new Map<string, Set<string>>();
-  for (const entry of (markEntries as any[]) ?? []) {
-    if (entry.is_final !== true || !eligibleRegistrationIds.has(entry.registration_id)) continue;
-    const submitted = finalRegistrationsByJudge.get(entry.judge_id) ?? new Set<string>();
-    submitted.add(entry.registration_id);
-    finalRegistrationsByJudge.set(entry.judge_id, submitted);
-  }
-  const totalExpected = rows.length;
-  const totalSubmitted = rows.filter((judge: any) =>
-    eligibleRegistrationIds.size > 0
-    && (finalRegistrationsByJudge.get(judge.judge_id)?.size ?? 0) >= eligibleRegistrationIds.size
-  ).length;
-  const allDone = totalExpected > 0 && totalSubmitted >= totalExpected;
-
+ if (!summary) return <Text className="font-poppins text-[9px] text-ssf-text-muted">{getScheduleLifecycleLabel(status)} / Workflow unavailable</Text>;
+ const {active_count:active,verified_count:verified,coded_count:coded,assigned_judges:totalExpected,submitted_judges:totalSubmitted,has_manual_result:hasManualSubmitted,has_published_result:hasInternalPublished}=summary;
+ const checkinDone=(active>0 && verified===active)||isShuffleLocked;
+ const checkinPending=active>verified && !isShuffleLocked;
+ const codesShuffled=(verified>0 && coded===verified)||isShuffleLocked;
+ const codesPending=verified>coded && !isShuffleLocked;
+ const allDone=totalExpected>0 && totalSubmitted>=totalExpected;
   const badges: { label: string; bg: string; text: string }[] = [];
 
   // Check-in status (Malayalam highlighted text as requested)
@@ -125,12 +79,12 @@ function ScheduleWorkflowBadges({
     badges.push({ label: 'Published to Admin Leaderboard', bg: 'bg-core-info-soft-blue-100 border border-core-info-soft-blue-200', text: 'text-core-info-blue-700' });
   }
 
-  if (!badges.length && !rows.length && !status) return null;
+  if (!badges.length && !totalExpected && !status) return null;
 
   if (compact) {
     const labels = badges.map((badge) => badge.label);
     if (status) labels.unshift(getScheduleLifecycleLabel(status));
-    if (rows.length > 0) {
+    if (totalExpected > 0) {
       labels.push(`Marks ${totalSubmitted}/${totalExpected} judges submitted`);
     }
     return (
@@ -150,7 +104,7 @@ function ScheduleWorkflowBadges({
           <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
         </View>
       ))}
-      {rows.length > 0 && (
+      {totalExpected > 0 && (
         <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${
           allDone ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : totalSubmitted > 0 ? 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200' : 'bg-core-surface-muted-slate-50 border-core-border-slate-200'
         }`}>
@@ -167,15 +121,19 @@ function ScheduleWorkflowBadges({
 
 export default function ScheduleDashboard() {
   const router = useRouter();
-  const { schedules, isLoadingSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule();
+  const { schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule({ overview: true });
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
-  const { participants, isLoadingList: isLoadingParticipants, listError: participantsError, retryList: retryParticipants, useFestivalRegistrations } = useParticipants();
-  const { data: allRegistrations = [], isLoading: isLoadingRegs, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
-  const { judges } = useJudges();
-
-  const { tenant_id } = useAuthStore();
+  const { tenant_id, user } = useAuthStore();
+  const isFocused = useIsFocused();
+  const workflow=useQuery({
+   queryKey:['schedules',tenant_id,festival?.id,'workflow',user?.id],
+   queryFn:({signal})=>scheduleOverviewService.workflow(tenant_id!,festival!.id,signal),
+   enabled:isFocused && !!tenant_id && !!user?.id && !!festival?.id,
+   refetchInterval:30000,refetchIntervalInBackground:false,retry:false,
+  });
+  const workflowMap=React.useMemo(()=>new Map((workflow.data ?? []).map(row=>[row.schedule_id,row])),[workflow.data]);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
 
@@ -185,6 +143,7 @@ export default function ScheduleDashboard() {
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState('All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
+  const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
 
@@ -253,35 +212,6 @@ export default function ScheduleDashboard() {
     { id: 'published', name: 'Published to Admin Leaderboard' },
   ];
 
-  // Fetch all results for the active festival to filter schedules by published status
-  const { data: allResults = [] } = useQuery({
-    queryKey: ['allFestivalResults', festival?.id],
-    queryFn: async () => {
-      if (!festival?.id) return [];
-      const { data, error } = await supabase
-        .from('results')
-        .select('schedule_id, tenant_id, festival_id, item_id, published, result_status')
-        .eq('festival_id', festival.id);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!festival?.id,
-  });
-
-  // Canonical panel/marks workflow status for every schedule in this tenant.
-  const { data: allJudgeWorkflowStatuses = [] } = useQuery({
-    queryKey: ['judgeManagementStatus', tenant_id],
-    queryFn: async () => {
-      if (!tenant_id) return [];
-      const { data, error } = await supabase.rpc('get_judge_management_status', {
-        p_tenant_id: tenant_id,
-      });
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!tenant_id,
-  });
-
   const filteredSchedules = React.useMemo(() => {
     return schedules.filter((schedule: any) => {
       // 1. Search Query Filter
@@ -316,26 +246,13 @@ export default function ScheduleDashboard() {
       // 5. Status/Workflow Filter
       let matchesStatus = true;
       if (selectedStatus !== 'All') {
-         const scheduleRegs = getRegistrationsForSchedule(allRegistrations, schedule)
-           .filter((registration: any) => registration.status !== 'rejected');
-        const verifiedRegs = scheduleRegs.filter((r: any) => r.is_verified);
-        
-        const checkinDone = scheduleRegs.length > 0 && scheduleRegs.every((r: any) => r.is_verified);
-        const checkinPending = scheduleRegs.length > 0 && scheduleRegs.some((r: any) => !r.is_verified);
-        
-        const codesShuffled = verifiedRegs.length > 0 && verifiedRegs.every((r: any) => r.code_letter !== null && r.code_letter !== undefined);
-        const codesPending = verifiedRegs.length > 0 && verifiedRegs.some((r: any) => r.code_letter === null || r.code_letter === undefined);
-        
-        const isPublished = allResults.some((res: any) => 
-          res.schedule_id === schedule.id &&
-          (res.published === true || res.result_status === 'published')
-        );
-        
-        const workflowStatus = allJudgeWorkflowStatuses.find(
-          (status: any) => status.schedule_id === schedule.id
-        );
-        const marksSubmitted = workflowStatus?.marks_completed === true || isPublished;
-
+        const row=workflowMap.get(schedule.id);
+        if (!row && !['scheduled','ongoing','completed'].includes(selectedStatus)) return false;
+        const active=row?.active_count ?? 0,verified=row?.verified_count ?? 0,coded=row?.coded_count ?? 0;
+        const checkinDone=active>0 && active===verified,checkinPending=active>verified;
+        const codesShuffled=verified>0 && verified===coded,codesPending=verified>coded;
+        const isPublished=row?.has_published_result===true;
+        const marksSubmitted=row?.marks_completed===true || isPublished;
         if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
           matchesStatus = normalizeScheduleLifecycleStatus(schedule.status) === selectedStatus;
         } else if (selectedStatus === 'checkin_pending') {
@@ -357,28 +274,19 @@ export default function ScheduleDashboard() {
       
       return matchesSearch && matchesItem && matchesCategory && matchesVenue && matchesStatus;
     });
-  }, [schedules, searchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, allRegistrations, allResults, allJudgeWorkflowStatuses]);
+  }, [schedules, searchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, workflowMap]);
 
   const exportSchedulePdf = async (mode: AdminSchedulePdfMode) => {
-    if (isLoadingParticipants || participantsError) {
-      const message = isLoadingParticipants ? 'Participant data is still loading. Retry the export when it finishes.' : 'Could not load participants. Retry before exporting the schedule PDF.';
-      if (Platform.OS === 'web') window.alert(message);
-      else Alert.alert('Export unavailable', message);
-      return;
-    }
-    if (isLoadingRegs || registrationsError) {
-      const message = isLoadingRegs ? 'Registration data is still loading. Retry the export when it finishes.' : 'Could not load all registrations. Retry before exporting the schedule PDF.';
-      if (Platform.OS === 'web') window.alert(message);
-      else Alert.alert('Export unavailable', message);
-      return;
-    }
+    if (exportLock.current) return;
     if (!filteredSchedules.length) {
       if (Platform.OS === 'web') window.alert('No schedules found for the current filters.');
       else Alert.alert('No schedules', 'No schedules found for the current filters.');
       return;
     }
     try {
+      exportLock.current = true;
       setIsExportingSchedule(true);
+      const [allRegistrations,participants,{downloadAdminSchedulePdf}]=await Promise.all([participantService.listRegistrationsByFestival<any>(festival!.id),participantService.listParticipants<any>(),import('../../../services/schedulePdfService')]);
       await downloadAdminSchedulePdf({
         mode,
         itemId: selectedItem,
@@ -394,13 +302,17 @@ export default function ScheduleDashboard() {
       if (Platform.OS === 'web') window.alert(error?.message || 'Unable to generate schedule PDF.');
       else Alert.alert('Export failed', error?.message || 'Unable to generate schedule PDF.');
     } finally {
+      exportLock.current = false;
       setIsExportingSchedule(false);
     }
   };
 
-  const exportBlankSchedule = () => {
+  const exportBlankSchedule = async () => {
+    if (exportLock.current) return;
     try {
+      exportLock.current = true;
       setIsExportingSchedule(true);
+      const {downloadBlankSchedulePdf}=await import('../../../services/schedulePdfService');
       downloadBlankSchedulePdf({
         festivalName: festival?.custom_name || (festival?.festival_year ? `Festival ${festival.festival_year}` : null),
         tenantName: tenant_id,
@@ -412,6 +324,7 @@ export default function ScheduleDashboard() {
       if (Platform.OS === 'web') window.alert(error?.message || 'Unable to generate blank schedule PDF.');
       else Alert.alert('Export failed', error?.message || 'Unable to generate blank schedule PDF.');
     } finally {
+      exportLock.current = false;
       setIsExportingSchedule(false);
     }
   };
@@ -458,7 +371,7 @@ export default function ScheduleDashboard() {
     }
   };
 
-  if (isLoadingSchedules || isLoadingVenues || isLoadingRegs || isLoadingFest || isLoadingItems) {
+  if (isLoadingSchedules || isLoadingVenues || isLoadingFest || isLoadingItems) {
     return (
       <View className="flex-1 bg-ssf-bg p-5">
         <SsfTableSkeleton rows={8} columns={6} />
@@ -473,12 +386,12 @@ export default function ScheduleDashboard() {
         <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
         <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{filteredSchedules.length} showing</Text>
       </View>
-        {registrationsError && <Text className="font-poppins text-sm text-core-danger-red-700 mb-4">Participant registrations could not be loaded. Assignment counts and status indicators may be incomplete.</Text>}
 
+      {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
+      {!!festival?.id && workflow.isPending && <Text className="font-poppins text-xs mb-2">Loading workflow…</Text>}
+      {workflow.isError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">{workflow.data ? 'Workflow refresh failed; showing the last update.' : 'Workflow could not be loaded.'}</Text><SsfButton label="Retry workflow" size="sm" variant="outline" onPress={()=>{void workflow.refetch({cancelRefetch:false});}} /></View>}
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
         <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>
-        {participantsError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Participant data could not be loaded for the schedule export.</Text><SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryParticipants(); }} /></View>}
-        {registrationsError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Registration data could not be loaded for the schedule export.</Text><SsfButton label="Retry registrations" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></View>}
         <View className="flex-row flex-wrap gap-2">
           {([
             ['master', 'Master Schedule'],
@@ -488,8 +401,8 @@ export default function ScheduleDashboard() {
             <TouchableOpacity
               key={mode}
               onPress={() => exportSchedulePdf(mode)}
-              disabled={isExportingSchedule || isLoadingParticipants || !!participantsError || isLoadingRegs || !!registrationsError}
-              className={`px-3 py-2 rounded-lg border ${isExportingSchedule || isLoadingParticipants || participantsError || isLoadingRegs || registrationsError ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
+              disabled={isExportingSchedule}
+              className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
             >
               <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : label}</Text>
             </TouchableOpacity>
@@ -951,8 +864,7 @@ export default function ScheduleDashboard() {
                   </TouchableOpacity>
                   <ScheduleWorkflowBadges
                     status={schedule.status}
-                    scheduleId={schedule.id}
-                    registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
+                    summary={workflowMap.get(schedule.id)}
                     isShuffleLocked={schedule.is_shuffle_locked}
                   />
                 </View>
@@ -1121,8 +1033,7 @@ export default function ScheduleDashboard() {
 
               <ScheduleWorkflowBadges 
                 status={schedule.status}
-                scheduleId={schedule.id} 
-                registrations={getRegistrationsForSchedule(allRegistrations, schedule)}
+                summary={workflowMap.get(schedule.id)}
                 isShuffleLocked={schedule.is_shuffle_locked}
                 compact
               />
@@ -1167,9 +1078,6 @@ export default function ScheduleDashboard() {
         )
       )}
       </ScrollView>
-      {/* AI Assistant temporarily disabled for architectural redesign
-      <AdminScheduleChatBot tenantId={tenant_id} festivalId={festival?.id} schedules={schedules} venues={venues} registrations={allRegistrations} results={allResults} judges={judges} workflowStatuses={allJudgeWorkflowStatuses} /> 
-      */}
     </>
   );
 }

@@ -13,7 +13,7 @@ export const usePublicCandidateProfile = (slug?: string | null) =>
     staleTime: 0,
   });
 
-export const useParticipants = (participantId?: string) => {
+export const useParticipants = (participantId?: string, options?: { loadList?: boolean; loadRegistrations?: boolean }) => {
   const queryClient = useQueryClient();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
@@ -24,7 +24,7 @@ export const useParticipants = (participantId?: string) => {
     // The user session identifies an authenticated request; row visibility
     // remains enforced by Supabase RLS and tenantId stays in the cache key.
     // Superadmin profiles may legitimately have no tenant_id.
-    enabled: !!userId,
+    enabled: !!userId && options?.loadList !== false,
   });
 
   const detailQuery = useQuery({
@@ -36,7 +36,7 @@ export const useParticipants = (participantId?: string) => {
   const registrationsQuery = useQuery({
     queryKey: ['participantRegistrations', participantId],
     queryFn: () => participantService.getParticipantRegistrations<any>(participantId!),
-    enabled: !!participantId,
+    enabled: !!participantId && options?.loadRegistrations !== false,
   });
 
   const useItemRegistrations = (itemId: string | undefined) => {
@@ -278,6 +278,9 @@ export const useParticipants = (participantId?: string) => {
     
     registrations: registrationsQuery.data || [],
     isLoadingRegistrations: registrationsQuery.isLoading,
+    registrationsError: registrationsQuery.error,
+    registrationsFetched: registrationsQuery.isFetched,
+    retryRegistrations: registrationsQuery.refetch,
     
     updateStatus: updateStatusMutation.mutateAsync,
     isUpdatingStatus: updateStatusMutation.isPending,

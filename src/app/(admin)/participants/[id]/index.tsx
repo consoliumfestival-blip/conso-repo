@@ -116,11 +116,16 @@ export default function ParticipantDetails() {
   const { width } = useWindowDimensions();
   const isDesktopProfile = width >= 1000;
   const goBack = useGoBack('/(admin)/participants');
+  const [eventsSectionExpanded, setEventsSectionExpanded] = useState(false);
   
   const {
     participant,
     isLoadingDetail,
     registrations: events,
+    isLoadingRegistrations,
+    registrationsError,
+    registrationsFetched,
+    retryRegistrations,
     updateStatus,
     updateParticipant,
     deleteParticipant,
@@ -133,7 +138,7 @@ export default function ParticipantDetails() {
     removeProfilePhoto,
     isUploadingProfilePhoto,
     isRemovingProfilePhoto,
-  } = useParticipants(participantId);
+  } = useParticipants(participantId, { loadList: false, loadRegistrations: eventsSectionExpanded });
 
   const { useActiveFestival } = useFestival();
   const { data: festival } = useActiveFestival();
@@ -161,7 +166,6 @@ export default function ParticipantDetails() {
     isDesktopProfile ? 'competition' : null,
   );
   const [publicSectionExpanded, setPublicSectionExpanded] = useState(false);
-  const [eventsSectionExpanded, setEventsSectionExpanded] = useState(isDesktopProfile);
   const [eventParticipationType, setEventParticipationType] = useState<'individual' | 'group'>('individual');
   const assignedItems = events.filter((event: any) =>
     (event.items?.participation_type === 'group' ? 'group' : 'individual') === eventParticipationType,
@@ -993,7 +997,7 @@ export default function ParticipantDetails() {
             <View className="ml-2.5">
               <Text className="font-poppins-bold text-base">Assigned Items</Text>
               <Text className="font-poppins text-[10px] text-ssf-text-muted">
-                {assignedItems.length} {eventParticipationType} {assignedItems.length === 1 ? 'item' : 'items'}
+                {!registrationsFetched || registrationsError ? 'Tap to view items' : `${assignedItems.length} ${eventParticipationType} ${assignedItems.length === 1 ? 'item' : 'items'}`}
               </Text>
             </View>
             <View className="ml-auto mr-3">
@@ -1015,7 +1019,11 @@ export default function ParticipantDetails() {
               compact
               accessibilityLabel="Filter assigned items by participation type"
             />
-            {assignedItems.length === 0 ? (
+            {isLoadingRegistrations ? (
+              <View className="flex-row items-center gap-x-2 py-2"><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading items...</Text></View>
+            ) : registrationsError ? (
+              <View className="flex-row items-center gap-x-2 py-2"><Text className="font-poppins text-xs text-ssf-text-muted">Unable to load items.</Text><TouchableOpacity accessibilityRole="button" onPress={() => { void retryRegistrations(); }}><Text className="font-poppins-bold text-xs text-ssf-primary">Retry</Text></TouchableOpacity></View>
+            ) : assignedItems.length === 0 ? (
               <View className="items-center rounded-xl border border-dashed border-core-border-slate-200 bg-core-surface-muted-slate-50 px-4 py-6">
                 <Trophy size={26} color={coreColor("#CBD5E1", 'text')} />
                 <Text className="mt-2 font-poppins-bold text-xs text-ssf-text-muted">

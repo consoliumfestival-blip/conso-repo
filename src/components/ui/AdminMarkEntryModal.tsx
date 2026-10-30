@@ -3,7 +3,7 @@ import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, TextInput } from 'react-native';
-import { X, Save, AlertTriangle, UserCircle } from 'lucide-react-native';
+import { X, AlertTriangle, UserCircle } from 'lucide-react-native';
 import { SsfButton } from './SsfButton';
 import { useJudges } from '../../core/hooks/useJudges';
 import { getScoringRulesForItem, formatCriteriaForUI, ScoringEntryMode } from '../../core/utils/scoringRules';
@@ -47,25 +47,36 @@ export function AdminMarkEntryModal({
   const [ruleError, setRuleError] = useState('');
   
   const [selectedJudgeId, setSelectedJudgeId] = useState<string | null>(null);
-  const [scores, setScores] = useState<Record<string, number>>({});
+  const [scoresByJudge, setScoresByJudge] = useState<Record<string, Record<string, number>>>({});
+  const [dirtyJudges, setDirtyJudges] = useState<string[]>([]);
+  const scores = selectedJudgeId ? scoresByJudge[selectedJudgeId] ?? {} : {};
   
   // Extract unique judges from assignedJudges or existing marks
   const judges = assignedJudges.length > 0 
     ? assignedJudges.map((j: any) => j.judge_id)
     : Array.from(new Set(existingMarks.map(m => m.judge_id)));
 
+  // Snapshot existing marks on open so background refetches cannot erase edits in progress.
   useEffect(() => {
     if (visible) {
       loadCriteria();
-      if (judges.length > 0) {
-        handleSelectJudge(judges[0]);
-      } else {
+      const judgeIds = judges.length > 0 ? judges : ['00000000-0000-0000-0000-000000000000'];
+      setScoresByJudge(Object.fromEntries(judgeIds.map(judgeId => {
+        const mark = existingMarks.find(m => m.judge_id === judgeId);
+        return [judgeId, mark ? mark.entry_mode_snapshot === 'total_only'
+          ? { total: Number(mark.total_mark ?? 0) }
+          : mark.criteria_scores || {} : {}];
+      })));
+      setDirtyJudges([]);
+      if (judges.length > 0) setSelectedJudgeId(judges[0]);
+      else {
         // If no judges exist, we shouldn't really be editing a mark, but we allow creating one?
         // Let's generate a pseudo UUID for an admin override if none exists.
         const mockJudgeId = '00000000-0000-0000-0000-000000000000';
-        handleSelectJudge(mockJudgeId);
+        setSelectedJudgeId(mockJudgeId);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const loadCriteria = async () => {
@@ -85,16 +96,6 @@ export function AdminMarkEntryModal({
 
   const handleSelectJudge = (judgeId: string) => {
     setSelectedJudgeId(judgeId);
-    const existingMark = existingMarks.find(m => m.judge_id === judgeId);
-    if (existingMark) {
-      if (existingMark.entry_mode_snapshot === 'total_only') {
-        setScores({ total: Number(existingMark.total_mark ?? 0) });
-      } else {
-        setScores(existingMark.criteria_scores || {});
-      }
-    } else {
-      setScores({});
-    }
   };
 
   const updateScore = (key: string, val: number, max: number) => {
@@ -102,37 +103,42 @@ export function AdminMarkEntryModal({
       if (Platform.OS === 'web') window.alert(`Maximum mark is ${max}`);
       return;
     }
-    setScores(prev => ({ ...prev, [key]: val }));
+    if (!selectedJudgeId) return;
+    setScoresByJudge(prev => ({ ...prev, [selectedJudgeId]: { ...prev[selectedJudgeId], [key]: val } }));
+    setDirtyJudges(prev => prev.includes(selectedJudgeId) ? prev : [...prev, selectedJudgeId]);
   };
 
-  const getTotal = () => {
+  const getTotal = (judgeScores = scores) => {
     return entryMode === 'total_only'
-      ? Number(scores.total ?? 0)
-      : Object.values(scores).reduce((a, b) => a + b, 0);
+      ? Number(judgeScores.total ?? 0)
+      : Object.values(judgeScores).reduce((a, b) => a + b, 0);
   };
 
   const handleSubmit = async () => {
     if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0) { Alert.alert('Scoring configuration required', 'Configure maximum marks first.'); return; }
-    if (!selectedJudgeId) return;
+    if (!selectedJudgeId || submitting || dirtyJudges.length === 0) return;
     setSubmitting(true);
     try {
-      const total = getTotal();
       const criteriaSnapshot = eventCriteria.map(c => ({
         key: c.key,
         label: c.label,
         max: c.max,
       }));
       
-      await adminUpsertMark({
-        scheduleId,
-        judgeId: selectedJudgeId,
-        registrationId,
-        criteriaScores: entryMode === 'total_only' ? {} : scores,
-        totalMark: total,
-        maxMark: eventTotalMarks,
-        criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [],
-        status: 'final',
-      });
+      for (const judgeId of dirtyJudges) {
+        const judgeScores = scoresByJudge[judgeId] ?? {};
+        const total = getTotal(judgeScores);
+        if (!Number.isFinite(total) || total < 0 || total > eventTotalMarks) {
+          throw new Error('Check the marks for each judge before saving.');
+        }
+        await adminUpsertMark({
+          scheduleId, judgeId, registrationId,
+          criteriaScores: entryMode === 'total_only' ? {} : judgeScores,
+          totalMark: total, maxMark: eventTotalMarks,
+          criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [], status: 'final',
+        });
+        setDirtyJudges(prev => prev.filter(id => id !== judgeId));
+      }
       
       if (Platform.OS === 'web') {
         window.alert('Mark updated successfully!');
@@ -142,9 +148,9 @@ export function AdminMarkEntryModal({
       onClose();
     } catch (err: any) {
       if (Platform.OS === 'web') {
-        window.alert(err.message);
+        window.alert(`${err.message} Saved judges remain saved; retry the remaining marks.`);
       } else {
-        Alert.alert('Error', err.message);
+        Alert.alert('Error', `${err.message} Saved judges remain saved; retry the remaining marks.`);
       }
     } finally {
       setSubmitting(false);
@@ -164,7 +170,7 @@ export function AdminMarkEntryModal({
               <Text className="font-poppins-bold text-base text-ui-text mt-1">{participantName}</Text>
               <Text className="font-poppins text-xs text-ui-text-muted">Code: {codeLetter}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} className="w-8 h-8 rounded-full bg-core-warning-soft-orange-100 items-center justify-center">
+            <TouchableOpacity onPress={onClose} disabled={submitting} className="w-8 h-8 rounded-full bg-core-warning-soft-orange-100 items-center justify-center">
               <X size={20} color={coreColor("#EA580C", 'warning')} />
             </TouchableOpacity>
           </View>
@@ -243,9 +249,9 @@ export function AdminMarkEntryModal({
               </View>
 
               <SsfButton 
-                label={submitting ? "Saving..." : "Save Admin Re-Entry"} 
+                label={submitting ? "Saving..." : `Save ${dirtyJudges.length} Judge${dirtyJudges.length === 1 ? '' : 's'}`}
                 onPress={handleSubmit} 
-                disabled={submitting} 
+                disabled={submitting || dirtyJudges.length === 0 || !!ruleError}
                 className="w-full bg-core-warning-action-orange-600"
               />
             </ScrollView>

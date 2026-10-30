@@ -974,17 +974,14 @@ export default function ResultsPage() {
         <DirectMarkEntryModal
           visible={true}
           onClose={() => setDirectEntryModal(null)}
-          onSave={(totalMark, maxMark) => {
+          onSave={(marks, maxMark) => {
              setDirectMarks(prev => {
                 const regState = prev[directEntryModal.regId] || { marks: {}, maxMark };
                 return {
                    ...prev,
                    [directEntryModal.regId]: {
                       ...regState,
-                      marks: {
-                         ...regState.marks,
-                         [directEntryModal.judgeIndex]: totalMark
-                      },
+                      marks: { ...regState.marks, ...marks },
                       maxMark
                    }
                 };
@@ -997,7 +994,8 @@ export default function ResultsPage() {
           itemNameMl={schedule.items?.item_name_ml}
           itemType={schedule.items?.type}
           judgeIndex={directEntryModal.judgeIndex}
-          initialTotal={directMarks[directEntryModal.regId]?.marks?.[directEntryModal.judgeIndex]}
+          judgeCount={expectedJudges}
+          initialMarks={directMarks[directEntryModal.regId]?.marks ?? {}}
         />
       )}
     </View>

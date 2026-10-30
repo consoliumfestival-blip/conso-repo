@@ -1,16 +1,15 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
-import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, Platform, TextInput } from 'react-native';
-import { X, Save, AlertTriangle, UserCircle } from 'lucide-react-native';
+import { X, UserCircle } from 'lucide-react-native';
 import { SsfButton } from './SsfButton';
 import { getScoringRulesForItem, formatCriteriaForUI, ScoringEntryMode } from '../../core/utils/scoringRules';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSave: (totalMark: number, maxMark: number) => void;
+  onSave: (marks: Record<number, number>, maxMark: number) => void;
   participantName: string;
   codeLetter: string;
   tenantId: string;
@@ -18,7 +17,8 @@ interface Props {
   itemNameMl: string;
   itemType: string;
   judgeIndex: number;
-  initialTotal?: number;
+  judgeCount: number;
+  initialMarks: Record<number, number>;
 }
 
 export function DirectMarkEntryModal({
@@ -32,7 +32,8 @@ export function DirectMarkEntryModal({
   itemNameMl,
   itemType,
   judgeIndex,
-  initialTotal,
+  judgeCount,
+  initialMarks,
 }: Props) {
   
   const [loading, setLoading] = useState(true);
@@ -41,18 +42,20 @@ export function DirectMarkEntryModal({
   const [eventTotalMarks, setEventTotalMarks] = useState(NaN);
   const [ruleError, setRuleError] = useState('');
   
-  const [scores, setScores] = useState<Record<string, number>>({});
+  const [selectedJudge, setSelectedJudge] = useState(judgeIndex);
+  const [scoresByJudge, setScoresByJudge] = useState<Record<number, Record<string, number>>>({});
+  const scores = scoresByJudge[selectedJudge] ?? {};
   
+  // Snapshot the selected registration's marks when this dialog opens.
   useEffect(() => {
     if (visible) {
       loadCriteria();
-      if (initialTotal !== undefined) {
-        setScores({ total: initialTotal });
-      } else {
-        setScores({});
-      }
+      setSelectedJudge(judgeIndex);
+      setScoresByJudge(Object.fromEntries(Object.entries(initialMarks).map(([index, total]) =>
+        [Number(index), { total }])));
     }
-  }, [visible, initialTotal]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, judgeIndex]);
 
   const loadCriteria = async () => {
     setLoading(true);
@@ -74,21 +77,31 @@ export function DirectMarkEntryModal({
       if (Platform.OS === 'web') window.alert(`Maximum mark is ${max}`);
       return;
     }
-    setScores(prev => ({ ...prev, [key]: val }));
+    setScoresByJudge(prev => {
+      const current = prev[selectedJudge] ?? {};
+      const criteria = { ...current };
+      delete criteria.total;
+      return { ...prev, [selectedJudge]: key === 'total' ? { total: val } : { ...criteria, [key]: val } };
+    });
   };
 
-  const getTotal = () => {
+  const getTotal = (judgeScores = scores) => {
     return entryMode === 'total_only'
-      ? Number(scores.total ?? 0)
-      : Object.values(scores).reduce((a, b) => a + b, 0);
+      ? Number(judgeScores.total ?? 0)
+      : Object.values(judgeScores).reduce((a, b) => a + b, 0);
   };
 
   const handleSubmit = () => {
     if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0) {
       Alert.alert('Scoring configuration required', 'Configure maximum marks for this competition first.'); return;
     }
-    const total = getTotal();
-    onSave(total, eventTotalMarks);
+    const marks = Object.fromEntries(Object.entries(scoresByJudge)
+      .filter(([, judgeScores]) => Object.keys(judgeScores).length > 0)
+      .map(([index, judgeScores]) => [Number(index), getTotal(judgeScores)]));
+    if (Object.values(marks).some(total => !Number.isFinite(total) || total < 0 || total > eventTotalMarks)) {
+      Alert.alert('Invalid marks', 'Check each judge mark before saving.'); return;
+    }
+    onSave(marks, eventTotalMarks);
     onClose();
   };
 
@@ -101,7 +114,7 @@ export function DirectMarkEntryModal({
               <View className="flex-row items-center gap-2">
                 <UserCircle size={16} color={coreColor("#2563EB", 'info')} />
                 <Text className="font-poppins-bold text-core-info-blue-700 uppercase text-[10px] tracking-wider">
-                  Direct Entry - Judge {judgeIndex}
+                  Direct Entry - Judge {selectedJudge}
                 </Text>
               </View>
               <Text className="font-poppins-bold text-base text-ui-text mt-1">{participantName}</Text>
@@ -117,6 +130,15 @@ export function DirectMarkEntryModal({
             <View className="p-8 items-center"><Text>Loading rules...</Text></View>
           ) : (
             <ScrollView className="p-4" keyboardShouldPersistTaps="handled">
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <View className="flex-row gap-2">
+                  {Array.from({ length: judgeCount }, (_, index) => index + 1).map(index => (
+                    <TouchableOpacity key={index} accessibilityRole="button" accessibilityLabel={`Judge ${index}`} onPress={() => setSelectedJudge(index)} className={`rounded-lg border px-3 py-2 ${selectedJudge === index ? 'bg-core-info-soft-blue-50 border-core-info-blue-700' : 'bg-core-surface-white border-ui-border'}`}>
+                      <Text className="font-poppins-bold text-xs text-ui-text">Judge {index}{scoresByJudge[index] && Object.keys(scoresByJudge[index]).length > 0 ? ' ✓' : ''}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
               
               {/* Mark Entry UI */}
               <View className="bg-core-surface-muted-slate-50 rounded-xl border border-core-border-slate-200 p-4 mb-4">
@@ -163,8 +185,9 @@ export function DirectMarkEntryModal({
               </View>
 
               <SsfButton 
-                label="Save Marks" 
+                label="Save Entered Marks"
                 onPress={handleSubmit} 
+                disabled={loading || !!ruleError || Object.keys(scoresByJudge).length === 0}
                 className="w-full bg-core-primary-blue-600"
               />
             </ScrollView>

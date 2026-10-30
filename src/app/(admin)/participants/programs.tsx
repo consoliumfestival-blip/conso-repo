@@ -64,6 +64,7 @@ export default function ProgramsScreen() {
   const { data: festivalRegistrations = [], isLoading: registrationsLoading, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
   const registrationsUnavailable = registrationsLoading || !!registrationsError;
   const [section, setSection] = useState<'individual' | 'group'>(typeof edit === 'string' ? 'group' : 'individual');
+  const [cardsWidth, setCardsWidth] = useState(0);
   const [editingEntry, setEditingEntry] = useState<GeneralTeamEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<GeneralTeamEntry | null>(null);
   const [activeCard, setActiveCard] = useState<{ item: ProgramItem; category: string; kind: 'participant' | 'general_team' } | null>(null);
@@ -337,7 +338,9 @@ export default function ProgramsScreen() {
   const sectionLabel = section === 'individual' ? 'Individual' : 'Group items';
   const isPhone = width < 600;
   const hasActiveFilters = typeFilter !== 'All types' || stageFilter !== 'All stages' || statusFilter !== 'All statuses' || categoryFilter !== 'All categories';
-  const cardWidth = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
+  const cardsAvailableWidth = cardsWidth || width - 32;
+  const cardColumns = isPhone ? 1 : Math.min(6, Math.max(2, Math.floor((cardsAvailableWidth + 12) / 222)));
+  const cardWidth = isPhone ? '100%' : (cardsAvailableWidth - (cardColumns - 1) * 12) / cardColumns;
   const pickerOptions = filterPicker ? filterOptions[filterPicker] : [];
   const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : filterPicker === 'status' ? statusFilter : categoryFilter;
   const setPickerValue = (value: string) => {
@@ -380,13 +383,13 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View className="mt-3 flex-row flex-wrap justify-between gap-y-3">{programCards.map(card => {
+      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} className="mt-3 flex-row flex-wrap gap-3">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.kind === 'participant' && card.item.max_participants_per_team != null
           ? Array.from(itemAssignmentsByTeam.get(card.item.id)?.values() ?? []).filter(count => count > card.item.max_participants_per_team!).length
           : 0;
-        return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className="rounded-xl border border-ui-border bg-core-surface-white p-3 shadow-sm">
-          <View className="min-h-[76px] flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete && !statuses.error ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete && !statuses.error ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{statuses.error ? 'Status unavailable' : complete ? 'Complete' : 'Open'}</Text></View></View>
+        return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className={`rounded-xl border border-ui-border bg-core-surface-white shadow-sm ${isPhone ? 'p-3' : 'p-2.5'}`}>
+          <View className={`${isPhone ? 'min-h-[76px]' : 'min-h-[60px]'} flex-row items-start justify-between gap-2`}><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete && !statuses.error ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete && !statuses.error ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{statuses.error ? 'Status unavailable' : complete ? 'Complete' : 'Open'}</Text></View></View>
           <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
           {!registrationsUnavailable && overLimitTeams > 0 && <View className="mb-2 flex-row items-start gap-2 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-2"><AlertTriangle size={14} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[11px] text-core-danger-red-700">{overLimitTeams} team(s) exceed the limit of {card.item.max_participants_per_team}. Existing assignments can be deselected in View participants.</Text></View>}
           <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : registrationsUnavailable ? 'Assignments unavailable' : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>

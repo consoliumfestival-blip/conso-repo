@@ -21,7 +21,14 @@ export default function FullScheduleScreen() {
   useEffect(() => {
     if (!context) return;
     teamLeaderPortalService.getSchedule().then((data) => {
-      setSchedule(data);
+      const now = Date.now();
+      setSchedule([...data].sort((a, b) => {
+        const aUpcoming = a.end_time ? new Date(a.end_time).getTime() >= now : !!a.start_time && new Date(a.start_time).getTime() >= now;
+        const bUpcoming = b.end_time ? new Date(b.end_time).getTime() >= now : !!b.start_time && new Date(b.start_time).getTime() >= now;
+        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+        const startOrder = (a.start_time ?? '').localeCompare(b.start_time ?? '');
+        return (aUpcoming ? startOrder : -startOrder) || a.schedule_id.localeCompare(b.schedule_id);
+      }));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [context]);

@@ -57,9 +57,17 @@ export default function ScheduleScreen() {
   }
   if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
 
-  const filtered = filter === 'all' ? schedule : schedule.filter((s) => filter === 'ongoing'
+  const filteredSchedules = filter === 'all' ? schedule : schedule.filter((s) => filter === 'ongoing'
     ? normalizeScheduleLifecycleStatus(s.event_status) === 'ongoing'
     : normalizeScheduleLifecycleStatus(s.event_status) === filter);
+  const now = Date.now();
+  const filtered = [...filteredSchedules].sort((a, b) => {
+    const aUpcoming = a.end_time ? new Date(a.end_time).getTime() >= now : !!a.start_time && new Date(a.start_time).getTime() >= now;
+    const bUpcoming = b.end_time ? new Date(b.end_time).getTime() >= now : !!b.start_time && new Date(b.start_time).getTime() >= now;
+    if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+    const startOrder = (a.start_time ?? '').localeCompare(b.start_time ?? '');
+    return (aUpcoming ? startOrder : -startOrder) || a.schedule_id.localeCompare(b.schedule_id);
+  });
   const exportMyTeamSchedule = async () => {
     if (!context || !schedule.length) return;
     try {

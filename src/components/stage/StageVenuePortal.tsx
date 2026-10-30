@@ -209,7 +209,8 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
       || (selectedStatus === 'codes_pending' && codesPending)
       || (selectedStatus === 'codes_done' && codesDone);
     return categoryMatch && textMatch && statusMatch;
-  });
+  }).sort((a, b) =>
+    (b.start_time ?? '').localeCompare(a.start_time ?? '') || a.id.localeCompare(b.id));
 
   const openSchedule = (schedule: StageScheduleRow, nextMode: PortalMode) => {
     setSelectedScheduleId(schedule.id);

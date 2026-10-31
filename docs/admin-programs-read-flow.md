@@ -8,7 +8,7 @@ This flow applies to the Admin **Programs** page. It keeps the existing assignme
 
 `programs.tsx` calls `admin_program_cards_page` through `programReadService.page`. The database applies search, type, stage, completion, and category filters before applying the fixed 20-card page window. The response also contains the unfiltered section totals, completion total, filter options, and assignment/over-limit summaries for the returned cards.
 
-The phone layout remains one column. Tablet and desktop card widths use a 231px minimum target and the available content width to calculate columns; there is no fixed maximum column count. The 20-card page limit still applies to the result set.
+The phone layout remains one column. Tablet and desktop card widths use a 280px minimum target and the available content width to calculate columns; there is no fixed maximum column count. Cards are square when space permits, while cards with team-limit warnings can grow to fit their content. The 20-card page limit still applies to the result set.
 
 ## Detail reads
 

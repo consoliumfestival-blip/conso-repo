@@ -40,6 +40,7 @@ import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 import { PwaInstallCard } from '@/components/ui/PwaInstallCard';
 import { ScheduleLifecycleActions } from '@/components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
+import { substageForChest } from '@/core/utils/scheduleSubstages';
 
 type PortalRegistration = StageRegistrationRow & {
   entry_kind?: string;
@@ -117,6 +118,9 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   const [mode, setMode] = React.useState<PortalMode>('checkin');
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [entrySearch, setEntrySearch] = React.useState('');
+  const [selectedSubstageId, setSelectedSubstageId] = React.useState('all');
+  const [showCancelled, setShowCancelled] = React.useState(false);
+  const [showUnverified, setShowUnverified] = React.useState(false);
   const [editingEntry, setEditingEntry] = React.useState<PortalRegistration | null>(null);
   const [letterDraft, setLetterDraft] = React.useState('');
   const [letterError, setLetterError] = React.useState('');
@@ -137,12 +141,27 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     retry: false,
     staleTime: 0,
   });
+  const substagesQuery = useQuery({
+    queryKey: ['stage-venue-substages', venueId, pin, selectedScheduleId],
+    queryFn: () => stageManagementService.getVenueScheduleSubstages(venueId, pin, selectedScheduleId!),
+    enabled: !!pin && !!selectedScheduleId && venueQuery.isSuccess,
+    retry: false,
+    staleTime: 15_000,
+  });
+  const checkinStateQuery = useQuery({
+    queryKey: ['stage-venue-checkin-state', venueId, pin, selectedScheduleId],
+    queryFn: () => stageManagementService.getVenueScheduleCheckinState(venueId, pin, selectedScheduleId!),
+    enabled: !!pin && !!selectedScheduleId && venueQuery.isSuccess,
+    retry: false,
+    staleTime: 10_000,
+  });
   React.useEffect(() => applyPortalPwaMetadata('stage', venueQuery.data?.venue.name, venueId), [venueQuery.data?.venue.name, venueId]);
   const schedules = venueQuery.data?.schedules ?? [];
   const registrations = (venueQuery.data?.registrations ?? []) as PortalRegistration[];
   const refresh = async () => {
     await venueQuery.refetch();
     if (optimizedRead && selectedScheduleId) await detailQuery.refetch();
+    if (selectedScheduleId) await checkinStateQuery.refetch();
   };
   useCodeLetterUpdates(pin ? `venue:${venueId}` : null, refresh);
   const selectedSchedule = schedules.find((row) => row.id === selectedScheduleId) ?? null;
@@ -216,11 +235,17 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     setSelectedScheduleId(schedule.id);
     setMode(nextMode);
     setEntrySearch('');
+    setSelectedSubstageId('all');
     setLetterError('');
   };
 
   const drawCodeLetters = async () => {
     if (!selectedSchedule) return;
+    const requiredStages = substagesQuery.data?.map((stage) => stage.id) ?? [];
+    if (!requiredStages.every((stageId) => checkinStateQuery.data?.submitted_stage_ids.includes(stageId))) {
+      message('Check-in pending', 'Submit every sub-stage before drawing code letters.');
+      return;
+    }
     const eligible = eventRegistrations(selectedSchedule.id).filter((row) => row.status !== 'rejected' && row.is_verified);
     const overwrite = eligible.length > 0 && eligible.every((row) => !!row.code_letter);
     if (overwrite) {
@@ -239,20 +264,24 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     );
   };
 
-  const updateRegistration = (entry: PortalRegistration, action: 'verify' | 'unverify' | 'reject' | 'restore') => {
+  const updateRegistration = (entry: PortalRegistration, action: 'verify' | 'unverify') => {
     if (!selectedSchedule) return;
     const execute = () => runMutation(
       entry.id,
       () => stageManagementService.venuePortalUpdateRegistration(venueId, pin, selectedSchedule.id, entry.id, action),
       action === 'verify' ? 'Entry checked in.'
-        : action === 'unverify' ? 'Check-in removed.'
-          : action === 'reject' ? 'Entry rejected.' : 'Entry restored.',
+        : 'Check-in removed.',
     );
-    if (action === 'reject') {
-      confirmAction('Reject entry?', `Reject ${entry.participant_name || 'this entry'}?`, () => { void execute(); });
-    } else {
-      void execute();
-    }
+    void execute();
+  };
+
+  const cancelEntry = (entry: PortalRegistration) => {
+    if (!selectedSchedule) return;
+    const stageId = substageForChest(substagesQuery.data ?? [], entry.participant_chest_number)?.id ?? '';
+    confirmAction('Cancel check-in?', `${entry.participant_name || 'This entry'} will remain registered and can be verified later.`, () => {
+      void runMutation(entry.id, () => stageManagementService.venueScheduleCheckinAction(
+        venueId, pin, selectedSchedule.id, stageId, 'cancel_one', entry.id), 'Check-in cancelled.');
+    });
   };
 
   const saveLetter = async () => {
@@ -331,14 +360,31 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
 
   if (selectedSchedule) {
     if (optimizedRead && detailQuery.isLoading) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator size="large" color={coreColor("#0F766E", 'primaryText')} /></View>;
+    if (substagesQuery.isLoading) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator size="large" color={coreColor("#0F766E", 'primaryText')} /></View>;
+    if (checkinStateQuery.isLoading) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator size="large" color={coreColor("#0F766E", 'primaryText')} /></View>;
+    if (substagesQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><SsfCard className="w-full max-w-md p-5"><Text className="font-poppins-bold text-lg text-ssf-text">Unable to load sub-stages</Text><Text className="mt-2 font-poppins text-sm text-ssf-text-muted">{(substagesQuery.error as Error).message}</Text><SsfButton label="Retry" onPress={() => { void substagesQuery.refetch(); }} className="mt-4" /></SsfCard></View>;
+    if (checkinStateQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><SsfCard className="w-full max-w-md p-5"><Text className="font-poppins-bold text-lg text-ssf-text">Unable to load check-in state</Text><SsfButton label="Retry" onPress={() => { void checkinStateQuery.refetch(); }} className="mt-4" /></SsfCard></View>;
     if (optimizedRead && detailQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><SsfCard className="w-full max-w-md p-5"><Text className="font-poppins-bold text-lg text-ssf-text">Unable to load event</Text><Text className="mt-2 font-poppins text-sm text-ssf-text-muted">{(detailQuery.error as Error).message}</Text><SsfButton label="Retry" onPress={() => { void detailQuery.refetch(); }} className="mt-4" /><SsfButton label="Back to events" variant="outline" onPress={() => setSelectedScheduleId(null)} className="mt-2" /></SsfCard></View>;
-    const allEntries = eventRegistrations(selectedSchedule.id);
+    const allEntries = eventRegistrations(selectedSchedule.id).filter((entry) => entry.status !== 'rejected');
+    const substages = substagesQuery.data ?? [];
+    const cancelledIds = new Set(checkinStateQuery.data?.cancelled_ids ?? []);
+    const submittedStageIds = new Set(checkinStateQuery.data?.submitted_stage_ids ?? []);
     const orderedEntries = mode === 'codes'
-      ? [...allEntries].sort((left, right) => left.code_letter && right.code_letter
-        ? compareCodeLetters(left.code_letter, right.code_letter)
-        : left.code_letter ? -1 : right.code_letter ? 1 : (left.participant_chest_number || '').localeCompare(right.participant_chest_number || ''))
+      ? [...allEntries].sort((left, right) => {
+        if (substages.length) {
+          const leftIndex = substages.findIndex((stage) => stage.id === substageForChest(substages, left.participant_chest_number)?.id);
+          const rightIndex = substages.findIndex((stage) => stage.id === substageForChest(substages, right.participant_chest_number)?.id);
+          if (leftIndex !== rightIndex) return leftIndex - rightIndex;
+        }
+        return left.code_letter && right.code_letter
+          ? compareCodeLetters(left.code_letter, right.code_letter)
+          : left.code_letter ? -1 : right.code_letter ? 1
+            : (left.participant_chest_number || '').localeCompare(right.participant_chest_number || '');
+      })
       : allEntries;
     const visibleEntries = orderedEntries.filter((entry) => {
+      if (mode === 'checkin' && selectedSubstageId !== 'all'
+        && substageForChest(substages, entry.participant_chest_number)?.id !== selectedSubstageId) return false;
       const query = entrySearch.trim().toLocaleLowerCase();
       if (!query) return true;
       return [entry.participant_name, entry.participant_chest_number, entry.organisation_name,
@@ -350,6 +396,13 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     const verifiedCount = activeEntries.filter((entry) => entry.is_verified).length;
     const isLocked = selectedSchedule.is_shuffle_locked;
     const allVerified = activeEntries.length > 0 && verifiedCount === activeEntries.length;
+    const stageEntries = activeEntries.filter((entry) => !substages.length || selectedSubstageId === 'all'
+      || substageForChest(substages, entry.participant_chest_number)?.id === selectedSubstageId);
+    const actionStageId = substages.length ? selectedSubstageId : '';
+    const unresolvedCount = stageEntries.filter((entry) => !entry.is_verified && !cancelledIds.has(entry.id)).length;
+    const canActOnStage = !substages.length || selectedSubstageId !== 'all';
+    const allStagesSubmitted = (substages.length ? substages.map((stage) => stage.id) : [''])
+      .every((stageId) => submittedStageIds.has(stageId));
 
     return (
       <View className="flex-1 bg-ssf-bg">
@@ -371,6 +424,52 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
             <View className="mb-3 flex-row items-center gap-2 rounded-xl border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 p-3">
               <Lock size={17} color={coreColor("#B45309", 'warning')} />
               <Text className="flex-1 font-poppins-bold text-xs text-core-warning-amber-800">Event is locked. Check-in and code letters are read-only.</Text>
+            </View>
+          ) : null}
+
+          {mode === 'checkin' && substages.length ? (
+            <View className="mb-3">
+              <SsfSelectMenu value={selectedSubstageId} onValueChange={setSelectedSubstageId}
+                placeholder="All sub-stages" options={[
+                  { label: 'All sub-stages', value: 'all' },
+                  ...substages.map((stage) => ({ label: stage.name, value: stage.id })),
+                ]} />
+              <Text className="mt-2 font-poppins text-xs text-ssf-text-muted">{substages.filter((stage) => submittedStageIds.has(stage.id)).length}/{substages.length} sub-stages submitted</Text>
+            </View>
+          ) : null}
+
+          {mode === 'checkin' && canActOnStage && !isLocked ? (
+            <View className="mb-3 flex-row flex-wrap gap-2">
+              <SsfButton label={`Cancel remaining (${unresolvedCount})`} variant="outline"
+                disabled={!unresolvedCount || !!busyId} onPress={() => confirmAction('Cancel unverified entries?',
+                  `Cancel ${unresolvedCount} unverified entries in this stage? Their registrations remain active.`, () => {
+                    void runMutation(`cancel-${actionStageId}`, () => stageManagementService.venueScheduleCheckinAction(
+                      venueId, pin, selectedSchedule.id, actionStageId, 'cancel_remaining'), 'Remaining check-ins cancelled.');
+                  })} />
+              <SsfButton label={submittedStageIds.has(actionStageId) ? 'Submitted' : 'Submit stage'}
+                disabled={!!busyId || !!unresolvedCount || submittedStageIds.has(actionStageId)}
+                onPress={() => { void runMutation(`submit-${actionStageId}`, () => stageManagementService.venueScheduleCheckinAction(
+                  venueId, pin, selectedSchedule.id, actionStageId, 'submit'), 'Stage check-in submitted.'); }} />
+            </View>
+          ) : null}
+          {mode === 'checkin' ? (
+            <View className="mb-3">
+              {allStagesSubmitted ? <TouchableOpacity accessibilityRole="button" onPress={() => setShowUnverified(!showUnverified)}>
+                <Text className="font-poppins-bold text-sm text-ui-primary-text">All unverified ({activeEntries.filter((entry) => !entry.is_verified).length})</Text>
+              </TouchableOpacity> : null}
+              {showUnverified && allStagesSubmitted ? activeEntries.filter((entry) => !entry.is_verified).map((entry) => (
+                <Text key={entry.id} className="mt-1 font-poppins text-xs text-ssf-text-muted">
+                  {substageForChest(substages, entry.participant_chest_number)?.name ?? 'Main stage'} · {entry.participant_name} · {entry.participant_chest_number}
+                </Text>
+              )) : null}
+              <TouchableOpacity accessibilityRole="button" onPress={() => setShowCancelled(!showCancelled)}>
+                <Text className="font-poppins-bold text-sm text-ui-primary-text">All cancelled ({cancelledIds.size})</Text>
+              </TouchableOpacity>
+              {showCancelled ? allEntries.filter((entry) => cancelledIds.has(entry.id)).map((entry) => (
+                <Text key={entry.id} className="mt-1 font-poppins text-xs text-ssf-text-muted">
+                  {substageForChest(substages, entry.participant_chest_number)?.name ?? 'Main stage'} · {entry.participant_name} · {entry.participant_chest_number}
+                </Text>
+              )) : null}
             </View>
           ) : null}
 
@@ -423,13 +522,19 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
             </SsfCard>
           ) : isMobile ? (
             <View className="mb-6 gap-y-2">
-              {visibleEntries.map((entry) => {
+              {visibleEntries.map((entry, index) => {
                 const rejected = entry.status === 'rejected';
                 const eligible = entry.status !== 'rejected' && !!entry.is_verified;
                 const saving = busyId === entry.id;
+                const stageName = substageForChest(substages, entry.participant_chest_number)?.name ?? 'Unassigned';
+                const previousStageName = index > 0
+                  ? substageForChest(substages, visibleEntries[index - 1].participant_chest_number)?.name ?? 'Unassigned' : null;
                 const statusStyle = rejected ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50 text-core-danger-red-700' : entry.is_verified ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 text-core-success-emerald-700' : 'border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 text-core-warning-amber-800';
                 return (
-                  <SsfCard key={entry.id} className={`p-3 ${rejected ? 'opacity-70' : ''}`}>
+                  <React.Fragment key={entry.id}>
+                  {mode === 'codes' && substages.length && stageName !== previousStageName
+                    ? <Text className="mt-2 font-poppins-bold text-sm text-ssf-text">{stageName}</Text> : null}
+                  <SsfCard className={`p-3 ${rejected ? 'opacity-70' : ''}`}>
                     <View className="flex-row items-start gap-3">
                       <View className={`h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${rejected ? 'border-core-danger-soft-red-300 bg-core-danger-soft-red-50' : entry.is_verified ? 'border-core-success-green-500 bg-core-success-soft-green-50' : 'border-core-border-gray-300 bg-core-surface-muted-gray-50'}`}>
                         <Text numberOfLines={1} className={`font-poppins-black text-[10px] ${rejected ? 'text-core-danger-red-600' : entry.is_verified ? 'text-core-success-green-700' : 'text-core-text-gray-600'}`}>{entry.participant_chest_number || '?'}</Text>
@@ -441,7 +546,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                       </View>
                       {mode === 'checkin' ? (
                         <View className={`min-h-7 shrink-0 items-center justify-center rounded-full border px-2 ${statusStyle.split(' ').slice(0, 2).join(' ')}`}>
-                          <Text className={`font-poppins-bold text-[9px] ${statusStyle.split(' ')[2]}`}>{rejected ? 'Rejected' : entry.is_verified ? 'Verified' : 'Pending'}</Text>
+                          <Text className={`font-poppins-bold text-[9px] ${statusStyle.split(' ')[2]}`}>{rejected ? 'Removed in Programs' : entry.is_verified ? 'Verified' : cancelledIds.has(entry.id) ? 'Cancelled' : 'Pending'}</Text>
                         </View>
                       ) : (
                         <View className={`h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border px-2 ${eligible ? 'border-core-primary-soft-teal-100 bg-core-primary-soft-teal-50' : 'border-core-border-slate-200 bg-core-surface-muted-slate-50'}`}>
@@ -453,11 +558,11 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                       !isLocked ? (
                         <View className="mt-3 flex-row gap-2">
                           {rejected ? (
-                            <PortalAction label="Restore" mobile disabled={saving} onPress={() => updateRegistration(entry, 'restore')} />
+                            <Text className="font-poppins text-xs text-ssf-text-muted">Manage in Programs</Text>
                           ) : (
                             <>
                               <PortalAction label={entry.is_verified ? 'Undo' : 'Verify'} mobile disabled={saving} onPress={() => updateRegistration(entry, entry.is_verified ? 'unverify' : 'verify')} />
-                              <PortalAction label="Reject" mobile danger disabled={saving} onPress={() => updateRegistration(entry, 'reject')} />
+                              {!entry.is_verified && !cancelledIds.has(entry.id) ? <PortalAction label="Cancel" mobile disabled={saving} onPress={() => cancelEntry(entry)} /> : null}
                             </>
                           )}
                         </View>
@@ -469,17 +574,24 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                       </View>
                     )}
                   </SsfCard>
+                  </React.Fragment>
                 );
               })}
             </View>
           ) : (
           <SsfCard className="mb-6 overflow-hidden p-0">
-            {visibleEntries.map((entry) => {
+            {visibleEntries.map((entry, index) => {
               const rejected = entry.status === 'rejected';
               const eligible = entry.status !== 'rejected' && !!entry.is_verified;
               const saving = busyId === entry.id;
+              const stageName = substageForChest(substages, entry.participant_chest_number)?.name ?? 'Unassigned';
+              const previousStageName = index > 0
+                ? substageForChest(substages, visibleEntries[index - 1].participant_chest_number)?.name ?? 'Unassigned' : null;
               return (
-                <View key={entry.id} className={`flex-row items-center justify-between gap-3 border-b border-core-border-gray-100 px-3 py-2.5 ${rejected ? 'opacity-60' : ''}`}>
+                <React.Fragment key={entry.id}>
+                {mode === 'codes' && substages.length && stageName !== previousStageName
+                  ? <Text className="bg-ssf-bg px-3 py-2 font-poppins-bold text-sm text-ssf-text">{stageName}</Text> : null}
+                <View className={`flex-row items-center justify-between gap-3 border-b border-core-border-gray-100 px-3 py-2.5 ${rejected ? 'opacity-60' : ''}`}>
                   <View className="flex-1 flex-row items-center">
                     <View className={`mr-3 h-10 w-10 items-center justify-center rounded-full border-2 ${rejected ? 'border-core-danger-red-400 bg-core-danger-soft-red-50' : entry.is_verified ? 'border-core-success-green-500 bg-core-success-soft-green-50' : 'border-core-border-gray-300 bg-core-surface-muted-gray-50'}`}>
                       <Text numberOfLines={1} className={`font-poppins-black text-[10px] ${rejected ? 'text-core-danger-red-600' : entry.is_verified ? 'text-core-success-green-700' : 'text-core-text-gray-600'}`}>{entry.participant_chest_number || '?'}</Text>
@@ -493,12 +605,12 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                   {mode === 'checkin' ? (
                     <View className="flex-row items-center gap-1.5">
                       {entry.is_verified ? <CheckCircle2 size={16} color={coreColor("#16A34A", 'success')} /> : null}
-                      <Text className="mr-1 font-poppins-bold text-[10px] text-ssf-text-muted">{rejected ? 'Rejected' : entry.is_verified ? 'Verified' : 'Pending'}</Text>
+                      <Text className="mr-1 font-poppins-bold text-[10px] text-ssf-text-muted">{rejected ? 'Removed in Programs' : entry.is_verified ? 'Verified' : cancelledIds.has(entry.id) ? 'Cancelled' : 'Pending'}</Text>
                       {!isLocked ? rejected
-                        ? <PortalAction label="Restore" disabled={saving} onPress={() => updateRegistration(entry, 'restore')} />
+                        ? <Text className="font-poppins text-xs text-ssf-text-muted">Manage in Programs</Text>
                         : <>
                           <PortalAction label={entry.is_verified ? 'Undo' : 'Verify'} disabled={saving} onPress={() => updateRegistration(entry, entry.is_verified ? 'unverify' : 'verify')} />
-                          <PortalAction label="Reject" danger disabled={saving} onPress={() => updateRegistration(entry, 'reject')} />
+                          {!entry.is_verified && !cancelledIds.has(entry.id) ? <PortalAction label="Cancel" disabled={saving} onPress={() => cancelEntry(entry)} /> : null}
                         </>
                         : null}
                     </View>
@@ -512,6 +624,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                     </View>
                   )}
                 </View>
+                </React.Fragment>
               );
             })}
           </SsfCard>

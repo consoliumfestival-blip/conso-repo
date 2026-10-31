@@ -13,6 +13,8 @@ import { useFestival } from '../../../core/hooks/useFestival';
 import { ArrowLeft, AlertTriangle } from 'lucide-react-native';
 
 import { SmartTimeInput } from '@/components/ui/SmartTimeInput';
+import { SubstageEditor } from '@/components/schedule/SubstageEditor';
+import { categorySubstageDefault, normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 
 export default function CreateSchedule() {
   const router = useRouter();
@@ -27,6 +29,8 @@ export default function CreateSchedule() {
 
   const [itemId, setItemId] = useState('');
   const [venueId, setVenueId] = useState('');
+  const [substages, setSubstages] = useState<ScheduleSubstage[]>([]);
+  const selectedItem = items?.find((item: any) => item.id === itemId);
   
   const [startDate, setStartDate] = useState(() => {
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -97,6 +101,8 @@ export default function CreateSchedule() {
     if (!festival?.id || isLoadingSchedules) {
       return showAlert('Please wait', 'Schedule data is still loading. Try again in a moment.');
     }
+    const stageError = validateSubstages(substages);
+    if (stageError) return showAlert('Invalid sub-stages', stageError);
 
     const conflicts = checkForConflicts();
     if (conflicts) {
@@ -113,7 +119,7 @@ export default function CreateSchedule() {
     try {
       const latestSchedules = await refetchSchedules();
       if (latestSchedules.error) throw latestSchedules.error;
-      if ((latestSchedules.data ?? []).some((schedule: any) =>
+      if (((latestSchedules.data ?? []) as any[]).some((schedule: any) =>
         schedule.festival_id === festival.id && schedule.item_id === itemId)) {
         return showAlert('Already scheduled', 'This competition is already scheduled for this festival. Delete its existing schedule before creating another.');
       }
@@ -127,6 +133,7 @@ export default function CreateSchedule() {
         end_time: endDateTime.toISOString(),
         status: 'scheduled',
         expected_judge_count: judgeCount,
+        ...(supportsSubstages(selectedItem) ? { substage_config: normalizedSubstages(substages) } : {}),
         ...(isPublicVisible ? { is_public_visible: true } : {}),
       });
       goBack();
@@ -162,7 +169,11 @@ export default function CreateSchedule() {
           ) : (
             <SsfSelectMenu
               value={itemId}
-              onValueChange={setItemId}
+              onValueChange={(nextId) => {
+                setItemId(nextId);
+                const nextItem = items?.find((item: any) => item.id === nextId);
+                setSubstages(nextItem ? categorySubstageDefault(schedules, items ?? [], nextItem) : []);
+              }}
               placeholder="-- Choose an Item --"
               searchable={true}
               searchPlaceholder="Search by name or code..."
@@ -226,6 +237,8 @@ export default function CreateSchedule() {
           </View>
           <Switch accessibilityLabel="Show schedule publicly" value={isPublicVisible} onValueChange={setIsPublicVisible} />
         </View>
+
+        {supportsSubstages(selectedItem) ? <SubstageEditor stages={substages} onChange={setSubstages} /> : null}
 
         {/* Judge Count Selector */}
         <View>

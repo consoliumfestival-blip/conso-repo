@@ -12,6 +12,8 @@ import { useSchedule } from '../../../../core/hooks/useSchedule';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { ArrowLeft, AlertTriangle } from 'lucide-react-native';
 import { SmartTimeInput } from '@/components/ui/SmartTimeInput';
+import { SubstageEditor } from '@/components/schedule/SubstageEditor';
+import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 
 export default function EditSchedule() {
   const { id } = useLocalSearchParams();
@@ -27,6 +29,7 @@ export default function EditSchedule() {
 
   const [itemId, setItemId] = useState('');
   const [venueId, setVenueId] = useState('');
+  const [substages, setSubstages] = useState<ScheduleSubstage[]>([]);
   const [startDate, setStartDate] = useState('');
   const [startTimeStr, setStartTimeStr] = useState('09:00');
   const [endDate, setEndDate] = useState('');
@@ -38,6 +41,7 @@ export default function EditSchedule() {
     if (schedule) {
       setItemId(schedule.item_id || '');
       setVenueId(schedule.venue_id || '');
+      setSubstages(schedule.substage_config ?? []);
       
       if (schedule.start_time) {
         const startDt = new Date(schedule.start_time);
@@ -111,6 +115,12 @@ export default function EditSchedule() {
     if (startDateTime >= endDateTime) {
       return showAlert('Error', 'End time must be after start time');
     }
+    const selectedItem = items?.find((item: any) => item.id === itemId);
+    const stageError = validateSubstages(substages);
+    if (stageError) return showAlert('Invalid sub-stages', stageError);
+    if (substages.length && !supportsSubstages(selectedItem)) {
+      return showAlert('Invalid sub-stages', 'Sub-stages are only available for category individual competitions.');
+    }
 
     const conflicts = checkForConflicts();
     if (conflicts) {
@@ -132,6 +142,7 @@ export default function EditSchedule() {
           end_time: endDateTime.toISOString(),
           status: schedule?.status || 'scheduled',
           expected_judge_count: judgeCount,
+          substage_config: normalizedSubstages(substages),
           ...(schedule.is_public_visible !== undefined ? { is_public_visible: isPublicVisible } : {}),
         }
       });
@@ -231,6 +242,9 @@ export default function EditSchedule() {
           </View>
           <Switch accessibilityLabel="Show schedule publicly" value={isPublicVisible} onValueChange={setIsPublicVisible} />
         </View>
+
+        {supportsSubstages(items?.find((item: any) => item.id === itemId))
+          ? <SubstageEditor stages={substages} onChange={setSubstages} /> : null}
 
         {/* Judge Count Selector */}
         <View className="pt-1">

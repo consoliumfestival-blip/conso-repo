@@ -18,6 +18,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../../components/ui/SsfCard';
 import { SsfButton } from '../../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../../core/hooks/useStageManagement';
+import { stageManagementService } from '@/services/stageManagementService';
+import { useQuery } from '@tanstack/react-query';
+import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
+import { substageForChest } from '@/core/utils/scheduleSubstages';
 import { useAuthStore } from '../../../../core/store/authStore';
 import {
   ArrowLeft,
@@ -39,6 +43,21 @@ export default function CheckIn() {
   const stage = useStageManagement({ scheduleId });
   const schedules = stage.schedules;
   const schedule = schedules.find((s: any) => s.id === scheduleId);
+  const [selectedSubstageId, setSelectedSubstageId] = useState('all');
+  const [showCancelled, setShowCancelled] = useState(false);
+  const substagesQuery = useQuery({
+    queryKey: ['stage-admin-substages', scheduleId],
+    queryFn: () => stageManagementService.getScheduleSubstages(scheduleId!),
+    enabled: !!scheduleId, staleTime: 15_000,
+  });
+  const checkinStateQuery = useQuery({
+    queryKey: ['stage-admin-checkin-state', scheduleId],
+    queryFn: () => stageManagementService.getScheduleCheckinState(scheduleId!),
+    enabled: !!scheduleId, staleTime: 10_000,
+  });
+  const substages = substagesQuery.data ?? [];
+  const cancelledIds = new Set(checkinStateQuery.data?.cancelled_ids ?? []);
+  const submittedStageIds = new Set(checkinStateQuery.data?.submitted_stage_ids ?? []);
   const registrations = stage.registrations;
   const isLoadingSchedules = stage.contextQuery.isLoading || stage.schedulesQuery.isLoading;
   const isLoadingRegs = stage.registrationsQuery.isLoading;
@@ -155,7 +174,7 @@ export default function CheckIn() {
       }
 
       const chest = parsed.chest || parsed.pid;
-      const reg = findParticipantQrEntry(registrations ?? [], parsed);
+      const reg = findParticipantQrEntry((registrations ?? []).filter((row: any) => row.status !== 'rejected'), parsed);
       if (reg) {
         handleVerify(reg.id);
       } else {
@@ -170,6 +189,7 @@ export default function CheckIn() {
     setIsUpdating(true);
     try {
       await stage.updateRegistration({ scheduleId, registrationId: regId, action: 'verify' });
+      await checkinStateQuery.refetch();
       setVerifyModal({ reg: null, visible: false });
       refetch();
     } catch (error: any) {
@@ -183,6 +203,7 @@ export default function CheckIn() {
     setIsUpdating(true);
     try {
       await stage.updateRegistration({ scheduleId, registrationId: regId, action: 'unverify' });
+      await checkinStateQuery.refetch();
       refetch();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to unverify participant');
@@ -191,50 +212,40 @@ export default function CheckIn() {
     }
   };
 
-  const handleReject = async (regId: string) => {
+  const handleCancel = async (regId: string) => {
     setIsUpdating(true);
     try {
-      await stage.updateRegistration({ scheduleId, registrationId: regId, action: 'reject' });
+      const reg = registrations.find((row: any) => row.id === regId);
+      const stageId = substages.length ? substageForChest(substages, reg?.participants?.chest_number)?.id : '';
+      if (stageId == null) throw new Error('This chest number is outside every sub-stage.');
+      await stageManagementService.scheduleCheckinAction(scheduleId!, stageId, 'cancel_one', regId);
       setVerifyModal({ reg: null, visible: false });
+      await checkinStateQuery.refetch();
       refetch();
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert('Error: ' + error.message);
-      else Alert.alert('Error', error.message || 'Failed to reject participant');
+      else Alert.alert('Error', error.message || 'Failed to cancel check-in');
     } finally {
       setIsUpdating(false);
     }
   };
 
-  const handleRestore = async (regId: string) => {
-    setIsUpdating(true);
-    try {
-      await stage.updateRegistration({ scheduleId, registrationId: regId, action: 'restore' });
-      refetch();
-    } catch (error: any) {
-      if (Platform.OS === 'web') window.alert('Error: ' + error.message);
-      else Alert.alert('Error', error.message || 'Failed to restore participant');
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleRejectAllUnverified = async () => {
-    const unverifiedRegs = activeRegistrations.filter((r: any) => !r.is_verified);
+  const handleCancelAllUnverified = async () => {
+    if (substages.length && selectedSubstageId === 'all') return;
+    const unverifiedRegs = activeRegistrations.filter((r: any) => !r.is_verified && !cancelledIds.has(r.id)
+      && (!substages.length || substageForChest(substages, r.participants?.chest_number)?.id === selectedSubstageId));
     if (unverifiedRegs.length === 0) return;
 
-    const msg = `Are you sure you want to reject all ${unverifiedRegs.length} unverified participants? This will exclude them from the draw.`;
+    const msg = `Cancel ${unverifiedRegs.length} unverified check-ins in this stage? Registrations remain active.`;
     const action = async () => {
       setIsUpdating(true);
       try {
-        await Promise.all(
-          unverifiedRegs.map((r: any) =>
-            stage.updateRegistration({ scheduleId, registrationId: r.id, action: 'reject' })
-          )
-        );
+        await stageManagementService.scheduleCheckinAction(scheduleId!, substages.length ? selectedSubstageId : '', 'cancel_remaining');
+        await checkinStateQuery.refetch();
         refetch();
       } catch (error: any) {
         if (Platform.OS === 'web') window.alert('Error: ' + error.message);
-        else Alert.alert('Error', error.message || 'Failed to reject participants');
+        else Alert.alert('Error', error.message || 'Failed to cancel check-ins');
       } finally {
         setIsUpdating(false);
       }
@@ -243,15 +254,18 @@ export default function CheckIn() {
     if (Platform.OS === 'web') {
       if (window.confirm(msg)) action();
     } else {
-      Alert.alert('Confirm Bulk Reject', msg, [
+      Alert.alert('Confirm Bulk Cancel', msg, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Reject All', style: 'destructive', onPress: action }
+        { text: 'Cancel unverified', onPress: action }
       ]);
     }
   };
 
   const filteredRegs = registrations?.filter(
     (r: any) => {
+      if (r.status === 'rejected') return false;
+      if (substages.length && selectedSubstageId !== 'all'
+        && substageForChest(substages, r.participants?.chest_number)?.id !== selectedSubstageId) return false;
       if (!searchQuery || searchQuery.trim() === '') return true;
       const nameMatch = r.participants?.name ? r.participants.name.toLowerCase().includes(searchQuery.toLowerCase()) : false;
       const chestMatch = r.participants?.chest_number ? String(r.participants.chest_number).toLowerCase().includes(searchQuery.toLowerCase()) : false;
@@ -266,6 +280,23 @@ export default function CheckIn() {
   const verifiedCount = activeRegistrations.filter((r: any) => r.is_verified).length || 0;
   const totalCount = activeRegistrations.length || 0;
   const allVerified = totalCount > 0 && verifiedCount === totalCount;
+  const allSubmitted = (substages.length ? substages.map((stage) => stage.id) : [''])
+    .every((stageId) => submittedStageIds.has(stageId));
+  const selectedStageEntries = activeRegistrations.filter((reg: any) => !substages.length || selectedSubstageId === 'all'
+    || substageForChest(substages, reg.participants?.chest_number)?.id === selectedSubstageId);
+  const unresolvedCount = selectedStageEntries.filter((reg: any) => !reg.is_verified && !cancelledIds.has(reg.id)).length;
+  const submitStage = async () => {
+    if (substages.length && selectedSubstageId === 'all') return;
+    setIsUpdating(true);
+    try {
+      await stageManagementService.scheduleCheckinAction(scheduleId!, substages.length ? selectedSubstageId : '', 'submit');
+      await checkinStateQuery.refetch();
+    } catch (error: any) {
+      Alert.alert('Unable to submit stage', error.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (isLoadingSchedules || isLoadingRegs) {
     return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
@@ -280,6 +311,8 @@ export default function CheckIn() {
   };
 
   const isShuffleLocked = schedule?.is_shuffle_locked;
+  if (substagesQuery.isLoading || checkinStateQuery.isLoading) return <ActivityIndicator color={coreColor('#1B6B3A', 'primaryText')} />;
+  if (substagesQuery.isError || checkinStateQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg p-6"><Text className="font-poppins text-sm text-ssf-text">Could not load stage check-in state.</Text><TouchableOpacity onPress={() => { void substagesQuery.refetch(); void checkinStateQuery.refetch(); }}><Text className="mt-3 font-poppins-bold text-ui-primary-text">Retry</Text></TouchableOpacity></View>;
 
   if (!schedule) {
     return (
@@ -321,6 +354,29 @@ export default function CheckIn() {
           </View>
         )}
 
+        {substages.length ? <View className="mb-3"><SsfSelectMenu value={selectedSubstageId}
+          onValueChange={setSelectedSubstageId} placeholder="All sub-stages"
+          options={[{ label: 'All sub-stages', value: 'all' }, ...substages.map((stage) => ({ label: stage.name, value: stage.id }))]} /></View> : null}
+        {!isShuffleLocked && (!substages.length || selectedSubstageId !== 'all') ? <View className="mb-3 flex-row flex-wrap gap-2">
+          <TouchableOpacity accessibilityRole="button" onPress={handleCancelAllUnverified} disabled={isUpdating || !unresolvedCount}
+            className="h-11 items-center justify-center rounded-lg border border-ui-border px-3">
+            <Text className="font-poppins-bold text-xs text-ssf-text">Cancel remaining ({unresolvedCount})</Text>
+          </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" onPress={submitStage}
+            disabled={isUpdating || !!unresolvedCount || submittedStageIds.has(substages.length ? selectedSubstageId : '')}
+            className="h-11 items-center justify-center rounded-lg bg-ssf-primary px-3">
+            <Text className="font-poppins-bold text-xs text-core-on-primary-white">{submittedStageIds.has(substages.length ? selectedSubstageId : '') ? 'Submitted' : 'Submit stage'}</Text>
+          </TouchableOpacity>
+        </View> : null}
+        <TouchableOpacity accessibilityRole="button" onPress={() => setShowCancelled(!showCancelled)} className="mb-2">
+          <Text className="font-poppins-bold text-sm text-ui-primary-text">All cancelled ({cancelledIds.size})</Text>
+        </TouchableOpacity>
+        {showCancelled ? activeRegistrations.filter((reg: any) => cancelledIds.has(reg.id)).map((reg: any) => (
+          <Text key={reg.id} className="mb-1 font-poppins text-xs text-ssf-text-muted">
+            {substageForChest(substages, reg.participants?.chest_number)?.name ?? 'Main stage'} · {reg.participants?.name} · {reg.participants?.chest_number}
+          </Text>
+        )) : null}
+
         <SsfCard className="mb-3 p-3">
           <View className="mb-2 flex-row items-center justify-between">
             <View className="flex-row items-center gap-2"><Users size={17} color={coreColor("#1B6B3A", 'primaryText')} /><Text className="font-poppins-bold text-sm text-ssf-text">Verified</Text></View>
@@ -329,21 +385,16 @@ export default function CheckIn() {
           <View className="h-2 w-full overflow-hidden rounded-full bg-core-surface-muted-gray-100">
             <View className="h-2 rounded-full bg-ssf-primary" style={{ width: totalCount > 0 ? `${(verifiedCount / totalCount) * 100}%` : '0%' }} />
           </View>
-          {allVerified ? (
+          {(substages.length ? allSubmitted : allVerified || allSubmitted) ? (
             <View className="mt-3 rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 p-2.5">
-              <View className="flex-row items-center gap-2"><ShieldCheck size={17} color={coreColor("#16A34A", 'success')} /><Text className="flex-1 font-poppins-bold text-xs text-core-success-green-800">All participants verified</Text></View>
+              <View className="flex-row items-center gap-2"><ShieldCheck size={17} color={coreColor("#16A34A", 'success')} /><Text className="flex-1 font-poppins-bold text-xs text-core-success-green-800">All stages submitted</Text></View>
               <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/code-letter` as any)} className="mt-2 h-11 flex-row items-center justify-center rounded-lg bg-ssf-primary px-3">
                 <Text className="font-poppins-bold text-xs text-core-on-primary-white">Start Draw →</Text>
               </TouchableOpacity>
             </View>
           ) : totalCount > 0 ? (
             <View className="mt-3 gap-2">
-              <Text className="font-poppins-bold text-xs text-core-warning-amber-700">{totalCount - verifiedCount} participants remaining unverified.</Text>
-              {!isShuffleLocked ? (
-                <TouchableOpacity accessibilityRole="button" onPress={handleRejectAllUnverified} disabled={isUpdating} className={`h-11 items-center justify-center rounded-lg border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-3 ${isUpdating ? 'opacity-60' : ''}`}>
-                  <Text className="font-poppins-bold text-xs text-core-danger-red-700">Reject unverified participants</Text>
-                </TouchableOpacity>
-              ) : null}
+              <Text className="font-poppins-bold text-xs text-core-warning-amber-700">{activeRegistrations.filter((reg: any) => !reg.is_verified && !cancelledIds.has(reg.id)).length} participants remain unverified.</Text>
             </View>
           ) : null}
         </SsfCard>
@@ -399,14 +450,12 @@ export default function CheckIn() {
                       {reg.participants?.organisations?.name ? <Text numberOfLines={1} className="mt-1 font-poppins text-[11px] text-core-info-blue-700">{reg.participants.organisations.name}</Text> : null}
                     </View>
                     <View className={`min-h-7 shrink-0 items-center justify-center rounded-full border px-2 ${badge.split(' ').slice(0, 2).join(' ')}`}>
-                      <Text className={`font-poppins-bold text-[9px] ${badge.split(' ')[2]}`}>{isRejected ? 'Rejected' : verified ? 'Verified' : 'Pending'}</Text>
+                      <Text className={`font-poppins-bold text-[9px] ${badge.split(' ')[2]}`}>{verified ? 'Verified' : cancelledIds.has(reg.id) ? 'Cancelled' : 'Pending'}</Text>
                     </View>
                   </View>
                   {!isShuffleLocked ? (
                     isRejected ? (
-                      <TouchableOpacity accessibilityRole="button" onPress={() => handleRestore(reg.id)} disabled={isUpdating} className={`mt-3 h-11 items-center justify-center rounded-lg border border-core-border-slate-200 bg-core-surface-muted-slate-50 ${isUpdating ? 'opacity-60' : ''}`}>
-                        <Text className="font-poppins-bold text-xs text-core-text-slate-700">Restore participant</Text>
-                      </TouchableOpacity>
+                      <Text className="mt-3 font-poppins text-xs text-ssf-text-muted">Manage in Programs</Text>
                     ) : verified ? (
                       <TouchableOpacity accessibilityRole="button" onPress={() => handleUnverify(reg.id)} disabled={isUpdating} className={`mt-3 h-11 flex-row items-center justify-center gap-2 rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 ${isUpdating ? 'opacity-60' : ''}`}>
                         <CheckCircle2 size={16} color={coreColor("#16A34A", 'success')} /><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Undo verification</Text>
@@ -472,7 +521,7 @@ export default function CheckIn() {
               style={{ width: totalCount > 0 ? `${(verifiedCount / totalCount) * 100}%` : '0%' }}
             />
           </View>
-          {allVerified ? (
+          {(substages.length ? allSubmitted : allVerified || allSubmitted) ? (
             <View className="mt-3 flex-row justify-between items-center">
               <View className="flex-row items-center gap-x-1">
                 <ShieldCheck size={16} color={coreColor("#16A34A", 'success')} />
@@ -490,12 +539,6 @@ export default function CheckIn() {
                 <Text className="font-poppins-bold text-core-warning-amber-700 text-xs">
                   {totalCount - verifiedCount} participants remaining unverified.
                 </Text>
-                <SsfButton
-                  label="Reject Unverified"
-                  size="sm"
-                  onPress={handleRejectAllUnverified}
-                  className="bg-core-danger-action-red-600 border-core-danger-red-600"
-                />
               </View>
             )
           )}
@@ -566,7 +609,7 @@ export default function CheckIn() {
                           </Text>
                           {isRejected && (
                             <View className="bg-core-danger-soft-red-100 border border-core-danger-soft-red-200 px-1.5 py-0.5 rounded">
-                              <Text className="text-[8px] font-poppins-bold text-core-danger-red-600 uppercase">Rejected</Text>
+                              <Text className="text-[8px] font-poppins-bold text-core-danger-red-600 uppercase">Removed in Programs</Text>
                             </View>
                           )}
                         </View>
@@ -588,13 +631,7 @@ export default function CheckIn() {
 
                     {/* Verify/Restore toggle */}
                     {isRejected ? (
-                      <TouchableOpacity
-                        disabled={isUpdating || isShuffleLocked}
-                        onPress={() => handleRestore(reg.id)}
-                        className={`flex-row items-center gap-x-1 px-3 py-1.5 rounded-full border bg-core-surface-muted-slate-50 border-core-border-slate-200 ${isShuffleLocked ? 'opacity-50' : ''}`}
-                      >
-                        <Text className="font-poppins-bold text-xs text-core-text-slate-600">Restore</Text>
-                      </TouchableOpacity>
+                      <Text className="font-poppins text-xs text-ssf-text-muted">Manage in Programs</Text>
                     ) : (
                       <TouchableOpacity
                         disabled={isUpdating || isShuffleLocked}
@@ -756,14 +793,14 @@ export default function CheckIn() {
               <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
                 <TouchableOpacity
                   disabled={isUpdating}
-                  onPress={() => handleReject(verifyModal.reg.id)}
+                  onPress={() => handleCancel(verifyModal.reg.id)}
                   style={{
                     flex: 1, borderWidth: 2, borderColor: coreColor('#EF4444', 'border'),
                     borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                   }}
                 >
                   <XCircle size={18} color={coreColor("#EF4444", 'danger')} />
-                  <Text style={{ color: coreColor('#EF4444', 'danger'), fontWeight: '700' }}>Reject</Text>
+                  <Text style={{ color: coreColor('#EF4444', 'danger'), fontWeight: '700' }}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   disabled={isUpdating}

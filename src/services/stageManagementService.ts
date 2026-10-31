@@ -1,5 +1,6 @@
 import { supabase } from '../core/config/supabase';
 import type { ScheduleLifecycleStatus } from '../core/utils/scheduleLifecycle';
+import type { ScheduleSubstage } from '../core/utils/scheduleSubstages';
 
 export type StageManagementContext = {
   tenant_id: string;
@@ -69,6 +70,9 @@ export type StageRegistrationRow = {
   organisation_type: string | null;
 };
 
+export type ScheduleCheckinState = { cancelled_ids: string[]; submitted_stage_ids: string[] };
+export type ScheduleCheckinAction = 'cancel_one' | 'cancel_remaining' | 'submit';
+
 const throwIfError = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
 };
@@ -80,6 +84,50 @@ const throwIfPortalError = (data: unknown) => {
 };
 
 export const stageManagementService = {
+  async getScheduleCheckinState(scheduleId: string): Promise<ScheduleCheckinState> {
+    const { data, error } = await supabase.rpc('get_admin_schedule_checkin_state', { p_schedule_id: scheduleId });
+    throwIfError(error);
+    return data as ScheduleCheckinState;
+  },
+
+  async getVenueScheduleCheckinState(venueId: string, pin: string, scheduleId: string): Promise<ScheduleCheckinState> {
+    const { data, error } = await supabase.rpc('get_venue_schedule_checkin_state', {
+      p_venue_id: venueId, p_pin: pin, p_schedule_id: scheduleId,
+    });
+    throwIfError(error);
+    return data as ScheduleCheckinState;
+  },
+
+  async scheduleCheckinAction(scheduleId: string, stageId: string, action: ScheduleCheckinAction, registrationId?: string) {
+    const { data, error } = await supabase.rpc('admin_schedule_checkin_action', {
+      p_schedule_id: scheduleId, p_stage_id: stageId, p_action: action, p_registration_id: registrationId ?? null,
+    });
+    throwIfError(error);
+    return data;
+  },
+
+  async venueScheduleCheckinAction(venueId: string, pin: string, scheduleId: string, stageId: string,
+    action: ScheduleCheckinAction, registrationId?: string) {
+    const { data, error } = await supabase.rpc('venue_schedule_checkin_action', {
+      p_venue_id: venueId, p_pin: pin, p_schedule_id: scheduleId, p_stage_id: stageId,
+      p_action: action, p_registration_id: registrationId ?? null,
+    });
+    throwIfError(error);
+    return data;
+  },
+  async getScheduleSubstages(scheduleId: string): Promise<ScheduleSubstage[]> {
+    const { data, error } = await supabase.rpc('get_admin_schedule_substages', { p_schedule_id: scheduleId });
+    throwIfError(error);
+    return (data as ScheduleSubstage[] | null) ?? [];
+  },
+
+  async getVenueScheduleSubstages(venueId: string, pin: string, scheduleId: string): Promise<ScheduleSubstage[]> {
+    const { data, error } = await supabase.rpc('get_venue_schedule_substages', {
+      p_venue_id: venueId, p_pin: pin, p_schedule_id: scheduleId,
+    });
+    throwIfError(error);
+    return (data as ScheduleSubstage[] | null) ?? [];
+  },
   async getContext(tenantId?: string | null): Promise<StageManagementContext | null> {
     const { data, error } = await supabase.rpc('get_stage_management_context');
     const rpcError = error as any;

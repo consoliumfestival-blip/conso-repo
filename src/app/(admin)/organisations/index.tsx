@@ -2,7 +2,7 @@ import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Clipboard } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Clipboard, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfInput } from '../../../components/ui/SsfInput';
@@ -14,6 +14,8 @@ import { FEATURE_FLAGS } from '../../../core/config/features';
 
 export default function SubOrganisationsManager() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const isPhone = width < 640;
   
   const { 
     childOrganisations: orgs, 
@@ -341,9 +343,9 @@ export default function SubOrganisationsManager() {
         </ScrollView>
       </Animated.View>
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: ui.colors.surface, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 24 }}>
+      <Modal visible={modalVisible} transparent animationType={isPhone ? 'slide' : 'fade'} onRequestClose={() => !isCreating && setModalVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: isPhone ? 'flex-end' : 'center', alignItems: 'center', padding: isPhone ? 0 : 24 }}>
+          <View style={{ width: isPhone ? width : Math.min(width - 48, 640), maxHeight: height - (isPhone ? 24 : 48), backgroundColor: ui.colors.surface, borderTopLeftRadius: isPhone ? 24 : 16, borderTopRightRadius: isPhone ? 24 : 16, borderBottomLeftRadius: isPhone ? 0 : 16, borderBottomRightRadius: isPhone ? 0 : 16, padding: isPhone ? 20 : 24, paddingBottom: isPhone && Platform.OS === 'ios' ? 40 : isPhone ? 24 : 24 }}>
             <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Team</Text>
             
             <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 13, marginBottom: 16 }}>

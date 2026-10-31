@@ -432,7 +432,7 @@ export default function ProgramsScreen() {
     </Modal>
 
     <Modal visible={!!itemToDeactivate} transparent animationType="fade" onRequestClose={() => !deactivating && setItemToDeactivate(null)}>
-      <View className="flex-1 justify-center bg-core-surface-strong-black/40 p-4"><View className="rounded-xl bg-core-surface-white p-5">
+      <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-4"><View style={{ width: Math.min(width - 32, 520), maxHeight: height - 40 }} className="rounded-xl bg-core-surface-white p-5">
         <Text className="font-poppins-bold text-base text-ui-text">Deactivate program?</Text>
         <Text className="mt-2 font-poppins text-sm text-ui-text-muted">“{itemToDeactivate?.item_name_en || itemToDeactivate?.item_code}” will be removed from the active program list. Its item record and existing history will not be deleted.</Text>
         {!!notice && <Text className="mt-2 font-poppins text-xs text-core-danger-red-700">{notice}</Text>}

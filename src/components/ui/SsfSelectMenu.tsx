@@ -101,7 +101,7 @@ export function SsfSelectMenu({
     options.length * 40 + options.filter((option) => option.separatorBefore).length * 9 + (showSearch ? 58 : 12),
   );
   const menuWidth = Math.min(
-    viewportWidth - 24,
+    Math.max(0, viewportWidth - 24),
     Math.max(anchor?.width ?? width ?? 0, minMenuWidth),
   );
   const menuLeft = Math.max(
@@ -122,6 +122,10 @@ export function SsfSelectMenu({
   const menuTop = openAbove
     ? Math.max(12, (anchor?.y ?? 12) - estimatedMenuHeight - 5)
     : (anchor?.y ?? 12) + (anchor?.height ?? 0) + 5;
+  const tabletViewport = viewportWidth >= 600 && viewportWidth < 1024;
+  const safeMenuLeft = tabletViewport
+    ? Math.max(12, Math.min(menuLeft, viewportWidth - menuWidth - 12))
+    : menuLeft;
 
   return (
     <>
@@ -159,7 +163,7 @@ export function SsfSelectMenu({
               style={[
                 styles.menu,
                 {
-                  left: menuLeft,
+                  left: safeMenuLeft,
                   top: menuTop,
                   width: menuWidth,
                   maxHeight: visibleMenuHeight,
@@ -303,6 +307,7 @@ const styles = StyleSheet.create({
     color: ui.colors.text,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
+    outlineStyle: 'none',
   },
   emptyText: {
     paddingHorizontal: 14,

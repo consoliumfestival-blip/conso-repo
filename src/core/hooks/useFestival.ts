@@ -163,6 +163,8 @@ export const useFestival = () => {
       await festivalSettingsService.updateCompetitionItem({ ...input, festivalId });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: query => query.queryKey[0] === 'program-cards' && query.queryKey[2] === festivalId });
+      queryClient.invalidateQueries({ predicate: query => query.queryKey[0] === 'program-detail' && query.queryKey[2] === festivalId });
       queryClient.invalidateQueries({ queryKey: ['active-items', festivalId] });
       queryClient.invalidateQueries({ queryKey: ['items', festivalId] });
       queryClient.invalidateQueries({ queryKey: ['selectable-items', festivalId] });
@@ -179,6 +181,8 @@ export const useFestival = () => {
       await festivalSettingsService.applyItemChanges(festivalId, activateCodes, deactivateCodes, itemRecords);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ predicate: query => query.queryKey[0] === 'program-cards' && query.queryKey[2] === festivalId });
+      queryClient.invalidateQueries({ predicate: query => query.queryKey[0] === 'program-detail' && query.queryKey[2] === festivalId });
       queryClient.invalidateQueries({ queryKey: ['active-items', festivalId] });
       queryClient.invalidateQueries({ queryKey: ['items', festivalId] });
       queryClient.invalidateQueries({ queryKey: ['selectable-items', festivalId] });

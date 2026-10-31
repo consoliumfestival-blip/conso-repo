@@ -12,26 +12,22 @@ import { GroupEntryDeleteDialog } from '../../../components/participants/GroupEn
 import { TeamProgramProgressModal } from '../../../components/participants/TeamProgramProgressModal';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useParticipants } from '../../../core/hooks/useParticipants';
+import { useCodeLetterUpdates } from '../../../core/hooks/useCodeLetterUpdates';
 import { useAuthStore } from '../../../core/store/authStore';
 import { supabase } from '../../../core/config/supabase';
 import { formatGeneralEntryError, GeneralTeamEntry, generalEntryService, getGeneralTeamSelectionError } from '../../../services/generalEntryService';
 import { invalidateGeneralMembership } from '../../../core/utils/invalidateGeneralMembership';
-import { isGroupCompetition, matchesCompetitionCategory, programIntakeComplete } from '../../../core/utils/groupParticipation';
+import { invalidateCodeLetters } from '../../../core/utils/invalidateCodeLetters';
+import { matchesCompetitionCategory } from '../../../core/utils/groupParticipation';
+import { programReadService, programCacheOptions, programDetailCacheOptions, type ProgramItem, type ProgramCard } from '../../../services/programReadService';
 import { isGeneralCategoryCode } from '../../../core/utils/generalCategory';
 
-type ProgramItem = { id: string; item_code: string; item_name_en?: string; item_name_ml?: string; category_codes?: string[] | string | null; participation_type?: string; item_type?: string | null; max_participants_per_team?: number | null; gender?: string | null; is_active?: boolean; group_min_members?: number | null; group_max_members?: number | null };
-type IntakeStatus = { item_id: string; category_code: string; entry_kind: 'participant' | 'general_team'; is_complete: boolean };
-const generalCodes = new Set(['GN', 'GENERAL']);
 
 function normalizedCategory(code: string) {
   const normalized = code.trim().toUpperCase();
   return isGeneralCategoryCode(normalized) ? 'GENERAL' : normalized;
 }
 
-function codesFor(item: ProgramItem) {
-  return (Array.isArray(item.category_codes) ? item.category_codes : item.category_codes ? [item.category_codes] : [])
-    .map(code => String(code).trim().toUpperCase()).filter(Boolean);
-}
 
 export default function ProgramsScreen() {
   const router = useRouter();
@@ -39,38 +35,23 @@ export default function ProgramsScreen() {
   const openedEditRef = useRef<string | null>(null);
   const { width, height } = useWindowDimensions();
   const queryClient = useQueryClient();
-  const { role, is_superadmin, tenant_id } = useAuthStore();
-  const { useActiveFestival, useItems, useApplyItemChanges } = useFestival();
+  const { role, is_superadmin, tenant_id, user } = useAuthStore();
+  const { useActiveFestival, useApplyItemChanges } = useFestival();
   const { data: festival, isLoading: festivalLoading } = useActiveFestival();
   const visibilityTenantId = tenant_id ?? festival?.tenant_id ?? null;
-  const visibleOrganisations = useQuery({
-    queryKey: ['program-visible-organisations', visibilityTenantId],
-    enabled: !!visibilityTenantId,
-    queryFn: async () => {
-      const { data, error: visibilityError } = await supabase.rpc('get_visible_organisations', {
-        p_tenant_id: visibilityTenantId!,
-      });
-      if (visibilityError) throw new Error(visibilityError.message);
-      return (data ?? []) as { id: string; tenant_id: string }[];
-    },
-  });
-  const visibleOrganisationIds = useMemo(
-    () => new Set((visibleOrganisations.data ?? []).map(organisation => organisation.id)),
-    [visibleOrganisations.data],
-  );
-  const { data: items = [], isLoading: itemsLoading, error: itemsError, refetch: retryItems } = useItems(festival?.id);
   const applyItemChanges = useApplyItemChanges(festival?.id);
-  const { participants, isLoadingList: participantsLoading, listError: participantsError, retryList: retryParticipants, registerParticipant, deleteRegistration, useFestivalRegistrations } = useParticipants();
-  const { data: festivalRegistrations = [], isLoading: registrationsLoading, error: registrationsError, refetch: retryRegistrations } = useFestivalRegistrations(festival?.id);
-  const registrationsUnavailable = registrationsLoading || !!registrationsError;
+  const { registerParticipant, deleteRegistration } = useParticipants(undefined, { loadList: false, loadRegistrations: false });
   const [section, setSection] = useState<'individual' | 'group'>(typeof edit === 'string' ? 'group' : 'individual');
   const [cardsWidth, setCardsWidth] = useState(0);
   const [editingEntry, setEditingEntry] = useState<GeneralTeamEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<GeneralTeamEntry | null>(null);
-  const [activeCard, setActiveCard] = useState<{ item: ProgramItem; category: string; kind: 'participant' | 'general_team' } | null>(null);
+  const [activeCard, setActiveCard] = useState<ProgramCard | null>(null);
   const [cardModalMode, setCardModalMode] = useState<'details' | 'assign'>('assign');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [search, setSearch] = useState('');
+  const [programSearch, setProgramSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
   const [participantCategoryFilter, setParticipantCategoryFilter] = useState('All categories');
   const [typeFilter, setTypeFilter] = useState('All types');
   const [stageFilter, setStageFilter] = useState('All stages');
@@ -85,52 +66,86 @@ export default function ProgramsScreen() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   useEffect(() => { if (typeof edit === 'string') setSection('group'); }, [edit]);
+  useEffect(() => {
+    setPage(1); setActiveCard(null); setEditingEntry(null); setDeletingEntry(null); setSelectedIds([]);
+  }, [visibilityTenantId, festival?.id, user?.id]);
 
-  const statuses = useQuery({
-    queryKey: ['program-intake-statuses', festival?.id],
-    enabled: !!festival?.id,
-    queryFn: async () => {
-      const { data, error: queryError } = await supabase.from('program_intake_statuses')
-        .select('item_id, category_code, entry_kind, is_complete').eq('festival_id', festival!.id);
-      if (queryError) throw new Error(queryError.message);
-      return (data ?? []) as IntakeStatus[];
-    },
+  useEffect(() => {
+    const timer = setTimeout(() => { setDebouncedSearch(programSearch.trim()); setPage(1); }, 400);
+    return () => clearTimeout(timer);
+  }, [programSearch]);
+  const hasAccess = !!user?.id && (role === 'admin' || is_superadmin);
+  const pageQuery = useQuery({
+    queryKey: ['program-cards', visibilityTenantId, festival?.id, user?.id, section, debouncedSearch, typeFilter, stageFilter, statusFilter, categoryFilter, page],
+    queryFn: ({ signal }) => programReadService.page({ tenantId: visibilityTenantId!, festivalId: festival!.id, section, search: debouncedSearch, type: typeFilter, stage: stageFilter, status: statusFilter, category: categoryFilter, page }, signal),
+    enabled: hasAccess && !!visibilityTenantId && !!festival?.id && programSearch.trim() === debouncedSearch,
+    ...programCacheOptions,
   });
+  const programCards = pageQuery.data?.cards ?? [];
+  const sectionCards = { length: pageQuery.data?.section_total ?? 0 };
+  const doneCount = pageQuery.data?.completed ?? 0;
+  const itemsError = pageQuery.error;
+  const retryItems = pageQuery.refetch;
+  // Completion flags and filter options are part of the same backend snapshot.
+  const statuses = pageQuery;
+  const filterOptions = {
+    type: ['All types', ...(pageQuery.data?.options.type ?? [])],
+    stage: ['All stages', ...(pageQuery.data?.options.stage ?? [])],
+    status: ['All statuses', 'Complete', 'Open'],
+    category: ['All categories', ...(pageQuery.data?.options.category ?? [])],
+  };
+  const entryItemId = activeCard?.kind === 'general_team' && cardModalMode === 'details' ? activeCard.item.id : undefined;
   const entries = useQuery({
-    queryKey: ['general-team-entries', festival?.id],
-    enabled: !!festival?.id && section === 'group',
-    queryFn: () => generalEntryService.list(festival!.id),
+    queryKey: ['general-team-entries', festival?.id, visibilityTenantId, user?.id, entryItemId ?? null, edit ?? null],
+    enabled: hasAccess && !!festival?.id && (!!entryItemId || (typeof edit === 'string' && openedEditRef.current !== edit)),
+    queryFn: ({ signal }) => generalEntryService.list(festival!.id, entryItemId ? { itemId: entryItemId } : { entryId: edit }, signal),
+    ...programDetailCacheOptions,
   });
   useEffect(() => {
     if (typeof edit !== 'string' || openedEditRef.current === edit || !entries.data) return;
     const entry = entries.data.find(row => row.id === edit);
-    if (entry) {
-      openedEditRef.current = edit;
-      setSection('group');
-      setEditingEntry(entry);
-    }
+    if (entry) { openedEditRef.current = edit; setSection('group'); setEditingEntry(entry); }
   }, [edit, entries.data]);
+  const detailItemId = activeCard?.item.id ?? editingEntry?.item?.id;
+  const detailCategory = activeCard?.category ?? editingEntry?.item?.category_codes?.[0];
+  const includeEligible = !!editingEntry || (cardModalMode === 'assign' && !!activeCard);
+  const shouldLoadProgramDetail = activeCard?.kind !== 'general_team' || cardModalMode === 'assign';
+  const detailQuery = useQuery({
+    queryKey: ['program-detail', visibilityTenantId, festival?.id, user?.id, detailItemId, detailCategory, includeEligible],
+    queryFn: ({ signal }) => programReadService.detail(visibilityTenantId!, festival!.id, detailItemId!, detailCategory!, includeEligible, signal),
+    enabled: hasAccess && !!visibilityTenantId && !!festival?.id && !!detailItemId && !!detailCategory && shouldLoadProgramDetail,
+    ...programDetailCacheOptions,
+  });
+  const participants = useMemo(() => detailQuery.data?.participants ?? [], [detailQuery.data]);
+  const festivalRegistrations = useMemo(() => detailQuery.data?.registrations ?? [], [detailQuery.data]);
+  const participantsError = detailQuery.error;
+  const registrationsError = detailQuery.error;
+  const registrationsUnavailable = !detailQuery.isSuccess || detailQuery.isFetching;
+  const retryParticipants = detailQuery.refetch;
+  const retryRegistrations = detailQuery.refetch;
+  const visibleOrganisations = detailQuery;
+  const visibleOrganisationIds = useMemo(() => new Set(detailQuery.data?.organisation_ids ?? []), [detailQuery.data]);
+  const invalidateProgramReads = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['program-cards', visibilityTenantId, festival?.id] }),
+      queryClient.invalidateQueries({ queryKey: ['program-detail', visibilityTenantId, festival?.id] }),
+    ]);
+  };
+  useCodeLetterUpdates(festival?.id ? `festival:${festival.id}` : null, () => Promise.all([
+    invalidateCodeLetters(queryClient, { festivalId: festival?.id }),
+    queryClient.invalidateQueries({ queryKey: ['program-detail', visibilityTenantId, festival?.id] }),
+  ]));
+  const refreshPrograms = async () => {
+    await pageQuery.refetch();
+    if (detailItemId && shouldLoadProgramDetail) await detailQuery.refetch();
+    if (entryItemId) await entries.refetch();
+  };
+  useEffect(() => {
+    if (pageQuery.data && page > Math.max(1, Math.ceil(pageQuery.data.total / 20))) {
+      setPage(Math.max(1, Math.ceil(pageQuery.data.total / 20)));
+    }
+  }, [pageQuery.data, page]);
 
-  const sectionCards = useMemo(() => (items as ProgramItem[]).filter(item => item.is_active === true && isGroupCompetition(item) === (section === 'group'))
-    .flatMap(item => codesFor(item).filter(code => !generalCodes.has(code) || festival?.general_category_enabled === true)
-      .map(category => ({ item, category, kind: (isGroupCompetition(item) ? 'general_team' : 'participant') as 'participant' | 'general_team' })))
-    .sort((a, b) => (a.item.item_name_en || a.item.item_code).localeCompare(b.item.item_name_en || b.item.item_code)), [items, section, festival?.general_category_enabled]);
-
-  const filterOptions = useMemo(() => ({
-    type: ['All types', ...Array.from(new Set(sectionCards.map(card => card.item.participation_type).filter(Boolean).map(value => String(value).toLowerCase()))).sort()],
-    stage: ['All stages', ...Array.from(new Set(sectionCards.map(card => card.item.item_type).filter(Boolean).map(value => value === 'stage' ? 'On Stage' : 'Off Stage'))).sort()],
-    status: ['All statuses', 'Complete', 'Open'],
-    category: ['All categories', ...Array.from(new Set(sectionCards.map(card => normalizedCategory(card.category)))).sort()],
-  }), [sectionCards]);
-  const programCards = useMemo(() => sectionCards.filter(card =>
-    (!search.trim() || `${card.item.item_name_en ?? ''} ${card.item.item_name_ml ?? ''} ${card.item.item_code}`.toLowerCase().includes(search.trim().toLowerCase()))
-      && (typeFilter === 'All types' || card.item.participation_type?.toLowerCase() === typeFilter)
-      && (stageFilter === 'All stages' || card.item.item_type === (stageFilter === 'On Stage' ? 'stage' : 'offstage'))
-      && (statusFilter === 'All statuses' || !!statuses.error || programIntakeComplete(statuses.data ?? [], card.item.id, card.category, card.kind) === (statusFilter === 'Complete'))
-      && (categoryFilter === 'All categories' || normalizedCategory(card.category) === categoryFilter)
-  ), [sectionCards, search, typeFilter, stageFilter, statusFilter, categoryFilter, statuses.data, statuses.error]);
-
-  const doneCount = sectionCards.filter(card => programIntakeComplete(statuses.data ?? [], card.item.id, card.category, card.kind)).length;
   const eligibleParticipants = useMemo(() => (participants as any[]).filter(person =>
     person.festival_id === festival?.id && !!person.organisation_id && visibleOrganisationIds.has(person.organisation_id) && person.status !== 'rejected'
       && matchesCompetitionCategory(String(person.category_code || ''), activeCard?.category || '', person.is_post_hs_religious === true)
@@ -211,7 +226,7 @@ export default function ProgramsScreen() {
     setError('');
   };
 
-  const cardComplete = (itemId: string, category: string, kind: string) => programIntakeComplete(statuses.data ?? [], itemId, category, kind);
+  const cardComplete = (itemId: string, category: string, kind: string) => (programCards.find(card => card.item.id === itemId && card.category === category && card.kind === kind) ?? activeCard)?.is_complete ?? false;
   const setComplete = async (complete: boolean) => {
     if (!festival || !activeCard || saving || itemsError || statuses.error) return;
     setSaving(true); setError(''); setNotice('');
@@ -221,6 +236,8 @@ export default function ProgramsScreen() {
         p_entry_kind: activeCard.kind, p_is_complete: complete,
       });
       if (rpcError) throw new Error(rpcError.message);
+      setActiveCard(card => card ? { ...card, is_complete: complete } : null);
+      await invalidateProgramReads();
       await queryClient.invalidateQueries({ queryKey: ['program-intake-statuses', festival.id] });
       setNotice(complete ? 'Program marked complete.' : 'Program reopened.');
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not update program status.'); }
@@ -228,13 +245,15 @@ export default function ProgramsScreen() {
   };
 
   const addSelected = async () => {
-    if (!festival || !activeCard || saving || selectedIds.length === 0) return;
+    if (!festival || !activeCard || saving || selectedIds.length === 0 || registrationsUnavailable) return;
     if (itemsError || participantsError) return;
     if (activeCard.kind === 'participant' && registrationsUnavailable) return;
+    let attemptedWrite = false;
     setSaving(true); setError(''); setNotice('');
     try {
       if (activeCard.kind === 'general_team') {
         if (generalSelectionError) throw new Error(generalSelectionError);
+        attemptedWrite = true;
         const created = await generalEntryService.create(festival.id, activeCard.item.id, selectedIds);
         setNotice(`Group entry created using leader chest ${created.entry_chest_number}.`);
         await invalidateGeneralMembership(queryClient, festival.id, selectedIds);
@@ -244,6 +263,7 @@ export default function ProgramsScreen() {
         const failures: string[] = [];
         let added = 0;
         for (const person of eligibleParticipants.filter(candidate => selectedIds.includes(candidate.id))) {
+          attemptedWrite = true;
           const result = await registerParticipant({ participant: person, item: activeCard.item, festivalConfig: festival });
           if (result.errors?.length) failures.push(`${person.name}: ${result.errors.map(entry => entry.message).join(', ')}`);
           else added += 1;
@@ -253,9 +273,16 @@ export default function ProgramsScreen() {
         await queryClient.invalidateQueries({ queryKey: ['participantRegistrations'] });
       }
       setSelectedIds([]);
-      await queryClient.invalidateQueries({ queryKey: ['program-intake-statuses', festival.id] });
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not add selected participants.'); }
-    finally { setSaving(false); }
+    finally {
+      if (attemptedWrite) {
+        await Promise.allSettled([
+          invalidateProgramReads(),
+          queryClient.invalidateQueries({ queryKey: ['program-intake-statuses', festival.id] }),
+        ]);
+      }
+      setSaving(false);
+    }
   };
 
   const deselectSelected = async () => {
@@ -281,6 +308,7 @@ export default function ProgramsScreen() {
       }
       setSelectedIds([]);
       setConfirmDeselect(false);
+      await invalidateProgramReads();
       setNotice(`${removed} participant assignment(s) deselected.${failures.length ? ` ${failures.join(' ')}` : ''}`);
       await queryClient.invalidateQueries({ queryKey: ['festivalRegistrations', festival.id] });
       await queryClient.invalidateQueries({ queryKey: ['participantRegistrations'] });
@@ -293,7 +321,6 @@ export default function ProgramsScreen() {
   };
 
   const openCard = (card: typeof programCards[number], mode: 'details' | 'assign') => {
-    if (card.kind === 'participant' && registrationsUnavailable) return;
     setActiveCard(card); setCardModalMode(mode); setSelectedIds([]); setConfirmDeselect(false); setSearch(''); setParticipantCategoryFilter('All categories'); setError(''); setNotice('');
   };
   const visibleParticipants = (cardModalMode === 'details'
@@ -304,12 +331,6 @@ export default function ProgramsScreen() {
       && `${person.name ?? ''} ${person.chest_number ?? ''} ${person.organisations?.name ?? ''}`.toLowerCase().includes(search.trim().toLowerCase()));
   const participantCategoryOptions = Array.from(new Set(eligibleParticipants
     .map(person => normalizedCategory(String(person.category_code || ''))).filter(Boolean))).sort();
-  const existingGeneralCount = (itemId: string) => currentRegistrations.filter(entry => (entry as any).item?.id === itemId).length;
-  const individualAssignedCount = (itemId: string, category: string) => festivalRegistrations.filter((row: any) =>
-    row.item_id === itemId && row.participant_id && row.status !== 'rejected'
-      && matchesCompetitionCategory(String(participantById.get(row.participant_id)?.category_code || ''), category)
-  ).length;
-
   const deactivateItem = async () => {
     const target = itemToDeactivate;
     if (!festival || !target || deactivating) return;
@@ -321,6 +342,7 @@ export default function ProgramsScreen() {
         itemRecords: [],
       });
       await queryClient.invalidateQueries({ queryKey: ['items', festival.id] });
+      await invalidateProgramReads();
       setNotice('');
       setItemToDeactivate(null);
     } catch (cause) {
@@ -332,18 +354,20 @@ export default function ProgramsScreen() {
   };
 
   if (role !== 'admin' && !is_superadmin) return <View className="flex-1 p-5"><Text>Administrator access is required.</Text></View>;
-  if (festivalLoading || itemsLoading || participantsLoading || statuses.isLoading || (!!visibilityTenantId && visibleOrganisations.isLoading)) return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
+  if (festivalLoading) return <View className="flex-1 items-center justify-center"><ActivityIndicator /></View>;
   if (!festival) return <View className="flex-1 p-5"><Text className="font-poppins text-ui-text">Select or activate a festival first.</Text></View>;
 
   const sectionLabel = section === 'individual' ? 'Individual' : 'Group items';
   const isPhone = width < 600;
   const hasActiveFilters = typeFilter !== 'All types' || stageFilter !== 'All stages' || statusFilter !== 'All statuses' || categoryFilter !== 'All categories';
   const cardsAvailableWidth = cardsWidth || width - 32;
-  const cardColumns = isPhone ? 1 : Math.min(6, Math.max(2, Math.floor((cardsAvailableWidth + 12) / 222)));
+  // Keep at least 210px for readable cards, and use every column that fits on wider screens.
+  const cardColumns = isPhone ? 1 : Math.max(2, Math.floor((cardsAvailableWidth + 12) / 222));
   const cardWidth = isPhone ? '100%' : (cardsAvailableWidth - (cardColumns - 1) * 12) / cardColumns;
   const pickerOptions = filterPicker ? filterOptions[filterPicker] : [];
   const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : filterPicker === 'status' ? statusFilter : categoryFilter;
   const setPickerValue = (value: string) => {
+    setPage(1);
     if (filterPicker === 'type') setTypeFilter(value);
     if (filterPicker === 'stage') setStageFilter(value);
     if (filterPicker === 'status') setStatusFilter(value);
@@ -360,7 +384,8 @@ export default function ProgramsScreen() {
           <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{itemsError ? 'Programs unavailable' : `${sectionCards.length} programs`} · {itemsError || statuses.error ? 'Completion unavailable' : `${doneCount} completed`}</Text>
         </View>
         <View className="flex-row flex-wrap items-center gap-2">
-          {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
+          {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setPage(1); setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
+          <SsfButton label={pageQuery.isFetching ? 'Refreshing…' : 'Refresh'} variant="outline" size="sm" onPress={() => { void refreshPrograms(); }} disabled={pageQuery.isFetching || saving} />
           <TouchableOpacity onPress={() => setShowTeamProgress(true)} className="min-h-10 justify-center rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button" accessibilityLabel="View team program progress"><Text className="font-poppins-bold text-xs text-ui-text">Team progress</Text></TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(admin)/settings/items' as any)} className="flex-row items-center gap-1.5 rounded-lg bg-core-primary-emerald-700 px-3 py-2" accessibilityRole="button"><Plus size={15} color={coreColor("white", 'onPrimary')}/><Text className="font-poppins-bold text-xs text-core-on-primary-white">Add program</Text></TouchableOpacity>
         </View>
@@ -370,11 +395,11 @@ export default function ProgramsScreen() {
       {participantsError && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load participants. Assignment is unavailable until they load.</Text><SsfButton label="Retry participants" variant="outline" size="sm" onPress={() => { void retryParticipants(); }} /></SsfCard>}
       <View className="mb-3 flex-row flex-wrap items-center gap-2 rounded-xl border border-ui-border bg-core-surface-white p-2">
         <View className="h-10 flex-row items-center rounded-lg border border-ui-border px-3" style={{ minWidth: isPhone ? 0 : 210, width: isPhone ? '100%' : undefined, flex: isPhone ? undefined : 1, height: isPhone ? 44 : 40 }}>
-          <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={search} onChangeText={setSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
-          {!!search && <TouchableOpacity onPress={() => setSearch('')} accessibilityLabel="Clear search"><X size={15} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>}
+          <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
+          {!!programSearch && <TouchableOpacity onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>}
         </View>
         {([['stage', stageFilter], ['status', statusFilter], ['type', typeFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} disabled={key === 'status' && !!statuses.error} onPress={() => setFilterPicker(key)} className="h-10 flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" style={{ minWidth: isPhone ? 0 : 112, width: isPhone ? '48%' : undefined, flexGrow: isPhone ? 1 : 0, height: isPhone ? 44 : 40, opacity: key === 'status' && statuses.error ? 0.5 : 1 }} accessibilityRole="button" accessibilityLabel={`${key} filter, currently ${key === 'status' && statuses.error ? 'unavailable' : value}`}><Text className="min-w-0 flex-1 font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'status' && statuses.error ? 'Status unavailable' : key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
-        {hasActiveFilters ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setTypeFilter('All types'); setStageFilter('All stages'); setStatusFilter('All statuses'); setCategoryFilter('All categories'); }} className="min-h-11 justify-center px-2" style={{ width: isPhone ? '100%' : undefined, alignItems: isPhone ? 'flex-end' : 'center' }}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Clear filters</Text></TouchableOpacity> : null}
+        {hasActiveFilters ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setPage(1); setTypeFilter('All types'); setStageFilter('All stages'); setStatusFilter('All statuses'); setCategoryFilter('All categories'); }} className="min-h-11 justify-center px-2" style={{ width: isPhone ? '100%' : undefined, alignItems: isPhone ? 'flex-end' : 'center' }}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Clear filters</Text></TouchableOpacity> : null}
       </View>
       {!itemsError && !statuses.error && <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>}
       {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Completion status could not be loaded: {statuses.error.message}</Text><SsfButton label="Retry completion status" variant="outline" size="sm" onPress={() => { void statuses.refetch(); }} /></SsfCard>}
@@ -383,20 +408,23 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {search || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} className="mt-3 flex-row flex-wrap gap-3">{programCards.map(card => {
+      {pageQuery.isFetching || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} className="mt-3 flex-row flex-wrap gap-3">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
-        const overLimitTeams = card.kind === 'participant' && card.item.max_participants_per_team != null
-          ? Array.from(itemAssignmentsByTeam.get(card.item.id)?.values() ?? []).filter(count => count > card.item.max_participants_per_team!).length
-          : 0;
+        const overLimitTeams = card.over_limit_teams;
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className={`rounded-xl border border-ui-border bg-core-surface-white shadow-sm ${isPhone ? 'p-3' : 'p-2.5'}`}>
           <View className={`${isPhone ? 'min-h-[76px]' : 'min-h-[60px]'} flex-row items-start justify-between gap-2`}><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-2 py-1 ${complete && !statuses.error ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[10px] ${complete && !statuses.error ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{statuses.error ? 'Status unavailable' : complete ? 'Complete' : 'Open'}</Text></View></View>
           <View className="mb-3 flex-row flex-wrap gap-1.5"><View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded-md bg-core-surface-muted-slate-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
-          {!registrationsUnavailable && overLimitTeams > 0 && <View className="mb-2 flex-row items-start gap-2 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-2"><AlertTriangle size={14} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[11px] text-core-danger-red-700">{overLimitTeams} team(s) exceed the limit of {card.item.max_participants_per_team}. Existing assignments can be deselected in View participants.</Text></View>}
-          <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${existingGeneralCount(card.item.id)} team entries` : registrationsUnavailable ? 'Assignments unavailable' : `${individualAssignedCount(card.item.id, card.category)} assigned`}</Text>
-          <View className="flex-row gap-2"><TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'details')} className="flex-1 items-center rounded-md border border-ui-border px-2 py-2"><Text className="font-poppins-bold text-[11px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} className="flex-row items-center justify-center gap-1 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2 py-2"><Trash2 size={13} color={coreColor("#B91C1C", 'danger')}/><Text className="font-poppins-bold text-[11px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
-          <TouchableOpacity disabled={card.kind === 'participant' && registrationsUnavailable} onPress={() => openCard(card, 'assign')} className="mt-2 items-center rounded-md bg-core-primary-emerald-800 px-2 py-2.5"><Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Assign participants</Text></TouchableOpacity>
+          {overLimitTeams > 0 && <View className="mb-2 flex-row items-start gap-2 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-2"><AlertTriangle size={14} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[11px] text-core-danger-red-700">{overLimitTeams} team(s) exceed the limit of {card.item.max_participants_per_team}. Existing assignments can be deselected in View participants.</Text></View>}
+          <Text className="mb-3 font-poppins text-[11px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${card.assigned_count} team entries` : `${card.assigned_count} assigned`}</Text>
+          <View className="flex-row gap-2"><TouchableOpacity disabled={saving} onPress={() => openCard(card, 'details')} className="flex-1 items-center rounded-md border border-ui-border px-2 py-2"><Text className="font-poppins-bold text-[11px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} className="flex-row items-center justify-center gap-1 rounded-md border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2 py-2"><Trash2 size={13} color={coreColor("#B91C1C", 'danger')}/><Text className="font-poppins-bold text-[11px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
+          <TouchableOpacity disabled={saving} onPress={() => openCard(card, 'assign')} className="mt-2 items-center rounded-md bg-core-primary-emerald-800 px-2 py-2.5"><Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Assign participants</Text></TouchableOpacity>
         </View>;
       })}</View>}
+      <View className="mt-4 flex-row flex-wrap items-center justify-between gap-2">
+        <SsfButton label="Previous" size="sm" variant="outline" disabled={page <= 1 || pageQuery.isFetching || programSearch.trim() !== debouncedSearch} onPress={() => setPage(value => value - 1)} />
+        <Text className="font-poppins text-xs text-ui-text-muted">Page {page} / {Math.max(1, Math.ceil((pageQuery.data?.total ?? 0) / 20))} · {pageQuery.data?.total ?? 0} programs</Text>
+        <SsfButton label="Next" size="sm" variant="outline" disabled={page * 20 >= (pageQuery.data?.total ?? 0) || pageQuery.isFetching || programSearch.trim() !== debouncedSearch} onPress={() => setPage(value => value + 1)} />
+      </View>
     </ScrollView>
 
     <Modal visible={!!filterPicker} transparent animationType="fade" onRequestClose={() => setFilterPicker(null)}>
@@ -417,7 +445,7 @@ export default function ProgramsScreen() {
         <Pressable className="absolute inset-0" onPress={() => !saving && setActiveCard(null)} accessibilityRole="button" accessibilityLabel="Close participant picker" />
         <View style={{ width: Math.max(0, Math.min(width - 24, 900)), height: Math.max(0, Math.min(height - 24, 820)) }} className="rounded-2xl bg-core-surface-white p-4">
           <View className="mb-3 flex-row items-start"><View className="flex-1"><Text className="font-poppins-black text-lg text-ui-text">{activeCard?.item.item_name_en || activeCard?.item.item_code}</Text><Text className="font-poppins text-xs text-ui-text-muted">{activeCard?.category} · {activeCard?.kind === 'general_team' ? 'Group entry' : 'Individual participant'} · {cardModalMode === 'details' ? 'Assigned participants' : 'Assign participants'}</Text></View><TouchableOpacity onPress={() => !saving && setActiveCard(null)} accessibilityLabel="Close"><X size={20} color={coreColor("#475569", 'text')} /></TouchableOpacity></View>
-          {cardModalMode === 'details' && activeCard?.kind === 'general_team' ? <>
+          {detailQuery.isFetching || (activeCard?.kind === 'general_team' && cardModalMode === 'details' && entries.isFetching) ? <ActivityIndicator size="small" /> : (shouldLoadProgramDetail && detailQuery.error) || (activeCard?.kind === 'general_team' && cardModalMode === 'details' && entries.error) ? <SsfButton label="Retry program details" variant="outline" size="sm" onPress={() => { if (shouldLoadProgramDetail) void detailQuery.refetch(); if (entryItemId) void entries.refetch(); }} /> : cardModalMode === 'details' && activeCard?.kind === 'general_team' ? <>
             <Text className="mb-2 font-poppins text-xs text-ui-text-muted">Showing existing team entries and their assigned members only.</Text>
             <ScrollView className="min-h-0 flex-1" style={{ flex: 1, minHeight: 80 }} keyboardShouldPersistTaps="handled">
               {currentRegistrations.filter(entry => entry.item?.id === activeCard.item.id).length ? currentRegistrations.filter(entry => entry.item?.id === activeCard.item.id).map(entry => <View key={entry.id} className="mb-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
@@ -456,16 +484,17 @@ export default function ProgramsScreen() {
           </View>}
           {cardModalMode === 'assign' && <>
             {activeCard?.kind === 'general_team' && selectedIds.length > 0 && generalSelectionError && <Text className="mt-2 font-poppins text-xs text-core-warning-amber-700">{generalSelectionError}</Text>}
-          <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || !!participantsError || !!itemsError || !selectedIds.length || hasSelectionOverLimit || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving || !!itemsError || !!statuses.error}/></View>
+          <View className="mt-3 flex-row flex-wrap gap-2"><SsfButton label={saving ? 'Adding…' : activeCard?.kind === 'general_team' ? 'Create team entry' : `Add selected (${selectedIds.length})`} onPress={addSelected} disabled={saving || registrationsUnavailable || !!participantsError || !!itemsError || !selectedIds.length || hasSelectionOverLimit || (activeCard?.kind === 'general_team' && (orgIds.size !== 1 || !generalSizeValid))}/><SsfButton label={saving ? 'Saving…' : cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || '') ? 'Reopen program' : 'Mark fully complete'} onPress={() => setComplete(!cardComplete(activeCard?.item.id || '', activeCard?.category || '', activeCard?.kind || ''))} disabled={saving || !!itemsError || !!statuses.error}/></View>
           </>}
         </View>
       </View>
     </Modal>
     {deletingEntry && festival && <GroupEntryDeleteDialog key={deletingEntry.id} entry={deletingEntry} festivalId={festival.id}
-      onClose={() => setDeletingEntry(null)} onDeleted={() => { setDeletingEntry(null); setNotice('Group entry deleted. Students and team were kept.'); }} />}
-    {editingEntry && festival && <GroupRosterEditor key={editingEntry.id} entry={editingEntry} festivalId={festival.id}
+      onClose={() => setDeletingEntry(null)} onDeleted={() => { setDeletingEntry(null); setNotice('Group entry deleted. Students and team were kept.'); void invalidateProgramReads(); }} />}
+    {editingEntry && (!detailQuery.isSuccess || detailQuery.isFetching) && <Modal visible transparent animationType="fade" onRequestClose={() => setEditingEntry(null)}><View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-4"><View className="rounded-xl bg-core-surface-white p-4"><Text className="font-poppins text-sm text-ui-text">{detailQuery.error ? 'Could not load group participants.' : 'Loading group participants…'}</Text>{detailQuery.error ? <SsfButton label="Retry" onPress={() => { void detailQuery.refetch(); }} /> : <ActivityIndicator size="small" />}<SsfButton label="Close" variant="outline" onPress={() => setEditingEntry(null)} /></View></View></Modal>}
+    {editingEntry && festival && detailQuery.isSuccess && !detailQuery.isFetching && <GroupRosterEditor key={editingEntry.id} entry={editingEntry} festivalId={festival.id}
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
-      onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); }} />}
+      onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); void invalidateProgramReads(); }} />}
     {showTeamProgress && festival && <TeamProgramProgressModal festivalId={festival.id} onClose={() => setShowTeamProgress(false)} />}
   </View>;
 }

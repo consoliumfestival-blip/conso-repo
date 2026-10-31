@@ -78,15 +78,35 @@ export const generalEntryService = {
     if (error) throw new Error(error.message);
     return data as { status: 'removed' | 'blocked' | 'not_found'; message?: string; member_ids?: string[] };
   },
-  async list(festivalId: string): Promise<GeneralTeamEntry[]> {
-    const { data, error } = await supabase
-      .from('registrations')
-      .select('id, entry_chest_number, group_leader_participant_id, leader:participants!registrations_group_leader_participant_id_fkey(id, name, chest_number), organisation_id, organisation:organisations(name), item:items(id, item_code, item_name_en, category_codes, gender, group_min_members, group_max_members), members:group_members(participant_id, member_order, participant:participants(name, chest_number))')
-      .eq('festival_id', festivalId)
-      .eq('entry_kind', 'general_team')
-      .order('created_at', { ascending: false });
-    if (error) throw new Error(error.message);
-    return ((data ?? []) as unknown as GeneralTeamEntry[]).map(entry => ({ ...entry,
+  async list(festivalId: string, scope?: { itemId?: string; entryId?: string }, signal?: AbortSignal): Promise<GeneralTeamEntry[]> {
+    const buildQuery = () => {
+      let query = supabase
+        .from('registrations')
+        .select('id, entry_chest_number, group_leader_participant_id, leader:participants!registrations_group_leader_participant_id_fkey(id, name, chest_number), organisation_id, organisation:organisations(name), item:items(id, item_code, item_name_en, category_codes, gender, group_min_members, group_max_members), members:group_members(participant_id, member_order, participant:participants(name, chest_number))')
+        .eq('festival_id', festivalId)
+        .eq('entry_kind', 'general_team')
+        .order('created_at', { ascending: false });
+      if (scope?.itemId) query = query.eq('item_id', scope.itemId);
+      if (scope?.entryId) query = query.eq('id', scope.entryId);
+      if (scope?.itemId || scope?.entryId) query = query.order('id', { ascending: true });
+      return signal ? query.abortSignal(signal) : query;
+    };
+    let rows: unknown[] = [];
+    if (!scope?.itemId && !scope?.entryId) {
+      const { data, error } = await buildQuery();
+      if (error) throw new Error(error.message);
+      rows = data ?? [];
+    } else {
+      // Scoped detail reads can exceed PostgREST's row cap; page only this selected item/entry.
+      const pageSize = 500;
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await buildQuery().range(from, from + pageSize - 1);
+        if (error) throw new Error(error.message);
+        rows = rows.concat(data ?? []);
+        if ((data?.length ?? 0) < pageSize) break;
+      }
+    }
+    return (rows as GeneralTeamEntry[]).map(entry => ({ ...entry,
       entry_chest_number: groupEntryChest(entry),
       members: [...(entry.members ?? [])].sort((a, b) => (a.member_order ?? Number.MAX_SAFE_INTEGER) - (b.member_order ?? Number.MAX_SAFE_INTEGER)),
     }));

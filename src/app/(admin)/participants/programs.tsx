@@ -1,7 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -363,7 +363,9 @@ export default function ProgramsScreen() {
   const cardsAvailableWidth = cardsWidth || width - 32;
   // Keep cards approximately 10% wider while fitting as many columns as the available space allows.
   const cardColumns = isPhone ? 1 : Math.max(2, Math.floor((cardsAvailableWidth + 12) / 243));
-  const cardWidth = isPhone ? '100%' : Math.floor((cardsAvailableWidth - (cardColumns - 1) * 12) / cardColumns);
+  const cardWidth = isPhone ? '100%' : Platform.OS === 'web'
+    ? `calc((100% - ${(cardColumns - 1) * 12}px) / ${cardColumns})` as any
+    : Math.floor((cardsAvailableWidth - (cardColumns - 1) * 12) / cardColumns);
   const pickerOptions = filterPicker ? filterOptions[filterPicker] : [];
   const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : filterPicker === 'status' ? statusFilter : categoryFilter;
   const setPickerValue = (value: string) => {
@@ -408,7 +410,7 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {pageQuery.isFetching || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} className="mt-3 flex-row flex-wrap gap-3">{programCards.map(card => {
+      {pageQuery.isFetching || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ gap: 12 }} className="mt-3 flex-row flex-wrap">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.over_limit_teams;
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className={`rounded-xl border border-ui-border bg-core-surface-white shadow-sm ${isPhone ? 'p-3' : 'p-2.5'}`}>

@@ -3,7 +3,7 @@ import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, ChevronDown, Plus, Search, Trash2, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronDown, Download, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
@@ -21,6 +21,8 @@ import { invalidateCodeLetters } from '../../../core/utils/invalidateCodeLetters
 import { matchesCompetitionCategory } from '../../../core/utils/groupParticipation';
 import { programReadService, programCacheOptions, programDetailCacheOptions, type ProgramItem, type ProgramCard } from '../../../services/programReadService';
 import { isGeneralCategoryCode } from '../../../core/utils/generalCategory';
+import { teamSubstitutionService } from '../../../services/teamSubstitutionService';
+import { exportSubstitutionRequestsPdf } from '../../../services/teamSubstitutionPdfService';
 
 
 function normalizedCategory(code: string) {
@@ -65,6 +67,13 @@ export default function ProgramsScreen() {
   const [confirmDeselect, setConfirmDeselect] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [showSubstitutionQueue, setShowSubstitutionQueue] = useState(false);
+  const [selectedSubstitutionItemId, setSelectedSubstitutionItemId] = useState<string | null>(null);
+  const [rejectingSubstitutionId, setRejectingSubstitutionId] = useState<string | null>(null);
+  const [substitutionAdminReason, setSubstitutionAdminReason] = useState('');
+  const [substitutionReviewError, setSubstitutionReviewError] = useState('');
+  const [reviewingSubstitutionId, setReviewingSubstitutionId] = useState<string | null>(null);
+  const [exportingSubstitutions, setExportingSubstitutions] = useState(false);
   useEffect(() => { if (typeof edit === 'string') setSection('group'); }, [edit]);
   useEffect(() => {
     setPage(1); setActiveCard(null); setEditingEntry(null); setDeletingEntry(null); setSelectedIds([]);
@@ -75,6 +84,18 @@ export default function ProgramsScreen() {
     return () => clearTimeout(timer);
   }, [programSearch]);
   const hasAccess = !!user?.id && (role === 'admin' || is_superadmin);
+  const substitutionSummaryQuery = useQuery({
+    queryKey: ['admin-program-substitution-summary', festival?.id, visibilityTenantId, user?.id],
+    enabled: hasAccess && !!festival?.id,
+    queryFn: () => teamSubstitutionService.getAdminSummary(festival!.id),
+    staleTime: 0,
+  });
+  const substitutionRequestsQuery = useQuery({
+    queryKey: ['admin-program-substitution-requests', festival?.id, selectedSubstitutionItemId, visibilityTenantId, user?.id],
+    enabled: hasAccess && showSubstitutionQueue && !!festival?.id && !!selectedSubstitutionItemId,
+    queryFn: () => teamSubstitutionService.getAdminRequests(festival!.id, selectedSubstitutionItemId!),
+    staleTime: 0,
+  });
   const pageQuery = useQuery({
     queryKey: ['program-cards', visibilityTenantId, festival?.id, user?.id, section, debouncedSearch, typeFilter, stageFilter, statusFilter, categoryFilter, page],
     queryFn: ({ signal }) => programReadService.page({ tenantId: visibilityTenantId!, festivalId: festival!.id, section, search: debouncedSearch, type: typeFilter, stage: stageFilter, status: statusFilter, category: categoryFilter, page }, signal),
@@ -139,6 +160,52 @@ export default function ProgramsScreen() {
     await pageQuery.refetch();
     if (detailItemId && shouldLoadProgramDetail) await detailQuery.refetch();
     if (entryItemId) await entries.refetch();
+  };
+  const pendingSubstitutionCount = (substitutionSummaryQuery.data ?? [])
+    .reduce((total, row) => total + Number(row.request_count || 0), 0);
+  const reviewSubstitution = async (requestId: string, action: 'approve' | 'reject', reason?: string) => {
+    if (reviewingSubstitutionId || !festival?.id) return;
+    setReviewingSubstitutionId(requestId);
+    setSubstitutionReviewError('');
+    try {
+      const result = await teamSubstitutionService.review(requestId, action, reason);
+      const expectedStatus = action === 'approve' ? 'approved' : 'rejected';
+      if (result.status !== expectedStatus) {
+        setSubstitutionReviewError(result.message || (result.status === 'stale'
+          ? 'The original assignment changed. Refresh the queue before approving.'
+          : result.status === 'blocked'
+            ? 'The substitution is blocked by check-in, competition history, or current eligibility.'
+            : 'This request is no longer pending. Refresh the queue.'));
+        await substitutionRequestsQuery.refetch();
+        await substitutionSummaryQuery.refetch();
+        return;
+      }
+      setRejectingSubstitutionId(null);
+      setSubstitutionAdminReason('');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['admin-program-substitution-summary', festival.id] }),
+        queryClient.invalidateQueries({ queryKey: ['admin-program-substitution-requests', festival.id] }),
+        invalidateProgramReads(),
+      ]);
+    } catch (reviewError: any) {
+      setSubstitutionReviewError(reviewError?.code === '55P03'
+        ? 'A stage or check-in update is in progress. No substitution was applied; refresh and retry.'
+        : reviewError?.message || 'Could not update this request. Refresh and try again.');
+    } finally {
+      setReviewingSubstitutionId(null);
+    }
+  };
+  const exportCurrentSubstitutions = async () => {
+    if (exportingSubstitutions || !substitutionRequestsQuery.data?.length) return;
+    setExportingSubstitutions(true);
+    setSubstitutionReviewError('');
+    try {
+      await exportSubstitutionRequestsPdf(substitutionRequestsQuery.data);
+    } catch (exportError: any) {
+      setSubstitutionReviewError(exportError?.message || 'Could not export the pending requests.');
+    } finally {
+      setExportingSubstitutions(false);
+    }
   };
   useEffect(() => {
     if (pageQuery.data && page > Math.max(1, Math.ceil(pageQuery.data.total / 20))) {
@@ -387,6 +454,7 @@ export default function ProgramsScreen() {
         </View>
         <View className="flex-row flex-wrap items-center gap-2">
           {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setPage(1); setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
+          {section === 'individual' ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Review ${pendingSubstitutionCount} pending substitutions`} onPress={() => { setShowSubstitutionQueue(true); setSelectedSubstitutionItemId(null); setSubstitutionReviewError(''); void substitutionSummaryQuery.refetch(); }} className="min-h-10 flex-row items-center justify-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3"><Text className="font-poppins-bold text-xs text-ui-text">Substitutions</Text><View className="min-w-5 items-center rounded-full bg-core-warning-soft-amber-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[10px] text-core-warning-amber-800">{substitutionSummaryQuery.isError ? '!' : pendingSubstitutionCount}</Text></View></TouchableOpacity> : null}
           <SsfButton label={pageQuery.isFetching ? 'Refreshing…' : 'Refresh'} variant="outline" size="sm" onPress={() => { void refreshPrograms(); }} disabled={pageQuery.isFetching || saving} />
           <TouchableOpacity onPress={() => setShowTeamProgress(true)} className="min-h-10 justify-center rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button" accessibilityLabel="View team program progress"><Text className="font-poppins-bold text-xs text-ui-text">Team progress</Text></TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(admin)/settings/items' as any)} className="flex-row items-center gap-1.5 rounded-lg bg-core-primary-emerald-700 px-3 py-2" accessibilityRole="button"><Plus size={15} color={coreColor("white", 'onPrimary')}/><Text className="font-poppins-bold text-xs text-core-on-primary-white">Add program</Text></TouchableOpacity>
@@ -498,5 +566,42 @@ export default function ProgramsScreen() {
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
       onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); void invalidateProgramReads(); }} />}
     {showTeamProgress && festival && <TeamProgramProgressModal festivalId={festival.id} onClose={() => setShowTeamProgress(false)} />}
+    <Modal visible={showSubstitutionQueue} transparent animationType="fade" onRequestClose={() => !reviewingSubstitutionId && setShowSubstitutionQueue(false)}>
+      <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-3" style={{ justifyContent: isPhone ? 'flex-end' : 'center' }}>
+        <View style={{ width: Math.max(0, Math.min(width - 24, 760)), maxHeight: Math.max(0, height - 24) }} className="rounded-2xl bg-core-surface-white p-4">
+          <View className="mb-3 flex-row items-start gap-2">
+            <View className="flex-1"><Text className="font-poppins-black text-lg text-ui-text">Substitution approvals</Text><Text className="mt-1 font-poppins text-xs text-ui-text-muted">Pending individual-program requests · {pendingSubstitutionCount}</Text></View>
+            {selectedSubstitutionItemId && substitutionRequestsQuery.data?.length ? <TouchableOpacity disabled={exportingSubstitutions} onPress={() => void exportCurrentSubstitutions()} className="min-h-10 flex-row items-center justify-center gap-1.5 rounded-lg border border-ui-border px-3"><Download size={15} color={coreColor('#334155', 'text')}/><Text className="font-poppins-bold text-xs text-ui-text">{exportingSubstitutions ? 'Preparing…' : 'Export PDF'}</Text></TouchableOpacity> : null}
+            <TouchableOpacity onPress={() => !reviewingSubstitutionId && setShowSubstitutionQueue(false)} accessibilityRole="button" accessibilityLabel="Close substitution approvals" className="min-h-10 min-w-10 items-center justify-center"><X size={19} color={coreColor('#475569', 'text')}/></TouchableOpacity>
+          </View>
+          {selectedSubstitutionItemId ? <>
+            <TouchableOpacity accessibilityRole="button" onPress={() => { setSelectedSubstitutionItemId(null); setSubstitutionReviewError(''); }} className="mb-2 min-h-10 self-start justify-center rounded-lg border border-ui-border px-3"><Text className="font-poppins-bold text-xs text-ui-text">Back to programs</Text></TouchableOpacity>
+            <Text className="mb-2 font-poppins-bold text-sm text-ui-text">{substitutionSummaryQuery.data?.find((row) => row.item_id === selectedSubstitutionItemId)?.item_name || 'Program requests'}</Text>
+            {substitutionRequestsQuery.isLoading || substitutionRequestsQuery.isFetching ? <View className="items-center py-8"><ActivityIndicator/><Text className="mt-2 font-poppins text-xs text-ui-text-muted">Loading requests…</Text></View>
+              : substitutionRequestsQuery.error ? <View className="gap-2 py-4"><Text className="font-poppins text-sm text-core-danger-red-700">Could not load requests: {substitutionRequestsQuery.error.message}</Text><SsfButton label="Retry requests" variant="outline" size="sm" onPress={() => { void substitutionRequestsQuery.refetch(); }}/></View>
+                : substitutionRequestsQuery.data?.length ? <ScrollView className="min-h-0 flex-1" contentContainerStyle={{ gap: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+                  {substitutionRequestsQuery.data.map((request) => <View key={request.request_id} className="rounded-xl border border-ui-border bg-core-surface-white p-3">
+                    <View className="flex-row items-start justify-between gap-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text">{request.team_name}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{request.item_code || request.item_name} · Requested {new Date(request.requested_at).toLocaleString()}</Text></View><View className="rounded-full bg-core-warning-soft-amber-100 px-2 py-1"><Text className="font-poppins-bold text-[10px] text-core-warning-amber-800">Pending</Text></View></View>
+                    <View className={`mt-3 gap-2 ${isPhone ? 'flex-col items-stretch' : 'flex-row flex-wrap items-center'}`}><View className="min-w-0 flex-1 rounded-lg bg-core-surface-muted-slate-100 p-2"><Text className="font-poppins text-[10px] text-ui-text-muted">Replace</Text><Text className="font-poppins-bold text-xs text-ui-text">{request.old_participant_name} · Chest {request.old_chest_number || '—'}</Text></View>{!isPhone ? <Text className="font-poppins-bold text-sm text-ui-text-muted">→</Text> : null}<View className="min-w-0 flex-1 rounded-lg bg-core-surface-muted-slate-100 p-2"><Text className="font-poppins text-[10px] text-ui-text-muted">With</Text><Text className="font-poppins-bold text-xs text-ui-text">{request.new_participant_name} · Chest {request.new_chest_number || '—'}</Text></View></View>
+                    <View className="mt-2 rounded-lg border border-ui-border p-2"><Text className="font-poppins-bold text-[10px] text-ui-text-muted">TEAM LEADER REASON</Text><Text className="mt-1 font-poppins text-xs leading-5 text-ui-text">{request.reason}</Text></View>
+                    <View className="mt-3 flex-row flex-wrap justify-end gap-2"><TouchableOpacity disabled={!!reviewingSubstitutionId} onPress={() => { setRejectingSubstitutionId(request.request_id); setSubstitutionAdminReason(''); setSubstitutionReviewError(''); }} className="min-h-10 justify-center rounded-lg border border-core-danger-soft-red-200 px-3"><Text className="font-poppins-bold text-xs text-core-danger-red-700">Reject</Text></TouchableOpacity><TouchableOpacity disabled={!!reviewingSubstitutionId} onPress={() => void reviewSubstitution(request.request_id, 'approve')} className="min-h-10 justify-center rounded-lg bg-core-primary-emerald-800 px-3"><Text className="font-poppins-bold text-xs text-core-on-primary-white">{reviewingSubstitutionId === request.request_id ? 'Approving…' : 'Approve substitution'}</Text></TouchableOpacity></View>
+                  </View>)}
+                </ScrollView> : <Text className="py-8 text-center font-poppins text-sm text-ui-text-muted">No pending requests for this program.</Text>}
+          </> : substitutionSummaryQuery.isLoading || substitutionSummaryQuery.isFetching ? <View className="items-center py-8"><ActivityIndicator/><Text className="mt-2 font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View>
+            : substitutionSummaryQuery.error ? <View className="gap-2 py-4"><Text className="font-poppins text-sm text-core-danger-red-700">Could not load pending programs: {substitutionSummaryQuery.error.message}</Text><SsfButton label="Retry queue" variant="outline" size="sm" onPress={() => { void substitutionSummaryQuery.refetch(); }}/></View>
+              : substitutionSummaryQuery.data?.length ? <ScrollView className="min-h-0 flex-1" contentContainerStyle={{ gap: 7, paddingBottom: 8 }}>
+                {substitutionSummaryQuery.data.map((row) => <TouchableOpacity key={row.item_id} accessibilityRole="button" onPress={() => { setSelectedSubstitutionItemId(row.item_id); setSubstitutionReviewError(''); }} className="min-h-14 flex-row items-center justify-between gap-3 rounded-xl border border-ui-border bg-core-surface-white px-3 py-2"><View className="flex-1"><Text className="font-poppins-bold text-sm text-ui-text">{row.item_name}</Text><Text className="mt-1 font-poppins text-[11px] text-ui-text-muted">{row.item_code || 'Individual program'}</Text></View><View className="min-w-8 items-center rounded-full bg-core-warning-soft-amber-100 px-2 py-1"><Text className="font-poppins-bold text-xs text-core-warning-amber-800">{row.request_count}</Text></View></TouchableOpacity>)}
+              </ScrollView> : <Text className="py-8 text-center font-poppins text-sm text-ui-text-muted">There are no pending substitution requests.</Text>}
+          {!!substitutionReviewError ? <Text className="mt-2 font-poppins text-xs text-core-danger-red-700">{substitutionReviewError}</Text> : null}
+          {rejectingSubstitutionId ? <View className="absolute inset-0 items-center justify-center rounded-2xl bg-core-surface-strong-black/40 p-4">
+            <View className="w-full max-w-md rounded-xl bg-core-surface-white p-4">
+              <Text className="font-poppins-bold text-base text-ui-text">Reject substitution?</Text><Text className="mt-1 font-poppins text-xs leading-5 text-ui-text-muted">Enter the reason. The Admin reason will be kept with the request history.</Text>
+              <TextInput value={substitutionAdminReason} onChangeText={setSubstitutionAdminReason} placeholder="Rejection reason (required)" multiline maxLength={1000} textAlignVertical="top" className="mt-3 min-h-24 rounded-lg border border-ui-border p-3 font-poppins text-sm text-ui-text" />
+              <View className="mt-3 flex-row justify-end gap-2"><SsfButton label="Cancel" variant="outline" size="sm" onPress={() => { setRejectingSubstitutionId(null); setSubstitutionReviewError(''); }} disabled={!!reviewingSubstitutionId}/><SsfButton label={reviewingSubstitutionId ? 'Rejecting…' : 'Confirm rejection'} size="sm" onPress={() => void reviewSubstitution(rejectingSubstitutionId, 'reject', substitutionAdminReason)} disabled={!!reviewingSubstitutionId || !substitutionAdminReason.trim()} className="bg-core-danger-action-red-700"/></View>
+            </View>
+          </View> : null}
+        </View>
+      </View>
+    </Modal>
   </View>;
 }

@@ -7,7 +7,8 @@ import { AlertTriangle, ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDo
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { useAuthStore } from '@/core/store/authStore';
-import { TeamLeaderGroupRosterMember, TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { TeamLeaderGroupRosterMember, TeamLeaderIndividualRosterMember, TeamLeaderParticipant, TeamLeaderProgramOption, teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { teamSubstitutionService } from '@/services/teamSubstitutionService';
 import { festivalCategoryService } from '@/services/festivalCategoryService';
 import { invalidateGeneralMembership } from '@/core/utils/invalidateGeneralMembership';
 
@@ -56,6 +57,7 @@ function TeamProgramsContent() {
   const border = ui.colors.border;
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1120;
+  const isTabletOrDesktop = width >= 768;
   const isPhone = width < 600;
   const queryClient = useQueryClient();
   const { context, loading: contextLoading } = useTeamLeaderContext();
@@ -91,6 +93,12 @@ function TeamProgramsContent() {
   const [individualMemberSearch, setIndividualMemberSearch] = useState('');
   const [activeGeneralProgram, setActiveGeneralProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [activeViewProgram, setActiveViewProgram] = useState<TeamLeaderProgramOption | null>(null);
+  const [managedParticipant, setManagedParticipant] = useState<TeamLeaderIndividualRosterMember | null>(null);
+  const [manageViewMode, setManageViewMode] = useState<'actions' | 'substitute'>('actions');
+  const [substitutionParticipantId, setSubstitutionParticipantId] = useState<string | null>(null);
+  const [substitutionReason, setSubstitutionReason] = useState('');
+  const [substitutionError, setSubstitutionError] = useState('');
+  const [substitutionBusy, setSubstitutionBusy] = useState(false);
   const [pendingDeselect, setPendingDeselect] = useState<PendingDeselect | null>(null);
   const [replacementLeaderId, setReplacementLeaderId] = useState<string | null>(null);
   const [deselectError, setDeselectError] = useState('');
@@ -200,6 +208,13 @@ function TeamProgramsContent() {
     staleTime: 0,
     refetchOnMount: 'always',
   });
+  const individualSubstitutionQuery = useQuery({
+    queryKey: [...individualRosterKeyPrefix, activeViewProgram?.item_id, 'substitution-requests'],
+    enabled: !!context && !!userId && activeViewProgram?.entry_kind === 'participant',
+    queryFn: () => teamSubstitutionService.getTeamRequests(activeViewProgram!.item_id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
 
   const categoryOrder = useMemo(() => {
     const ordered: string[] = [];
@@ -286,6 +301,20 @@ function TeamProgramsContent() {
       && `${person.name} ${person.chest_number ?? ''} ${person.category_code ?? ''}`
         .toLowerCase().includes(individualMemberSearch.trim().toLowerCase()))
     : [];
+  const substitutionEligibleParticipants = activeViewProgram?.entry_kind === 'participant'
+    ? participants.filter((person) => (activeViewProgram.eligible_participant_ids ?? []).includes(person.id)
+      && !(activeViewProgram.assigned_participant_ids ?? []).includes(person.id)
+      && person.id !== managedParticipant?.participant_id
+      && person.status !== 'rejected')
+    : [];
+  const substitutionRequestsByRegistration = new Map(
+    (individualSubstitutionQuery.data ?? []).map((request) => [request.registration_id, request]),
+  );
+  const pendingSubstitutionRegistrationIds = new Set(
+    (individualSubstitutionQuery.data ?? [])
+      .filter((request) => request.status === 'pending_approval')
+      .map((request) => request.registration_id),
+  );
   const generalEligibleIds = new Set(groupEligibilityQuery.data ?? []);
   const generalEligibleParticipants = activeGeneralProgram && groupEligibilityQuery.data
     ? participants.filter((person) =>
@@ -298,6 +327,44 @@ function TeamProgramsContent() {
     setPendingDeselect(entry);
     setReplacementLeaderId(null);
     setDeselectError('');
+  };
+
+  const openManageParticipant = (person: TeamLeaderIndividualRosterMember) => {
+    setManagedParticipant(person);
+    setManageViewMode('actions');
+    setSubstitutionParticipantId(null);
+    setSubstitutionReason('');
+    setSubstitutionError('');
+  };
+
+  const requestSubstitution = async () => {
+    if (!managedParticipant || !substitutionParticipantId || !substitutionReason.trim() || substitutionBusy) {
+      setSubstitutionError('Choose an eligible replacement and enter a reason.');
+      return;
+    }
+    setSubstitutionBusy(true);
+    setSubstitutionError('');
+    try {
+      const result = await teamSubstitutionService.request(
+        managedParticipant.registration_id,
+        substitutionParticipantId,
+        substitutionReason.trim(),
+      );
+      if (result.status === 'pending_exists') {
+        setSubstitutionError('A substitution request is already pending for this assignment or replacement. Refresh the participant list.');
+        await individualSubstitutionQuery.refetch();
+        return;
+      }
+      await individualSubstitutionQuery.refetch();
+      setManagedParticipant(null);
+      setNotice({ kind: 'success', text: 'Request sent to the Admin. The current assignment remains until approval.' });
+    } catch (error: any) {
+      setSubstitutionError(error?.code === '55P03'
+        ? 'A stage or check-in update is in progress. The request was not saved; refresh and try again.'
+        : error?.message || 'Could not send the substitution request. The current assignment is unchanged.');
+    } finally {
+      setSubstitutionBusy(false);
+    }
   };
 
   const confirmDeselect = async () => {
@@ -341,8 +408,9 @@ function TeamProgramsContent() {
   };
 
   const closeParticipantView = () => {
-    if (deselectBusy) return;
+    if (deselectBusy || substitutionBusy) return;
     setPendingDeselect(null);
+    setManagedParticipant(null);
     setActiveViewProgram(null);
   };
 
@@ -736,8 +804,8 @@ function TeamProgramsContent() {
 
   const participantView = (
     <Modal visible={!!activeViewProgram} transparent animationType="slide" onRequestClose={closeParticipantView}>
-      <View style={{ flex: 1, justifyContent: isDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isDesktop ? 20 : 0 }}>
-        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isDesktop ? 20 : 0, borderBottomRightRadius: isDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
+      <View style={{ flex: 1, justifyContent: isTabletOrDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isTabletOrDesktop ? 20 : 0 }}>
+        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isTabletOrDesktop ? 20 : 0, borderBottomRightRadius: isTabletOrDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Participants</Text>
@@ -745,7 +813,7 @@ function TeamProgramsContent() {
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel="Close participants" onPress={closeParticipantView} style={{ width: 42, height: 42, alignItems: 'center', justifyContent: 'center' }}><X size={20} color={muted} /></Pressable>
           </View>
-          <ScrollView style={{ flexGrow: 0, minHeight: 100, maxHeight: isDesktop ? 440 : 360 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+          <ScrollView style={{ flexGrow: 0, minHeight: 80, maxHeight: isTabletOrDesktop ? 440 : 360 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
             {activeViewProgram?.entry_kind === 'general_team' ? (
               groupRosterQuery.isLoading || groupRosterQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 20 }} color={orange} />
                 : groupRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load group participants.</Text><Pressable accessibilityRole="button" onPress={() => groupRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
@@ -774,12 +842,43 @@ function TeamProgramsContent() {
                     : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No group entries yet.</Text>
             ) : individualRosterQuery.isLoading || individualRosterQuery.isFetching ? <ActivityIndicator style={{ marginVertical: 20 }} color={orange} />
               : individualRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load participants.</Text><Pressable accessibilityRole="button" onPress={() => individualRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
-                : individualRosterQuery.data?.length ? individualRosterQuery.data.map((person) => <View key={person.registration_id} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ flex: 1 }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.participant_name}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{[person.participant_category_code, person.participant_chest_number ? `Chest ${person.participant_chest_number}` : null].filter(Boolean).join(' · ')}</Text></View>
-                  {!activeViewProgram?.assignment_locked ? <Pressable accessibilityRole="button" accessibilityLabel={`Deselect ${person.participant_name}`} onPress={() => openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] })} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Deselect</Text></Pressable> : null}
-                </View>)
+                : individualRosterQuery.data?.length ? individualRosterQuery.data.map((person) => {
+                  const hasPendingSubstitution = pendingSubstitutionRegistrationIds.has(person.registration_id);
+                  const substitutionRequest = substitutionRequestsByRegistration.get(person.registration_id);
+                  return <View key={person.registration_id} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flex: 1 }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{person.participant_name}</Text><Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{[person.participant_category_code, person.participant_chest_number ? `Chest ${person.participant_chest_number}` : null].filter(Boolean).join(' · ')}</Text>{hasPendingSubstitution ? <Text style={{ color: ui.colors.warning, fontSize: 10, fontWeight: '700', marginTop: 4 }}>Waiting for Admin approval</Text> : null}{substitutionRequest?.status === 'approved' ? <Text style={{ color: ui.colors.success, fontSize: 10, fontWeight: '700', marginTop: 4 }}>Substitution approved</Text> : null}{substitutionRequest?.status === 'rejected' ? <View style={{ marginTop: 4 }}><Text style={{ color: ui.colors.danger, fontSize: 10, fontWeight: '700' }}>Substitution rejected</Text>{substitutionRequest.admin_reason ? <Text style={{ color: muted, fontSize: 10, lineHeight: 14, marginTop: 2 }}>Admin reason: {substitutionRequest.admin_reason}</Text> : null}</View> : null}{substitutionRequest?.status === 'stale' ? <View style={{ marginTop: 4 }}><Text style={{ color: muted, fontSize: 10, fontWeight: '700' }}>Request closed; assignment unchanged</Text>{substitutionRequest.admin_reason ? <Text style={{ color: muted, fontSize: 10, lineHeight: 14, marginTop: 2 }}>{substitutionRequest.admin_reason}</Text> : null}</View> : null}</View>
+                    <Pressable accessibilityRole="button" accessibilityLabel={`Manage ${person.participant_name}`} onPress={() => openManageParticipant(person)} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: border, borderRadius: 8 }}><Text style={{ color: orange, fontSize: 11, fontWeight: '700' }}>Manage</Text></Pressable>
+                  </View>;
+                })
                   : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No participants assigned yet.</Text>}
           </ScrollView>
+          {managedParticipant ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 2, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
+            <ScrollView style={{ width: '100%', maxWidth: 460, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface }} contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                <View style={{ flex: 1 }}><Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '800' }}>{manageViewMode === 'actions' ? 'Manage participant' : 'Request substitution'}</Text><Text style={{ color: muted, fontSize: 12, marginTop: 4 }}>{managedParticipant.participant_name}{managedParticipant.participant_chest_number ? ` · Chest ${managedParticipant.participant_chest_number}` : ''}</Text></View>
+                <Pressable accessibilityRole="button" accessibilityLabel="Close participant actions" onPress={() => !substitutionBusy && setManagedParticipant(null)} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><X size={18} color={muted}/></Pressable>
+              </View>
+              {manageViewMode === 'actions' ? <>
+                {pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? <Text style={{ color: ui.colors.warning, fontSize: 12, fontWeight: '700' }}>A substitution request is waiting for Admin approval. The current participant remains assigned.</Text> : <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Choose an action. Substitution needs Admin approval; the current assignment stays active until then.</Text>}
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={!!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { const person = managedParticipant; setManagedParticipant(null); openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] }); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 9, opacity: activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>{activeViewProgram?.assignment_locked ? 'Deselect unavailable · Program locked' : 'Deselect participant'}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { setManageViewMode('substitute'); setSubstitutionError(''); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 9, backgroundColor: orange, opacity: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Request substitution</Text></Pressable>
+              </> : <>
+                <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Select an eligible participant from your team. The request stays pending until an Admin approves it.</Text>
+                <ScrollView style={{ flexGrow: 0, maxHeight: isPhone ? 220 : 300 }} contentContainerStyle={{ gap: 6 }}>
+                  {participantsLoading ? <ActivityIndicator color={orange} style={{ paddingVertical: 12 }} /> : null}
+                  {!!participantError && !participantsLoading ? <Text style={{ color: ui.colors.danger, fontSize: 12, paddingVertical: 10 }}>Could not load replacement participants. Close and retry after refreshing the team list.</Text> : null}
+                  {!participantsLoading && !participantError ? substitutionEligibleParticipants.map((person) => <Pressable key={person.id} accessibilityRole="radio" accessibilityState={{ checked: substitutionParticipantId === person.id }} onPress={() => setSubstitutionParticipantId(person.id)} style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center', borderWidth: 1, borderColor: substitutionParticipantId === person.id ? orange : border, borderRadius: 8, backgroundColor: substitutionParticipantId === person.id ? ui.colors.surfaceMuted : ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 10, marginTop: 2 }}>{person.category_code || 'No category'}{person.chest_number ? ` · Chest ${person.chest_number}` : ''}</Text></Pressable>) : null}
+                  {!participantsLoading && !participantError && !substitutionEligibleParticipants.length ? <Text style={{ color: muted, fontSize: 12, paddingVertical: 10 }}>No eligible, unassigned replacement is available.</Text> : null}
+                </ScrollView>
+                <TextInput value={substitutionReason} onChangeText={setSubstitutionReason} placeholder="Reason for substitution (required)" multiline maxLength={1000} textAlignVertical="top" style={{ minHeight: 82, maxHeight: 120, borderWidth: 1, borderColor: border, borderRadius: 8, padding: 10, color: ui.colors.text, fontSize: 12 }} />
+                {!!substitutionError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{substitutionError}</Text> : null}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable accessibilityRole="button" disabled={substitutionBusy} onPress={() => { setManageViewMode('actions'); setSubstitutionError(''); }} style={{ flex: 1, minHeight: 44, borderWidth: 1, borderColor: border, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Back</Text></Pressable>
+                  <Pressable accessibilityRole="button" disabled={substitutionBusy || !substitutionParticipantId || !substitutionReason.trim()} onPress={() => void requestSubstitution()} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: substitutionBusy || !substitutionParticipantId || !substitutionReason.trim() ? 0.5 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{substitutionBusy ? 'Sending…' : 'Send request'}</Text></Pressable>
+                </View>
+              </>}
+            </ScrollView>
+          </View> : null}
           {pendingDeselect ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
             <View style={{ width: '100%', maxWidth: 440, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface, padding: 16, gap: 10 }}>
               <Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '800' }}>Confirm deselect</Text>

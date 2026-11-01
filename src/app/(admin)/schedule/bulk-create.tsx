@@ -33,6 +33,8 @@ import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfDatePicker } from '../../../components/ui/SsfDatePicker';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useSchedule } from '../../../core/hooks/useSchedule';
+import { useScheduleParticipantConflictPreview } from '../../../core/hooks/useScheduleParticipantConflictPreview';
+import { ScheduleParticipantConflictWarning } from '../../../components/schedule/ScheduleParticipantConflictWarning';
 
 type PreviewRow = {
   item: any;
@@ -311,6 +313,13 @@ export default function BulkCreateSchedule() {
       .sort((a, b) => a.start - b.start);
     return ordered.some((entry, index) => index > 0 && entry.start < ordered[index - 1].end);
   }, [breaks]);
+  const participantConflictCandidates = React.useMemo(() => preview.map((row) => ({
+    key: row.item.id,
+    item_id: row.item.id,
+    start_time: row.start.toISOString(),
+    end_time: row.end.toISOString(),
+  })), [preview]);
+  const participantConflictPreview = useScheduleParticipantConflictPreview(festival?.id, participantConflictCandidates);
   const allVisibleSelected = selectableVisibleItems.length > 0
     && selectableVisibleItems.every((item: any) => selectedIds.has(item.id));
 
@@ -739,6 +748,12 @@ export default function BulkCreateSchedule() {
           )}
         </View>
       )}
+
+      <ScheduleParticipantConflictWarning
+        conflicts={participantConflictPreview.data}
+        isLoading={participantConflictPreview.isFetching || participantConflictPreview.isInputSettling}
+        error={participantConflictPreview.error as Error | null}
+      />
 
       {(hasConflicts || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) && (
         <View className={`mb-4 p-3 rounded-xl border flex-row items-start gap-x-2 ${(hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks) ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50' : 'border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50'}`}>

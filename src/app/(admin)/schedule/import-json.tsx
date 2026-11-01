@@ -11,6 +11,8 @@ import { useAuthStore } from '../../../core/store/authStore';
 import { databaseProvider as db } from '../../../providers/database';
 import { supabase } from '../../../core/config/supabase';
 import { useFestival } from '../../../core/hooks/useFestival';
+import { ScheduleParticipantConflictWarning } from '../../../components/schedule/ScheduleParticipantConflictWarning';
+import { scheduleParticipantConflictService } from '../../../services/scheduleParticipantConflictService';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
@@ -113,6 +115,7 @@ export default function ImportScheduleJson() {
     try {
       const errors: string[] = [];
       const conflicts: any[] = [];
+      const participantConflictCandidates: Array<{ key: string; item_id: string; start_time: string; end_time: string }> = [];
       
       console.log("Fetching from db...");
       // 1. Fetch all venues and items for festival to map and validate locally
@@ -170,6 +173,13 @@ export default function ImportScheduleJson() {
           return;
         }
 
+        participantConflictCandidates.push({
+          key: `import-${idx + 1}`,
+          item_id: item.id,
+          start_time: new Date(newStart).toISOString(),
+          end_time: new Date(newEnd).toISOString(),
+        });
+
         // Check against existing schedules
         existingSch.forEach((dbSch: any) => {
           if (dbSch.venue_id === venue.id) {
@@ -192,12 +202,22 @@ export default function ImportScheduleJson() {
         });
       });
 
-      console.log("Validation done. Errors:", errors.length, "Conflicts:", conflicts.length);
+      let participantConflicts: any[] = [];
+      let participantConflictWarning: string | null = null;
+      try {
+        participantConflicts = await scheduleParticipantConflictService.preview(festivalId, participantConflictCandidates);
+      } catch (error: any) {
+        participantConflictWarning = error?.message || 'Participant timing conflict check is unavailable.';
+      }
+
+      console.log("Validation done. Errors:", errors.length, "Conflicts:", conflicts.length, "Participant conflicts:", participantConflicts.length);
 
       setDryRunReport({
         isValid: errors.length === 0 && conflicts.length === 0,
         errors,
-        conflicts
+        conflicts,
+        participantConflicts,
+        participantConflictWarning,
       });
 
     } catch (e: any) {
@@ -428,6 +448,11 @@ export default function ImportScheduleJson() {
                     />
                   </View>
                 )}
+
+                <ScheduleParticipantConflictWarning
+                  conflicts={dryRunReport.participantConflicts}
+                  error={dryRunReport.participantConflictWarning ? new Error(dryRunReport.participantConflictWarning) : null}
+                />
 
                 <View className="flex-row gap-4 mt-4">
                   <SsfButton 

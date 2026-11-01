@@ -14,6 +14,8 @@ import { ArrowLeft, AlertTriangle } from 'lucide-react-native';
 import { SmartTimeInput } from '@/components/ui/SmartTimeInput';
 import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
+import { useScheduleParticipantConflictPreview } from '@/core/hooks/useScheduleParticipantConflictPreview';
+import { ScheduleParticipantConflictWarning } from '@/components/schedule/ScheduleParticipantConflictWarning';
 
 export default function EditSchedule() {
   const { id } = useLocalSearchParams();
@@ -36,6 +38,15 @@ export default function EditSchedule() {
   const [endTimeStr, setEndTimeStr] = useState('10:00');
   const [judgeCount, setJudgeCount] = useState(3);
   const [isPublicVisible, setIsPublicVisible] = useState(false);
+
+  const participantConflictCandidates = React.useMemo(() => {
+    if (!itemId || !startDate || !startTimeStr || !endDate || !endTimeStr) return [];
+    const start = new Date(`${startDate}T${startTimeStr}`);
+    const end = new Date(`${endDate}T${endTimeStr}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return [];
+    return [{ key: String(scheduleId || 'edit'), item_id: itemId, start_time: start.toISOString(), end_time: end.toISOString(), exclude_schedule_id: scheduleId }];
+  }, [endDate, endTimeStr, itemId, scheduleId, startDate, startTimeStr]);
+  const participantConflictPreview = useScheduleParticipantConflictPreview(festival?.id, participantConflictCandidates);
 
   useEffect(() => {
     if (schedule) {
@@ -287,6 +298,11 @@ export default function EditSchedule() {
             </View>
           </View>
         )}
+        <ScheduleParticipantConflictWarning
+          conflicts={participantConflictPreview.data}
+          isLoading={participantConflictPreview.isFetching || participantConflictPreview.isInputSettling}
+          error={participantConflictPreview.error as Error | null}
+        />
 
         <View className="flex-row justify-end pt-2 border-t border-ui-border">
           <SsfButton

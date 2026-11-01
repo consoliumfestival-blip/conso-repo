@@ -15,6 +15,8 @@ import { ArrowLeft, AlertTriangle } from 'lucide-react-native';
 import { SmartTimeInput } from '@/components/ui/SmartTimeInput';
 import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { categorySubstageDefault, normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
+import { useScheduleParticipantConflictPreview } from '@/core/hooks/useScheduleParticipantConflictPreview';
+import { ScheduleParticipantConflictWarning } from '@/components/schedule/ScheduleParticipantConflictWarning';
 
 export default function CreateSchedule() {
   const router = useRouter();
@@ -53,6 +55,15 @@ export default function CreateSchedule() {
   // Custom dropdown state
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
   const [itemSearchText, setItemSearchText] = useState('');
+
+  const participantConflictCandidates = useMemo(() => {
+    if (!itemId || !startDate || !startTimeStr || !endDate || !endTimeStr) return [];
+    const start = new Date(`${startDate}T${startTimeStr}`);
+    const end = new Date(`${endDate}T${endTimeStr}`);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return [];
+    return [{ key: 'create', item_id: itemId, start_time: start.toISOString(), end_time: end.toISOString() }];
+  }, [endDate, endTimeStr, itemId, startDate, startTimeStr]);
+  const participantConflictPreview = useScheduleParticipantConflictPreview(festival?.id, participantConflictCandidates);
 
   const scheduledItemIds = useMemo(() => new Set(
     schedules.filter((schedule: any) => schedule.festival_id === festival?.id).map((schedule: any) => schedule.item_id),
@@ -273,6 +284,11 @@ export default function CreateSchedule() {
             </View>
           </View>
         )}
+        <ScheduleParticipantConflictWarning
+          conflicts={participantConflictPreview.data}
+          isLoading={participantConflictPreview.isFetching || participantConflictPreview.isInputSettling}
+          error={participantConflictPreview.error as Error | null}
+        />
 
         <SsfButton 
           label={isCreatingSchedule ? 'Saving...' : 'Create Schedule'}

@@ -3,13 +3,14 @@ import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Check, ChevronDown, Download, Plus, Search, Trash2, X } from 'lucide-react-native';
+import { AlertTriangle, Check, ChevronDown, Download, GitCompare, Plus, Search, Trash2, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { GroupRosterEditor } from '../../../components/participants/GroupRosterEditor';
 import { GroupEntryDeleteDialog } from '../../../components/participants/GroupEntryDeleteDialog';
 import { TeamProgramProgressModal } from '../../../components/participants/TeamProgramProgressModal';
+import { ProgramParticipantComparisonModal } from '../../../components/programs/ProgramParticipantComparisonModal';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useCodeLetterUpdates } from '../../../core/hooks/useCodeLetterUpdates';
@@ -62,6 +63,7 @@ export default function ProgramsScreen() {
   const [filterPicker, setFilterPicker] = useState<'type' | 'stage' | 'status' | 'category' | null>(null);
   const [itemToDeactivate, setItemToDeactivate] = useState<ProgramItem | null>(null);
   const [showTeamProgress, setShowTeamProgress] = useState(false);
+  const [showParticipantComparison, setShowParticipantComparison] = useState(false);
   const [deactivating, setDeactivating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDeselect, setConfirmDeselect] = useState(false);
@@ -454,6 +456,7 @@ export default function ProgramsScreen() {
         </View>
         <View className="flex-row flex-wrap items-center gap-2">
           {(['individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setPage(1); setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`rounded-lg border px-3 py-2 ${section === value ? 'border-core-primary-emerald-700 bg-core-primary-emerald-700' : 'border-ui-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs ${section === value ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Compare participants across programs" onPress={() => setShowParticipantComparison(true)} className="min-h-10 flex-row items-center justify-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3"><GitCompare size={15} color={coreColor('#1B6B3A', 'primaryText')}/><Text className="font-poppins-bold text-xs text-ui-text">Compare participants</Text></TouchableOpacity>
           {section === 'individual' ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Review ${pendingSubstitutionCount} pending substitutions`} onPress={() => { setShowSubstitutionQueue(true); setSelectedSubstitutionItemId(null); setSubstitutionReviewError(''); void substitutionSummaryQuery.refetch(); }} className="min-h-10 flex-row items-center justify-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3"><Text className="font-poppins-bold text-xs text-ui-text">Substitutions</Text><View className="min-w-5 items-center rounded-full bg-core-warning-soft-amber-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[10px] text-core-warning-amber-800">{substitutionSummaryQuery.isError ? '!' : pendingSubstitutionCount}</Text></View></TouchableOpacity> : null}
           <SsfButton label={pageQuery.isFetching ? 'Refreshing…' : 'Refresh'} variant="outline" size="sm" onPress={() => { void refreshPrograms(); }} disabled={pageQuery.isFetching || saving} />
           <TouchableOpacity onPress={() => setShowTeamProgress(true)} className="min-h-10 justify-center rounded-lg border border-ui-border bg-core-surface-white px-3" accessibilityRole="button" accessibilityLabel="View team program progress"><Text className="font-poppins-bold text-xs text-ui-text">Team progress</Text></TouchableOpacity>
@@ -566,6 +569,7 @@ export default function ProgramsScreen() {
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
       onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); void invalidateProgramReads(); }} />}
     {showTeamProgress && festival && <TeamProgramProgressModal festivalId={festival.id} onClose={() => setShowTeamProgress(false)} />}
+    <ProgramParticipantComparisonModal visible={showParticipantComparison} tenantId={visibilityTenantId} festivalId={festival?.id ?? null} onClose={() => setShowParticipantComparison(false)} />
     <Modal visible={showSubstitutionQueue} transparent animationType="fade" onRequestClose={() => !reviewingSubstitutionId && setShowSubstitutionQueue(false)}>
       <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-3" style={{ justifyContent: isPhone ? 'flex-end' : 'center' }}>
         <View style={{ width: Math.max(0, Math.min(width - 24, 760)), maxHeight: Math.max(0, height - 24) }} className="rounded-2xl bg-core-surface-white p-4">

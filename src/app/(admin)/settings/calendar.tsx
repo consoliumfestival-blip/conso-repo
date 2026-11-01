@@ -27,6 +27,7 @@ export default function FestivalCalendarSettings() {
     gender_mode: 'both' as 'boys_only' | 'girls_only' | 'both',
     team_leader_on_stage_locked: false,
     team_leader_off_stage_locked: false,
+    team_leader_substitution_locked: false,
   });
 
   const [saved, setSaved] = useState(false);
@@ -45,6 +46,7 @@ export default function FestivalCalendarSettings() {
         gender_mode: festival.gender_mode ?? 'both',
         team_leader_on_stage_locked: festival.team_leader_on_stage_locked ?? false,
         team_leader_off_stage_locked: festival.team_leader_off_stage_locked ?? false,
+        team_leader_substitution_locked: festival.team_leader_substitution_locked ?? false,
       });
     }
   }, [festival]);
@@ -240,6 +242,17 @@ export default function FestivalCalendarSettings() {
                 accessibilityLabel="Lock Team Leader Off Stage programs"
                 value={formData.team_leader_off_stage_locked}
                 onValueChange={(value) => setFormData((current) => ({ ...current, team_leader_off_stage_locked: value }))}
+              />
+            </View>
+            <View className="flex-row items-center justify-between gap-4 rounded-lg border border-ui-border bg-white px-3 py-2.5">
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-sm text-ui-text">Lock substitution requests</Text>
+                <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Prevents new Team Leader requests; existing requests remain available for Admin review.</Text>
+              </View>
+              <Switch
+                accessibilityLabel="Lock new Team Leader substitution requests"
+                value={formData.team_leader_substitution_locked}
+                onValueChange={(value) => setFormData((current) => ({ ...current, team_leader_substitution_locked: value }))}
               />
             </View>
           </View>

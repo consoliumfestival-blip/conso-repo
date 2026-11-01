@@ -20,6 +20,7 @@ type FestivalCalendarRecord = {
   general_category_enabled?: boolean;
   team_leader_on_stage_locked?: boolean;
   team_leader_off_stage_locked?: boolean;
+  team_leader_substitution_locked?: boolean;
   chest_number_category_range?: 100 | 1000;
   chest_number_template?: 'category' | 'team';
 };

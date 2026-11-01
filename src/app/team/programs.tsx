@@ -55,7 +55,7 @@ function TeamProgramsContent() {
   const orange = ui.colors.primary;
   const muted = ui.colors.textMuted;
   const border = ui.colors.border;
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isDesktop = width >= 1120;
   const isTabletOrDesktop = width >= 768;
   const isPhone = width < 600;
@@ -805,7 +805,7 @@ function TeamProgramsContent() {
   const participantView = (
     <Modal visible={!!activeViewProgram} transparent animationType="slide" onRequestClose={closeParticipantView}>
       <View style={{ flex: 1, justifyContent: isTabletOrDesktop ? 'center' : 'flex-end', backgroundColor: ui.colors.overlay, paddingHorizontal: isTabletOrDesktop ? 20 : 0 }}>
-        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, borderBottomLeftRadius: isTabletOrDesktop ? 20 : 0, borderBottomRightRadius: isTabletOrDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
+        <View style={{ width: '100%', maxWidth: 680, maxHeight: '88%', height: managedParticipant ? Math.min(height * (manageViewMode === 'substitute' ? 0.78 : 0.65), manageViewMode === 'substitute' ? 720 : 420) : undefined, alignSelf: 'center', paddingTop: 18, paddingHorizontal: 16, paddingBottom: 20, borderTopLeftRadius: 20, borderTopRightRadius: isTabletOrDesktop ? 20 : 0, borderBottomRightRadius: isTabletOrDesktop ? 20 : 0, backgroundColor: ui.colors.surface }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
             <View style={{ flex: 1 }}>
               <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800' }}>Participants</Text>
@@ -853,7 +853,7 @@ function TeamProgramsContent() {
                   : <Text style={{ color: muted, fontSize: 13, paddingVertical: 18, textAlign: 'center' }}>No participants assigned yet.</Text>}
           </ScrollView>
           {managedParticipant ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, zIndex: 2, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
-            <ScrollView style={{ width: '100%', maxWidth: 460, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface }} contentContainerStyle={{ padding: 16, gap: 10 }} keyboardShouldPersistTaps="handled">
+            <View style={{ width: '100%', maxWidth: isPhone ? 460 : 560, height: manageViewMode === 'substitute' ? '100%' : undefined, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface, padding: 16, gap: 10 }}>
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                 <View style={{ flex: 1 }}><Text style={{ color: ui.colors.text, fontSize: 16, fontWeight: '800' }}>{manageViewMode === 'actions' ? 'Manage participant' : 'Request substitution'}</Text><Text style={{ color: muted, fontSize: 12, marginTop: 4 }}>{managedParticipant.participant_name}{managedParticipant.participant_chest_number ? ` · Chest ${managedParticipant.participant_chest_number}` : ''}</Text></View>
                 <Pressable accessibilityRole="button" accessibilityLabel="Close participant actions" onPress={() => !substitutionBusy && setManagedParticipant(null)} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><X size={18} color={muted}/></Pressable>
@@ -863,21 +863,21 @@ function TeamProgramsContent() {
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={!!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { const person = managedParticipant; setManagedParticipant(null); openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] }); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 9, opacity: activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>{activeViewProgram?.assignment_locked ? 'Deselect unavailable · Program locked' : 'Deselect participant'}</Text></Pressable>
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { setManageViewMode('substitute'); setSubstitutionError(''); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 9, backgroundColor: orange, opacity: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Request substitution</Text></Pressable>
               </> : <>
-                <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Select an eligible participant from your team. The request stays pending until an Admin approves it.</Text>
-                <ScrollView style={{ flexGrow: 0, maxHeight: isPhone ? 220 : 300 }} contentContainerStyle={{ gap: 6 }}>
+                <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
+                  <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Select an eligible participant from your team. The request stays pending until an Admin approves it.</Text>
                   {participantsLoading ? <ActivityIndicator color={orange} style={{ paddingVertical: 12 }} /> : null}
                   {!!participantError && !participantsLoading ? <Text style={{ color: ui.colors.danger, fontSize: 12, paddingVertical: 10 }}>Could not load replacement participants. Close and retry after refreshing the team list.</Text> : null}
                   {!participantsLoading && !participantError ? substitutionEligibleParticipants.map((person) => <Pressable key={person.id} accessibilityRole="radio" accessibilityState={{ checked: substitutionParticipantId === person.id }} onPress={() => setSubstitutionParticipantId(person.id)} style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center', borderWidth: 1, borderColor: substitutionParticipantId === person.id ? orange : border, borderRadius: 8, backgroundColor: substitutionParticipantId === person.id ? ui.colors.surfaceMuted : ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 10, marginTop: 2 }}>{person.category_code || 'No category'}{person.chest_number ? ` · Chest ${person.chest_number}` : ''}</Text></Pressable>) : null}
                   {!participantsLoading && !participantError && !substitutionEligibleParticipants.length ? <Text style={{ color: muted, fontSize: 12, paddingVertical: 10 }}>No eligible, unassigned replacement is available.</Text> : null}
+                  <TextInput value={substitutionReason} onChangeText={setSubstitutionReason} placeholder="Reason for substitution (required)" multiline maxLength={1000} textAlignVertical="top" style={{ minHeight: 82, maxHeight: 120, borderWidth: 1, borderColor: border, borderRadius: 8, padding: 10, color: ui.colors.text, fontSize: 12 }} />
+                  {!!substitutionError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{substitutionError}</Text> : null}
                 </ScrollView>
-                <TextInput value={substitutionReason} onChangeText={setSubstitutionReason} placeholder="Reason for substitution (required)" multiline maxLength={1000} textAlignVertical="top" style={{ minHeight: 82, maxHeight: 120, borderWidth: 1, borderColor: border, borderRadius: 8, padding: 10, color: ui.colors.text, fontSize: 12 }} />
-                {!!substitutionError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{substitutionError}</Text> : null}
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: border }}>
                   <Pressable accessibilityRole="button" disabled={substitutionBusy} onPress={() => { setManageViewMode('actions'); setSubstitutionError(''); }} style={{ flex: 1, minHeight: 44, borderWidth: 1, borderColor: border, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Back</Text></Pressable>
                   <Pressable accessibilityRole="button" disabled={substitutionBusy || !substitutionParticipantId || !substitutionReason.trim()} onPress={() => void requestSubstitution()} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: orange, alignItems: 'center', justifyContent: 'center', opacity: substitutionBusy || !substitutionParticipantId || !substitutionReason.trim() ? 0.5 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{substitutionBusy ? 'Sending…' : 'Send request'}</Text></Pressable>
                 </View>
               </>}
-            </ScrollView>
+            </View>
           </View> : null}
           {pendingDeselect ? <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: ui.colors.overlay }}>
             <View style={{ width: '100%', maxWidth: 440, maxHeight: '100%', borderRadius: 14, backgroundColor: ui.colors.surface, padding: 16, gap: 10 }}>

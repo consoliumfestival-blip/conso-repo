@@ -41,9 +41,28 @@ export const teamSubstitutionService = {
     return (data ?? []) as TeamSubstitutionRequest[];
   },
 
+  async getTeamGroupRequests(itemId: string) {
+    const { data, error } = await supabase.rpc('get_team_leader_group_substitution_requests', {
+      p_item_id: itemId,
+    });
+    if (error) throw error;
+    return (data ?? []) as TeamSubstitutionRequest[];
+  },
+
   async request(registrationId: string, replacementParticipantId: string, reason: string) {
     const { data, error } = await supabase.rpc('team_leader_request_individual_substitution', {
       p_registration_id: registrationId,
+      p_new_participant_id: replacementParticipantId,
+      p_reason: reason,
+    });
+    if (error) throw error;
+    return data as { status: 'pending_approval' | 'pending_exists'; request_id?: string | null };
+  },
+
+  async requestGroup(registrationId: string, oldParticipantId: string, replacementParticipantId: string, reason: string) {
+    const { data, error } = await supabase.rpc('team_leader_request_group_substitution', {
+      p_registration_id: registrationId,
+      p_old_participant_id: oldParticipantId,
       p_new_participant_id: replacementParticipantId,
       p_reason: reason,
     });

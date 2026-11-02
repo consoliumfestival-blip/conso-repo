@@ -39,6 +39,10 @@ type PendingDeselect =
   | { kind: 'group-member'; registrationId: string; participantId: string; participantName: string; participantIds: string[]; isLeader: boolean; remainingMembers: TeamLeaderGroupRosterMember[] }
   | { kind: 'group-entry'; registrationId: string; participantIds: string[] };
 
+type ManagedRosterMember = TeamLeaderIndividualRosterMember & {
+  is_leader?: boolean;
+};
+
 export default function TeamProgramsScreen() {
   const { context } = useTeamLeaderContext();
   const tenantId = useAuthStore((state) => state.tenant_id);
@@ -93,7 +97,7 @@ function TeamProgramsContent() {
   const [individualMemberSearch, setIndividualMemberSearch] = useState('');
   const [activeGeneralProgram, setActiveGeneralProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [activeViewProgram, setActiveViewProgram] = useState<TeamLeaderProgramOption | null>(null);
-  const [managedParticipant, setManagedParticipant] = useState<TeamLeaderIndividualRosterMember | null>(null);
+  const [managedParticipant, setManagedParticipant] = useState<ManagedRosterMember | null>(null);
   const [manageViewMode, setManageViewMode] = useState<'actions' | 'substitute'>('actions');
   const [substitutionParticipantId, setSubstitutionParticipantId] = useState<string | null>(null);
   const [substitutionReason, setSubstitutionReason] = useState('');
@@ -187,10 +191,12 @@ function TeamProgramsContent() {
     queryFn: () => festivalCategoryService.list(context!.festival_id),
     staleTime: 5 * 60 * 1000,
   });
+  const groupEligibilityItemId = activeGeneralProgram?.item_id
+    ?? (activeViewProgram?.entry_kind === 'general_team' ? activeViewProgram.item_id : null);
   const groupEligibilityQuery = useQuery({
-    queryKey: groupEligibilityKey(activeGeneralProgram?.item_id ?? ''),
-    enabled: !!context && !!userId && !!activeGeneralProgram,
-    queryFn: () => teamLeaderPortalService.getEligibleGroupMemberIds(activeGeneralProgram!.item_id),
+    queryKey: groupEligibilityKey(groupEligibilityItemId ?? ''),
+    enabled: !!context && !!userId && !!groupEligibilityItemId,
+    queryFn: () => teamLeaderPortalService.getEligibleGroupMemberIds(groupEligibilityItemId!),
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -212,6 +218,13 @@ function TeamProgramsContent() {
     queryKey: [...individualRosterKeyPrefix, activeViewProgram?.item_id, 'substitution-requests'],
     enabled: !!context && !!userId && activeViewProgram?.entry_kind === 'participant',
     queryFn: () => teamSubstitutionService.getTeamRequests(activeViewProgram!.item_id),
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+  const groupSubstitutionQuery = useQuery({
+    queryKey: [...groupRosterKeyPrefix, activeViewProgram?.item_id, 'substitution-requests'],
+    enabled: !!context && !!userId && activeViewProgram?.entry_kind === 'general_team',
+    queryFn: () => teamSubstitutionService.getTeamGroupRequests(activeViewProgram!.item_id),
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -306,12 +319,25 @@ function TeamProgramsContent() {
       && !(activeViewProgram.assigned_participant_ids ?? []).includes(person.id)
       && person.id !== managedParticipant?.participant_id
       && person.status !== 'rejected')
-    : [];
+    : activeViewProgram?.entry_kind === 'general_team'
+      ? participants.filter((person) => (groupEligibilityQuery.data ?? []).includes(person.id)
+        && !groupRosterQuery.data?.some((member) => member.participant_id === person.id)
+        && person.id !== managedParticipant?.participant_id
+        && person.status !== 'rejected')
+      : [];
   const substitutionRequestsByRegistration = new Map(
     (individualSubstitutionQuery.data ?? []).map((request) => [request.registration_id, request]),
   );
+  const groupSubstitutionRequestsByMember = new Map(
+    (groupSubstitutionQuery.data ?? []).map((request) => [`${request.registration_id}:${request.old_participant_id}`, request]),
+  );
   const pendingSubstitutionRegistrationIds = new Set(
     (individualSubstitutionQuery.data ?? [])
+      .filter((request) => request.status === 'pending_approval')
+      .map((request) => request.registration_id),
+  );
+  const pendingGroupSubstitutionRegistrations = new Set(
+    (groupSubstitutionQuery.data ?? [])
       .filter((request) => request.status === 'pending_approval')
       .map((request) => request.registration_id),
   );
@@ -329,7 +355,7 @@ function TeamProgramsContent() {
     setDeselectError('');
   };
 
-  const openManageParticipant = (person: TeamLeaderIndividualRosterMember) => {
+  const openManageParticipant = (person: ManagedRosterMember) => {
     setManagedParticipant(person);
     setManageViewMode('actions');
     setSubstitutionParticipantId(null);
@@ -345,17 +371,20 @@ function TeamProgramsContent() {
     setSubstitutionBusy(true);
     setSubstitutionError('');
     try {
-      const result = await teamSubstitutionService.request(
-        managedParticipant.registration_id,
-        substitutionParticipantId,
-        substitutionReason.trim(),
-      );
+      const result = activeViewProgram?.entry_kind === 'general_team'
+        ? await teamSubstitutionService.requestGroup(
+          managedParticipant.registration_id, managedParticipant.participant_id,
+          substitutionParticipantId, substitutionReason.trim(),
+        )
+        : await teamSubstitutionService.request(
+          managedParticipant.registration_id, substitutionParticipantId, substitutionReason.trim(),
+        );
       if (result.status === 'pending_exists') {
         setSubstitutionError('A substitution request is already pending for this assignment or replacement. Refresh the participant list.');
-        await individualSubstitutionQuery.refetch();
+        await (activeViewProgram?.entry_kind === 'general_team' ? groupSubstitutionQuery : individualSubstitutionQuery).refetch();
         return;
       }
-      await individualSubstitutionQuery.refetch();
+      await (activeViewProgram?.entry_kind === 'general_team' ? groupSubstitutionQuery : individualSubstitutionQuery).refetch();
       setManagedParticipant(null);
       setNotice({ kind: 'success', text: 'Request sent to the Admin. The current assignment remains until approval.' });
     } catch (error: any) {
@@ -819,6 +848,8 @@ function TeamProgramsContent() {
                 : groupRosterQuery.isError ? <View style={{ gap: 8 }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>Unable to load group participants.</Text><Pressable accessibilityRole="button" onPress={() => groupRosterQuery.refetch()} style={{ alignSelf: 'flex-start', minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Retry</Text></Pressable></View>
                   : groupRosterQuery.data?.length ? groupRosterQuery.data.map((member, index, rows) => {
                     const entryMembers = rows.filter((row) => row.registration_id === member.registration_id);
+                    const groupMemberKey = `${member.registration_id}:${member.participant_id}`;
+                    const groupRequest = groupSubstitutionRequestsByMember.get(groupMemberKey);
                     return <View key={`${member.registration_id}-${member.participant_id}`} style={{ padding: 11, borderWidth: 1, borderColor: border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
                       {index === 0 || rows[index - 1].registration_id !== member.registration_id ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
@@ -832,10 +863,13 @@ function TeamProgramsContent() {
                         <View style={{ flex: 1 }}>
                           <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{member.participant_name}{member.is_leader ? ' · Leader' : ''}</Text>
                           <Text style={{ color: muted, fontSize: 11, marginTop: 3 }}>{member.participant_chest_number ? `Chest ${member.participant_chest_number}` : 'Chest number unavailable'}</Text>
+                          {groupRequest?.status === 'pending_approval' ? <Text style={{ color: ui.colors.warning, fontSize: 10, fontWeight: '700', marginTop: 4 }}>Waiting for Admin approval</Text> : null}
+                          {groupRequest?.status === 'rejected' ? <Text style={{ color: ui.colors.danger, fontSize: 10, fontWeight: '700', marginTop: 4 }}>Substitution rejected{groupRequest.admin_reason ? ` · ${groupRequest.admin_reason}` : ''}</Text> : null}
+                          {groupRequest?.status === 'stale' ? <Text style={{ color: muted, fontSize: 10, fontWeight: '700', marginTop: 4 }}>Request closed{groupRequest.admin_reason ? ` · ${groupRequest.admin_reason}` : ''}</Text> : null}
                         </View>
-                        {!activeViewProgram?.assignment_locked ? <Pressable accessibilityRole="button" accessibilityLabel={`Deselect ${member.participant_name}`} onPress={() => openDeselect({ kind: 'group-member', registrationId: member.registration_id, participantId: member.participant_id, participantName: member.participant_name, participantIds: entryMembers.map((row) => row.participant_id), isLeader: member.is_leader, remainingMembers: entryMembers.filter((row) => row.participant_id !== member.participant_id) })} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 8 }}>
-                          <Text style={{ color: ui.colors.danger, fontSize: 11, fontWeight: '700' }}>Deselect</Text>
-                        </Pressable> : null}
+                        <Pressable accessibilityRole="button" accessibilityLabel={`Manage ${member.participant_name}`} onPress={() => openManageParticipant({ ...member, participant_category_code: null, registration_status: null })} style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 10, borderWidth: 1, borderColor: border, borderRadius: 8 }}>
+                          <Text style={{ color: orange, fontSize: 11, fontWeight: '700' }}>Manage</Text>
+                        </Pressable>
                       </View>
                     </View>;
                   })
@@ -859,16 +893,17 @@ function TeamProgramsContent() {
                 <Pressable accessibilityRole="button" accessibilityLabel="Close participant actions" onPress={() => !substitutionBusy && setManagedParticipant(null)} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><X size={18} color={muted}/></Pressable>
               </View>
               {manageViewMode === 'actions' ? <>
-                {pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? <Text style={{ color: ui.colors.warning, fontSize: 12, fontWeight: '700' }}>A substitution request is waiting for Admin approval. The current participant remains assigned.</Text> : <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Choose an action. Substitution needs Admin approval; the current assignment stays active until then.</Text>}
-                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={!!activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { const person = managedParticipant; setManagedParticipant(null); openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] }); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 9, opacity: activeViewProgram?.assignment_locked || pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>{activeViewProgram?.assignment_locked ? 'Deselect unavailable · Program locked' : 'Deselect participant'}</Text></Pressable>
-                <Pressable accessibilityRole="button" accessibilityState={{ disabled: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { setManageViewMode('substitute'); setSubstitutionError(''); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 9, backgroundColor: orange, opacity: pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) ? 0.45 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Request substitution</Text></Pressable>
+                {(activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)) ? <Text style={{ color: ui.colors.warning, fontSize: 12, fontWeight: '700' }}>A substitution request is waiting for Admin approval. The current participant remains assigned.</Text> : <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Choose an action. Substitution needs Admin approval; the current assignment stays active until then.</Text>}
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!activeViewProgram?.assignment_locked || (activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)) }} disabled={!!activeViewProgram?.assignment_locked || (activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id))} onPress={() => { const person = managedParticipant; setManagedParticipant(null); if (activeViewProgram?.entry_kind === 'general_team') { const members = groupRosterQuery.data?.filter((row) => row.registration_id === person.registration_id) ?? []; openDeselect({ kind: 'group-member', registrationId: person.registration_id, participantId: person.participant_id, participantName: person.participant_name, participantIds: members.map((row) => row.participant_id), isLeader: !!person.is_leader, remainingMembers: members.filter((row) => row.participant_id !== person.participant_id) }); } else { openDeselect({ kind: 'individual', registrationId: person.registration_id, participantName: person.participant_name, participantIds: [person.participant_id] }); } }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: border, borderRadius: 9, opacity: activeViewProgram?.assignment_locked ? 0.45 : 1 }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>{activeViewProgram?.assignment_locked ? 'Deselect unavailable · Program locked' : 'Deselect participant'}</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { setManageViewMode('substitute'); setSubstitutionError(''); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 9, backgroundColor: orange, opacity: (activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)) ? 0.45 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Request substitution</Text></Pressable>
               </> : <>
                 <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
                   <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Select an eligible participant from your team. The request stays pending until an Admin approves it.</Text>
-                  {participantsLoading ? <ActivityIndicator color={orange} style={{ paddingVertical: 12 }} /> : null}
+                  {participantsLoading || (activeViewProgram?.entry_kind === 'general_team' && groupEligibilityQuery.isFetching) ? <ActivityIndicator color={orange} style={{ paddingVertical: 12 }} /> : null}
                   {!!participantError && !participantsLoading ? <Text style={{ color: ui.colors.danger, fontSize: 12, paddingVertical: 10 }}>Could not load replacement participants. Close and retry after refreshing the team list.</Text> : null}
-                  {!participantsLoading && !participantError ? substitutionEligibleParticipants.map((person) => <Pressable key={person.id} accessibilityRole="radio" accessibilityState={{ checked: substitutionParticipantId === person.id }} onPress={() => setSubstitutionParticipantId(person.id)} style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center', borderWidth: 1, borderColor: substitutionParticipantId === person.id ? orange : border, borderRadius: 8, backgroundColor: substitutionParticipantId === person.id ? ui.colors.surfaceMuted : ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 10, marginTop: 2 }}>{person.category_code || 'No category'}{person.chest_number ? ` · Chest ${person.chest_number}` : ''}</Text></Pressable>) : null}
-                  {!participantsLoading && !participantError && !substitutionEligibleParticipants.length ? <Text style={{ color: muted, fontSize: 12, paddingVertical: 10 }}>No eligible, unassigned replacement is available.</Text> : null}
+                  {activeViewProgram?.entry_kind === 'general_team' && groupEligibilityQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load eligible group members. Close and retry.</Text> : null}
+                  {!participantsLoading && !participantError && (activeViewProgram?.entry_kind !== 'general_team' || groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching) ? substitutionEligibleParticipants.map((person) => <Pressable key={person.id} accessibilityRole="radio" accessibilityState={{ checked: substitutionParticipantId === person.id }} onPress={() => setSubstitutionParticipantId(person.id)} style={{ minHeight: 44, paddingHorizontal: 10, justifyContent: 'center', borderWidth: 1, borderColor: substitutionParticipantId === person.id ? orange : border, borderRadius: 8, backgroundColor: substitutionParticipantId === person.id ? ui.colors.surfaceMuted : ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>{person.name}</Text><Text style={{ color: muted, fontSize: 10, marginTop: 2 }}>{person.category_code || 'No category'}{person.chest_number ? ` · Chest ${person.chest_number}` : ''}</Text></Pressable>) : null}
+                  {!participantsLoading && !participantError && (activeViewProgram?.entry_kind !== 'general_team' || groupEligibilityQuery.isSuccess && !groupEligibilityQuery.isFetching) && !substitutionEligibleParticipants.length ? <Text style={{ color: muted, fontSize: 12, paddingVertical: 10 }}>No eligible, unassigned replacement is available.</Text> : null}
                   <TextInput value={substitutionReason} onChangeText={setSubstitutionReason} placeholder="Reason for substitution (required)" multiline maxLength={1000} textAlignVertical="top" style={{ minHeight: 82, maxHeight: 120, borderWidth: 1, borderColor: border, borderRadius: 8, padding: 10, color: ui.colors.text, fontSize: 12 }} />
                   {!!substitutionError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{substitutionError}</Text> : null}
                 </ScrollView>

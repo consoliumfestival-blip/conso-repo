@@ -20,7 +20,8 @@ import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
-import { showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
+import * as Device from 'expo-device';
+import { getTabletScheduleActionRows, getTabletScheduleOrientation, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const normalizeCategory = (value: string) => {
@@ -99,6 +100,61 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: 
   );
 }
 
+const SCHEDULE_WORKFLOW_ACTIONS = [
+  { label: 'Check-in', path: 'checkin' },
+  { label: 'Codes', path: 'code-letter' },
+  { label: 'Marks', path: 'marks' },
+  { label: 'Results', path: 'results' },
+] as const;
+
+function ScheduleWorkflowActionButtons({
+  scheduleName,
+  onNavigate,
+  orientation,
+}: {
+  scheduleName: string;
+  onNavigate: (path: string) => void;
+  orientation: 'inline' | 'portrait' | 'landscape';
+}) {
+  const isTabletGrid = orientation !== 'inline';
+  const renderActionButton = (action: typeof SCHEDULE_WORKFLOW_ACTIONS[number]) => (
+    <TouchableOpacity
+      key={action.path}
+      accessibilityRole="button"
+      accessibilityLabel={`${action.label} for ${scheduleName}`}
+      onPress={(event) => {
+        event.stopPropagation();
+        onNavigate(action.path);
+      }}
+      style={isTabletGrid ? { flex: 1 } : undefined}
+      className={`h-11 px-3 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
+    >
+      <Text className={`font-poppins-bold text-xs ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
+    </TouchableOpacity>
+  );
+
+  if (isTabletGrid) {
+    const actionRows = getTabletScheduleActionRows(SCHEDULE_WORKFLOW_ACTIONS);
+    return (
+      <View style={{
+        width: orientation === 'landscape' ? 310 : '100%',
+        maxWidth: orientation === 'portrait' ? 420 : 310,
+        alignSelf: 'flex-end',
+        gap: 8,
+        marginTop: orientation === 'portrait' ? 10 : 0,
+      }}>
+        {actionRows.map((row, index) => (
+          <View key={index} style={{ flexDirection: 'row', gap: 8 }}>
+            {row.map(renderActionButton)}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>{SCHEDULE_WORKFLOW_ACTIONS.map(renderActionButton)}</View>;
+}
+
 export default function ScheduleDashboard() {
   const router = useRouter();
   const { useActiveFestival, useItems } = useFestival();
@@ -113,6 +169,17 @@ export default function ScheduleDashboard() {
   // constrained-window widths. Width is reliable on web where device-type
   // detection may report UNKNOWN (for example tablet browsers in desktop mode).
   const showInlineScheduleActions = showScheduleCardActions(width);
+  const screenWidth = Platform.OS === 'web' && typeof window !== 'undefined' ? window.screen.width : width;
+  const screenHeight = Platform.OS === 'web' && typeof window !== 'undefined' ? window.screen.height : height;
+  const maxTouchPoints = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0;
+  const tabletScheduleOrientation = getTabletScheduleOrientation(
+    Device.deviceType === Device.DeviceType.TABLET,
+    width,
+    height,
+    screenWidth,
+    screenHeight,
+    maxTouchPoints,
+  );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
@@ -952,205 +1019,150 @@ export default function ScheduleDashboard() {
         </View>
         ) : (
         <View>
-          {filteredSchedules.map((schedule: any) => (
-            <TouchableOpacity
-              key={schedule.id}
-              activeOpacity={0.72}
-              accessibilityRole="button"
-              accessibilityLabel={`Open actions for ${schedule.items?.item_name_en || 'event'}`}
-              onPress={() => setMobileActionMenuId(schedule.id)}
-              className="border-b border-ui-border px-1 py-3"
-            >
-              {/* Card Header: Title + Actions */}
-              <View className="mb-1.5">
-                {/* Top row: title left, action buttons right */}
-                <View className="flex-row justify-between items-start">
+          {filteredSchedules.map((schedule: any) => {
+            const scheduleName = schedule.items?.item_name_en || 'Unknown Event';
+            const isTabletLandscape = tabletScheduleOrientation === 'landscape';
+            const cardLifecycleActions = (
+              <ScheduleLifecycleActions
+                scheduleName={scheduleName}
+                status={schedule.status}
+                isPostponed={schedule.is_postponed === true}
+                onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
+                onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
+                accessibilityLabel={`Actions for ${scheduleName}`}
+                triggerLabel={showInlineScheduleActions && !tabletScheduleOrientation ? 'Event actions' : undefined}
+                open={mobileActionMenuId === schedule.id}
+                onOpenChange={(nextOpen) => setMobileActionMenuId(nextOpen ? schedule.id : null)}
+                additionalItems={[
+                  ...(!showInlineScheduleActions ? [
+                    { label: 'Check-in', icon: <LogIn size={15} color={ui.colors.textMuted} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/checkin` as any) },
+                    { label: 'Code letters', icon: <Shuffle size={15} color={ui.colors.textMuted} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/code-letter` as any) },
+                    { label: 'Marks', icon: <FilePenLine size={15} color={ui.colors.textMuted} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/marks` as any) },
+                    { label: 'Results', icon: <Trophy size={15} color={coreColor('#0F766E', 'primaryText')} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/results` as any) },
+                  ] : []),
+                  {
+                    label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',
+                    separatorBefore: true,
+                    icon: <Edit size={15} color={ui.colors.textMuted} />,
+                    onPress: () => {
+                      if (schedule.is_shuffle_locked) {
+                        if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
+                        else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
+                        return;
+                      }
+                      router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
+                    },
+                  },
+                  {
+                    label: 'Delete schedule',
+                    destructive: true,
+                    icon: <Trash2 size={15} color={coreColor('#DC2626', 'danger')} />,
+                    onPress: () => handleDelete(schedule.id, scheduleName),
+                  },
+                ]}
+              />
+            );
+            const scheduleDetails = (
+              <>
+                <View style={tabletScheduleOrientation ? { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 5 } : undefined}>
+                  <View className={tabletScheduleOrientation ? undefined : 'mt-1.5 self-start'}>
+                    <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
+                      <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-core-success-green-800">
+                        {schedule.venues?.name || 'Unknown Venue'}
+                        {schedule.items?.category_codes?.length ? ` / ${schedule.items.category_codes.join(', ')}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${scheduleName} on public schedule`}
+                    disabled={!!updatingVisibilityId}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      togglePublicVisibility(schedule);
+                    }}
+                    className={tabletScheduleOrientation ? 'border border-ui-border rounded-md px-2 py-1.5 bg-core-surface-white' : 'self-start border border-ui-border rounded-md px-2 py-1.5 mt-1.5 bg-core-surface-white'}
+                  >
+                    <Text className="font-poppins-bold text-[10px] text-ui-text">
+                      {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
+                    </Text>
+                  </TouchableOpacity>
+                  {false && schedule.items?.category_codes && schedule.items.category_codes.length > 0 && (
+                    <View className="mt-1.5 flex-row flex-wrap gap-1">
+                      {(schedule.items.category_codes as string[]).map((code: string) => (
+                        <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
+                          <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View className={`${tabletScheduleOrientation ? 'mb-1.5 mt-1' : 'mb-2'} flex-row flex-wrap items-center gap-x-3 gap-y-1`}>
+                  <View className="flex-row items-center gap-x-1">
+                    <Clock size={13} color={coreColor('#6B7280', 'text')} />
+                    <Text className="font-poppins text-[10px] text-core-text-gray-600">
+                      {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-x-1">
+                    <Calendar size={13} color={coreColor('#6B7280', 'text')} />
+                    <Text className="font-poppins text-[10px] text-core-text-gray-600">{new Date(schedule.start_time).toLocaleDateString()}</Text>
+                  </View>
+                  {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
+                    <View className="rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
+                      <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Postponed</Text>
+                    </View>
+                  )}
+                </View>
+                <ScheduleWorkflowBadges
+                  status={schedule.status}
+                  summary={workflowMap.get(schedule.id)}
+                  isShuffleLocked={schedule.is_shuffle_locked}
+                  compact
+                />
+              </>
+            );
+            const scheduleActionButtons = showInlineScheduleActions ? (
+              <ScheduleWorkflowActionButtons
+                scheduleName={scheduleName}
+                onNavigate={(path) => router.push(`/(admin)/schedule/${schedule.id}/${path}` as any)}
+                orientation={tabletScheduleOrientation ?? 'inline'}
+              />
+            ) : null;
+
+            return (
+              <TouchableOpacity
+                key={schedule.id}
+                activeOpacity={0.72}
+                accessibilityRole="button"
+                accessibilityLabel={`Open actions for ${scheduleName}`}
+                onPress={() => setMobileActionMenuId(schedule.id)}
+                className={`border-b border-ui-border px-1 ${tabletScheduleOrientation ? 'py-2' : 'py-3'}`}
+              >
+                <View className="mb-1.5 flex-row justify-between items-start">
                   <View className="flex-1 min-w-0 mr-2">
-                    <Text className="font-poppins-bold text-[14px]" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
+                    <Text className={`font-poppins-bold ${tabletScheduleOrientation ? 'text-[13px]' : 'text-[14px]'}`} numberOfLines={1}>{scheduleName}</Text>
                     {false && schedule.items?.item_name_ml ? (
                       <Text className="font-poppins text-[10px] text-ssf-text-muted" numberOfLines={1}>{schedule.items.item_name_ml}</Text>
                     ) : null}
                   </View>
-                  <ScheduleLifecycleActions
-                    scheduleName={schedule.items?.item_name_en || 'Event'}
-                    status={schedule.status}
-                    isPostponed={schedule.is_postponed === true}
-                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
-                    onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
-                    accessibilityLabel={`Actions for ${schedule.items?.item_name_en || 'event'}`}
-                    triggerLabel={showInlineScheduleActions ? 'Event actions' : undefined}
-                    open={mobileActionMenuId === schedule.id}
-                    onOpenChange={(nextOpen) => setMobileActionMenuId(nextOpen ? schedule.id : null)}
-                    additionalItems={[
-                      ...(!showInlineScheduleActions ? [
-                      {
-                        label: 'Check-in',
-                        icon: <LogIn size={15} color={ui.colors.textMuted} />,
-                        onPress: () => router.push(`/(admin)/schedule/${schedule.id}/checkin` as any),
-                      },
-                      {
-                        label: 'Code letters',
-                        icon: <Shuffle size={15} color={ui.colors.textMuted} />,
-                        onPress: () => router.push(`/(admin)/schedule/${schedule.id}/code-letter` as any),
-                      },
-                      {
-                        label: 'Marks',
-                        icon: <FilePenLine size={15} color={ui.colors.textMuted} />,
-                        onPress: () => router.push(`/(admin)/schedule/${schedule.id}/marks` as any),
-                      },
-                      {
-                        label: 'Results',
-                        icon: <Trophy size={15} color={coreColor("#0F766E", 'primaryText')} />,
-                        onPress: () => router.push(`/(admin)/schedule/${schedule.id}/results` as any),
-                      },
-                      ] : []),
-                      {
-                        label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',
-                        separatorBefore: true,
-                        icon: <Edit size={15} color={ui.colors.textMuted} />,
-                        onPress: () => {
-                          if (schedule.is_shuffle_locked) {
-                            if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
-                            else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
-                            return;
-                          }
-                          router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
-                        },
-                      },
-                      {
-                        label: 'Delete schedule',
-                        destructive: true,
-                        icon: <Trash2 size={15} color={coreColor("#DC2626", 'danger')} />,
-                        onPress: () => handleDelete(schedule.id, schedule.items?.item_name_en || 'Unknown Event'),
-                      },
-                    ]}
-                  />
+                  {cardLifecycleActions}
                 </View>
 
-                {/* Venue badge — below title row on all sizes */}
-                <View className="mt-1.5 self-start">
-                  <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
-                    <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-core-success-green-800">
-                      {schedule.venues?.name || 'Unknown Venue'}
-                      {schedule.items?.category_codes?.length ? ` / ${schedule.items.category_codes.join(', ')}` : ''}
-                    </Text>
+                {isTabletLandscape ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>{scheduleDetails}</View>
+                    {scheduleActionButtons}
                   </View>
-                </View>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
-                  disabled={!!updatingVisibilityId}
-                  onPress={(event) => {
-                    event.stopPropagation();
-                    togglePublicVisibility(schedule);
-                  }}
-                  className="self-start border border-ui-border rounded-md px-2 py-1.5 mt-1.5 bg-core-surface-white"
-                >
-                  <Text className="font-poppins-bold text-[10px] text-ui-text">
-                    {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Category Badges */}
-                {false && schedule.items?.category_codes && schedule.items.category_codes.length > 0 && (
-                  <View className="mt-1.5 flex-row flex-wrap gap-1">
-                    {(schedule.items.category_codes as string[]).map((code: string) => (
-                      <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
-                        <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
-                      </View>
-                    ))}
+                ) : (
+                  <View>
+                    {scheduleDetails}
+                    {scheduleActionButtons}
                   </View>
                 )}
-              </View>
-              
-              {/* Time & Date row */}
-              <View className="mb-2 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-                <View className="flex-row items-center gap-x-1">
-                  <Clock size={13} color={coreColor("#6B7280", 'text')} />
-                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
-                    {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-x-1">
-                  <Calendar size={13} color={coreColor("#6B7280", 'text')} />
-                  <Text className="font-poppins text-[10px] text-core-text-gray-600">
-                    {new Date(schedule.start_time).toLocaleDateString()}
-                  </Text>
-                </View>
-                {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
-                  <View className="rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
-                    <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Postponed</Text>
-                  </View>
-                )}
-              </View>
-
-              <ScheduleWorkflowBadges 
-                status={schedule.status}
-                summary={workflowMap.get(schedule.id)}
-                isShuffleLocked={schedule.is_shuffle_locked}
-                compact
-              />
-
-              {showInlineScheduleActions && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-                  {[
-                    { label: 'Check-in', path: 'checkin' },
-                    { label: 'Codes', path: 'code-letter' },
-                    { label: 'Marks', path: 'marks' },
-                    { label: 'Results', path: 'results' },
-                  ].map((action) => (
-                    <TouchableOpacity
-                      key={action.path}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${action.label} for ${schedule.items?.item_name_en || 'event'}`}
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any);
-                      }}
-                      className={`h-11 px-3 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
-                    >
-                      <Text className={`font-poppins-bold text-xs ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {/* Action buttons — 2×2 grid on mobile */}
-              <View className="hidden">
-                <View className="flex-1 flex-row gap-x-1">
-                  <SsfButton 
-                    label="Check-In" 
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => router.push(`/(admin)/schedule/${schedule.id}/checkin` as any)}
-                  />
-                  <SsfButton 
-                    label="Code Letters" 
-                    variant="outline" 
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => router.push(`/(admin)/schedule/${schedule.id}/code-letter` as any)}
-                  />
-                </View>
-                <View className="flex-1 flex-row gap-x-1">
-                  <SsfButton 
-                    label="📝 Marks" 
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => router.push(`/(admin)/schedule/${schedule.id}/marks` as any)}
-                  />
-                  <SsfButton 
-                    label="🏆 Results" 
-                    size="sm"
-                    className="flex-1"
-                    onPress={() => router.push(`/(admin)/schedule/${schedule.id}/results` as any)}
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+              </TouchableOpacity>
+            );
+          })}
         </View>
         )
       )}

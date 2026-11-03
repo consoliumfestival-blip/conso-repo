@@ -36,7 +36,6 @@ export default function SuperadminDashboard() {
     { title: 'Tenant Setup Guide', desc: 'Create tenant accounts and manage access', icon: BookOpen, route: '/(super)/tenant-guide' },
     { title: 'System Logs', desc: 'Monitor application and server activity', icon: FileText, route: null },
     { title: 'Festival Settings', desc: 'Manage global scoring rules and items', icon: Settings, route: null },
-    { title: 'Appearance', desc: 'Personalize Core and Stage Management on this device', icon: Settings, route: '/(super)/appearance' },
     { title: 'Communication Center', desc: 'Send notifications across all tenants', icon: Bell, route: null },
     { title: 'Leaderboard Management', desc: 'Control visibility and calculate results', icon: Trophy, route: null },
   ];

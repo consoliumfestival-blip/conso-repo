@@ -123,7 +123,7 @@ export default function ParticipantsScreen() {
   const tableCell = { paddingHorizontal: 12, justifyContent: 'center' as const, minHeight: 56 };
   const participantTable = (
     <ScrollView horizontal style={{ width: '100%' }} showsHorizontalScrollIndicator keyboardShouldPersistTaps="handled">
-      <View style={{ minWidth: 680, overflow: 'hidden', borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
+      <View style={{ width: '100%', minWidth: 680, overflow: 'hidden', borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
         <View accessibilityRole="header" style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', backgroundColor: ui.colors.surfaceMuted, borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
           <Text style={[tableCell, { flex: 2.3, minWidth: 190, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Participant</Text>
           <Text style={[tableCell, { flex: 1.1, minWidth: 100, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Category</Text>

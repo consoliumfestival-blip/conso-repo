@@ -2,6 +2,7 @@ import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useEffect, useRef, useState } from 'react';
 import { GestureResponderEvent, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import * as Device from 'expo-device';
 import { MoreHorizontal } from 'lucide-react-native';
 
 import { ui } from '@/constants/designSystem';
@@ -35,11 +36,14 @@ export function SsfActionMenu({
 }) {
   const triggerRef = useRef<View>(null);
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isTablet = Device.deviceType === Device.DeviceType.TABLET;
   const [internalOpen, setInternalOpen] = useState(false);
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const open = controlledOpen ?? internalOpen;
-  const menuWidth = Math.min(210, viewportWidth - 24);
-  const estimatedHeight = Math.min(items.length * 40 + 18, 320);
+  const menuWidth = Math.min(isTablet ? 230 : 210, viewportWidth - 24);
+  const estimatedHeight = isTablet
+    ? Math.min(items.length * 42 + items.filter((item) => item.separatorBefore).length * 9 + 12, 480)
+    : Math.min(items.length * 40 + 18, 320);
 
   const setMenuOpen = (nextOpen: boolean) => {
     if (controlledOpen === undefined) setInternalOpen(nextOpen);
@@ -97,7 +101,11 @@ export function SsfActionMenu({
         <View style={StyleSheet.absoluteFill}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
           {anchor ? (
-            <View accessibilityRole="menu" {...{ dataSet: { coreGlass: 'surface' } } as any} style={[styles.menu, { left, top, width: menuWidth }]}>
+            <View
+              accessibilityRole="menu"
+              {...{ dataSet: { coreGlass: 'surface' } } as any}
+              style={[styles.menu, isTablet && styles.menuTablet, { left, top, width: menuWidth }]}
+            >
               {items.map((item) => (
                 <React.Fragment key={item.label}>
                   {item.separatorBefore ? <View style={styles.separator} /> : null}
@@ -110,13 +118,14 @@ export function SsfActionMenu({
                       setMenuOpen(false);
                       item.onPress();
                     }}
-                    style={styles.item}
+                    style={[styles.item, isTablet && styles.itemTablet]}
                   >
-                    {item.icon ? <View style={styles.icon}>{item.icon}</View> : null}
+                    {item.icon ? <View style={[styles.icon, isTablet && styles.iconTablet]}>{item.icon}</View> : null}
                     <Text
                       numberOfLines={1}
                       style={[
                         styles.itemText,
+                        isTablet && styles.itemTextTablet,
                         item.destructive && styles.destructive,
                         item.disabled && styles.disabled,
                       ]}
@@ -159,6 +168,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 14,
   },
+  menuTablet: {
+    paddingVertical: 6,
+  },
   item: {
     minHeight: 38,
     marginHorizontal: 4,
@@ -167,15 +179,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
   },
+  itemTablet: {
+    minHeight: 42,
+    paddingHorizontal: 12,
+  },
   icon: {
     width: 26,
     alignItems: 'flex-start',
+  },
+  iconTablet: {
+    width: 28,
   },
   itemText: {
     flex: 1,
     color: ui.colors.text,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
+  },
+  itemTextTablet: {
+    fontSize: 13,
   },
   destructive: {
     color: coreColor('#DC2626', 'danger'),

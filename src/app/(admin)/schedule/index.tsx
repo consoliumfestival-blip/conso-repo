@@ -21,7 +21,7 @@ import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import * as Device from 'expo-device';
-import { getTabletScheduleActionRows, getTabletScheduleOrientation, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
+import { getCompactScheduleActionOrientation, getScheduleActionRows, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const normalizeCategory = (value: string) => {
@@ -134,7 +134,7 @@ function ScheduleWorkflowActionButtons({
   );
 
   if (isTabletGrid) {
-    const actionRows = getTabletScheduleActionRows(SCHEDULE_WORKFLOW_ACTIONS);
+    const actionRows = getScheduleActionRows(SCHEDULE_WORKFLOW_ACTIONS);
     return (
       <View style={{
         width: orientation === 'landscape' ? 310 : '100%',
@@ -172,7 +172,7 @@ export default function ScheduleDashboard() {
   const screenWidth = Platform.OS === 'web' && typeof window !== 'undefined' ? window.screen.width : width;
   const screenHeight = Platform.OS === 'web' && typeof window !== 'undefined' ? window.screen.height : height;
   const maxTouchPoints = Platform.OS === 'web' && typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0;
-  const tabletScheduleOrientation = getTabletScheduleOrientation(
+  const tabletScheduleOrientation = getCompactScheduleActionOrientation(
     Device.deviceType === Device.DeviceType.TABLET,
     width,
     height,

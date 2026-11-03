@@ -1,4 +1,5 @@
-import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { coreAlpha } from '@/constants/coreTheme';
+import { superAdminColor as coreColor } from '@/constants/superAdminTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator, Clipboard } from 'react-native';
@@ -235,7 +236,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha('#000000', 0.75), justifyContent: 'flex-end' }}>
         <Animated.View entering={FadeInUp.duration(300)} style={{
           backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           padding: 24, borderTopWidth: 1, borderColor: C.border,
@@ -534,7 +535,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha('#000000', 0.75), justifyContent: 'flex-end' }}>
         <Animated.View entering={FadeInUp.duration(300)} style={{
           backgroundColor: C.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28,
           padding: 24, borderTopWidth: 1, borderColor: C.border,
@@ -593,7 +594,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
               <TouchableOpacity onPress={handleSave} disabled={provisionMutation.isPending || phase === 'provisioning'}
                 style={{ flex: 1, backgroundColor: provisionMutation.isPending ? C.border : C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
                 {provisionMutation.isPending ? <ActivityIndicator color={C.text} /> : (
-                  <Text style={{ color: coreColor('#000', 'text'), fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
+                  <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
                     {phase === 'failed' ? 'Retry Creation' : 'Create Tenant Account'}
                   </Text>
                 )}
@@ -602,7 +603,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
             {phase === 'success' && (
               <TouchableOpacity onPress={() => { onComplete(); onClose(); }}
                 style={{ flex: 1, backgroundColor: C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
-                <Text style={{ color: coreColor('#000', 'text'), fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Done</Text>
+                <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Done</Text>
               </TouchableOpacity>
             )}
           </View>

@@ -1,4 +1,5 @@
-import { coreColor, coreAlpha } from '@/constants/coreTheme';
+import { coreAlpha } from '@/constants/coreTheme';
+import { superAdminColor as coreColor } from '@/constants/superAdminTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
@@ -161,7 +162,7 @@ function AddOrgModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.75), justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: coreAlpha('#000000', 0.75), justifyContent: 'flex-end' }}>
         <Animated.View
           entering={FadeInUp.duration(300)}
           style={{

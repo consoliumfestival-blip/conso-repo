@@ -1,4 +1,4 @@
-import { coreColor } from '@/constants/coreTheme';
+import { superAdminColor as coreColor } from '@/constants/superAdminTheme';
 import React from 'react';
 import { Stack } from 'expo-router';
 import { CoreAppearanceProvider } from '@/core/contexts/CoreAppearanceContext';

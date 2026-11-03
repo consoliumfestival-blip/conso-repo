@@ -150,7 +150,7 @@ export default function ScheduleDashboard() {
   }, [tenant_id, festival?.id, debouncedSearchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, selectedDate, pageSize]);
 
   const isSearchDebouncing = searchQuery.trim() !== debouncedSearchQuery;
-  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule({
+  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, setSchedulePostponed, updateSchedule } = useSchedule({
     overviewPage: {
       search: debouncedSearchQuery,
       itemId: selectedItem === 'All' ? null : selectedItem,
@@ -873,7 +873,7 @@ export default function ScheduleDashboard() {
                       {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
-                  {schedule.is_overdue_unstarted && (
+                  {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
                     <View className="mt-1 self-start rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
                       <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700">Postponed</Text>
                     </View>
@@ -931,7 +931,13 @@ export default function ScheduleDashboard() {
                   >
                     <Trash2 size={13} color={coreColor("#DC2626", 'danger')} />
                   </TouchableOpacity>
-                  <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })} />
+                  <ScheduleLifecycleActions
+                    scheduleName={schedule.items?.item_name_en || 'Event'}
+                    status={schedule.status}
+                    isPostponed={schedule.is_postponed === true}
+                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
+                    onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
+                  />
                 </View>
               </View>
             ))}
@@ -960,6 +966,8 @@ export default function ScheduleDashboard() {
                   <ScheduleLifecycleActions
                     scheduleName={schedule.items?.item_name_en || 'Event'}
                     status={schedule.status}
+                    isPostponed={schedule.is_postponed === true}
+                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
                     onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
                     accessibilityLabel={`Actions for ${schedule.items?.item_name_en || 'event'}`}
                     open={mobileActionMenuId === schedule.id}
@@ -1058,7 +1066,7 @@ export default function ScheduleDashboard() {
                     {new Date(schedule.start_time).toLocaleDateString()}
                   </Text>
                 </View>
-                {schedule.is_overdue_unstarted && (
+                {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
                   <View className="rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
                     <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Postponed</Text>
                   </View>

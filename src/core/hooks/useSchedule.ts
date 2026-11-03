@@ -87,6 +87,12 @@ export const useSchedule = (options?: {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
   });
 
+  const setSchedulePostponedMutation = useMutation({
+    mutationFn: ({ scheduleId, isPostponed, expectedIsPostponed }: { scheduleId: string; isPostponed: boolean; expectedIsPostponed: boolean }) =>
+      scheduleLifecycleService.setPostponed(scheduleId, isPostponed, expectedIsPostponed),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
+  });
+
   const deleteScheduleMutation = useMutation({
     mutationFn: (id: string) => scheduleService.deleteSchedule(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
@@ -123,6 +129,7 @@ export const useSchedule = (options?: {
     isUpdatingSchedule: updateScheduleMutation.isPending,
     setScheduleStatus: setScheduleStatusMutation.mutateAsync,
     isSettingScheduleStatus: setScheduleStatusMutation.isPending,
+    setSchedulePostponed: setSchedulePostponedMutation.mutateAsync,
     deleteSchedule: deleteScheduleMutation.mutateAsync,
     isDeletingSchedule: deleteScheduleMutation.isPending,
   };

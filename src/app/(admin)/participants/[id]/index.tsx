@@ -114,7 +114,9 @@ export default function ParticipantDetails() {
   const participantId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const isDesktopProfile = width >= 1000;
+  // The admin sidebar consumes significant width on tablets; use the stacked
+  // profile layout until the remaining content area can support two columns.
+  const isDesktopProfile = width >= 1200;
   const goBack = useGoBack('/(admin)/participants');
   const [eventsSectionExpanded, setEventsSectionExpanded] = useState(false);
   

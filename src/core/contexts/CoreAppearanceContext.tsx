@@ -69,7 +69,9 @@ export function CoreAppearanceProvider({ children }: { children: React.ReactNode
     roots.forEach((root) => { root.style.backgroundColor = colors.background; root.style.colorScheme = isDark ? 'dark' : 'light'; });
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const oldMeta = meta?.content;
-    if (meta) meta.content = colors.background;
+    // Keep the installed PWA's system navigation/safe-area surface neutral;
+    // page surfaces still use the selected appearance background.
+    if (meta) meta.content = colors.surface;
     return () => {
       roots.forEach((root, index) => { root.style.backgroundColor = previous[index].background; root.style.colorScheme = previous[index].scheme; });
       if (meta && oldMeta !== undefined) meta.content = oldMeta;

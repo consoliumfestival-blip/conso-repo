@@ -107,6 +107,10 @@ export default function ScheduleDashboard() {
   const isFocused = useIsFocused();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  // On tablets the full desktop table compresses its action column until the
+  // overflow menu wraps onto a second line. Keep the compact row layout until
+  // there is enough room for all table columns and actions.
+  const isCompactScheduleLayout = width < 1400;
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
@@ -824,7 +828,7 @@ export default function ScheduleDashboard() {
           </TouchableOpacity>
         </SsfCard>
       ) : (
-        !isMobile ? (
+        !isCompactScheduleLayout ? (
         <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
             <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
               <Text style={{ flex: 1.25 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>

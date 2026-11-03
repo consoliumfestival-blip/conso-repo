@@ -253,17 +253,6 @@ export default function ScheduleDashboard() {
     if (page > pageCount) setPage(pageCount);
   }, [page, pageCount]);
 
-  const exportFilters = {
-    tenantId: tenant_id!, festivalId: festival!.id,
-    search: debouncedSearchQuery,
-    itemId: selectedItem === 'All' ? null : selectedItem,
-    category: selectedCategory === 'All' ? null : selectedCategory,
-    venueId: selectedVenue === 'All' ? null : selectedVenue,
-    date: selectedDate,
-    workflowStatus: selectedStatus === 'All' ? null : selectedStatus,
-    timezone: scheduleTimezone,
-  };
-
   const dateSet = React.useMemo(() => new Set((availableDatesQuery.data ?? []).map((date) => String(date).slice(0, 10))), [availableDatesQuery.data]);
   const calendarYear = calendarMonth.getUTCFullYear();
   const calendarMonthIndex = calendarMonth.getUTCMonth();
@@ -276,15 +265,31 @@ export default function ScheduleDashboard() {
 
   const exportSchedulePdf = async (mode: AdminSchedulePdfMode) => {
     if (exportLock.current || isSearchDebouncing) return;
+    if (!festival?.id) {
+      const message = isLoadingFest ? 'Festival details are still loading. Please try again.' : 'No active festival is available.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Festival unavailable', message);
+      return;
+    }
     if (!totalFilteredSchedules) {
       if (Platform.OS === 'web') window.alert('No schedules found for the current filters.');
       else Alert.alert('No schedules', 'No schedules found for the current filters.');
       return;
     }
+    const exportFilters = {
+      tenantId: tenant_id!, festivalId: festival.id,
+      search: debouncedSearchQuery,
+      itemId: selectedItem === 'All' ? null : selectedItem,
+      category: selectedCategory === 'All' ? null : selectedCategory,
+      venueId: selectedVenue === 'All' ? null : selectedVenue,
+      date: selectedDate,
+      workflowStatus: selectedStatus === 'All' ? null : selectedStatus,
+      timezone: scheduleTimezone,
+    };
     try {
       exportLock.current = true;
       setIsExportingSchedule(true);
-      const [allSchedules,allRegistrations,participants,{downloadAdminSchedulePdf}]=await Promise.all([scheduleOverviewService.allFiltered(exportFilters),participantService.listRegistrationsByFestival<any>(festival!.id),participantService.listParticipants<any>(),import('../../../services/schedulePdfService')]);
+      const [allSchedules,allRegistrations,participants,{downloadAdminSchedulePdf}]=await Promise.all([scheduleOverviewService.allFiltered(exportFilters),participantService.listRegistrationsByFestival<any>(festival.id),participantService.listParticipants<any>(),import('../../../services/schedulePdfService')]);
       await downloadAdminSchedulePdf({
         mode,
         itemId: selectedItem,

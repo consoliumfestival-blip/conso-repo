@@ -342,6 +342,25 @@ export function downloadItemVerificationPdf(args: {
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 7.5, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.6, minCellHeight: 7, overflow: 'linebreak' },
     columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 95 }, 2: { cellWidth: 42 }, 3: { cellWidth: 35 } },
+    didDrawCell: (hook) => {
+      if (hook.section !== 'body' || hook.column.index !== 1) return;
+      const category = (args.item.category_codes ?? []).map(safeText).filter(Boolean).join(', ');
+      if (!category) return;
+      const name = itemLabel(args.item);
+      const textX = hook.cell.x + hook.cell.padding('left');
+      const textY = hook.cell.y + hook.cell.height / 2 + 1.1;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      const nameWidth = doc.getTextWidth(name);
+      const categoryWidth = doc.getTextWidth(`  ${category}`);
+      if (nameWidth + categoryWidth <= hook.cell.width - hook.cell.padding('horizontal')) {
+        doc.setFont('helvetica', 'bold');
+        doc.text(category, textX + nameWidth + 2, textY);
+      } else {
+        doc.setFont('helvetica', 'bold');
+        doc.text(category, textX, hook.cell.y + hook.cell.height - 1.2);
+      }
+    },
   });
   const headerY = ((doc as any).lastAutoTable?.finalY ?? 31) + 4;
   autoTable(doc, {

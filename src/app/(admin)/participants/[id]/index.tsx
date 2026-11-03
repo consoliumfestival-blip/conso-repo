@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Trophy,
   Upload,
+  Search,
 } from 'lucide-react-native';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { CATEGORIES } from '../../../../constants/categories';
@@ -169,8 +170,14 @@ export default function ParticipantDetails() {
   );
   const [publicSectionExpanded, setPublicSectionExpanded] = useState(false);
   const [eventParticipationType, setEventParticipationType] = useState<'individual' | 'group'>('individual');
+  const [assignedItemSearch, setAssignedItemSearch] = useState('');
   const assignedItems = events.filter((event: any) =>
     (event.items?.participation_type === 'group' ? 'group' : 'individual') === eventParticipationType,
+  );
+  const filteredAssignedItems = assignedItems.filter((event: any) =>
+    `${event.items?.item_name_en ?? ''} ${event.items?.item_name_ml ?? ''} ${event.items?.item_code ?? ''} ${event.level ?? ''}`
+      .toLowerCase()
+      .includes(assignedItemSearch.trim().toLowerCase()),
   );
   const festivalLevel = String(festival?.level || '').trim().toLowerCase();
   const currentOrganisation = organisations.find((organisation) => organisation.tenant_id === validTenantId);
@@ -1021,6 +1028,18 @@ export default function ParticipantDetails() {
               compact
               accessibilityLabel="Filter assigned items by participation type"
             />
+            <View className="h-10 flex-row items-center rounded-lg border border-ui-border bg-core-surface-white px-3">
+              <Search size={16} color={ui.colors.textMuted} />
+              <TextInput
+                value={assignedItemSearch}
+                onChangeText={setAssignedItemSearch}
+                placeholder={`Search ${eventParticipationType} items`}
+                placeholderTextColor={ui.colors.textMuted}
+                accessibilityLabel={`Search ${eventParticipationType} assigned items`}
+                returnKeyType="search"
+                className="ml-2 min-w-0 flex-1 py-0 font-poppins text-xs text-ui-text"
+              />
+            </View>
             {isLoadingRegistrations ? (
               <View className="flex-row items-center gap-x-2 py-2"><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading items...</Text></View>
             ) : registrationsError ? (
@@ -1033,8 +1052,12 @@ export default function ParticipantDetails() {
                 </Text>
               </View>
             ) : (
-              <View className="gap-y-2">
-                {assignedItems.map((ev: any, index: number) => (
+              filteredAssignedItems.length === 0 ? (
+                <View className="rounded-xl border border-dashed border-core-border-slate-200 px-4 py-5">
+                  <Text className="text-center font-poppins text-xs text-ssf-text-muted">No {eventParticipationType} items match this search.</Text>
+                </View>
+              ) : <View className="gap-y-2">
+                {filteredAssignedItems.map((ev: any, index: number) => (
                   <View key={ev.id} className="flex-row items-center border-b border-core-border-slate-100 py-3 last:border-b-0">
                     <View className="h-8 w-8 items-center justify-center rounded-lg bg-core-surface-white">
                       <Text className="font-poppins-bold text-[11px] text-core-success-emerald-700">{index + 1}</Text>

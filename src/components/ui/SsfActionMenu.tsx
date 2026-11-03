@@ -28,11 +28,13 @@ export function SsfActionMenu({
   accessibilityLabel = 'More actions',
   open: controlledOpen,
   onOpenChange,
+  triggerLabel,
 }: {
   items: SsfActionMenuItem[];
   accessibilityLabel?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  triggerLabel?: string;
 }) {
   const triggerRef = useRef<View>(null);
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
@@ -92,9 +94,9 @@ export function SsfActionMenu({
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         accessibilityState={{ expanded: open }}
-        style={styles.trigger}
+        style={[styles.trigger, triggerLabel ? styles.textTrigger : null]}
       >
-        <MoreHorizontal size={18} color={ui.colors.text} />
+        {triggerLabel ? <Text style={styles.triggerText}>{triggerLabel}</Text> : <MoreHorizontal size={18} color={ui.colors.text} />}
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
@@ -153,6 +155,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: ui.colors.border,
     backgroundColor: ui.colors.surface,
+  },
+  textTrigger: {
+    width: undefined,
+    minHeight: 44,
+    paddingHorizontal: 10,
+  },
+  triggerText: {
+    color: ui.colors.text,
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 10,
   },
   menu: {
     position: 'absolute',

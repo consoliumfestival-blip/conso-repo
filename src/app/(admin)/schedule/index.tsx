@@ -20,6 +20,8 @@ import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
+import * as Device from 'expo-device';
+import { showTabletScheduleActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const normalizeCategory = (value: string) => {
@@ -108,6 +110,13 @@ export default function ScheduleDashboard() {
   const { width, height } = useWindowDimensions();
   const isMobile = width < 768;
   const isTabletFilters = width >= 600 && width < 1200;
+  // iPadOS Safari can identify itself as a Mac; touch points distinguish it
+  // from a desktop Mac without changing desktop or phone layouts.
+  const isIpadDesktopMode = Platform.OS === 'web' && typeof navigator !== 'undefined'
+    && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  const isTabletScheduleActions = showTabletScheduleActions(
+    Device.deviceType === Device.DeviceType.TABLET || isIpadDesktopMode, width, height,
+  );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
@@ -975,9 +984,11 @@ export default function ScheduleDashboard() {
                     onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
                     onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
                     accessibilityLabel={`Actions for ${schedule.items?.item_name_en || 'event'}`}
+                    triggerLabel={isTabletScheduleActions ? 'Event actions' : undefined}
                     open={mobileActionMenuId === schedule.id}
                     onOpenChange={(nextOpen) => setMobileActionMenuId(nextOpen ? schedule.id : null)}
                     additionalItems={[
+                      ...(!isTabletScheduleActions ? [
                       {
                         label: 'Check-in',
                         icon: <LogIn size={15} color={ui.colors.textMuted} />,
@@ -998,6 +1009,7 @@ export default function ScheduleDashboard() {
                         icon: <Trophy size={15} color={coreColor("#0F766E", 'primaryText')} />,
                         onPress: () => router.push(`/(admin)/schedule/${schedule.id}/results` as any),
                       },
+                      ] : []),
                       {
                         label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',
                         separatorBefore: true,
@@ -1084,6 +1096,30 @@ export default function ScheduleDashboard() {
                 isShuffleLocked={schedule.is_shuffle_locked}
                 compact
               />
+
+              {isTabletScheduleActions && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                  {[
+                    { label: 'Check-in', path: 'checkin' },
+                    { label: 'Codes', path: 'code-letter' },
+                    { label: 'Marks', path: 'marks' },
+                    { label: 'Results', path: 'results' },
+                  ].map((action) => (
+                    <TouchableOpacity
+                      key={action.path}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${action.label} for ${schedule.items?.item_name_en || 'event'}`}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any);
+                      }}
+                      className={`h-11 px-3 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
+                    >
+                      <Text className={`font-poppins-bold text-xs ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
 
               {/* Action buttons — 2×2 grid on mobile */}
               <View className="hidden">

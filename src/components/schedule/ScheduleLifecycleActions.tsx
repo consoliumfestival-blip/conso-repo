@@ -24,6 +24,7 @@ export function ScheduleLifecycleActions({
   onStatusChange,
   isPostponed = false,
   onPostponedChange,
+  triggerLabel,
 }: {
   scheduleName: string;
   status: string | null | undefined;
@@ -35,6 +36,7 @@ export function ScheduleLifecycleActions({
   onStatusChange: (status: ScheduleLifecycleStatus, expectedStatus: string | null | undefined) => Promise<void>;
   isPostponed?: boolean;
   onPostponedChange?: (nextValue: boolean, expectedValue: boolean) => Promise<void>;
+  triggerLabel?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ScheduleLifecycleStatus>(normalizeScheduleLifecycleStatus(status) ?? 'scheduled');
@@ -102,6 +104,7 @@ export function ScheduleLifecycleActions({
         accessibilityLabel={accessibilityLabel ?? `Event status actions for ${scheduleName}`}
         open={open}
         onOpenChange={onOpenChange}
+        triggerLabel={triggerLabel}
         items={[
           ...additionalItems,
           ...(onPostponedChange ? [{

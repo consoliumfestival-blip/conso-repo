@@ -21,6 +21,7 @@ export default function ParticipantsScreen() {
   const ui = useTeamUi();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+  const isWideRoster = width >= 1120 || (width >= 768 && width > height && height >= 600);
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
@@ -83,12 +84,19 @@ export default function ParticipantsScreen() {
   if (contextLoading || loading) {
     return (
       <TeamLeaderAppShell>
-        <View style={{ gap: 12 }}>
-          <Skeleton style={{ height: 40, borderRadius: 8 }} />
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} style={{ height: 60, borderRadius: 12 }} />
-          ))}
-        </View>
+        {isWideRoster ? (
+          <View style={{ gap: 8 }}>
+            <Skeleton style={{ height: 42, borderRadius: 8 }} />
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} style={{ height: 58, borderRadius: 8 }} />)}
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>
+            <Skeleton style={{ height: 40, borderRadius: 8 }} />
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} style={{ height: 60, borderRadius: 12 }} />
+            ))}
+          </View>
+        )}
       </TeamLeaderAppShell>
     );
   }
@@ -112,6 +120,60 @@ export default function ParticipantsScreen() {
     return true;
   });
   const isPhone = width < 600;
+  const tableCell = { paddingHorizontal: 12, justifyContent: 'center' as const, minHeight: 56 };
+  const participantTable = (
+    <ScrollView horizontal style={{ width: '100%' }} showsHorizontalScrollIndicator keyboardShouldPersistTaps="handled">
+      <View style={{ minWidth: 680, overflow: 'hidden', borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface }}>
+        <View accessibilityRole="header" style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', backgroundColor: ui.colors.surfaceMuted, borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
+          <Text style={[tableCell, { flex: 2.3, minWidth: 190, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Participant</Text>
+          <Text style={[tableCell, { flex: 1.1, minWidth: 100, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Category</Text>
+          <Text style={[tableCell, { flex: 0.9, minWidth: 78, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Gender</Text>
+          <Text style={[tableCell, { flex: 1.1, minWidth: 110, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Chest No.</Text>
+          <Text style={[tableCell, { flex: 1, minWidth: 108, minHeight: 44, color: ui.colors.textMuted, fontSize: 11, fontWeight: '800' }]}>Status</Text>
+        </View>
+        {filtered.map((participant) => {
+          const status = participant.status || 'N/A';
+          const statusVariant = status === 'rejected'
+            ? 'destructive'
+            : status === 'active' || status === 'registered' || status === 'approved'
+              ? 'success'
+              : 'warning';
+          const profileLabel = [
+            participant.name || 'Participant',
+            participant.category_code,
+            participant.gender,
+            participant.chest_number ? `Chest ${participant.chest_number}` : null,
+            status,
+          ].filter(Boolean).join(', ');
+          return (
+            <Pressable
+              key={participant.id}
+              accessibilityRole="button"
+              accessibilityLabel={`View details for ${profileLabel}`}
+              onPress={() => setSelectedParticipant(participant)}
+              style={{ minHeight: 56, flexDirection: 'row', alignItems: 'stretch', borderBottomWidth: 1, borderBottomColor: ui.colors.border }}
+            >
+              <View style={[tableCell, { flex: 2.3, minWidth: 190 }]}>
+                <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{participant.name || 'Participant'}</Text>
+              </View>
+              <View style={[tableCell, { flex: 1.1, minWidth: 100 }]}>
+                <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 12 }}>{participant.category_code || '—'}</Text>
+              </View>
+              <View style={[tableCell, { flex: 0.9, minWidth: 78 }]}>
+                <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 12 }}>{participant.gender || '—'}</Text>
+              </View>
+              <View style={[tableCell, { flex: 1.1, minWidth: 110 }]}>
+                <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 12 }}>{participant.chest_number ? `#${participant.chest_number}` : '—'}</Text>
+              </View>
+              <View style={[tableCell, { flex: 1, minWidth: 108, alignItems: 'flex-start' }]}>
+                <Badge variant={statusVariant}>{status}</Badge>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </ScrollView>
+  );
   const detailRows: [string, string][] = selectedParticipant ? [
     ['Chest number', selectedParticipant.chest_number ? `#${selectedParticipant.chest_number}` : 'Not provided'],
     ['Category', selectedParticipant.category_code || 'Not provided'],
@@ -200,6 +262,8 @@ export default function ParticipantsScreen() {
                   <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No participants found</Text>
                 </CardContent>
               </Card>
+            ) : isWideRoster ? (
+              participantTable
             ) : (
               <View style={{ gap: 8 }}>
                 {filtered.map((p) => (

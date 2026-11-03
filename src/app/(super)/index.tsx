@@ -34,10 +34,10 @@ export default function SuperadminDashboard() {
     { title: 'Organisation Hierarchy', desc: 'Manage Units, Sectors & Divisions globally', icon: Layers, route: '/(super)/organisations' },
     { title: 'Tenant Accounts', desc: 'View and configure all tenant settings', icon: Globe, route: '/(super)/tenants' },
     { title: 'System Logs', desc: 'Monitor application and server activity', icon: FileText, route: null },
-    { title: 'Festival Settings', desc: 'Manage global scoring rules and items', icon: Settings, route: '/(admin)/settings' },
+    { title: 'Festival Settings', desc: 'Manage global scoring rules and items', icon: Settings, route: null },
     { title: 'Appearance', desc: 'Personalize Core and Stage Management on this device', icon: Settings, route: '/(super)/appearance' },
-    { title: 'Communication Center', desc: 'Send notifications across all tenants', icon: Bell, route: '/(admin)/communication' },
-    { title: 'Leaderboard Management', desc: 'Control visibility and calculate results', icon: Trophy, route: '/(admin)/settings/leaderboard' },
+    { title: 'Communication Center', desc: 'Send notifications across all tenants', icon: Bell, route: null },
+    { title: 'Leaderboard Management', desc: 'Control visibility and calculate results', icon: Trophy, route: null },
   ];
 
   return (
@@ -70,9 +70,9 @@ export default function SuperadminDashboard() {
         <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 15, marginBottom: 10 }}>System Modules</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {modules.map(({ title, desc, icon: Icon, route }) => (
-            <TouchableOpacity key={title} accessibilityRole="button" accessibilityLabel={title} accessibilityState={{ disabled: !route }} disabled={!route} onPress={() => route && router.push(route as any)} activeOpacity={0.75} style={{ width: compact ? '100%' : '49%', flexGrow: compact ? 0 : 1, minHeight: 92, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 10, opacity: route ? 1 : 0.7 }}>
+            <TouchableOpacity key={title} accessibilityRole="button" accessibilityLabel={route ? title : `${title}, coming soon`} accessibilityState={{ disabled: !route }} disabled={!route} onPress={() => route && router.push(route as any)} activeOpacity={0.75} style={{ width: compact ? '100%' : '49%', flexGrow: compact ? 0 : 1, minHeight: 92, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 10, opacity: route ? 1 : 0.7 }}>
               <View style={{ width: 42, height: 42, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: C.soft }}><Icon size={20} color={C.primary} /></View>
-              <View style={{ flex: 1, minWidth: 0 }}><Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>{title}{!route ? '  ·  Soon' : ''}</Text><Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, lineHeight: 17, marginTop: 3 }}>{desc}</Text></View>
+              <View style={{ flex: 1, minWidth: 0 }}><Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>{title}{!route ? '  ·  Coming soon' : ''}</Text><Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, lineHeight: 17, marginTop: 3 }}>{desc}</Text></View>
               {route ? <ChevronRight size={18} color={C.muted} /> : null}
             </TouchableOpacity>
           ))}

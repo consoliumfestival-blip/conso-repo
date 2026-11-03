@@ -94,6 +94,29 @@ export interface TeamLeaderProgramOption {
   assignment_locked?: boolean;
 }
 
+export interface TeamLeaderProgramsPage {
+  rows: TeamLeaderProgramOption[];
+  page: number;
+  page_size: number;
+  has_more: boolean;
+  has_previous: boolean;
+  available_count: number;
+  active_count: number;
+  category_codes: string[];
+}
+
+export interface TeamLeaderProgramsPageParams {
+  entryKind: 'participant' | 'general_team';
+  search: string;
+  categoryCode: string;
+  stageFilter: 'All stages' | 'On Stage' | 'Off Stage';
+  completionFilter: 'All statuses' | 'Fully assigned' | 'Not fully assigned';
+  sort: 'default' | 'name_asc' | 'name_desc' | 'code_asc' | 'category_asc';
+  categoryOrder: string[];
+  page: number;
+  pageSize: number;
+}
+
 export interface TeamLeaderGroupRosterMember {
   registration_id: string;
   entry_chest_number: string | null;
@@ -183,18 +206,20 @@ export const teamLeaderPortalService = {
     if (error) throw error;
     return (data ?? []) as TeamLeaderParticipantProgram[];
   },
-  getProgramsForTeam: async () => {
-    const [programs, completionRows] = await Promise.all([
-      supabase.rpc('get_team_leader_programs_for_team_with_locks'),
-      supabase.rpc('get_team_leader_completed_program_ids'),
-    ]);
-    if (programs.error) throw programs.error;
-    if (completionRows.error) throw completionRows.error;
-    const completedIds = new Set(((completionRows.data ?? []) as { item_id: string }[]).map((row) => row.item_id));
-    return ((programs.data ?? []) as TeamLeaderProgramOption[]).map((program) => ({
-      ...program,
-      is_completed: completedIds.has(program.item_id),
-    }));
+  getProgramsForTeamPage: async (params: TeamLeaderProgramsPageParams) => {
+    const { data, error } = await supabase.rpc('get_team_leader_programs_page', {
+      p_entry_kind: params.entryKind,
+      p_search: params.search,
+      p_category_code: params.categoryCode,
+      p_stage_filter: params.stageFilter,
+      p_completion_filter: params.completionFilter,
+      p_sort: params.sort,
+      p_category_order: params.categoryOrder,
+      p_page: params.page,
+      p_page_size: params.pageSize,
+    });
+    if (error) throw error;
+    return data as TeamLeaderProgramsPage;
   },
   getEligibleGroupMemberIds: async (itemId: string) => {
     const { data, error } = await supabase.rpc('get_team_leader_eligible_group_member_ids', {

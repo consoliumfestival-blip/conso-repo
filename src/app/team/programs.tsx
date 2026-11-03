@@ -82,6 +82,9 @@ function TeamProgramsContent() {
   const [participantRetry, setParticipantRetry] = useState(0);
   const participantsLoaded = useRef(false);
   const [programSearch, setProgramSearch] = useState('');
+  const [debouncedProgramSearch, setDebouncedProgramSearch] = useState('');
+  const [programPage, setProgramPage] = useState(1);
+  const programPageSize = 25;
   const [categoryFilter, setCategoryFilter] = useState('All categories');
   const [stageFilter, setStageFilter] = useState<'All stages' | 'On Stage' | 'Off Stage'>('All stages');
   const [completionFilter, setCompletionFilter] = useState<'All statuses' | 'Fully assigned' | 'Not fully assigned'>('All statuses');
@@ -144,11 +147,6 @@ function TeamProgramsContent() {
     return () => { cancelled = true; };
   }, [context, contextLoading, teamFestivalId, teamOrganisationId, participantRetry, userId]);
 
-  const programsQuery = useQuery({
-    queryKey: teamLeaderProgramsKey,
-    enabled: !!context && !!userId,
-    queryFn: () => teamLeaderPortalService.getProgramsForTeam(),
-  });
   const itemLimitStatusQuery = useQuery({
     queryKey: itemLimitStatusKey,
     enabled: !!context && !!userId,
@@ -159,38 +157,72 @@ function TeamProgramsContent() {
     [itemLimitStatusQuery.data],
   );
   const getItemLimitStatus = (itemId: string) => itemLimitStatusById.get(itemId);
-
-  useEffect(() => {
-    if (!activeIndividualProgram) return;
-    const refreshedProgram = programsQuery.data?.find((program) => program.item_id === activeIndividualProgram.item_id);
-    if (refreshedProgram && refreshedProgram !== activeIndividualProgram) {
-      setActiveIndividualProgram(refreshedProgram);
-    }
-  }, [activeIndividualProgram, programsQuery.data]);
-  useEffect(() => {
-    if (!activeViewProgram) return;
-    const refreshedProgram = programsQuery.data?.find((program) => program.item_id === activeViewProgram.item_id);
-    if (refreshedProgram && refreshedProgram !== activeViewProgram) {
-      setActiveViewProgram(refreshedProgram);
-      if (refreshedProgram.assignment_locked) setPendingDeselect(null);
-    }
-  }, [activeViewProgram, programsQuery.data]);
-  useEffect(() => {
-    if (!activeGeneralProgram) return;
-    const refreshedProgram = programsQuery.data?.find((program) => program.item_id === activeGeneralProgram.item_id);
-    if (refreshedProgram && refreshedProgram !== activeGeneralProgram) setActiveGeneralProgram(refreshedProgram);
-  }, [activeGeneralProgram, programsQuery.data]);
-  useEffect(() => {
-    if (!pendingCompletionProgram) return;
-    const refreshedProgram = programsQuery.data?.find((program) => program.item_id === pendingCompletionProgram.item_id);
-    if (refreshedProgram && refreshedProgram !== pendingCompletionProgram) setPendingCompletionProgram(refreshedProgram);
-  }, [pendingCompletionProgram, programsQuery.data]);
   const festivalCategoriesQuery = useQuery({
     queryKey: ['team-leader-festival-categories', context?.festival_id],
     enabled: !!context?.festival_id,
     queryFn: () => festivalCategoryService.list(context!.festival_id),
     staleTime: 5 * 60 * 1000,
   });
+  const categorySortOrder = useMemo(() => {
+    const ordered: string[] = [];
+    const seen = new Set<string>();
+    for (const category of festivalCategoriesQuery.data ?? []) {
+      const code = normalizeCategoryCode(category.code);
+      if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
+    }
+    for (const person of participants) {
+      const code = person.category_code ? normalizeCategoryCode(person.category_code) : '';
+      if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
+    }
+    if (!seen.has('GENERAL')) ordered.push('GENERAL');
+    return ordered;
+  }, [festivalCategoriesQuery.data, participants]);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedProgramSearch(programSearch.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [programSearch]);
+  const programsQuery = useQuery({
+    queryKey: [...teamLeaderProgramsKey, programKind, debouncedProgramSearch, categoryFilter, stageFilter, completionFilter, programSort, categorySortOrder, programPage, programPageSize],
+    enabled: !!context && !!userId,
+    queryFn: () => teamLeaderPortalService.getProgramsForTeamPage({
+      entryKind: programKind,
+      search: debouncedProgramSearch,
+      categoryCode: categoryFilter,
+      stageFilter,
+      completionFilter,
+      sort: programSort,
+      categoryOrder: categorySortOrder,
+      page: programPage,
+      pageSize: programPageSize,
+    }),
+  });
+  const programRows = useMemo(() => programsQuery.data?.rows ?? [], [programsQuery.data?.rows]);
+  useEffect(() => {
+    if (programsQuery.data && programsQuery.data.page !== programPage) setProgramPage(programsQuery.data.page);
+  }, [programsQuery.data, programPage]);
+  useEffect(() => {
+    if (!activeIndividualProgram) return;
+    const refreshedProgram = programRows.find((program) => program.item_id === activeIndividualProgram.item_id);
+    if (refreshedProgram && refreshedProgram !== activeIndividualProgram) setActiveIndividualProgram(refreshedProgram);
+  }, [activeIndividualProgram, programRows]);
+  useEffect(() => {
+    if (!activeViewProgram) return;
+    const refreshedProgram = programRows.find((program) => program.item_id === activeViewProgram.item_id);
+    if (refreshedProgram && refreshedProgram !== activeViewProgram) {
+      setActiveViewProgram(refreshedProgram);
+      if (refreshedProgram.assignment_locked) setPendingDeselect(null);
+    }
+  }, [activeViewProgram, programRows]);
+  useEffect(() => {
+    if (!activeGeneralProgram) return;
+    const refreshedProgram = programRows.find((program) => program.item_id === activeGeneralProgram.item_id);
+    if (refreshedProgram && refreshedProgram !== activeGeneralProgram) setActiveGeneralProgram(refreshedProgram);
+  }, [activeGeneralProgram, programRows]);
+  useEffect(() => {
+    if (!pendingCompletionProgram) return;
+    const refreshedProgram = programRows.find((program) => program.item_id === pendingCompletionProgram.item_id);
+    if (refreshedProgram && refreshedProgram !== pendingCompletionProgram) setPendingCompletionProgram(refreshedProgram);
+  }, [pendingCompletionProgram, programRows]);
   const groupEligibilityItemId = activeGeneralProgram?.item_id
     ?? (activeViewProgram?.entry_kind === 'general_team' ? activeViewProgram.item_id : null);
   const groupEligibilityQuery = useQuery({
@@ -240,15 +272,12 @@ function TeamProgramsContent() {
       const code = person.category_code ? normalizeCategoryCode(person.category_code) : '';
       if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
     }
-    for (const program of programsQuery.data ?? []) {
-      for (const rawCode of program.category_codes ?? []) {
-        const code = normalizeCategoryCode(rawCode);
-        if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
-      }
+    for (const code of programsQuery.data?.category_codes ?? []) {
+      if (code && !seen.has(code)) { ordered.push(code); seen.add(code); }
     }
     if (!seen.has('GENERAL')) ordered.push('GENERAL');
     return ordered;
-  }, [festivalCategoriesQuery.data, participants, programsQuery.data]);
+  }, [festivalCategoriesQuery.data, participants, programsQuery.data?.category_codes]);
   const categoryOptions = ['All categories', ...categoryOrder];
   const categoriesByCode = new Map((festivalCategoriesQuery.data ?? []).map((category) => [normalizeCategoryCode(category.code), category]));
   const displayCategoryOption = (code: string) => code === 'All categories'
@@ -257,41 +286,7 @@ function TeamProgramsContent() {
       ? 'General'
       : categoriesByCode.get(normalizeCategoryCode(code))?.name ?? categoryDisplay(code);
 
-  const visiblePrograms = useMemo(() => {
-    const filtered = (programsQuery.data ?? []).filter((program) =>
-      program.entry_kind === programKind && (program.is_eligible || program.is_assigned),
-    ).filter((program) =>
-      !programSearch.trim() || `${program.item_code ?? ''} ${program.item_name_en ?? ''} ${program.item_name_ml ?? ''} ${categoryLabel(program.category_codes)}`
-        .toLowerCase().includes(programSearch.trim().toLowerCase()),
-    ).filter((program) => categoryFilter === 'All categories'
-      || (program.category_codes ?? []).some((category) => normalizeCategoryCode(category) === categoryFilter))
-      .filter((program) => stageFilter === 'All stages'
-        || program.item_type?.trim().toLowerCase() === (stageFilter === 'On Stage' ? 'stage' : 'offstage'))
-      .filter((program) => programKind !== 'participant' || completionFilter === 'All statuses'
-        || program.is_completed === (completionFilter === 'Fully assigned'));
-
-    if (programSort === 'default') return filtered;
-    const compare = (left: string, right: string) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
-    const categoryRank = new Map(categoryOrder.map((code, index) => [code, index]));
-    return [...filtered].sort((left, right) => {
-      if (programSort === 'code_asc') return compare(left.item_code ?? '', right.item_code ?? '');
-      if (programSort === 'category_asc') {
-        const rank = (codes: string[] | null) => {
-          const ranks = (codes ?? []).map(normalizeCategoryCode).map((code) => categoryRank.get(code)).filter((value): value is number => value !== undefined);
-          return ranks.length ? Math.min(...ranks) : Number.MAX_SAFE_INTEGER;
-        };
-        const byCategory = rank(left.category_codes) - rank(right.category_codes);
-        if (byCategory) return byCategory;
-        const leftName = left.item_name_en || left.item_name_ml || left.item_code || '';
-        const rightName = right.item_name_en || right.item_name_ml || right.item_code || '';
-        return compare(leftName, rightName) || compare(left.item_code ?? '', right.item_code ?? '');
-      }
-      const leftName = left.item_name_en || left.item_name_ml || left.item_code || '';
-      const rightName = right.item_name_en || right.item_name_ml || right.item_code || '';
-      const byName = compare(leftName, rightName);
-      return programSort === 'name_desc' ? -byName : byName;
-    });
-  }, [programsQuery.data, programSearch, programKind, categoryFilter, stageFilter, completionFilter, programSort, categoryOrder]);
+  const visiblePrograms = programRows;
 
   const stageOptions = ['All stages', 'On Stage', 'Off Stage'];
   const completionOptions = ['All statuses', 'Fully assigned', 'Not fully assigned'];
@@ -521,6 +516,7 @@ function TeamProgramsContent() {
 
   const setKind = (kind: 'participant' | 'general_team') => {
     setProgramKind(kind);
+    setProgramPage(1);
     setProgramSearch('');
     setCategoryFilter('All categories');
     setStageFilter('All stages');
@@ -941,10 +937,8 @@ function TeamProgramsContent() {
     return <TeamLeaderAppShell><View style={{ flex: 1, minHeight: 220, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={orange} /></View></TeamLeaderAppShell>;
   }
 
-  const availableProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (program.is_eligible || program.is_assigned)).length;
-  const activeProgramCount = (programsQuery.data ?? []).filter((program) => program.entry_kind === programKind && (
-    programKind === 'participant' ? program.is_completed === true : program.team_entry_count > 0
-  )).length;
+  const availableProgramCount = programsQuery.data?.available_count ?? 0;
+  const activeProgramCount = programsQuery.data?.active_count ?? 0;
   const progressPercent = availableProgramCount ? Math.round(activeProgramCount / availableProgramCount * 100) : 0;
   const cardWidth: `${number}%` = width >= 1100 ? '32%' : width >= 700 ? '48.5%' : '100%';
   const filterOptions = filterPicker === 'category' ? categoryOptions : filterPicker === 'stage' ? stageOptions : completionOptions;
@@ -985,8 +979,8 @@ function TeamProgramsContent() {
           <View style={{ marginBottom: 12, padding: 8, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             <View style={{ minWidth: isPhone ? 0 : 210, width: isPhone ? '100%' : undefined, height: isPhone ? 44 : 40, flex: isPhone ? undefined : 1, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Search size={16} color={muted} />
-              <TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
-              {!!programSearch && <Pressable onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={muted} /></Pressable>}
+              <TextInput value={programSearch} onChangeText={(value) => { setProgramSearch(value); setProgramPage(1); }} placeholder="Search by program name or code..." placeholderTextColor={ui.colors.textSubtle} style={{ flex: 1, minHeight: 38, color: ui.colors.text, fontSize: 13, outlineStyle: 'none' as any }} />
+              {!!programSearch && <Pressable onPress={() => { setProgramSearch(''); setProgramPage(1); }} accessibilityLabel="Clear search"><X size={15} color={muted} /></Pressable>}
             </View>
             {visibleFilterControls.map(({ key, value }) => <Pressable key={key} accessibilityRole="button" accessibilityLabel={`${key === 'status' ? 'Completion status' : key === 'stage' ? 'Stage' : 'Category'} filter, currently ${value}`} onPress={() => setFilterPicker(key)} style={{ minWidth: isPhone ? 0 : 116, width: isPhone ? '48%' : undefined, flexGrow: isPhone ? 1 : 0, height: isPhone ? 44 : 40, paddingHorizontal: 11, borderRadius: 8, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <Text numberOfLines={1} style={{ flex: 1, color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{key === 'category' ? displayCategoryOption(value) : value}</Text><ChevronDown size={14} color={muted} />
@@ -998,7 +992,7 @@ function TeamProgramsContent() {
               </View>
               <ChevronDown size={14} color={muted} />
             </Pressable>
-            {hasActiveFilters ? <Pressable accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setCategoryFilter('All categories'); setStageFilter('All stages'); setCompletionFilter('All statuses'); }} style={{ minHeight: 44, width: isPhone ? '100%' : undefined, paddingHorizontal: 10, alignItems: isPhone ? 'flex-end' : 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700' }}>Clear filters</Text></Pressable> : null}
+            {hasActiveFilters ? <Pressable accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setCategoryFilter('All categories'); setStageFilter('All stages'); setCompletionFilter('All statuses'); setProgramPage(1); }} style={{ minHeight: 44, width: isPhone ? '100%' : undefined, paddingHorizontal: 10, alignItems: isPhone ? 'flex-end' : 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700' }}>Clear filters</Text></Pressable> : null}
           </View>
 
           {programsQuery.isSuccess ? <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
@@ -1016,6 +1010,11 @@ function TeamProgramsContent() {
           {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
             {visiblePrograms.map((program) => programCard(program, cardWidth))}
           </View> : null}
+          {programsQuery.isSuccess && (programsQuery.data.has_previous || programsQuery.data.has_more) ? <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !programsQuery.data.has_previous || programsQuery.isFetching }} disabled={!programsQuery.data.has_previous || programsQuery.isFetching} onPress={() => setProgramPage(programsQuery.data.page - 1)} style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: border, justifyContent: 'center', opacity: !programsQuery.data.has_previous || programsQuery.isFetching ? 0.45 : 1 }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Previous</Text></Pressable>
+            <Text accessibilityLiveRegion="polite" style={{ color: muted, fontSize: 12, fontWeight: '600' }}>Page {programsQuery.data.page}</Text>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: !programsQuery.data.has_more || programsQuery.isFetching }} disabled={!programsQuery.data.has_more || programsQuery.isFetching} onPress={() => setProgramPage(programsQuery.data.page + 1)} style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: border, justifyContent: 'center', opacity: !programsQuery.data.has_more || programsQuery.isFetching ? 0.45 : 1 }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Next</Text></Pressable>
+          </View> : null}
         </>
       </ScrollView>
 
@@ -1028,6 +1027,7 @@ function TeamProgramsContent() {
               else if (filterPicker === 'stage') setStageFilter(option as typeof stageFilter);
               else if (filterPicker === 'status') setCompletionFilter(option as typeof completionFilter);
               else setProgramSort(sortOptions.find((sortOption) => sortOption.label === option)?.value ?? 'default');
+              setProgramPage(1);
               setFilterPicker(null);
             }} style={{ minHeight: 44, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: border }}><Text style={{ color: filterPicker === 'sort' ? (selectedSortLabel === option ? ui.colors.primary : ui.colors.text) : option === filterValue ? ui.colors.primary : ui.colors.text, fontSize: 13, fontWeight: (filterPicker === 'sort' ? selectedSortLabel === option : option === filterValue) ? '700' : '400' }}>{filterPicker === 'category' ? displayCategoryOption(option) : option}</Text></Pressable>)}</ScrollView>
           </Pressable>

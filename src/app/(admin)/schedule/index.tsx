@@ -137,8 +137,8 @@ function ScheduleWorkflowActionButtons({
     const actionRows = getScheduleActionRows(SCHEDULE_WORKFLOW_ACTIONS);
     return (
       <View style={{
-        width: orientation === 'landscape' ? 310 : '100%',
-        maxWidth: orientation === 'portrait' ? 420 : 310,
+        width: orientation === 'landscape' ? 310 : orientation === 'portrait' ? 250 : '100%',
+        maxWidth: orientation === 'portrait' ? 250 : 310,
         alignSelf: 'flex-end',
         gap: 8,
         marginTop: orientation === 'portrait' ? 10 : 0,
@@ -921,7 +921,7 @@ export default function ScheduleDashboard() {
               <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
               <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
               <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workflow</Text>
-              <Text style={{ flex: 2.1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
+              <Text style={{ flex: 2.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
             </View>
             {filteredSchedules.map((schedule: any) => (
               <View key={schedule.id} className="min-h-16 px-3 py-2 flex-row items-center border-b border-ui-border bg-core-surface-white">
@@ -972,7 +972,7 @@ export default function ScheduleDashboard() {
                     isShuffleLocked={schedule.is_shuffle_locked}
                   />
                 </View>
-                <View style={{ flex: 2.1 }} className="flex-row flex-wrap justify-end gap-1.5">
+                <View style={{ flex: 2.4, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4 }} className="flex-row">
                   {[
                     { label: 'Check-in', path: 'checkin' },
                     { label: 'Codes', path: 'code-letter' },
@@ -982,7 +982,7 @@ export default function ScheduleDashboard() {
                     <TouchableOpacity
                       key={action.path}
                       onPress={() => router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
-                      className={`h-8 px-2.5 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
+                      className={`h-8 px-2 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
                     >
                       <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
                     </TouchableOpacity>
@@ -1006,13 +1006,15 @@ export default function ScheduleDashboard() {
                   >
                     <Trash2 size={13} color={coreColor("#DC2626", 'danger')} />
                   </TouchableOpacity>
-                  <ScheduleLifecycleActions
-                    scheduleName={schedule.items?.item_name_en || 'Event'}
-                    status={schedule.status}
-                    isPostponed={schedule.is_postponed === true}
-                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
-                    onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
-                  />
+                  <View style={{ width: 34, height: 34, flexShrink: 0 }}>
+                    <ScheduleLifecycleActions
+                      scheduleName={schedule.items?.item_name_en || 'Event'}
+                      status={schedule.status}
+                      isPostponed={schedule.is_postponed === true}
+                      onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
+                      onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
+                    />
+                  </View>
                 </View>
               </View>
             ))}
@@ -1021,7 +1023,7 @@ export default function ScheduleDashboard() {
         <View>
           {filteredSchedules.map((schedule: any) => {
             const scheduleName = schedule.items?.item_name_en || 'Unknown Event';
-            const isTabletLandscape = tabletScheduleOrientation === 'landscape';
+            const hasTabletSideActionLayout = tabletScheduleOrientation !== null;
             const cardLifecycleActions = (
               <ScheduleLifecycleActions
                 scheduleName={scheduleName}
@@ -1149,7 +1151,7 @@ export default function ScheduleDashboard() {
                   {cardLifecycleActions}
                 </View>
 
-                {isTabletLandscape ? (
+                {hasTabletSideActionLayout ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={{ flex: 1, minWidth: 0 }}>{scheduleDetails}</View>
                     {scheduleActionButtons}

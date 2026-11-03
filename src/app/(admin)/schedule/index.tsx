@@ -503,11 +503,9 @@ export default function ScheduleDashboard() {
               value={selectedItem}
               onValueChange={(value) => { setSelectedItem(value); setPage(1); }}
               accessibilityLabel="Filter by item"
-              searchable
-              searchPlaceholder="Search item..."
+              searchable={false}
               width={isTabletFilters ? Math.min(250, tabletFilterColumnWidth) : isMobile ? Math.max(220, width - 56) : 250}
               keepInViewport={isTabletFilters}
-              autoFocusSearch={!isTabletFilters}
               compact
               active={selectedItem !== 'All'}
               options={itemsList.map((item) => ({
@@ -519,6 +517,7 @@ export default function ScheduleDashboard() {
               value={selectedCategory}
               onValueChange={(value) => { setSelectedCategory(value); setPage(1); }}
               accessibilityLabel="Filter by item category"
+              searchable={false}
               width={isTabletFilters ? Math.min(148, tabletFilterColumnWidth) : isMobile ? Math.max(120, (width - 72) / 2) : 148}
               keepInViewport={isTabletFilters}
               compact
@@ -532,11 +531,9 @@ export default function ScheduleDashboard() {
               value={selectedVenue}
               onValueChange={(value) => { setSelectedVenue(value); setPage(1); }}
               accessibilityLabel="Filter by venue"
-              searchable
-              searchPlaceholder="Search venue..."
+              searchable={false}
               width={isTabletFilters ? Math.min(164, tabletFilterColumnWidth) : isMobile ? Math.max(120, (width - 72) / 2) : 164}
               keepInViewport={isTabletFilters}
-              autoFocusSearch={!isTabletFilters}
               compact
               active={selectedVenue !== 'All'}
               options={venuesList.map((item) => ({
@@ -548,6 +545,7 @@ export default function ScheduleDashboard() {
               value={selectedStatus}
               onValueChange={(value) => { setSelectedStatus(value); setPage(1); }}
               accessibilityLabel="Filter by status"
+              searchable={false}
               width={isTabletFilters ? Math.min(210, tabletFilterColumnWidth) : isMobile ? Math.max(220, width - 56) : 210}
               keepInViewport={isTabletFilters}
               compact

@@ -115,7 +115,7 @@ export default function ScheduleDashboard() {
   const isIpadDesktop = Platform.OS === 'web' && typeof navigator !== 'undefined'
     && isIpadDesktopMode(navigator.platform, navigator.maxTouchPoints);
   const isTabletScheduleActions = showTabletScheduleActions(
-    Device.deviceType === Device.DeviceType.TABLET || isIpadDesktop, width, height,
+    Device.deviceType === Device.DeviceType.TABLET || isIpadDesktop, width,
   );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.

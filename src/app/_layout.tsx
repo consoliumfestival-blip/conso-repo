@@ -31,6 +31,8 @@ import { useProtectedRoute } from "../core/hooks/useProtectedRoute";
 import { useAuthStore } from "../core/store/authStore";
 import { NotificationProvider } from "../core/contexts/NotificationContext";
 import { NotificationToast } from "../components/ui/NotificationToast";
+import { PwaUpdateNotice } from "../components/pwa/PwaUpdateNotice";
+import { PwaNetworkStatus } from "../components/pwa/PwaNetworkStatus";
 
 // Removed top-level preventAutoHideAsync, moving it inside component
 
@@ -124,7 +126,13 @@ function LayoutContent() {
   }, [pathname]);
 
   if (blockProtectedCoreRoute) return <AppLoadingScreen />;
-  return <Slot />;
+  return (
+    <>
+      <Slot />
+      {pathname.startsWith('/stage-management/venue/') ? <PwaUpdateNotice /> : null}
+      <PwaNetworkStatus />
+    </>
+  );
 }
 
 export const unstable_settings = {

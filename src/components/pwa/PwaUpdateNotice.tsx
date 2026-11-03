@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Platform, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Check, RefreshCw } from 'lucide-react-native';
 import { ui } from '@/constants/designSystem';
 
@@ -27,6 +27,7 @@ function isInstalledWebApp(): boolean {
 /** Offers a manual reload only when an installed web app is serving an older Expo bundle. */
 export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset = 16 }: { accentColor?: string; bottomOffset?: number }) {
   const [state, setState] = useState<UpdateState>('hidden');
+  const [confirmingUpdate, setConfirmingUpdate] = useState(false);
   const pulse = useRef(new Animated.Value(1)).current;
 
   const checkForUpdate = useCallback(async () => {
@@ -86,6 +87,7 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
 
   const applyUpdate = () => {
     if (state !== 'available' || !navigator.onLine) return;
+    setConfirmingUpdate(false);
     sessionStorage.setItem(UPDATED_SESSION_KEY, '1');
     setState('updating');
     window.setTimeout(() => window.location.reload(), 100);
@@ -96,13 +98,13 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
   const label = complete ? 'Updated' : busy ? 'Updating…' : 'Update available';
 
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', bottom: `max(${bottomOffset}px, env(safe-area-inset-bottom, 0px))` as any, right: 12, zIndex: 2000 }}>
+    <View pointerEvents="box-none" style={{ position: 'fixed' as any, bottom: `max(${bottomOffset}px, env(safe-area-inset-bottom, 0px))` as any, right: 12, zIndex: 2000 }}>
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityHint={complete ? 'The installed app has reloaded.' : 'Reloads the app to use the latest deployed version.'}
         disabled={busy || complete || !navigator.onLine}
-        onPress={applyUpdate}
+        onPress={() => setConfirmingUpdate(true)}
         style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: complete ? '#A7F3D0' : '#99D8CC', backgroundColor: complete ? '#ECFDF5' : '#FFFFFF', shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}
       >
         {busy ? <ActivityIndicator size="small" color={accentColor} /> : complete ? <Check size={16} color="#047857" /> : (
@@ -112,6 +114,33 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
         )}
         <Text style={{ color: complete ? '#047857' : '#115E59', fontSize: 12, fontWeight: '700' }}>{label}</Text>
       </TouchableOpacity>
+      <Modal visible={confirmingUpdate} transparent animationType="fade" onRequestClose={() => setConfirmingUpdate(false)}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: 'rgba(15, 23, 42, 0.45)' }}>
+          <View style={{ width: '100%', maxWidth: 400, padding: 20, borderRadius: 14, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface }}>
+            <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '700' }}>Update app?</Text>
+            <Text style={{ marginTop: 8, color: ui.colors.textMuted, fontSize: 13, lineHeight: 20 }}>
+              The app will reload to apply the update. Save or submit any unfinished changes before continuing.
+            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setConfirmingUpdate(false)}
+                style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border }}
+              >
+                <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '600' }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy || !navigator.onLine}
+                onPress={applyUpdate}
+                style={{ minHeight: 42, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 9, backgroundColor: accentColor, opacity: busy || !navigator.onLine ? 0.55 : 1 }}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '700' }}>Update now</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Platform, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Activity, Bell, ChevronRight, Globe, Layers, LogOut, Settings, Shield, Trophy, Users, FileText } from 'lucide-react-native';
+import { Activity, Bell, BookOpen, ChevronRight, Globe, Layers, LogOut, Settings, Shield, Trophy, Users, FileText } from 'lucide-react-native';
 import { useAuthStore } from '../../core/store/authStore';
 import { useSuperAdmin } from '../../core/hooks/useSuperAdmin';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
@@ -33,6 +33,7 @@ export default function SuperadminDashboard() {
   const modules = [
     { title: 'Organisation Hierarchy', desc: 'Manage Units, Sectors & Divisions globally', icon: Layers, route: '/(super)/organisations' },
     { title: 'Tenant Accounts', desc: 'View and configure all tenant settings', icon: Globe, route: '/(super)/tenants' },
+    { title: 'Tenant Setup Guide', desc: 'Create tenant accounts and manage access', icon: BookOpen, route: '/(super)/tenant-guide' },
     { title: 'System Logs', desc: 'Monitor application and server activity', icon: FileText, route: null },
     { title: 'Festival Settings', desc: 'Manage global scoring rules and items', icon: Settings, route: null },
     { title: 'Appearance', desc: 'Personalize Core and Stage Management on this device', icon: Settings, route: '/(super)/appearance' },

@@ -105,8 +105,16 @@ export default function ScheduleDashboard() {
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
   const { tenant_id, user } = useAuthStore();
   const isFocused = useIsFocused();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isMobile = width < 768;
+  const isTabletFilters = width >= 600 && width < 1200;
+  const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
+  const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
+  const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
+  // On tablets the full desktop table compresses its action column until the
+  // overflow menu wraps onto a second line. Keep the compact row layout until
+  // there is enough room for all table columns and actions.
+  const isCompactScheduleLayout = width < 1400;
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
@@ -142,7 +150,7 @@ export default function ScheduleDashboard() {
   }, [tenant_id, festival?.id, debouncedSearchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, selectedDate, pageSize]);
 
   const isSearchDebouncing = searchQuery.trim() !== debouncedSearchQuery;
-  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, updateSchedule } = useSchedule({
+  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, setSchedulePostponed, updateSchedule } = useSchedule({
     overviewPage: {
       search: debouncedSearchQuery,
       itemId: selectedItem === 'All' ? null : selectedItem,
@@ -226,6 +234,7 @@ export default function ScheduleDashboard() {
   const statusesList = [
     { id: 'All', name: 'All Statuses' },
     { id: 'scheduled', name: 'Scheduled' },
+    { id: 'postponed', name: 'Postponed' },
     { id: 'ongoing', name: 'Started' },
     { id: 'completed', name: 'Completed' },
     { id: 'checkin_pending', name: 'Check-in Pending' },
@@ -482,7 +491,9 @@ export default function ScheduleDashboard() {
               accessibilityLabel="Filter by item"
               searchable
               searchPlaceholder="Search item..."
-              width={isMobile ? Math.max(220, width - 56) : 250}
+              width={isTabletFilters ? Math.min(250, tabletFilterColumnWidth) : isMobile ? Math.max(220, width - 56) : 250}
+              keepInViewport={isTabletFilters}
+              autoFocusSearch={!isTabletFilters}
               compact
               active={selectedItem !== 'All'}
               options={itemsList.map((item) => ({
@@ -494,7 +505,8 @@ export default function ScheduleDashboard() {
               value={selectedCategory}
               onValueChange={(value) => { setSelectedCategory(value); setPage(1); }}
               accessibilityLabel="Filter by item category"
-              width={isMobile ? Math.max(120, (width - 72) / 2) : 148}
+              width={isTabletFilters ? Math.min(148, tabletFilterColumnWidth) : isMobile ? Math.max(120, (width - 72) / 2) : 148}
+              keepInViewport={isTabletFilters}
               compact
               active={selectedCategory !== 'All'}
               options={categoriesList.map((item) => ({
@@ -508,7 +520,9 @@ export default function ScheduleDashboard() {
               accessibilityLabel="Filter by venue"
               searchable
               searchPlaceholder="Search venue..."
-              width={isMobile ? Math.max(120, (width - 72) / 2) : 164}
+              width={isTabletFilters ? Math.min(164, tabletFilterColumnWidth) : isMobile ? Math.max(120, (width - 72) / 2) : 164}
+              keepInViewport={isTabletFilters}
+              autoFocusSearch={!isTabletFilters}
               compact
               active={selectedVenue !== 'All'}
               options={venuesList.map((item) => ({
@@ -520,7 +534,8 @@ export default function ScheduleDashboard() {
               value={selectedStatus}
               onValueChange={(value) => { setSelectedStatus(value); setPage(1); }}
               accessibilityLabel="Filter by status"
-              width={isMobile ? Math.max(220, width - 56) : 210}
+              width={isTabletFilters ? Math.min(210, tabletFilterColumnWidth) : isMobile ? Math.max(220, width - 56) : 210}
+              keepInViewport={isTabletFilters}
               compact
               active={selectedStatus !== 'All'}
               options={statusesList.map((item) => ({
@@ -824,7 +839,7 @@ export default function ScheduleDashboard() {
           </TouchableOpacity>
         </SsfCard>
       ) : (
-        !isMobile ? (
+        !isCompactScheduleLayout ? (
         <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
             <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
               <Text style={{ flex: 1.25 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
@@ -858,7 +873,11 @@ export default function ScheduleDashboard() {
                       {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
-                  {schedule.is_overdue_unstarted && <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700 mt-1">Scheduled time passed · Not started</Text>}
+                  {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
+                    <View className="mt-1 self-start rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
+                      <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700">Postponed</Text>
+                    </View>
+                  )}
                 </View>
                 <View style={{ flex: 1.4 }} className="pr-3">
                   <TouchableOpacity
@@ -912,7 +931,13 @@ export default function ScheduleDashboard() {
                   >
                     <Trash2 size={13} color={coreColor("#DC2626", 'danger')} />
                   </TouchableOpacity>
-                  <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })} />
+                  <ScheduleLifecycleActions
+                    scheduleName={schedule.items?.item_name_en || 'Event'}
+                    status={schedule.status}
+                    isPostponed={schedule.is_postponed === true}
+                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
+                    onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
+                  />
                 </View>
               </View>
             ))}
@@ -932,7 +957,7 @@ export default function ScheduleDashboard() {
               <View className="mb-1.5">
                 {/* Top row: title left, action buttons right */}
                 <View className="flex-row justify-between items-start">
-                  <View className="flex-1 mr-2">
+                  <View className="flex-1 min-w-0 mr-2">
                     <Text className="font-poppins-bold text-[14px]" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
                     {false && schedule.items?.item_name_ml ? (
                       <Text className="font-poppins text-[10px] text-ssf-text-muted" numberOfLines={1}>{schedule.items.item_name_ml}</Text>
@@ -941,6 +966,8 @@ export default function ScheduleDashboard() {
                   <ScheduleLifecycleActions
                     scheduleName={schedule.items?.item_name_en || 'Event'}
                     status={schedule.status}
+                    isPostponed={schedule.is_postponed === true}
+                    onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
                     onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
                     accessibilityLabel={`Actions for ${schedule.items?.item_name_en || 'event'}`}
                     open={mobileActionMenuId === schedule.id}
@@ -1039,7 +1066,11 @@ export default function ScheduleDashboard() {
                     {new Date(schedule.start_time).toLocaleDateString()}
                   </Text>
                 </View>
-                {schedule.is_overdue_unstarted && <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Scheduled time passed · Not started</Text>}
+                {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
+                  <View className="rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
+                    <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Postponed</Text>
+                  </View>
+                )}
               </View>
 
               <ScheduleWorkflowBadges 

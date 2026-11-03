@@ -13,6 +13,17 @@ export const scheduleLifecycleService = {
     return data;
   },
 
+  async setPostponed(scheduleId: string, isPostponed: boolean, expectedIsPostponed: boolean) {
+    const { data, error } = await supabase.rpc('stage_set_schedule_postponed', {
+      p_schedule_id: scheduleId,
+      p_is_postponed: isPostponed,
+      p_expected_is_postponed: expectedIsPostponed,
+    });
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+    return data;
+  },
+
   async setVenuePortalStatus(venueId: string, pin: string, scheduleId: string, status: ScheduleLifecycleStatus, expectedStatus: string | null | undefined) {
     const { data, error } = await supabase.rpc('stage_venue_portal_set_schedule_status', {
       p_venue_id: venueId,

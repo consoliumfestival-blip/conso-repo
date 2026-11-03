@@ -22,6 +22,8 @@ export function ScheduleLifecycleActions({
   open,
   onOpenChange,
   onStatusChange,
+  isPostponed = false,
+  onPostponedChange,
 }: {
   scheduleName: string;
   status: string | null | undefined;
@@ -31,11 +33,41 @@ export function ScheduleLifecycleActions({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onStatusChange: (status: ScheduleLifecycleStatus, expectedStatus: string | null | undefined) => Promise<void>;
+  isPostponed?: boolean;
+  onPostponedChange?: (nextValue: boolean, expectedValue: boolean) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<ScheduleLifecycleStatus>(normalizeScheduleLifecycleStatus(status) ?? 'scheduled');
   const [saving, setSaving] = useState(false);
+  const [savingPostponed, setSavingPostponed] = useState(false);
   const current = normalizeScheduleLifecycleStatus(status);
+
+  const confirmPostponedChange = () => {
+    if (!onPostponedChange || disabled || savingPostponed || (!isPostponed && current !== 'scheduled')) return;
+    const nextValue = !isPostponed;
+    const title = nextValue ? 'Mark schedule as postponed?' : 'Clear manual postponed status?';
+    const message = nextValue
+      ? `“${scheduleName}” will show a Postponed badge until an admin clears it.`
+      : `The manual Postponed flag will be cleared for “${scheduleName}”. If it is already overdue and not started, the automatic Postponed badge will remain.`;
+    const run = () => {
+      setSavingPostponed(true);
+      void onPostponedChange(nextValue, isPostponed)
+        .catch((error: any) => {
+          const detail = error?.message || 'Please try again.';
+          if (Platform.OS === 'web') window.alert(`Unable to update postponed status\n\n${detail}`);
+          else Alert.alert('Unable to update postponed status', detail);
+        })
+        .finally(() => setSavingPostponed(false));
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) run();
+      return;
+    }
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: nextValue ? 'Postpone' : 'Clear', onPress: run },
+    ]);
+  };
 
   const confirm = (next: ScheduleLifecycleStatus) => {
     if (next === current || disabled || saving) return;
@@ -72,6 +104,12 @@ export function ScheduleLifecycleActions({
         onOpenChange={onOpenChange}
         items={[
           ...additionalItems,
+          ...(onPostponedChange ? [{
+            label: isPostponed ? 'Clear Manual Postponed' : 'Mark as Postponed',
+            separatorBefore: true,
+            disabled: disabled || savingPostponed || (!isPostponed && current !== 'scheduled'),
+            onPress: confirmPostponedChange,
+          }] : []),
           { label: current === 'ongoing' ? 'Started' : 'Start Event', icon: <Play size={15} color={coreColor("#0F766E", 'primaryText')} />, disabled: disabled || saving || current === 'ongoing' || current === 'completed', onPress: () => confirm('ongoing') },
           { label: current === 'completed' ? 'Completed' : 'Complete Event', icon: <Trophy size={15} color={coreColor("#0F766E", 'primaryText')} />, disabled: disabled || saving || current !== 'ongoing', onPress: () => confirm('completed') },
           { label: 'Edit Status', separatorBefore: true, icon: <Pencil size={15} color={coreColor("#64748B", 'textMuted')} />, disabled: disabled || saving, onPress: () => { setDraft(current ?? 'scheduled'); setEditing(true); } },

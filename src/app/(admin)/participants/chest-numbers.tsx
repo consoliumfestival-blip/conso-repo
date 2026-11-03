@@ -173,7 +173,8 @@ function TeamChestNumbers({ festivalId }: { festivalId: string }) {
                 onLayout={(key, y, height) => { layouts.current.set(key, { y, height }); }} />;
             })}
           </View>}
-          {state.category_order_available && <><View className="mt-3 mb-3 flex-row flex-wrap items-center gap-2">
+          {state.range === 1000 && <Text className="font-poppins text-xs text-ssf-text-muted mt-3 mb-3">Each team has nine fixed category blocks: 1100–1199 through 1900–1999 for team 1, 2100–2199 through 2900–2999 for team 2, and so on. New categories receive the next available block.</Text>}
+          {state.range !== 1000 && state.category_order_available && <><View className="mt-3 mb-3 flex-row flex-wrap items-center gap-2">
             <View className="flex-1 min-w-0">
               <Text className="font-poppins-bold text-ssf-text">Category order within each team</Text>
               <Text className="font-poppins text-xs text-ssf-text-muted">One shared order for every team. OFF keeps the existing team-wise numbering.</Text>

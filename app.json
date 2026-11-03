@@ -3,7 +3,7 @@
     "name": "Consolium",
     "slug": "sahi-web",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./src/assets/images/icon.png",
     "scheme": "sahiweb",
     "userInterfaceStyle": "automatic",
@@ -30,7 +30,7 @@
       "shortName": "Consolium",
       "display": "standalone",
       "backgroundColor": "#ffffff",
-      "themeColor": "#0F766E"
+      "themeColor": "#FFFFFF"
     },
     "plugins": [
       "expo-router",

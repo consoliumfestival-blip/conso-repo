@@ -32,17 +32,21 @@ export default function FestivalCalendarSettings() {
 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [templateFor100, setTemplateFor100] = useState<'category' | 'team'>('category');
 
   useEffect(() => {
     if (festival) {
+      const savedTemplate = festival.chest_number_template ?? 'category';
+      const savedRange = festival.chest_number_category_range ?? 100;
+      setTemplateFor100(savedTemplate);
       setFormData({
         custom_name: festival.custom_name || '',
         start_date: festival.start_date ? festival.start_date.split('T')[0] : '',
         end_date: festival.end_date ? festival.end_date.split('T')[0] : '',
         registration_open: festival.registration_open ? festival.registration_open.split('T')[0] : '',
         registration_close: festival.registration_close ? festival.registration_close.split('T')[0] : '',
-        chest_number_category_range: festival.chest_number_category_range ?? 100,
-        chest_number_template: festival.chest_number_template ?? 'category',
+        chest_number_category_range: savedRange,
+        chest_number_template: savedRange === 1000 ? 'team' : savedTemplate,
         gender_mode: festival.gender_mode ?? 'both',
         team_leader_on_stage_locked: festival.team_leader_on_stage_locked ?? false,
         team_leader_off_stage_locked: festival.team_leader_off_stage_locked ?? false,
@@ -314,7 +318,12 @@ export default function FestivalCalendarSettings() {
             <Label>Numbering template</Label>
             <select
               value={formData.chest_number_template}
-              onChange={(event) => setFormData({ ...formData, chest_number_template: event.target.value as 'category' | 'team' })}
+              onChange={(event) => {
+                const template = event.target.value as 'category' | 'team';
+                setTemplateFor100(template);
+                setFormData({ ...formData, chest_number_template: template });
+              }}
+              disabled={formData.chest_number_category_range === 1000 && formData.chest_number_template === 'team'}
               className="flex h-10 w-full rounded-lg border border-ui-border bg-core-surface-white px-3 py-2 text-sm font-poppins text-ui-text"
             >
               <option value="category">By category (current template)</option>
@@ -322,16 +331,22 @@ export default function FestivalCalendarSettings() {
             </select>
           </View>
           <View>
-            <Label>Participants per {formData.chest_number_template === 'team' ? 'team' : 'category'}</Label>
+            <Label>{formData.chest_number_category_range === 1000 ? 'Team and category numbering' : `Participants per ${formData.chest_number_template === 'team' ? 'team' : 'category'}`}</Label>
             <select
               value={String(formData.chest_number_category_range)}
-              onChange={(event) => setFormData({ ...formData, chest_number_category_range: Number(event.target.value) as 100 | 1000 })}
+              onChange={(event) => {
+                const range = Number(event.target.value) as 100 | 1000;
+                setFormData({ ...formData, chest_number_category_range: range,
+                  chest_number_template: range === 1000 ? 'team' : templateFor100 });
+              }}
               className="flex h-10 w-full rounded-lg border border-ui-border bg-core-surface-white px-3 py-2 text-sm font-poppins text-ui-text"
             >
               <option value="100">Under 100 (default): 100–199, 200–299…</option>
-              <option value="1000">Under 1000: 1000–1999, 2000–2999…</option>
+              <option value="1000">Team + category: teams 1000, 2000…; categories 1100, 1200…</option>
             </select>
-            <Text className="text-xs font-poppins text-ui-text-muted mt-2">Each {formData.chest_number_template === 'team' ? 'team' : 'category'} receives its own range. Saving a new template or range automatically renumbers existing participants. If any participant cannot fit, the entire save is rejected.</Text>
+            <Text className="text-xs font-poppins text-ui-text-muted mt-2">{formData.chest_number_category_range === 1000
+              ? 'Each team gets 1000 numbers. Within that team, each category gets 100 numbers, starting at 1100, 1200… The limit is nine categories per festival and 100 participants per team/category. Existing category order determines the initial blocks; new categories take the next free block.'
+              : `Each ${formData.chest_number_template === 'team' ? 'team' : 'category'} receives its own range.`} Saving a new template or range automatically renumbers existing participants. If any participant cannot fit, the entire save is rejected.</Text>
           </View>
         </CardContent>
       </Card>

@@ -26,6 +26,7 @@ import { useAuthStore } from "@/core/store/authStore";
 import { useTeamLeaderContext } from "@/core/contexts/TeamLeaderContext";
 import { ConsoliumLogo } from "@/components/ui/ConsoliumLogo";
 import { applyPortalPwaMetadata } from "@/core/utils/portalPwaMetadata";
+import { PwaUpdateNotice } from "@/components/pwa/PwaUpdateNotice";
 
 type IconType = React.ComponentType<{
   color?: string;
@@ -408,6 +409,7 @@ export function TeamLeaderAppShell({
             </ScrollView>
           )}
         </View>
+        <PwaUpdateNotice accentColor={ui.colors.primaryStrong} />
       </View>
     );
   }
@@ -534,6 +536,7 @@ export function TeamLeaderAppShell({
           </View>
         </View>
       </Modal>
+      <PwaUpdateNotice accentColor={ui.colors.primaryStrong} bottomOffset={92} />
     </View>
   );
 }

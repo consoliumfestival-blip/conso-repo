@@ -119,9 +119,16 @@ export function SsfSelectMenu({
   const visibleMenuHeight = keepInViewport
     ? Math.min(maxMenuHeight, Math.max(80, openAbove ? roomAbove - 5 : roomBelow - 12))
     : maxMenuHeight;
-  const menuTop = openAbove
-    ? Math.max(12, (anchor?.y ?? 12) - estimatedMenuHeight - 5)
-    : (anchor?.y ?? 12) + (anchor?.height ?? 0) + 5;
+  const menuTop = keepInViewport
+    ? Math.max(12, Math.min(
+        openAbove
+          ? (anchor?.y ?? 12) - Math.min(estimatedMenuHeight, visibleMenuHeight) - 5
+          : (anchor?.y ?? 12) + (anchor?.height ?? 0) + 5,
+        usableViewportHeight - Math.min(estimatedMenuHeight, visibleMenuHeight) - 12,
+      ))
+    : openAbove
+      ? Math.max(12, (anchor?.y ?? 12) - estimatedMenuHeight - 5)
+      : (anchor?.y ?? 12) + (anchor?.height ?? 0) + 5;
   const tabletViewport = viewportWidth >= 600 && viewportWidth < 1024;
   const safeMenuLeft = tabletViewport
     ? Math.max(12, Math.min(menuLeft, viewportWidth - menuWidth - 12))

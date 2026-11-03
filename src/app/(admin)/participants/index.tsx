@@ -59,7 +59,9 @@ export default function ParticipantsList() {
   const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
-  const isDesktopTable = width >= 980;
+  // Reserve the dense participant table for screens wide enough to account
+  // for the admin sidebar as well as all table columns.
+  const isDesktopTable = width >= 1200;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: festivalLoading, isError: festivalError } = useActiveFestival();
   useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true);

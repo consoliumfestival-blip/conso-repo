@@ -41,6 +41,11 @@ export function useProtectedRoute() {
     && segments[0] !== 'announcer'
     && segments[0] !== '(public)'
     && segments[0] !== '(super)';
+  // The Main installed PWA links to these admin-managed portals. Their own
+  // role checks below remain authoritative after navigation.
+  const mainPwaAdminRouteAllowed = mainPortalRouteAllowed
+    || pathname === '/team-leaders'
+    || segments[0] === 'judge';
   const teamManagementRouteAllowed = pathname === '/team-leaders' || segments[0] === '(auth)';
   const mainPortalRouteBlocked = !mainPortalRouteAllowed && segments[0] !== '(auth)';
   const teamLeaderRouteBlocked = !inTeamGroup;
@@ -49,7 +54,7 @@ export function useProtectedRoute() {
     || (!user && installedPortalMode === 'main' && mainPortalRouteBlocked)
     || (!user && installedPortalMode === 'team-leader' && teamLeaderRouteBlocked)
     || (user && isInstalledAdmin && installedPortalMode === 'team-management' && !teamManagementRouteAllowed)
-    || (user && isInstalledAdmin && installedPortalMode === 'main' && mainPortalRouteBlocked)
+    || (user && isInstalledAdmin && installedPortalMode === 'main' && !mainPwaAdminRouteAllowed)
     || (user && isTeamLeader && installedPortalMode === 'team-leader' && teamLeaderRouteBlocked)
   ));
 
@@ -88,7 +93,7 @@ export function useProtectedRoute() {
       router.replace('/team-leaders');
       return;
     }
-    if (user && isInstalledAdmin && installedPortalMode === 'main' && !mainPortalRouteAllowed && !inAuthGroup) {
+    if (user && isInstalledAdmin && installedPortalMode === 'main' && !mainPwaAdminRouteAllowed && !inAuthGroup) {
       router.replace('/(admin)');
       return;
     }
@@ -175,7 +180,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
+  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
 
   return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

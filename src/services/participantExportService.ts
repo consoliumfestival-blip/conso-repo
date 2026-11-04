@@ -74,6 +74,126 @@ export async function loadAdminGroupMembers(registrations: { id: string; partici
   return (data ?? []) as { registration_id: string; participant_id: string }[];
 }
 
+type AdminScheduleAttendanceRegistration = {
+  id: string;
+  item_id: string;
+  participant_id: string | null;
+  organisation_id: string | null;
+  festival_id: string;
+  entry_kind: string | null;
+  status: string | null;
+  is_verified: boolean | null;
+  checkin_cancelled: boolean | null;
+};
+
+/** Load only the assignment roster needed for completed schedule attendance exports. */
+export async function loadAdminScheduleAttendanceData(festivalId: string, itemIds: string[]) {
+  const scopedItemIds = Array.from(new Set(itemIds.filter(Boolean)));
+  if (!festivalId || !scopedItemIds.length) {
+    return { registrations: [] as AdminScheduleAttendanceRegistration[], groupMembers: [], participants: [] as ExportParticipant[], organisations: [] as { id: string; name: string | null }[] };
+  }
+
+  const registrations: AdminScheduleAttendanceRegistration[] = [];
+  for (let itemOffset = 0; itemOffset < scopedItemIds.length; itemOffset += 50) {
+    const itemBatch = scopedItemIds.slice(itemOffset, itemOffset + 50);
+    let lastId: string | null = null;
+    while (true) {
+      let query = supabase
+        .from('registrations')
+        .select('id, item_id, participant_id, organisation_id, festival_id, entry_kind, status, is_verified, checkin_cancelled')
+        .eq('festival_id', festivalId)
+        .in('item_id', itemBatch)
+        .order('id', { ascending: true })
+        .limit(500);
+      if (lastId) query = query.gt('id', lastId);
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data?.length) break;
+      registrations.push(...(data as AdminScheduleAttendanceRegistration[]));
+      const nextId = data[data.length - 1].id;
+      if (!nextId || nextId === lastId) throw new Error('Attendance export registration pagination did not advance.');
+      lastId = nextId;
+      if (data.length < 500) break;
+    }
+  }
+
+  const groupMembers: { registration_id: string; participant_id: string }[] = [];
+  const groupRegistrationIds = registrations
+    .filter((row) => row.status !== 'rejected' && row.entry_kind === 'general_team')
+    .map((row) => row.id);
+  for (let offset = 0; offset < groupRegistrationIds.length; offset += 100) {
+    const registrationBatch = groupRegistrationIds.slice(offset, offset + 100);
+    let lastMemberId: string | null = null;
+    while (true) {
+      let query = supabase
+        .from('group_members')
+        .select('id, registration_id, participant_id')
+        .in('registration_id', registrationBatch)
+        .order('id', { ascending: true })
+        .limit(500);
+      if (lastMemberId) query = query.gt('id', lastMemberId);
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data?.length) break;
+      groupMembers.push(...data.map(({ registration_id, participant_id }) => ({ registration_id, participant_id })));
+      const nextId = data[data.length - 1].id;
+      if (!nextId || nextId === lastMemberId) throw new Error('Attendance export group roster pagination did not advance.');
+      lastMemberId = nextId;
+      if (data.length < 500) break;
+    }
+  }
+
+  const participantIds = Array.from(new Set([
+    ...registrations.filter((row) => row.status !== 'rejected').map((row) => row.participant_id).filter(Boolean),
+    ...groupMembers.map((row) => row.participant_id),
+  ])) as string[];
+  const participants: ExportParticipant[] = [];
+  for (let offset = 0; offset < participantIds.length; offset += 100) {
+    const { data, error } = await supabase
+      .from('participants')
+      .select('id, name, chest_number, category_code, gender, status, organisation_id, organisations(id, name)')
+      .in('id', participantIds.slice(offset, offset + 100));
+    if (error) throw error;
+    participants.push(...((data ?? []).map((row: any) => ({
+      ...row,
+      organisation_name: row.organisations?.name ?? null,
+    })) as ExportParticipant[]));
+  }
+
+  const foundParticipantIds = new Set(participants.map((row) => row.id));
+  const missingParticipantIds = participantIds.filter((id) => !foundParticipantIds.has(id));
+  if (missingParticipantIds.length) {
+    throw new Error('Some assigned participants could not be loaded. The attendance PDF was not generated to avoid an incomplete roster.');
+  }
+
+  const groupMemberCounts = new Map<string, number>();
+  groupMembers.forEach(({ registration_id }) => groupMemberCounts.set(registration_id, (groupMemberCounts.get(registration_id) || 0) + 1));
+  if (registrations.some((row) => row.status !== 'rejected' && row.entry_kind === 'general_team'
+    && !groupMemberCounts.get(row.id))) {
+    throw new Error('A group entry has no member roster. Fix the group roster before generating an attendance PDF.');
+  }
+
+  const organisationIds = Array.from(new Set([
+    ...registrations.filter((row) => row.status !== 'rejected').map((row) => row.organisation_id),
+    ...participants.map((row) => row.organisation_id),
+  ].filter(Boolean))) as string[];
+  const organisations: { id: string; name: string | null }[] = [];
+  for (let offset = 0; offset < organisationIds.length; offset += 100) {
+    const { data, error } = await supabase
+      .from('organisations')
+      .select('id, name')
+      .in('id', organisationIds.slice(offset, offset + 100));
+    if (error) throw error;
+    organisations.push(...((data ?? []) as { id: string; name: string | null }[]));
+  }
+  const foundOrganisationIds = new Set(organisations.filter((row) => row.name?.trim()).map((row) => row.id));
+  if (organisationIds.some((id) => !foundOrganisationIds.has(id))) {
+    throw new Error('Some assigned team names could not be loaded. The attendance PDF was not generated to avoid an unclear team roster.');
+  }
+
+  return { registrations, groupMembers, participants, organisations };
+}
+
 const INK: [number, number, number] = [18, 24, 32];
 const GRID: [number, number, number] = [105, 112, 121];
 const MUTED: [number, number, number] = [78, 84, 92];

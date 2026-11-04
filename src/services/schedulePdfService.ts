@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { TeamLeaderContext, TeamLeaderScheduleRow } from './teamLeaderPortalService';
+import { normalizeScheduleLifecycleStatus } from '../core/utils/scheduleLifecycle';
 
 const NAVY = '#123B63';
 const MUTED = '#64748B';
@@ -42,6 +43,21 @@ type ParticipantRow = {
   organisation_id?: string | null;
   organisations?: { name?: string | null } | null;
 };
+
+type TeamAttendanceRegistration = {
+  id: string;
+  item_id: string;
+  participant_id?: string | null;
+  organisation_id?: string | null;
+  festival_id?: string | null;
+  entry_kind?: string | null;
+  status?: string | null;
+  is_verified?: boolean | null;
+  checkin_cancelled?: boolean | null;
+};
+
+type TeamAttendanceGroupMember = { registration_id: string; participant_id: string };
+type TeamAttendanceOrganisation = { id: string; name?: string | null };
 
 export type AdminSchedulePdfMode = 'master' | 'venue' | 'organisation';
 
@@ -114,7 +130,7 @@ const participantsForSchedule = (
   .map((registration) => registration.participant_id ? participantMap.get(registration.participant_id) : null)
   .filter(Boolean) as ParticipantRow[];
 
-const writeHeader = (doc: jsPDF, title: string, subtitle: string) => {
+const writeHeader = (doc: jsPDF, title: string, subtitle: string, documentLabel = 'Official Schedule') => {
   const width = doc.internal.pageSize.getWidth();
   doc.setFillColor(NAVY);
   doc.rect(0, 0, width, 24, 'F');
@@ -126,7 +142,7 @@ const writeHeader = (doc: jsPDF, title: string, subtitle: string) => {
   doc.setFontSize(8.5);
   doc.text(headerLines(doc, subtitle, width - 28), 14, 17);
   doc.setFontSize(8);
-  doc.text('Official Schedule', width - 14, 10, { align: 'right' });
+  doc.text(documentLabel, width - 14, 10, { align: 'right' });
 };
 
 const writeFooter = (doc: jsPDF, pageNumber: number) => {
@@ -352,6 +368,133 @@ export async function downloadAdminSchedulePdf(input: AdminSchedulePdfInput) {
     itemId: input.itemId || 'All',
     itemCategory: input.itemCategory || 'All',
   };
+}
+
+export function downloadTeamAttendancePdf(input: {
+  festivalName?: string | null;
+  schedules: ScheduleRow[];
+  registrations: TeamAttendanceRegistration[];
+  groupMembers: TeamAttendanceGroupMember[];
+  participants: ParticipantRow[];
+  organisations: TeamAttendanceOrganisation[];
+}) {
+  const schedules = input.schedules
+    .filter((schedule) => normalizeScheduleLifecycleStatus(schedule.status) === 'completed')
+    .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '') || itemLabel(a).localeCompare(itemLabel(b)));
+  if (!schedules.length) throw new Error('No completed competitions match the current filters.');
+
+  const participantMap = buildParticipantMap(input.participants);
+  const organisationMap = new Map(input.organisations.map((organisation) => [organisation.id, organisation.name]));
+  const membersByRegistration = new Map<string, string[]>();
+  input.groupMembers.forEach(({ registration_id, participant_id }) => {
+    membersByRegistration.set(registration_id, [...(membersByRegistration.get(registration_id) || []), participant_id]);
+  });
+
+  const attendanceRows: {
+    teamId: string;
+    teamName: string;
+    schedule: ScheduleRow;
+    participant: ParticipantRow;
+    status: 'Checked in' | 'Not checked in' | 'Cancelled';
+    inheritedGroupStatus: boolean;
+  }[] = [];
+
+  schedules.forEach((schedule) => {
+    input.registrations
+      .filter((registration) => registration.item_id === schedule.item_id
+        && (!schedule.festival_id || registration.festival_id === schedule.festival_id)
+        && registration.status !== 'rejected')
+      .forEach((registration) => {
+        const isGroupEntry = registration.entry_kind === 'general_team';
+        const participantIds = isGroupEntry
+          ? membersByRegistration.get(registration.id)
+            || (registration.participant_id ? [registration.participant_id] : [])
+          : registration.participant_id ? [registration.participant_id] : [];
+        const registrationStatus = registration.status?.trim().toLowerCase();
+        const status: 'Checked in' | 'Not checked in' | 'Cancelled' =
+          registrationStatus === 'cancelled' || registrationStatus === 'canceled' || registration.checkin_cancelled === true
+            ? 'Cancelled'
+            : registration.is_verified === true ? 'Checked in' : 'Not checked in';
+
+        participantIds.forEach((participantId) => {
+          const participant = participantMap.get(participantId);
+          if (!participant) return;
+          const teamId = registration.organisation_id || participant.organisation_id || '';
+          const teamName = teamId
+            ? organisationMap.get(teamId) || 'Team name unavailable'
+            : participant.organisations?.name || 'Unassigned team';
+          attendanceRows.push({ teamId, teamName, schedule, participant, status, inheritedGroupStatus: isGroupEntry });
+        });
+      });
+  });
+
+  if (!attendanceRows.length) throw new Error('No assigned participants were found for completed competitions in these filters.');
+
+  attendanceRows.sort((a, b) => a.teamName.localeCompare(b.teamName)
+    || a.teamId.localeCompare(b.teamId)
+    || (a.schedule.start_time || '').localeCompare(b.schedule.start_time || '')
+    || (a.participant.chest_number || '').localeCompare(b.participant.chest_number || '', undefined, { numeric: true })
+    || (a.participant.name || '').localeCompare(b.participant.name || ''));
+
+  const doc = makeDocument();
+  const counts = attendanceRows.reduce((result, row) => {
+    result[row.status] += 1;
+    return result;
+  }, { 'Checked in': 0, 'Not checked in': 0, Cancelled: 0 });
+  const reportTitle = 'Team-wise Competition Attendance';
+  const reportSubtitle = input.festivalName || 'Festival';
+  const summary = `Completed competitions: ${schedules.length}   Attendance rows: ${attendanceRows.length}   Checked in: ${counts['Checked in']}   Not checked in: ${counts['Not checked in']}   Cancelled: ${counts.Cancelled}`;
+  const drawReportHeader = () => {
+    writeHeader(doc, reportTitle, reportSubtitle, 'Attendance Report');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(MUTED);
+    doc.text(summary, 14, 28);
+    doc.text('* Group entry members share one check-in status.', 14, 33);
+  };
+  drawReportHeader();
+
+  const body: string[][] = [];
+  attendanceRows.forEach((row) => {
+    body.push([
+      row.teamName,
+      itemLabel(row.schedule),
+      categoryLabel(row.schedule),
+      formatDate(row.schedule.start_time),
+      row.schedule.venues?.name || '-',
+      row.participant.chest_number || '-',
+      row.participant.name || '-',
+      row.inheritedGroupStatus ? `${row.status}*` : row.status,
+    ]);
+  });
+
+  autoTable(doc, {
+    startY: 37,
+    head: [['Team', 'Competition', 'Category', 'Date', 'Venue / Stage', 'Chest No.', 'Participant', 'Attendance']],
+    body,
+    margin: { top: 37, left: 14, right: 14, bottom: 18 },
+    theme: 'grid',
+    styles: { font: 'helvetica', fontSize: 7.2, textColor: [18, 59, 99], cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+    headStyles: { fillColor: [18, 59, 99], textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [247, 249, 252] },
+    columnStyles: {
+      0: { cellWidth: 34 }, 1: { cellWidth: 48 }, 2: { cellWidth: 23 }, 3: { cellWidth: 24 },
+      4: { cellWidth: 33 }, 5: { cellWidth: 19, halign: 'center' }, 6: { cellWidth: 63 }, 7: { cellWidth: 25 },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 7 && data.cell.text.some((value) => value.startsWith('Not checked in'))) {
+        data.cell.styles.textColor = [180, 83, 9];
+        data.cell.styles.fontStyle = 'bold';
+      }
+    },
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) drawReportHeader();
+      writeFooter(doc, data.pageNumber);
+    },
+  });
+
+  doc.save('team-wise-competition-attendance.pdf');
+  return { scheduleCount: schedules.length, attendanceRowCount: attendanceRows.length, counts };
 }
 
 export async function downloadTeamLeaderSchedulePdf(

@@ -382,6 +382,50 @@ export default function ScheduleDashboard() {
     }
   };
 
+  const exportTeamAttendancePdf = async () => {
+    if (exportLock.current) return;
+    if (!festival?.id || !tenant_id) {
+      const message = isLoadingFest ? 'Festival details are still loading. Please try again.' : 'No active festival or tenant is available.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Festival unavailable', message);
+      return;
+    }
+    try {
+      exportLock.current = true;
+      setIsExportingSchedule(true);
+      const exportFilters = {
+        tenantId: tenant_id, festivalId: festival.id,
+        timezone: scheduleTimezone,
+      };
+      const allSchedules = await scheduleOverviewService.allFiltered(exportFilters);
+      const completedSchedules = allSchedules.filter((schedule: any) => normalizeScheduleLifecycleStatus(schedule.status) === 'completed');
+      if (!completedSchedules.length) throw new Error('No completed competitions were found in the active festival.');
+
+      const [{ loadAdminScheduleAttendanceData }, { downloadTeamAttendancePdf }] = await Promise.all([
+        import('../../../services/participantExportService'),
+        import('../../../services/schedulePdfService'),
+      ]);
+      const attendanceData = await loadAdminScheduleAttendanceData(
+        festival.id,
+        completedSchedules.map((schedule: any) => schedule.item_id),
+      );
+      const result = downloadTeamAttendancePdf({
+        festivalName: festival.custom_name || (festival.festival_year ? `Festival ${festival.festival_year}` : null),
+        schedules: completedSchedules as any,
+        ...attendanceData,
+      });
+      const message = `Team-wise attendance PDF downloaded: ${result.attendanceRowCount} attendance rows across ${result.scheduleCount} completed competitions.`;
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Export complete', message);
+    } catch (error: any) {
+      if (Platform.OS === 'web') window.alert(error?.message || 'Unable to generate team-wise attendance PDF.');
+      else Alert.alert('Export failed', error?.message || 'Unable to generate team-wise attendance PDF.');
+    } finally {
+      exportLock.current = false;
+      setIsExportingSchedule(false);
+    }
+  };
+
   const exportBlankSchedule = async () => {
     if (exportLock.current) return;
     try {
@@ -482,6 +526,15 @@ export default function ScheduleDashboard() {
             </TouchableOpacity>
           ))}
           <TouchableOpacity
+            onPress={exportTeamAttendancePdf}
+            disabled={isExportingSchedule}
+            accessibilityRole="button"
+            accessibilityLabel="Download team-wise attendance PDF for completed competitions"
+            className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
+          >
+            <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : 'Team-wise Attendance PDF'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={exportBlankSchedule}
             disabled={isExportingSchedule}
             className="px-3 py-2 rounded-lg border border-ui-primary bg-ui-primary"
@@ -491,6 +544,9 @@ export default function ScheduleDashboard() {
         </View>
         <Text className="font-poppins text-[10px] text-ui-text-muted mt-2">
           Exports use the current item, item category, venue and workflow filters. Items available: {Math.max(0, itemsList.length - 1)}.
+        </Text>
+        <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">
+          Team-wise Attendance PDF includes every completed competition in the active festival, regardless of the page filters.
         </Text>
       </View>
       

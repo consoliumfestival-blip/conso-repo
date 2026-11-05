@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { organisationService } from '../../services/organisationService';
 import { useAuthStore } from '../store/authStore';
+import { invalidateChestNumberDependents } from '../utils/invalidateChestNumberDependents';
 
 export const useOrganisations = () => {
   const queryClient = useQueryClient();
@@ -52,12 +53,16 @@ export const useOrganisations = () => {
       );
       queryClient.invalidateQueries({ queryKey: ['childOrganisations', parentId], refetchType: 'active' });
       invalidateOrganisationLists();
+      invalidateChestNumberDependents(queryClient);
     },
   });
 
   const restoreOrganisationMutation = useMutation({
     mutationFn: (orgId: string) => organisationService.restoreChildOrganisation(orgId),
-    onSuccess: invalidateOrganisationLists,
+    onSuccess: () => {
+      invalidateOrganisationLists();
+      invalidateChestNumberDependents(queryClient);
+    },
   });
 
   const deleteArchivedOrganisationMutation = useMutation({

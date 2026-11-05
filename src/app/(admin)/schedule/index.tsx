@@ -180,13 +180,14 @@ export default function ScheduleDashboard() {
     screenHeight,
     maxTouchPoints,
   );
+  const isTabletScheduleTable = tabletScheduleOrientation !== null
+    && (Device.deviceType === Device.DeviceType.TABLET || maxTouchPoints > 0);
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
-  // On tablets the full desktop table compresses its action column until the
-  // overflow menu wraps onto a second line. Keep the compact row layout until
-  // there is enough room for all table columns and actions.
-  const isCompactScheduleLayout = width < 1400;
+  // Touch tablets use the desktop table with fewer metadata columns and wrapping actions.
+  // Phones and compact pointer windows keep their existing card layout.
+  const isCompactScheduleLayout = width < 1400 && !isTabletScheduleTable;
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
@@ -972,28 +973,32 @@ export default function ScheduleDashboard() {
       ) : (
         !isCompactScheduleLayout ? (
         <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
-            <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
-              <Text style={{ flex: 1.25 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
-              <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
+            <View className={`${isTabletScheduleTable ? 'min-h-11 px-2 py-2' : 'h-11 px-4'} flex-row items-center bg-ui-muted border-b border-ui-border`}>
+              <Text style={{ flex: isTabletScheduleTable ? 1.1 : 1.25, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
+              {!isTabletScheduleTable && <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>}
               <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
-              <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workflow</Text>
-              <Text style={{ flex: 2.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
+              <Text style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">{isTabletScheduleTable ? 'Status' : 'Workflow'}</Text>
+              <Text style={{ flex: 2.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
             </View>
             {filteredSchedules.map((schedule: any) => (
-              <View key={schedule.id} className="min-h-16 px-3 py-2 flex-row items-center border-b border-ui-border bg-core-surface-white">
-                <View style={{ flex: 1.25 }} className="pr-3">
+              <View key={schedule.id} className={`${isTabletScheduleTable ? 'min-h-16 px-2 py-2' : 'min-h-16 px-3 py-2'} flex-row items-center border-b border-ui-border bg-core-surface-white`}>
+                <View style={{ flex: isTabletScheduleTable ? 1.1 : 1.25, minWidth: 0 }} className="pr-2">
                   <Text className="font-poppins-bold text-xs text-ui-text" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
-                  <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5" numberOfLines={1}>{schedule.items?.item_name_ml || schedule.items?.item_code || '—'}</Text>
+                  <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5" numberOfLines={1}>
+                    {isTabletScheduleTable
+                      ? schedule.venues?.name || 'Unknown Venue'
+                      : schedule.items?.item_name_ml || schedule.items?.item_code || '—'}
+                  </Text>
                 </View>
-                <View style={{ flex: 0.9 }} className="pr-3 items-start">
+                {!isTabletScheduleTable && <View style={{ flex: 0.9 }} className="pr-3 items-start">
                   <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-lg">
                     <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
                   </View>
                   {!!schedule.items?.category_codes?.length && (
                     <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
                   )}
-                </View>
-                <View style={{ flex: 1 }} className="pr-3">
+                </View>}
+                <View style={{ flex: 1, minWidth: 0 }} className="pr-2">
                   <View className="flex-row items-center">
                     <Calendar size={12} color={ui.colors.textMuted} />
                     <Text className="font-poppins text-[10px] text-ui-text-muted ml-1.5">{new Date(schedule.start_time).toLocaleDateString()}</Text>
@@ -1010,7 +1015,7 @@ export default function ScheduleDashboard() {
                     </View>
                   )}
                 </View>
-                <View style={{ flex: 1.4 }} className="pr-3">
+                <View style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="pr-2">
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
@@ -1026,9 +1031,12 @@ export default function ScheduleDashboard() {
                     status={schedule.status}
                     summary={workflowMap.get(schedule.id)}
                     isShuffleLocked={schedule.is_shuffle_locked}
+                    compact={isTabletScheduleTable}
                   />
                 </View>
-                <View style={{ flex: 2.4, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4 }} className="flex-row">
+                <View style={isTabletScheduleTable
+                  ? { flex: 2.4, minWidth: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4, rowGap: 4 }
+                  : { flex: 2.4, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4 }} className="flex-row">
                   {[
                     { label: 'Check-in', path: 'checkin' },
                     { label: 'Codes', path: 'code-letter' },

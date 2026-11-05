@@ -414,7 +414,7 @@ export default function ScheduleDashboard() {
         schedules: completedSchedules as any,
         ...attendanceData,
       });
-      const message = `Team-wise attendance PDF downloaded: ${result.attendanceRowCount} attendance rows across ${result.scheduleCount} completed competitions.`;
+      const message = `Team attendance summary PDF downloaded: ${result.teamRowCount} team rows across ${result.itemCount} completed competitions.`;
       if (Platform.OS === 'web') window.alert(message);
       else Alert.alert('Export complete', message);
     } catch (error: any) {

@@ -378,10 +378,17 @@ export function downloadTeamAttendancePdf(input: {
   participants: ParticipantRow[];
   organisations: TeamAttendanceOrganisation[];
 }) {
-  const schedules = input.schedules
+  const completedSchedules = input.schedules
     .filter((schedule) => normalizeScheduleLifecycleStatus(schedule.status) === 'completed')
     .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || '') || itemLabel(a).localeCompare(itemLabel(b)));
-  if (!schedules.length) throw new Error('No completed competitions match the current filters.');
+  if (!completedSchedules.length) throw new Error('No completed competitions match the current filters.');
+
+  // Registrations are item-scoped, so repeated schedule rows for one item must not duplicate people.
+  const schedulesByItem = new Map<string, ScheduleRow>();
+  completedSchedules.forEach((schedule) => {
+    if (!schedulesByItem.has(schedule.item_id)) schedulesByItem.set(schedule.item_id, schedule);
+  });
+  const completedItems = Array.from(schedulesByItem.values());
 
   const participantMap = buildParticipantMap(input.participants);
   const organisationMap = new Map(input.organisations.map((organisation) => [organisation.id, organisation.name]));
@@ -390,20 +397,19 @@ export function downloadTeamAttendancePdf(input: {
     membersByRegistration.set(registration_id, [...(membersByRegistration.get(registration_id) || []), participant_id]);
   });
 
-  const attendanceRows: {
+  const teamSummaries = new Map<string, {
+    itemId: string;
+    itemName: string;
     teamId: string;
     teamName: string;
-    schedule: ScheduleRow;
-    participant: ParticipantRow;
-    status: 'Checked in' | 'Not checked in' | 'Cancelled';
-    inheritedGroupStatus: boolean;
-  }[] = [];
+    participantAttendance: Map<string, boolean>;
+  }>();
 
-  schedules.forEach((schedule) => {
+  completedItems.forEach((schedule) => {
     input.registrations
       .filter((registration) => registration.item_id === schedule.item_id
         && (!schedule.festival_id || registration.festival_id === schedule.festival_id)
-        && registration.status !== 'rejected')
+        && registration.status?.trim().toLowerCase() !== 'rejected')
       .forEach((registration) => {
         const isGroupEntry = registration.entry_kind === 'general_team';
         const participantIds = isGroupEntry
@@ -411,78 +417,90 @@ export function downloadTeamAttendancePdf(input: {
             || (registration.participant_id ? [registration.participant_id] : [])
           : registration.participant_id ? [registration.participant_id] : [];
         const registrationStatus = registration.status?.trim().toLowerCase();
-        const status: 'Checked in' | 'Not checked in' | 'Cancelled' =
-          registrationStatus === 'cancelled' || registrationStatus === 'canceled' || registration.checkin_cancelled === true
-            ? 'Cancelled'
-            : registration.is_verified === true ? 'Checked in' : 'Not checked in';
+        const participated = registrationStatus !== 'cancelled'
+          && registrationStatus !== 'canceled'
+          && registration.checkin_cancelled !== true
+          && registration.is_verified === true;
 
-        participantIds.forEach((participantId) => {
+        Array.from(new Set(participantIds)).forEach((participantId) => {
           const participant = participantMap.get(participantId);
           if (!participant) return;
           const teamId = registration.organisation_id || participant.organisation_id || '';
           const teamName = teamId
             ? organisationMap.get(teamId) || 'Team name unavailable'
             : participant.organisations?.name || 'Unassigned team';
-          attendanceRows.push({ teamId, teamName, schedule, participant, status, inheritedGroupStatus: isGroupEntry });
+          const itemName = itemLabel(schedule);
+          const summaryKey = `${schedule.item_id}:${teamId || `unassigned:${teamName}`}`;
+          const summary = teamSummaries.get(summaryKey) || {
+            itemId: schedule.item_id,
+            itemName,
+            teamId,
+            teamName,
+            participantAttendance: new Map<string, boolean>(),
+          };
+          // Count a participant once per item/team; a verified attendance wins if duplicate source rows exist.
+          summary.participantAttendance.set(
+            participantId,
+            summary.participantAttendance.get(participantId) === true || participated,
+          );
+          teamSummaries.set(summaryKey, summary);
         });
       });
   });
 
-  if (!attendanceRows.length) throw new Error('No assigned participants were found for completed competitions in these filters.');
+  if (!teamSummaries.size) throw new Error('No assigned participants were found for completed competitions in these filters.');
 
-  attendanceRows.sort((a, b) => a.teamName.localeCompare(b.teamName)
-    || a.teamId.localeCompare(b.teamId)
-    || (a.schedule.start_time || '').localeCompare(b.schedule.start_time || '')
-    || (a.participant.chest_number || '').localeCompare(b.participant.chest_number || '', undefined, { numeric: true })
-    || (a.participant.name || '').localeCompare(b.participant.name || ''));
+  const rows = Array.from(teamSummaries.values()).map((summary) => {
+    const participantCounts = Array.from(summary.participantAttendance.values()).reduce((counts, participated) => {
+      counts[participated ? 'participated' : 'notParticipated'] += 1;
+      return counts;
+    }, { participated: 0, notParticipated: 0 });
+    return { ...summary, ...participantCounts };
+  }).sort((a, b) => a.itemName.localeCompare(b.itemName)
+    || a.itemId.localeCompare(b.itemId)
+    || a.teamName.localeCompare(b.teamName)
+    || a.teamId.localeCompare(b.teamId));
 
   const doc = makeDocument();
-  const counts = attendanceRows.reduce((result, row) => {
-    result[row.status] += 1;
+  const counts = rows.reduce((result, row) => {
+    result.participated += row.participated;
+    result.notParticipated += row.notParticipated;
     return result;
-  }, { 'Checked in': 0, 'Not checked in': 0, Cancelled: 0 });
+  }, { participated: 0, notParticipated: 0 });
   const reportTitle = 'Team-wise Competition Attendance';
   const reportSubtitle = input.festivalName || 'Festival';
-  const summary = `Completed competitions: ${schedules.length}   Attendance rows: ${attendanceRows.length}   Checked in: ${counts['Checked in']}   Not checked in: ${counts['Not checked in']}   Cancelled: ${counts.Cancelled}`;
+  const summary = `Completed competitions: ${completedItems.length}   Item-team rows: ${rows.length}   Participated: ${counts.participated}   Did not participate: ${counts.notParticipated}`;
   const drawReportHeader = () => {
-    writeHeader(doc, reportTitle, reportSubtitle, 'Attendance Report');
+    writeHeader(doc, reportTitle, reportSubtitle, 'Fair Play Attendance');
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(MUTED);
     doc.text(summary, 14, 28);
-    doc.text('* Group entry members share one check-in status.', 14, 33);
+    doc.text('* Cancelled and check-in-cancelled entries count as not participating; rejected entries are excluded.', 14, 33);
   };
   drawReportHeader();
 
-  const body: string[][] = [];
-  attendanceRows.forEach((row) => {
-    body.push([
-      row.teamName,
-      itemLabel(row.schedule),
-      categoryLabel(row.schedule),
-      formatDate(row.schedule.start_time),
-      row.schedule.venues?.name || '-',
-      row.participant.chest_number || '-',
-      row.participant.name || '-',
-      row.inheritedGroupStatus ? `${row.status}*` : row.status,
-    ]);
-  });
+  const body = rows.map((row) => [
+    row.itemName,
+    row.teamName,
+    String(row.participated),
+    String(row.notParticipated),
+  ]);
 
   autoTable(doc, {
     startY: 37,
-    head: [['Team', 'Competition', 'Category', 'Date', 'Venue / Stage', 'Chest No.', 'Participant', 'Attendance']],
+    head: [['Competition / Item', 'Team', 'Participated', 'Did not participate']],
     body,
     margin: { top: 37, left: 14, right: 14, bottom: 18 },
     theme: 'grid',
-    styles: { font: 'helvetica', fontSize: 7.2, textColor: [18, 59, 99], cellPadding: 2, overflow: 'linebreak', valign: 'middle' },
+    styles: { font: 'helvetica', fontSize: 8, textColor: [18, 59, 99], cellPadding: 2.4, overflow: 'linebreak', valign: 'middle' },
     headStyles: { fillColor: [18, 59, 99], textColor: [255, 255, 255], fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [247, 249, 252] },
     columnStyles: {
-      0: { cellWidth: 34 }, 1: { cellWidth: 48 }, 2: { cellWidth: 23 }, 3: { cellWidth: 24 },
-      4: { cellWidth: 33 }, 5: { cellWidth: 19, halign: 'center' }, 6: { cellWidth: 63 }, 7: { cellWidth: 25 },
+      0: { cellWidth: 90 }, 1: { cellWidth: 100 }, 2: { cellWidth: 34, halign: 'center' }, 3: { cellWidth: 45, halign: 'center' },
     },
     didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 7 && data.cell.text.some((value) => value.startsWith('Not checked in'))) {
+      if (data.section === 'body' && data.column.index === 3) {
         data.cell.styles.textColor = [180, 83, 9];
         data.cell.styles.fontStyle = 'bold';
       }
@@ -494,7 +512,7 @@ export function downloadTeamAttendancePdf(input: {
   });
 
   doc.save('team-wise-competition-attendance.pdf');
-  return { scheduleCount: schedules.length, attendanceRowCount: attendanceRows.length, counts };
+  return { scheduleCount: completedSchedules.length, itemCount: completedItems.length, teamRowCount: rows.length, counts };
 }
 
 export async function downloadTeamLeaderSchedulePdf(

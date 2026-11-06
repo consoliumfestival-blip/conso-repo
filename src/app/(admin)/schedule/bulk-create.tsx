@@ -1,5 +1,6 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -656,11 +657,11 @@ export default function BulkCreateSchedule() {
                         <Text className="font-poppins-bold text-[10px] text-ui-text-muted">
                           {new Date(existingSchedule.start_time).toLocaleDateString([], { day: '2-digit', month: 'short' })}
                         </Text>
-                        {`\n${new Date(existingSchedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(existingSchedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                        {`\n${formatScheduleTime(existingSchedule.start_time)} – ${formatScheduleTime(existingSchedule.end_time)}`}
                       </>
                     ) : row ? (
                       <>
-                        {`${row.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${row.end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                        {`${formatScheduleTime(row.start)} – ${formatScheduleTime(row.end)}`}
                         {!!row.shiftedBy.length && (
                           <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700">{`\nAfter ${row.shiftedBy.join(', ')}`}</Text>
                         )}
@@ -726,9 +727,9 @@ export default function BulkCreateSchedule() {
                       {row.start.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' })}
                     </Text>
                     <Text style={{ width: 180 }} className="font-poppins-bold text-xs text-core-primary-text-teal-700">
-                      {row.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      {formatScheduleTime(row.start)}
                       {' – '}
-                      {row.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                      {formatScheduleTime(row.end)}
                     </Text>
                     <Text style={{ width: 100 }} className="font-poppins text-xs text-ui-text-muted">
                       {row.duration} min
@@ -774,7 +775,9 @@ export default function BulkCreateSchedule() {
           <View className="flex-row items-center gap-x-1 mt-1">
             <Clock3 size={13} color={ui.colors.textMuted} />
             <Text className="font-poppins text-xs text-ui-text-muted">
-              {preview.length ? `${preview[0].start.toLocaleString()} → ${preview[preview.length - 1].end.toLocaleString()}` : 'Configure stage and time to preview.'}
+              {preview.length
+                ? `${preview[0].start.toLocaleDateString()} ${formatScheduleTime(preview[0].start)} → ${preview[preview.length - 1].end.toLocaleDateString()} ${formatScheduleTime(preview[preview.length - 1].end)}`
+                : 'Configure stage and time to preview.'}
             </Text>
           </View>
         </View>

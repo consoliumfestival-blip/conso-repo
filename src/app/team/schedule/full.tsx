@@ -11,6 +11,7 @@ import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 
 export default function FullScheduleScreen() {
   const ui = useTeamUi();
@@ -71,13 +72,10 @@ export default function FullScheduleScreen() {
                         Category: {getTeamLeaderScheduleCategoryLabel(event.category_codes)}
                       </Text>
                       <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
-                        {event.start_time ? new Date(event.start_time).toLocaleString([], {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        }) : ''}
-                        {event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                        {event.start_time
+                          ? `${new Date(event.start_time).toLocaleDateString([], { month: 'short', day: 'numeric' })} ${formatScheduleTime(event.start_time)}`
+                          : ''}
+                        {event.end_time ? ` - ${formatScheduleTime(event.end_time)}` : ''}
                       </Text>
                       {event.venue_name && (
                         <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>

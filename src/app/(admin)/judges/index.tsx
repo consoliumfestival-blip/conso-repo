@@ -1,5 +1,6 @@
 import { fixedCoreOutputVariables, legacyCoreOutputColors } from '@/constants/coreThemeOutput';
 import { coreColor } from '@/constants/coreTheme';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useMemo } from 'react';
@@ -1133,7 +1134,7 @@ export default function JudgesPage() {
                             {s.items?.category_codes ? ` - ${(s.items.category_codes as string[]).join(', ')}` : ''}
                           </Text>
                           <Text className="font-poppins text-xs text-ssf-text-muted mt-0.5">
-                            {s.venues?.name} · {new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {s.venues?.name} · {formatScheduleTime(s.start_time)}
                           </Text>
                         </View>
                         <View className="items-end gap-y-1">

@@ -2,14 +2,14 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { AlertTriangle } from 'lucide-react-native';
 import { coreColor } from '@/constants/coreTheme';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import type { ScheduleParticipantConflict } from '@/services/scheduleParticipantConflictService';
 
-const formatTime = (value: string) => new Date(value).toLocaleString([], {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-});
+const formatConflictStartTime = (value: string) => {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return `${date.toLocaleDateString([], { day: '2-digit', month: 'short' })} ${formatScheduleTime(date)}`;
+};
 
 export function ScheduleParticipantConflictWarning({
   conflicts,
@@ -47,7 +47,7 @@ export function ScheduleParticipantConflictWarning({
           ? 'another schedule being prepared'
           : `${conflict.conflicting_item_name || 'another program'}${conflict.conflicting_venue_name ? ` · ${conflict.conflicting_venue_name}` : ''}`;
         return <Text key={`${conflict.candidate_key}:${conflict.participant_id}:${conflict.conflicting_schedule_id ?? conflict.conflicting_candidate_key}:${index}`} className="mt-2 font-poppins text-[11px] text-core-warning-amber-700">
-          {conflict.chest_number ? `${conflict.chest_number} · ` : ''}{conflict.participant_name || 'Participant'}{conflict.candidate_is_group_member || conflict.conflict_is_group_member ? ' (group member)' : ''} — {otherSchedule}, {formatTime(conflict.conflicting_start_time)}–{new Date(conflict.conflicting_end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {conflict.chest_number ? `${conflict.chest_number} · ` : ''}{conflict.participant_name || 'Participant'}{conflict.candidate_is_group_member || conflict.conflict_is_group_member ? ' (group member)' : ''} — {otherSchedule}, {formatConflictStartTime(conflict.conflicting_start_time)}–{formatScheduleTime(conflict.conflicting_end_time)}
         </Text>;
       })}
       {conflicts.length > visible.length && <Text className="mt-2 font-poppins-bold text-[11px] text-core-warning-amber-700">+ {conflicts.length - visible.length} more conflicts</Text>}

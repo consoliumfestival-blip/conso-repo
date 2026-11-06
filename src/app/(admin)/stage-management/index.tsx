@@ -12,6 +12,7 @@ import { useAuthStore } from '../../../core/store/authStore';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import type { StageRegistrationSummary } from '../../../services/stageManagementService';
 import { stageManagementService } from '../../../services/stageManagementService';
 import { useQuery } from '@tanstack/react-query';
@@ -869,7 +870,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 <View className="flex-row items-center mt-1">
                   <Clock size={12} color={coreColor("#64748B", 'textMuted')} />
                   <Text className="font-poppins text-[10px] text-ui-text-muted ml-1.5">
-                    {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatScheduleTime(schedule.start_time)} – {formatScheduleTime(schedule.end_time)}
                   </Text>
                 </View>
               </View>
@@ -935,7 +936,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 <View className="flex-row items-center gap-x-1">
                   <Clock size={13} color={coreColor("#6B7280", 'text')} />
                   <Text className="font-poppins text-xs text-core-text-gray-600">
-                    {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {formatScheduleTime(schedule.start_time)} - {formatScheduleTime(schedule.end_time)}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-x-1">

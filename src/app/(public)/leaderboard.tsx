@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState, Component, ErrorInfo } from 'react';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import { AlvioraCustomRenderer } from '../../components/leaderboard/AlvioraCustomRenderer';
 import { SahithyolsavLandingPage } from '../../components/publicLanding/SahithyolsavLandingPage';
 import {
@@ -136,12 +137,7 @@ const formatDateTime = (value: string | null) => {
 
 const formatTime = (timeStr: string | null) => {
   if (!timeStr) return '';
-  return new Intl.DateTimeFormat('en-IN', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata',
-  }).format(new Date(timeStr));
+  return formatScheduleTime(timeStr, { timeZone: 'Asia/Kolkata' });
 };
 
 const maxDate = (values: (string | null | undefined)[]) => {

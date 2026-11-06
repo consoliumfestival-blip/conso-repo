@@ -15,6 +15,7 @@ import { participantService } from '../../../services/participantService';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../core/store/authStore';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
@@ -1006,7 +1007,7 @@ export default function ScheduleDashboard() {
                   <View className="flex-row items-center mt-1">
                     <Clock size={12} color={ui.colors.textMuted} />
                     <Text className="font-poppins text-[10px] text-ui-text-muted ml-1.5">
-                      {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatScheduleTime(schedule.start_time)} – {formatScheduleTime(schedule.end_time)}
                     </Text>
                   </View>
                   {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
@@ -1167,7 +1168,7 @@ export default function ScheduleDashboard() {
                   <View className="flex-row items-center gap-x-1">
                     <Clock size={13} color={coreColor('#6B7280', 'text')} />
                     <Text className="font-poppins text-[10px] text-core-text-gray-600">
-                      {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatScheduleTime(schedule.start_time)} - {formatScheduleTime(schedule.end_time)}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-x-1">

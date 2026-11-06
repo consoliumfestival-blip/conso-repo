@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { superService } from '../../services/superService';
 import { tenantProvisioningService, ProvisionRootTenantInput } from '../../services/tenantProvisioningService';
+import { invalidateChestNumberDependents } from '../utils/invalidateChestNumberDependents';
 
 export function useSuperAdmin() {
   const queryClient = useQueryClient();
@@ -20,6 +21,7 @@ export function useSuperAdmin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'organisations'] });
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'stats'] });
+      invalidateChestNumberDependents(queryClient);
     },
   });
 
@@ -28,6 +30,7 @@ export function useSuperAdmin() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'organisations'] });
       queryClient.invalidateQueries({ queryKey: ['superadmin', 'stats'] });
+      invalidateChestNumberDependents(queryClient);
     },
   });
 

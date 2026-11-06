@@ -1,14 +1,14 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions, Modal, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 
 import { useSchedule } from '../../../core/hooks/useSchedule';
-import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
 
@@ -29,6 +29,16 @@ const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
   return norm === 'GN' ? 'GENERAL' : norm;
 };
+
+type SchedulePdfExportOption = AdminSchedulePdfMode | 'team-attendance' | 'blank';
+
+const schedulePdfExportOptions: { id: SchedulePdfExportOption; label: string; description: string }[] = [
+  { id: 'master', label: 'Master Schedule', description: 'One PDF using the current schedule filters.' },
+  { id: 'venue', label: 'Venue-wise Schedule', description: 'One PDF with venue and stage details for filtered schedules.' },
+  { id: 'organisation', label: 'Organisation-wise Schedule', description: 'One PDF grouping participants by organisation for filtered schedules.' },
+  { id: 'team-attendance', label: 'Team-wise Attendance PDF', description: 'Counts for all completed competitions; page filters do not apply.' },
+  { id: 'blank', label: 'Blank Schedule PDF', description: 'An empty timetable for the active items.' },
+];
 
 function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: {
  status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean; compact?: boolean;
@@ -252,6 +262,7 @@ export default function ScheduleDashboard() {
   }])),[schedules]);
   const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
+  const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
 
   const togglePublicVisibility = async (schedule: any) => {
@@ -450,6 +461,17 @@ export default function ScheduleDashboard() {
     }
   };
 
+  const selectSchedulePdfExport = (option: SchedulePdfExportOption) => {
+    setSchedulePdfExportOpen(false);
+    if (option === 'team-attendance') {
+      void exportTeamAttendancePdf();
+    } else if (option === 'blank') {
+      void exportBlankSchedule();
+    } else {
+      void exportSchedulePdf(option);
+    }
+  };
+
   const handleDelete = async (id: string, itemName: string) => {
     const confirmMsg = `Are you sure you want to delete the schedule for "${itemName}"? This action cannot be undone.`;
     if (Platform.OS === 'web') {
@@ -510,46 +532,18 @@ export default function ScheduleDashboard() {
 
       {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
       {availableDatesQuery.isError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Available schedule dates could not be loaded.</Text><SsfButton label="Retry dates" size="sm" variant="outline" onPress={()=>{void availableDatesQuery.refetch();}} /></View>}
-      <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
-        <Text className="font-poppins-bold text-xs text-ui-text mb-2">Download schedule PDFs</Text>
-        <View className="flex-row flex-wrap gap-2">
-          {([
-            ['master', 'Master Schedule'],
-            ['venue', 'Venue-wise Schedule'],
-            ['organisation', 'Organisation-wise Schedule'],
-          ] as [AdminSchedulePdfMode, string][]).map(([mode, label]) => (
-            <TouchableOpacity
-              key={mode}
-              onPress={() => exportSchedulePdf(mode)}
-              disabled={isExportingSchedule || isSearchDebouncing}
-              className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
-            >
-              <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : isSearchDebouncing ? 'Updating…' : label}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            onPress={exportTeamAttendancePdf}
-            disabled={isExportingSchedule}
-            accessibilityRole="button"
-            accessibilityLabel="Download team-wise attendance PDF for completed competitions"
-            className={`px-3 py-2 rounded-lg border ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200' : 'bg-core-surface-white border-ui-border'}`}
-          >
-            <Text className="font-poppins-bold text-[10px] text-ui-text">{isExportingSchedule ? 'Preparing…' : 'Team-wise Attendance PDF'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={exportBlankSchedule}
-            disabled={isExportingSchedule}
-            className="px-3 py-2 rounded-lg border border-ui-primary bg-ui-primary"
-          >
-            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Blank Schedule PDF</Text>
-          </TouchableOpacity>
-        </View>
-        <Text className="font-poppins text-[10px] text-ui-text-muted mt-2">
-          Exports use the current item, item category, venue and workflow filters. Items available: {Math.max(0, itemsList.length - 1)}.
-        </Text>
-        <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">
-          Team-wise Attendance PDF includes every completed competition in the active festival, regardless of the page filters.
-        </Text>
+      <View className="flex-row justify-end mb-5">
+        <TouchableOpacity
+          onPress={() => setSchedulePdfExportOpen(true)}
+          disabled={isExportingSchedule}
+          accessibilityRole="button"
+          accessibilityLabel="Export schedule PDF"
+          accessibilityState={{ disabled: isExportingSchedule, busy: isExportingSchedule }}
+          className={`min-h-10 flex-row items-center gap-2 rounded-lg px-4 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100' : 'bg-ui-primary'}`}
+        >
+          {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
+          <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
+        </TouchableOpacity>
       </View>
       
       <View className="flex-row flex-wrap gap-3 mb-6">
@@ -1260,6 +1254,46 @@ export default function ScheduleDashboard() {
         </View>
       )}
       </ScrollView>
+      <Modal transparent visible={schedulePdfExportOpen} animationType="fade" onRequestClose={() => !isExportingSchedule && setSchedulePdfExportOpen(false)}>
+        <Pressable onPress={() => !isExportingSchedule && setSchedulePdfExportOpen(false)} className="flex-1 bg-black/40 items-center justify-center px-4 py-6">
+          <Pressable onPress={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-xl border border-ui-border bg-core-surface-white p-4" style={{ maxHeight: '90%' }}>
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="font-poppins-bold text-base text-ui-text">Export schedule PDF</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close PDF export options" disabled={isExportingSchedule} onPress={() => setSchedulePdfExportOpen(false)} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border">
+                <X size={16} color={ui.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text className="font-poppins text-xs text-ui-text-muted mb-3">Choose one PDF. Only the selected file will be generated.</Text>
+            <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator>
+              {schedulePdfExportOptions.map((option) => {
+                const usesPageFilters = option.id === 'master' || option.id === 'venue' || option.id === 'organisation';
+                const disabled = isExportingSchedule || (usesPageFilters && isSearchDebouncing);
+                return (
+                  <TouchableOpacity
+                    key={option.id}
+                    onPress={() => selectSchedulePdfExport(option.id)}
+                    disabled={disabled}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Generate ${option.label}`}
+                    accessibilityState={{ disabled, busy: isExportingSchedule }}
+                    className={`mb-2 min-h-14 flex-row items-center gap-3 rounded-lg border border-ui-border px-3 py-2 ${disabled ? 'bg-core-surface-muted-gray-100 opacity-60' : 'bg-core-surface-white'}`}
+                  >
+                    <FileText size={17} color={disabled ? ui.colors.textMuted : ui.colors.primaryText} />
+                    <View className="flex-1">
+                      <Text className="font-poppins-bold text-xs text-ui-text">{option.label}</Text>
+                      <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5">{option.description}</Text>
+                    </View>
+                    {isExportingSchedule ? <Text className="font-poppins-bold text-[10px] text-ui-text-muted">Preparing…</Text> : <Download size={15} color={ui.colors.textMuted} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">
+              Filtered schedule PDFs use the current filters. Team attendance includes all completed competitions. Items available for the blank schedule: {Math.max(0, itemsList.length - 1)}.
+            </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Modal transparent visible={calendarOpen} animationType="fade" onRequestClose={() => setCalendarOpen(false)}>
         <View className="flex-1 bg-black/40 items-center justify-center px-4">
           <View className="w-full max-w-sm bg-core-surface-white border border-ui-border rounded-xl p-4">

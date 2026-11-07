@@ -20,7 +20,7 @@ import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 import { useSchedule } from '../../../../core/hooks/useSchedule';
 import { useStageManagement } from '../../../../core/hooks/useStageManagement';
 import { stageManagementService } from '../../../../services/stageManagementService';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { substageForChest } from '@/core/utils/scheduleSubstages';
 import {
   ArrowLeft,
@@ -58,6 +58,7 @@ export default function CheckIn() {
   const { id } = useLocalSearchParams();
   const scheduleId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { schedules, isLoadingSchedules } = useSchedule();
   const schedule = schedules.find((s: any) => s.id === scheduleId);
@@ -190,6 +191,9 @@ export default function CheckIn() {
     try {
       await stageManagementService.updateRegistration(scheduleId!, regId, 'verify');
       await checkinStateQuery.refetch();
+      if (schedule?.tenant_id && schedule?.festival_id) {
+        await queryClient.invalidateQueries({ queryKey: ['schedules', schedule.tenant_id, schedule.festival_id] });
+      }
       setVerifyModal({ reg: null, visible: false });
       refetch();
     } catch (error: any) {

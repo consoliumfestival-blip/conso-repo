@@ -29,73 +29,70 @@ const normalizeCategory = (value: string) => {
   return norm === 'GN' ? 'GENERAL' : norm;
 };
 
-function ScheduleWorkflowBadges({status,summary,isShuffleLocked,compact=false}: {
- status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean; compact?: boolean;
+function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false,isOverdueUnstarted=false,compact=false}: {
+ status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean;
+ isPostponed?: boolean; isOverdueUnstarted?: boolean; compact?: boolean;
 }) {
- if (!summary) return <Text className="font-poppins text-[9px] text-ssf-text-muted">{getScheduleLifecycleLabel(status)} / Workflow unavailable</Text>;
- const {active_count:active,verified_count:verified,coded_count:coded,assigned_judges:totalExpected,submitted_judges:totalSubmitted,has_manual_result:hasManualSubmitted,has_published_result:hasInternalPublished}=summary;
- const checkinDone=(active>0 && verified===active)||isShuffleLocked;
- const checkinPending=active>verified && !isShuffleLocked;
- const codesShuffled=(verified>0 && coded===verified)||isShuffleLocked;
- const codesPending=verified>coded && !isShuffleLocked;
- const allDone=totalExpected>0 && totalSubmitted>=totalExpected;
-  const badges: { label: string; bg: string; text: string }[] = [];
+  const normalizedStatus = normalizeScheduleLifecycleStatus(status);
+  const postponed = normalizedStatus !== 'ongoing' && normalizedStatus !== 'completed'
+    && (isPostponed || isOverdueUnstarted);
+  const lifecycleLabel = postponed ? 'Postponed' : getScheduleLifecycleLabel(status);
+  const lifecycleTone = postponed
+    ? 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700'
+    : normalizedStatus === 'ongoing'
+      ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
+      : normalizedStatus === 'completed'
+        ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200 text-core-text-slate-700'
+        : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200 text-core-info-blue-700';
+  const chipContainerSize = compact ? 'min-h-5 px-1.5' : 'min-h-6 px-2';
+  const chipTextSize = compact ? 'text-[8px]' : 'text-[9px]';
+  const chips: { label: string; tone: string }[] = [];
 
-  // Check-in status (Malayalam highlighted text as requested)
-  if (checkinDone && codesShuffled) {
-    badges.push({ label: 'Ready to start', bg: 'bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-200', text: 'text-core-success-emerald-700' });
-  } else if (checkinPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
-    badges.push({ label: 'Check-in Pending', bg: 'bg-core-warning-soft-amber-100 border border-core-warning-soft-amber-200', text: 'text-core-warning-amber-700' });
-  }
+  if (!summary) chips.push({ label: 'Workflow unavailable', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
+  else {
+    const { active_count: active, verified_count: verified, coded_count: coded,
+      assigned_judges: totalExpected, submitted_judges: totalSubmitted,
+      has_manual_result: hasManualSubmitted, has_published_result: hasInternalPublished } = summary;
+    const checkinDone = (active > 0 && verified === active) || isShuffleLocked;
+    const codesShuffled = (verified > 0 && coded === verified) || isShuffleLocked;
+    const allMarksDone = totalExpected > 0 && totalSubmitted >= totalExpected;
 
-  // Code Letter status
-  if (!codesShuffled && codesPending && !hasManualSubmitted && !hasInternalPublished && !allDone) {
-    badges.push({ label: 'Codes Pending', bg: 'bg-core-surface-muted-gray-100 border border-core-border-gray-200', text: 'text-core-text-muted-gray-500' });
-  }
+    chips.push(checkinDone
+      ? { label: 'Check-in complete', tone: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700' }
+      : { label: `Check-in pending${active > 0 ? ` · ${verified}/${active}` : ''}`, tone: 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700' });
 
-  if (hasManualSubmitted) {
-    badges.push({ label: 'Mark Submitted (Manual)', bg: 'bg-core-success-soft-green-100 border border-core-success-soft-green-200', text: 'text-core-success-green-700' });
-  }
-  if (hasInternalPublished) {
-    badges.push({ label: 'Published to Admin Leaderboard', bg: 'bg-core-info-soft-blue-100 border border-core-info-soft-blue-200', text: 'text-core-info-blue-700' });
-  }
+    if (codesShuffled) chips.push({ label: 'Codes shuffled', tone: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700' });
+    else if (verified > coded) chips.push({ label: 'Codes pending', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
 
-  if (!badges.length && !totalExpected && !status) return null;
-
-  if (compact) {
-    const labels = badges.map((badge) => badge.label);
-    if (status) labels.unshift(getScheduleLifecycleLabel(status));
-    if (totalExpected > 0) {
-      labels.push(`Marks ${totalSubmitted}/${totalExpected} judges submitted`);
+    if (totalExpected > 0) chips.push({
+      label: `Marks ${totalSubmitted}/${totalExpected}`,
+      tone: allMarksDone
+        ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
+        : totalSubmitted > 0
+          ? 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700'
+          : 'bg-core-surface-muted-slate-100 border-core-border-slate-200 text-core-text-muted-slate-500',
+    });
+    if (hasManualSubmitted) chips.push({ label: 'Marks submitted manually', tone: 'bg-core-success-soft-green-100 border-core-success-soft-green-200 text-core-success-green-700' });
+    if (hasInternalPublished) chips.push({ label: 'Published', tone: 'bg-core-info-soft-blue-100 border-core-info-soft-blue-200 text-core-info-blue-700' });
+    if (!active && !totalExpected && !hasManualSubmitted && !hasInternalPublished) {
+      chips.push({ label: 'No entries', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
     }
-    return (
-      <Text numberOfLines={1} className="font-poppins text-[9px] text-ssf-text-muted">
-        {labels.join(' / ')}
-      </Text>
-    );
   }
 
   return (
-    <View className="flex-row flex-wrap gap-1.5">
-      <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}>
-        <Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-core-text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-core-success-emerald-700' : 'text-core-info-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text>
+    <View
+      accessible
+      accessibilityLabel={`Status: ${lifecycleLabel}. ${chips.map((chip) => chip.label).join('. ')}`}
+      className="flex-row flex-wrap items-center gap-1"
+    >
+      <View className={`flex-row items-center rounded-md border ${chipContainerSize} ${lifecycleTone.split(' ').slice(0, 2).join(' ')}`}>
+        <Text className={`font-poppins-bold ${chipTextSize} ${lifecycleTone.split(' ')[2]}`}>{lifecycleLabel}</Text>
       </View>
-      {badges.map((badge) => (
-        <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
-          <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
+      {chips.map((chip) => (
+        <View key={chip.label} className={`flex-row items-center rounded-md border ${chipContainerSize} ${chip.tone.split(' ').slice(0, 2).join(' ')}`}>
+          <Text className={`font-poppins-bold ${chipTextSize} ${chip.tone.split(' ')[2]}`}>{chip.label}</Text>
         </View>
       ))}
-      {totalExpected > 0 && (
-        <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${
-          allDone ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : totalSubmitted > 0 ? 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200' : 'bg-core-surface-muted-slate-50 border-core-border-slate-200'
-        }`}>
-          <Text className={`font-poppins-bold text-[9px] ${
-            allDone ? 'text-core-success-emerald-700' : totalSubmitted > 0 ? 'text-core-warning-amber-700' : 'text-core-text-muted-slate-500'
-          }`}>
-            {`Marks: ${totalSubmitted}/${totalExpected} judges submitted`}
-          </Text>
-        </View>
-      )}
     </View>
   );
 }
@@ -306,9 +303,9 @@ export default function ScheduleDashboard() {
 
   const statusesList = [
     { id: 'All', name: 'All Statuses' },
-    { id: 'scheduled', name: 'Scheduled' },
     { id: 'postponed', name: 'Postponed' },
     { id: 'ongoing', name: 'Started' },
+    { id: 'scheduled', name: 'Scheduled' },
     { id: 'completed', name: 'Completed' },
     { id: 'checkin_pending', name: 'Check-in Pending' },
     { id: 'checkin_done', name: 'Check-in Completed' },
@@ -671,7 +668,7 @@ export default function ScheduleDashboard() {
               compact
               active={selectedStatus !== 'All'}
               options={statusesList.map((item) => ({
-                label: item.id === 'All' ? 'Workflow: All' : `Workflow: ${item.name}`,
+                label: item.id === 'All' ? 'Status: All' : `Status: ${item.name}`,
                 value: item.id,
               }))}
             />
@@ -796,7 +793,7 @@ export default function ScheduleDashboard() {
 
           {/* Status Dropdown */}
           <View>
-            <Text className="font-poppins-bold text-[10px] text-ssf-text-muted uppercase tracking-wider mb-1 ml-1">Filter by Status / Workflow</Text>
+            <Text className="font-poppins-bold text-[10px] text-ssf-text-muted uppercase tracking-wider mb-1 ml-1">Filter by Status</Text>
             {Platform.OS === 'web' ? (
               <select
                 value={selectedStatus}
@@ -884,7 +881,7 @@ export default function ScheduleDashboard() {
 
           {/* Status Filter Pills */}
           <View className="mb-1">
-            <Text className="font-poppins-bold text-[10px] text-ssf-text-muted uppercase tracking-wider mb-1.5 ml-1">Filter by Status / Workflow</Text>
+            <Text className="font-poppins-bold text-[10px] text-ssf-text-muted uppercase tracking-wider mb-1.5 ml-1">Filter by Status</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row py-1">
               {statusesList.map(item => (
                 <TouchableOpacity
@@ -977,7 +974,7 @@ export default function ScheduleDashboard() {
               <Text style={{ flex: isTabletScheduleTable ? 1.1 : 1.25, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
               {!isTabletScheduleTable && <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>}
               <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
-              <Text style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">{isTabletScheduleTable ? 'Status' : 'Workflow'}</Text>
+              <Text style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Status</Text>
               <Text style={{ flex: 2.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
             </View>
             {filteredSchedules.map((schedule: any) => (
@@ -1009,11 +1006,6 @@ export default function ScheduleDashboard() {
                       {new Date(schedule.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – {new Date(schedule.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
-                  {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
-                    <View className="mt-1 self-start rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
-                      <Text className="font-poppins-bold text-[9px] text-core-warning-amber-700">Postponed</Text>
-                    </View>
-                  )}
                 </View>
                 <View style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="pr-2">
                   <TouchableOpacity
@@ -1031,6 +1023,8 @@ export default function ScheduleDashboard() {
                     status={schedule.status}
                     summary={workflowMap.get(schedule.id)}
                     isShuffleLocked={schedule.is_shuffle_locked}
+                    isPostponed={schedule.is_postponed === true}
+                    isOverdueUnstarted={schedule.is_overdue_unstarted === true}
                     compact={isTabletScheduleTable}
                   />
                 </View>
@@ -1174,16 +1168,13 @@ export default function ScheduleDashboard() {
                     <Calendar size={13} color={coreColor('#6B7280', 'text')} />
                     <Text className="font-poppins text-[10px] text-core-text-gray-600">{new Date(schedule.start_time).toLocaleDateString()}</Text>
                   </View>
-                  {(schedule.is_postponed || schedule.is_overdue_unstarted) && (
-                    <View className="rounded-full border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-100 px-2 py-0.5">
-                      <Text className="font-poppins-bold text-[10px] text-core-warning-amber-700">Postponed</Text>
-                    </View>
-                  )}
                 </View>
                 <ScheduleWorkflowBadges
                   status={schedule.status}
                   summary={workflowMap.get(schedule.id)}
                   isShuffleLocked={schedule.is_shuffle_locked}
+                  isPostponed={schedule.is_postponed === true}
+                  isOverdueUnstarted={schedule.is_overdue_unstarted === true}
                   compact
                 />
               </>

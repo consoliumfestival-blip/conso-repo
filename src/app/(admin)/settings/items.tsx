@@ -56,6 +56,7 @@ export default function ItemActivationSettings() {
   const [editingItem, setEditingItem] = useState<any | null>(null);
   const [editForm, setEditForm] = useState({
     name: '', categoryText: '', categoryCodes: [] as string[], groupSize: '',
+    participationType: 'individual' as 'individual' | 'group',
     itemType: null as 'stage' | 'offstage' | null,
     participantLimitMode: 'unlimited' as 'unlimited' | 'limited',
     maxParticipantsPerTeam: '',
@@ -186,6 +187,7 @@ export default function ItemActivationSettings() {
       categoryText: categories.join(', '),
       categoryCodes: categories,
       groupSize,
+      participationType: item.participation_type === 'group' ? 'group' : 'individual',
       itemType: item.item_type === 'stage' || item.item_type === 'offstage' ? item.item_type : null,
       participantLimitMode: Number(item.max_participants_per_team) > 0 ? 'limited' : 'unlimited',
       maxParticipantsPerTeam: item.max_participants_per_team == null ? '' : String(item.max_participants_per_team),
@@ -204,7 +206,7 @@ export default function ItemActivationSettings() {
     }
 
     let groupMemberCount: number | null = null;
-    if (editingItem.participation_type === 'group') {
+    if (editForm.participationType === 'group') {
       const count = Number(editForm.groupSize);
       if (!/^\d+$/.test(editForm.groupSize.trim()) || !Number.isSafeInteger(count) || count < 1 || count > 2147483647) {
         Alert.alert('Error', 'Enter a positive whole-number member count.');
@@ -212,9 +214,9 @@ export default function ItemActivationSettings() {
       }
       groupMemberCount = count;
     }
-    const maxParticipantsPerTeam = editingItem.participation_type === 'individual' && editForm.participantLimitMode === 'limited'
+    const maxParticipantsPerTeam = editForm.participationType === 'individual' && editForm.participantLimitMode === 'limited'
       ? Number(editForm.maxParticipantsPerTeam) : null;
-    if (editingItem.participation_type === 'individual' && editForm.participantLimitMode === 'limited'
+    if (editForm.participationType === 'individual' && editForm.participantLimitMode === 'limited'
       && (!/^\d+$/.test(editForm.maxParticipantsPerTeam.trim()) || !Number.isSafeInteger(maxParticipantsPerTeam)
         || maxParticipantsPerTeam! < 1 || maxParticipantsPerTeam! > 2147483647)) {
       Alert.alert('Error', 'Enter a positive whole-number participant limit.');
@@ -228,9 +230,11 @@ export default function ItemActivationSettings() {
         item_name_ml: cleanedName,
         item_name_en: !item.item_name_en || item.item_name_en === item.item_name_ml ? cleanedName : item.item_name_en,
         category_codes: uniqueCategoryCodes,
+        participation_type: editForm.participationType,
         item_type: editForm.itemType,
         max_participants_per_team: maxParticipantsPerTeam,
-        ...(groupMemberCount == null ? {} : { group_min_members: groupMemberCount, group_max_members: groupMemberCount }),
+        group_min_members: groupMemberCount,
+        group_max_members: groupMemberCount,
       }));
       setEditingItem(null);
       return;
@@ -248,6 +252,7 @@ export default function ItemActivationSettings() {
         groupMemberCount,
         itemType: editForm.itemType,
         maxParticipantsPerTeam,
+        ...(editForm.participationType !== editingItem.participation_type ? { participationType: editForm.participationType } : {}),
         expectedUpdatedAt: editingItem.updated_at ?? null,
       });
       Alert.alert('Success', 'Competition details saved.');
@@ -698,7 +703,17 @@ export default function ItemActivationSettings() {
                 )}
               </View>
 
-              {editingItem?.participation_type === 'group' && (
+              <View className="mb-5">
+                <Label>Participation type</Label>
+                <View className="mt-2 flex-row flex-wrap gap-2">
+                  <Button variant={editForm.participationType === 'individual' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, participationType: 'individual' }))}>Individual</Button>
+                  <Button variant={editForm.participationType === 'group' ? 'default' : 'outline'} size="sm" onPress={() => setEditForm(current => ({ ...current, participationType: 'group' }))}>Group</Button>
+                </View>
+                {editingItem && editForm.participationType !== editingItem.participation_type && !isDraftCustomItem(editingItem) && (
+                  <Text className="mt-1 font-poppins text-xs text-ui-text-muted">Type can change only before this item has registrations, schedules, or other linked records.</Text>
+                )}
+              </View>
+              {editForm.participationType === 'group' && (
                 <View className="mb-5">
                   <Label>Members per group</Label>
                   <Input
@@ -723,7 +738,7 @@ export default function ItemActivationSettings() {
                 </View>
                 {editForm.itemType && <TouchableOpacity className="mt-2 min-h-9 self-start justify-center" onPress={() => setEditForm(current => ({ ...current, itemType: null }))}><Text className="font-poppins text-xs text-ui-text-muted">Clear stage setting</Text></TouchableOpacity>}
               </View>
-              {editingItem?.participation_type === 'individual' && (
+              {editForm.participationType === 'individual' && (
                 <View className="mb-5">
                   <Label>Participants per team</Label>
                   <View className="mt-2 flex-row gap-2">

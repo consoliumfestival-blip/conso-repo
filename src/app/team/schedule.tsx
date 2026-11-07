@@ -16,6 +16,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/Team
 import { downloadTeamLeaderSchedulePdf } from '@/services/schedulePdfService';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
 import { TeamScheduleParticipantsModal } from '@/components/team/TeamScheduleParticipantsModal';
 
@@ -127,8 +128,8 @@ export default function ScheduleScreen() {
                             Category: {getTeamLeaderScheduleCategoryLabel(event.category_codes)}
                           </Text>
                           <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>
-                            {event.start_time ? new Date(event.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                            {event.end_time ? ` - ${new Date(event.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                            {formatScheduleTime(event.start_time)}
+                            {event.end_time ? ` - ${formatScheduleTime(event.end_time)}` : ''}
                           </Text>
                           {event.venue_name && (
                             <Text style={{ fontSize: 12, color: ui.colors.textMuted, marginTop: 2 }}>

@@ -12,6 +12,7 @@ import { Swirling } from '../loading-ui/swirling';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../core/config/supabase';
 import { getCategoryLabel } from '../../constants/categories';
+import { formatScheduleTime } from '../../core/utils/scheduleTime';
 
 const InitialLoader = ({ isReady }: { isReady: boolean }) => {
   const [shouldRender, setShouldRender] = React.useState(true);
@@ -209,10 +210,10 @@ const PremiumScheduleCarousel = ({ schedules, onSelectSchedule }: any) => {
 
           let timeStr = "TBA";
           if (schedule.start_time) {
-            const start = new Date(schedule.start_time).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+            const start = formatScheduleTime(schedule.start_time);
             timeStr = start;
             if (schedule.end_time) {
-              const end = new Date(schedule.end_time).toLocaleTimeString([], {hour: "2-digit", minute:"2-digit"});
+              const end = formatScheduleTime(schedule.end_time);
               timeStr = `${start} - ${end}`;
             }
           }
@@ -1022,8 +1023,8 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
                   <div>
                     <div className="text-white/60 text-xs uppercase tracking-widest mb-1">Time & Date</div>
                     <div className="text-white font-medium text-lg">
-                      {selectedSchedule.start_time ? new Date(selectedSchedule.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'TBA'} 
-                      {selectedSchedule.end_time ? ` - ${new Date(selectedSchedule.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : ''}
+                      {selectedSchedule.start_time ? formatScheduleTime(selectedSchedule.start_time) : 'TBA'}
+                      {selectedSchedule.end_time ? ` - ${formatScheduleTime(selectedSchedule.end_time)}` : ''}
                     </div>
                     <div className="text-sm mt-1">{selectedSchedule.start_time ? new Date(selectedSchedule.start_time).toLocaleDateString([], {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) : ''}</div>
                   </div>

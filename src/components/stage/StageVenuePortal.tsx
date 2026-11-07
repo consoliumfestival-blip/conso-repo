@@ -1,4 +1,5 @@
 import { coreColor } from '@/constants/coreTheme';
+import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import React from 'react';
 import { GroupEntryRoster } from './GroupEntryRoster';
 import {
@@ -66,9 +67,7 @@ const confirmAction = (title: string, body: string, action: () => void) => {
 };
 
 const dateText = (value: string | null) => value ? new Date(value).toLocaleDateString() : '—';
-const timeText = (value: string | null) => value
-  ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  : '—';
+const timeText = (value: string | null) => value ? formatScheduleTime(value) : '—';
 
 function WorkflowBadges({ registrations, summary, status, isShuffleLocked }: { registrations: PortalRegistration[]; summary?: StageVenueSummarySchedule['registration_summary']; status?: string | null; isShuffleLocked?: boolean }) {
   const active = registrations.filter((row) => row.status !== 'rejected');

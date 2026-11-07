@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { TeamLeaderContext, TeamLeaderScheduleRow } from './teamLeaderPortalService';
 import { normalizeScheduleLifecycleStatus } from '../core/utils/scheduleLifecycle';
+import { formatScheduleTime } from '../core/utils/scheduleTime';
 
 const NAVY = '#123B63';
 const MUTED = '#64748B';
@@ -75,9 +76,7 @@ const formatDate = (value?: string | null) => value
   ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
   : '-';
 
-const formatTime = (value?: string | null) => value
-  ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  : '-';
+const formatTime = (value?: string | null) => formatScheduleTime(value) || '-';
 
 const headerLines = (doc: jsPDF, value: string, maxWidth: number) => {
   const lines = doc.splitTextToSize(value, maxWidth) as string[];

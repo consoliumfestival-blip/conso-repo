@@ -238,13 +238,13 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     const itemNameLines = doc.splitTextToSize(input.itemName, innerWidth);
-    const nameY = cardY + 12;
-    const metadataY = nameY + itemNameLines.length * 6.2 + 1;
+    const nameY = cardY + 11.5;
+    const metadataY = nameY + itemNameLines.length * 6.2 + 0.5;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     const categoryLines = doc.splitTextToSize(input.category || '-', innerWidth - 22);
-    const categoryY = metadataY + 6;
-    const cardBottom = categoryY + Math.max(1, categoryLines.length - 1) * 4 + 3;
+    const categoryY = metadataY + 5;
+    const cardBottom = categoryY + Math.max(1, categoryLines.length - 1) * 4 + 2.5;
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.25);
@@ -322,8 +322,11 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
     },
   });
 
-  const safeName = input.itemName.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'item';
-  doc.save(`chance-sheet-${safeName}.pdf`);
+  const safeFilePart = (value: string, fallback: string) =>
+    value.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || fallback;
+  const safeName = safeFilePart(input.itemName, 'item');
+  const safeCategory = safeFilePart(input.category, 'uncategorized');
+  doc.save(`chance-sheet-${safeName}-${safeCategory}.pdf`);
   return { entryCount: input.rows.length };
 }
 

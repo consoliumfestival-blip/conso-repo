@@ -202,8 +202,8 @@ export default function ParticipantsList() {
   });
   const exportTeams: ExportChoice[] = exportTeamsQuery.data ?? [];
   useEffect(() => {
-    if (isExportOpen && needsExportTeam && exportTeamsQuery.data && !exportTeamsQuery.data.some(team => team.id === exportTeamId)) {
-      setExportTeamId(exportTeamsQuery.data[0]?.id ?? '');
+    if (isExportOpen && needsExportTeam && exportTeamsQuery.data && exportTeamId && !exportTeamsQuery.data.some(team => team.id === exportTeamId)) {
+      setExportTeamId('');
     }
   }, [isExportOpen, needsExportTeam, exportTeamsQuery.data, exportTeamId]);
   const exportItems: ExportChoice[] = (activeItems as any[])
@@ -211,9 +211,25 @@ export default function ParticipantsList() {
     .map((item: any) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
+  const teamReportItemsQuery = useQuery({
+    queryKey: ['participants', 'team-report-items', tenantId, userId, activeFestival?.id, exportTeamId],
+    enabled: isExportOpen && exportKind === 'team_items' && !!activeFestival?.id && !!exportTeamId && !!userId,
+    queryFn: async () => {
+      const people = await loadAdminExportPeople(activeFestival!.id, exportTeamId, null);
+      const ids = people.map((person: any) => person.id);
+      const registrations = await loadAdminTeamExportRegistrations(activeFestival!.id, exportTeamId, ids);
+      const active = registrations.filter((row: any) => !['rejected', 'cancelled', 'canceled'].includes(String(row.status ?? '').toLowerCase()));
+      const members = await loadAdminExportGroupMembers(active, ids);
+      const groupIds = new Set(members.map((member: any) => member.registration_id));
+      const personIds = new Set(ids);
+      return new Set(active.filter((row: any) => row.participant_id ? personIds.has(row.participant_id) : groupIds.has(row.id)).map((row: any) => row.item_id));
+    },
+  });
+
   const openExport = () => {
     if (isExporting || !selectionScopeMatchesSession()) return;
     if (!exportItemId && exportItems[0]) setExportItemId(exportItems[0].id);
+    setExportTeamId('');
     setIsExportOpen(true);
   };
 
@@ -792,14 +808,14 @@ export default function ParticipantsList() {
         isTeamPortal={false}
         colors={{ overlay: 'rgba(12, 20, 32, 0.48)', surface: '#FFFFFF', text: ui.colors.text, muted: ui.colors.textMuted, border: ui.colors.border, primary: ui.colors.primary, onPrimary: ui.colors.onPrimary, selected: ui.colors.surfaceMuted }}
         teams={exportTeams}
-        items={exportItems}
+        items={exportKind === 'team_items' ? exportItems.filter(item => teamReportItemsQuery.data?.has(item.id)) : exportItems}
         selectedKind={exportKind}
         selectedTeamId={exportTeamId}
         selectedItemId={exportItemId}
         sortBy={exportSort}
         busy={isExporting}
-        loadingOptions={needsExportTeam && exportTeamsQuery.isLoading}
-        errorMessage={needsExportTeam && exportTeamsQuery.error ? 'Could not load teams.' : null}
+        loadingOptions={(needsExportTeam && exportTeamsQuery.isLoading) || (exportKind === 'team_items' && !!exportTeamId && teamReportItemsQuery.isFetching)}
+        errorMessage={needsExportTeam && exportTeamsQuery.error ? 'Could not load teams.' : exportKind === 'team_items' && teamReportItemsQuery.error ? 'Could not load competitions for this team.' : null}
         onKindChange={(kind) => { if (!isExporting) setExportKind(kind); }}
         onTeamChange={setExportTeamId}
         onItemChange={setExportItemId}

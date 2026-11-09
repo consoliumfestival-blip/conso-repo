@@ -34,7 +34,6 @@ export default function ParticipantsScreen() {
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportRows, setExportRows] = useState<TeamLeaderParticipantExportRow[]>([]);
-  const [teamReportChoices, setTeamReportChoices] = useState<{ id: string; label: string }[]>([]);
   const [exportKind, setExportKind] = useState<ParticipantExportKind>('item_verification');
   const [exportItemId, setExportItemId] = useState('');
   const [exportSort, setExportSort] = useState<ExportSort>('chest');
@@ -213,29 +212,6 @@ export default function ParticipantsScreen() {
       setExportLoading(false);
     }
   };
-  const loadTeamReportChoices = async () => {
-    setExportLoading(true);
-    setExportError(null);
-    try {
-      const pages = await Promise.all((['participant', 'general_team'] as const).map(async entryKind => {
-        const all: { id: string; label: string }[] = [];
-        let page = 1;
-        while (true) {
-          const result = await teamLeaderPortalService.getProgramsForTeamPage({ entryKind, search: '', categoryCode: 'All categories', stageFilter: 'All stages', completionFilter: 'All statuses', sort: 'default', categoryOrder: [], page, pageSize: 100 });
-          all.push(...result.rows.map(item => ({ id: item.item_id, label: [item.item_code, item.item_name_en || item.item_name_ml || 'Unnamed item', ...(item.category_codes || [])].filter(Boolean).join(' · ') })));
-          if (!result.has_more) break;
-          page += 1;
-        }
-        return all;
-      }));
-      setTeamReportChoices(Array.from(new Map(pages.flat().map(item => [item.id, item])).values()).sort((a, b) => a.label.localeCompare(b.label)));
-    } catch (error: any) {
-      setTeamReportChoices([]);
-      setExportError(error?.message || 'Unable to load competitions.');
-    } finally {
-      setExportLoading(false);
-    }
-  };
   const runExport = async (selectedTeamItemIds: string[]) => {
     try {
       setExporting(true);
@@ -395,7 +371,7 @@ export default function ParticipantsScreen() {
         isTeamPortal
         colors={{ overlay: ui.colors.overlay, surface: ui.colors.surface, text: ui.colors.text, muted: ui.colors.textMuted, border: ui.colors.border, primary: ui.colors.primary, onPrimary: ui.colors.onPrimary, selected: ui.colors.surfaceMuted }}
         teams={[]}
-        items={exportKind === 'team_items' ? teamReportChoices : exportItems.map((item) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))}
+        items={(exportKind === 'team_items' ? exportItems.filter(item => exportAssignments.some(row => row.item_id === item.id && !['rejected', 'cancelled', 'canceled'].includes(String(row.registration_status ?? '').toLowerCase()))) : exportItems).map((item) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))}
         selectedKind={exportKind}
         selectedTeamId=""
         selectedItemId={exportItemId}
@@ -403,7 +379,7 @@ export default function ParticipantsScreen() {
         busy={exporting}
         loadingOptions={exportLoading}
         errorMessage={exportError}
-        onKindChange={(kind) => { setExportKind(kind); if (kind === 'team_items') void loadTeamReportChoices(); }}
+        onKindChange={setExportKind}
         onTeamChange={() => undefined}
         onItemChange={setExportItemId}
         onSortChange={setExportSort}

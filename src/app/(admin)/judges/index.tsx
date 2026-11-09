@@ -113,17 +113,15 @@ export default function JudgesPage() {
     setPrintRowCountError(null);
     const loadPrintRowCount = async () => {
       try {
-        const { count, error } = await supabase
-          .from('registrations')
-          .select('id', { count: 'exact', head: true })
-          .eq('item_id', schedule.item_id)
-          .neq('status', 'rejected');
+        const { count, error } = await supabase.rpc('get_judge_registrations', {
+          p_schedule_id: selectedScheduleId,
+        }, { head: true, count: 'exact' });
         if (!isCurrentRequest) return;
         if (error) {
           setPrintRowCountError('Could not load the participant count. Retry before printing.');
           return;
         }
-        setPrintRowCount(count && count > 0 ? count : 18);
+        setPrintRowCount(count !== null && count > 0 ? count : 18);
         setPrintRowCountScheduleId(selectedScheduleId);
       } catch {
         if (isCurrentRequest) {

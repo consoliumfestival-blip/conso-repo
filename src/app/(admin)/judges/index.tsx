@@ -46,9 +46,9 @@ import { ConsoliumLogo } from '../../../components/ui/ConsoliumLogo';
 import { codeLetterAt } from '../../../core/utils/codeLetters';
 import { buildJudgeEvaluationSheetPrintDocument } from '@/core/utils/judgeEvaluationSheetPrint';
 
-function isActiveJudgeSchedule(schedule: any): boolean {
+function isEligibleJudgeSchedule(schedule: any): boolean {
   const status = normalizeScheduleLifecycleStatus(schedule?.status ?? 'scheduled');
-  return (status === 'scheduled' || status === 'ongoing') && schedule?.is_postponed !== true;
+  return status === 'completed' || ((status === 'scheduled' || status === 'ongoing') && schedule?.is_postponed !== true);
 }
 
 export default function JudgesPage() {
@@ -307,23 +307,26 @@ export default function JudgesPage() {
     });
   }, [schedules, searchQuery, selectedCategory, selectedVenue, selectedAssignedJudge]);
 
-  const activeJudgeSchedules = useMemo(
-    () => (schedules as any[]).filter(isActiveJudgeSchedule),
+  const eligibleJudgeSchedules = useMemo(
+    () => (schedules as any[]).filter(isEligibleJudgeSchedule),
     [schedules],
   );
 
   const modalFilteredSchedules = useMemo(() => {
-    if (!eventSearchQuery.trim()) return activeJudgeSchedules;
+    if (!eventSearchQuery.trim()) return eligibleJudgeSchedules;
     const query = eventSearchQuery.toLowerCase().trim();
-    return activeJudgeSchedules.filter(s => {
+    return eligibleJudgeSchedules.filter(s => {
       const nameEn = s.items?.item_name_en?.toLowerCase() || '';
       const nameMl = s.items?.item_name_ml?.toLowerCase() || '';
       const code = s.items?.item_code?.toLowerCase() || '';
       return nameEn.includes(query) || nameMl.includes(query) || code.includes(query);
     });
-  }, [activeJudgeSchedules, eventSearchQuery]);
+  }, [eligibleJudgeSchedules, eventSearchQuery]);
 
-  const selectedScheduleIsActive = activeJudgeSchedules.some((schedule: any) => schedule.id === selectedScheduleId);
+  const selectedScheduleIsEligible = eligibleJudgeSchedules.some((schedule: any) => schedule.id === selectedScheduleId);
+  const selectedSchedule = (schedules as any[]).find((schedule) => schedule.id === selectedScheduleId);
+  const selectedScheduleCompleted = normalizeScheduleLifecycleStatus(selectedSchedule?.status) === 'completed';
+  const selectedMarksCompleted = workflowStatusBySchedule[selectedScheduleId]?.marks_completed === true;
 
   const filteredJudgesForPanel = useMemo(() => {
     if (!panelJudgeSearchQuery.trim()) return judges as any[];
@@ -519,7 +522,7 @@ export default function JudgesPage() {
       ? (schedules as any[]).find((schedule) => schedule.id === scheduleId)
       : null;
     setGeneratedToken(existingToken?.token ?? null);
-    setSelectedScheduleId(existingToken || isActiveJudgeSchedule(requestedSchedule) ? scheduleId : '');
+    setSelectedScheduleId(existingToken || isEligibleJudgeSchedule(requestedSchedule) ? scheduleId : '');
     setEventSearchQuery('');
     setIsTokenModalOpen(true);
     fetchJudgeManagementData();
@@ -612,8 +615,8 @@ export default function JudgesPage() {
       setErrorMessage('Please select an event for this judge.');
       return;
     }
-    if (!forceRefresh && !selectedScheduleIsActive) {
-      setErrorMessage('Please select an active scheduled or started event.');
+    if (!forceRefresh && !selectedScheduleIsEligible) {
+      setErrorMessage('Please select a scheduled, started, or completed event.');
       return;
     }
     if (!selectedJudgeForToken?.id) {
@@ -1293,7 +1296,7 @@ export default function JudgesPage() {
 
             {!generatedToken ? (
               <>
-                <Text className="font-poppins-bold text-xs text-ui-text mb-2">Select an active assigned event</Text>
+                <Text className="font-poppins-bold text-xs text-ui-text mb-2">Select an assigned event</Text>
                 
                 <View className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border w-full mb-3">
                   <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
@@ -1310,12 +1313,13 @@ export default function JudgesPage() {
                   {modalFilteredSchedules.length === 0 ? (
                     <Text className="font-poppins text-xs text-ui-text-muted text-center py-5 px-4">
                       {eventSearchQuery.trim()
-                        ? 'No active events match this search.'
-                        : 'No active events are available.'}
+                        ? 'No eligible events match this search.'
+                        : 'No eligible events are available.'}
                     </Text>
                   ) : modalFilteredSchedules.map(s => {
                     const hasToken = allTokens.some((t: any) => t.judge_id === selectedJudgeForToken?.id && t.schedule_id === s.id);
                     const isCompleted = workflowStatusBySchedule[s.id]?.marks_completed === true;
+                    const isScheduleCompleted = normalizeScheduleLifecycleStatus(s.status) === 'completed';
                     const assignedJudgeIds = Array.isArray(s.assigned_judge_ids)
                       ? s.assigned_judge_ids
                       : [];
@@ -1362,6 +1366,11 @@ export default function JudgesPage() {
                               <Text className="text-[10px] text-core-success-green-700 font-poppins-bold">Code Generated</Text>
                             </View>
                           )}
+                          {isScheduleCompleted && (
+                            <View className="bg-core-warning-soft-amber-50 px-2 py-0.5 rounded border border-core-warning-soft-amber-200">
+                              <Text className="text-[10px] text-core-warning-amber-700 font-poppins-bold">Completed</Text>
+                            </View>
+                          )}
                           {isCompleted && (
                             <View className="bg-core-danger-soft-red-100 px-2 py-0.5 rounded border border-core-danger-soft-red-200">
                               <Text className="text-[10px] text-core-danger-red-700 font-poppins-bold">Marks Entered</Text>
@@ -1379,20 +1388,14 @@ export default function JudgesPage() {
                   })}
                 </ScrollView>
 
-                {(() => {
-                  const selectedS = modalFilteredSchedules?.find((s: any) => s.id === selectedScheduleId);
-                  if (selectedS && workflowStatusBySchedule[selectedS.id]?.marks_completed === true) {
-                    return (
-                      <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-200 flex-row items-center">
-                        <Activity size={16} color={coreColor("#DC2626", 'danger')} />
-                        <Text className="font-poppins-bold text-core-danger-red-700 text-xs ml-2 flex-1 leading-relaxed">
-                          Strict Warning: Marks entry is already completed for this event. 
-                        </Text>
-                      </View>
-                    )
-                  }
-                  return null;
-                })()}
+                {(selectedScheduleCompleted || selectedMarksCompleted) && (
+                  <View className="bg-core-warning-soft-amber-50 p-3 rounded-xl mb-3 border border-core-warning-soft-amber-200 flex-row items-center">
+                    <Activity size={16} color={coreColor("#B45309", 'warning')} />
+                    <Text className="font-poppins-bold text-core-warning-amber-700 text-xs ml-2 flex-1">
+                      {selectedScheduleCompleted ? 'This event is completed. ' : ''}{selectedMarksCompleted ? 'Marks entry is already completed. ' : ''}You can still generate or regenerate a code.
+                    </Text>
+                  </View>
+                )}
 
                 {errorMessage && (
                   <View className="bg-core-danger-soft-red-50 p-3 rounded-xl mb-3 border border-core-danger-soft-red-100">
@@ -1406,12 +1409,20 @@ export default function JudgesPage() {
                     label="Generate Code & QR"
                     onPress={() => handleGenerateToken()}
                     isLoading={isGenerating}
-                    disabled={!selectedScheduleId || !selectedScheduleIsActive}
+                    disabled={!selectedScheduleId || !selectedScheduleIsEligible}
                   />
                 </View>
               </>
             ) : (
               <>
+                {(selectedScheduleCompleted || selectedMarksCompleted) && (
+                  <View className="bg-core-warning-soft-amber-50 p-3 rounded-xl mb-3 border border-core-warning-soft-amber-200 flex-row items-center">
+                    <Activity size={16} color={coreColor("#B45309", 'warning')} />
+                    <Text className="font-poppins-bold text-core-warning-amber-700 text-xs ml-2 flex-1">
+                      {selectedScheduleCompleted ? 'This event is completed. ' : ''}{selectedMarksCompleted ? 'Marks entry is already completed. ' : ''}You can still generate or regenerate a code.
+                    </Text>
+                  </View>
+                )}
                 {errorMessage && (
                   <View className="bg-core-danger-soft-red-50 p-3 rounded-lg mb-3 border border-core-danger-soft-red-200">
                     <Text className="font-poppins text-core-danger-red-700 text-xs">{errorMessage}</Text>

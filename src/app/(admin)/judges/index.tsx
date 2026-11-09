@@ -1,5 +1,6 @@
 import { coreColor } from '@/constants/coreTheme';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
+import { normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useMemo } from 'react';
@@ -44,6 +45,11 @@ import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { ConsoliumLogo } from '../../../components/ui/ConsoliumLogo';
 import { codeLetterAt } from '../../../core/utils/codeLetters';
 import { buildJudgeEvaluationSheetPrintDocument } from '@/core/utils/judgeEvaluationSheetPrint';
+
+function isActiveJudgeSchedule(schedule: any): boolean {
+  const status = normalizeScheduleLifecycleStatus(schedule?.status ?? 'scheduled');
+  return (status === 'scheduled' || status === 'ongoing') && schedule?.is_postponed !== true;
+}
 
 export default function JudgesPage() {
   const router = useRouter();
@@ -301,16 +307,23 @@ export default function JudgesPage() {
     });
   }, [schedules, searchQuery, selectedCategory, selectedVenue, selectedAssignedJudge]);
 
+  const activeJudgeSchedules = useMemo(
+    () => (schedules as any[]).filter(isActiveJudgeSchedule),
+    [schedules],
+  );
+
   const modalFilteredSchedules = useMemo(() => {
-    if (!eventSearchQuery.trim()) return schedules as any[];
+    if (!eventSearchQuery.trim()) return activeJudgeSchedules;
     const query = eventSearchQuery.toLowerCase().trim();
-    return (schedules as any[]).filter(s => {
+    return activeJudgeSchedules.filter(s => {
       const nameEn = s.items?.item_name_en?.toLowerCase() || '';
       const nameMl = s.items?.item_name_ml?.toLowerCase() || '';
       const code = s.items?.item_code?.toLowerCase() || '';
       return nameEn.includes(query) || nameMl.includes(query) || code.includes(query);
     });
-  }, [schedules, eventSearchQuery]);
+  }, [activeJudgeSchedules, eventSearchQuery]);
+
+  const selectedScheduleIsActive = activeJudgeSchedules.some((schedule: any) => schedule.id === selectedScheduleId);
 
   const filteredJudgesForPanel = useMemo(() => {
     if (!panelJudgeSearchQuery.trim()) return judges as any[];
@@ -502,8 +515,11 @@ export default function JudgesPage() {
           (token: any) => token.judge_id === judge.id && token.schedule_id === scheduleId
         )
       : null;
+    const requestedSchedule = scheduleId
+      ? (schedules as any[]).find((schedule) => schedule.id === scheduleId)
+      : null;
     setGeneratedToken(existingToken?.token ?? null);
-    setSelectedScheduleId(scheduleId);
+    setSelectedScheduleId(existingToken || isActiveJudgeSchedule(requestedSchedule) ? scheduleId : '');
     setEventSearchQuery('');
     setIsTokenModalOpen(true);
     fetchJudgeManagementData();
@@ -595,6 +611,10 @@ export default function JudgesPage() {
     setErrorMessage(null);
     if (!selectedScheduleId) {
       setErrorMessage('Please select an event for this judge.');
+      return;
+    }
+    if (!forceRefresh && !selectedScheduleIsActive) {
+      setErrorMessage('Please select an active scheduled or started event.');
       return;
     }
     if (!selectedJudgeForToken?.id) {
@@ -1274,7 +1294,7 @@ export default function JudgesPage() {
 
             {!generatedToken ? (
               <>
-                <Text className="font-poppins-bold text-xs text-ui-text mb-2">Select assigned event</Text>
+                <Text className="font-poppins-bold text-xs text-ui-text mb-2">Select an active assigned event</Text>
                 
                 <View className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border w-full mb-3">
                   <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
@@ -1288,7 +1308,13 @@ export default function JudgesPage() {
                 </View>
 
                 <ScrollView style={{ maxHeight: 310 }} className="mb-4 border border-ui-border rounded-xl">
-                  {modalFilteredSchedules?.map(s => {
+                  {modalFilteredSchedules.length === 0 ? (
+                    <Text className="font-poppins text-xs text-ui-text-muted text-center py-5 px-4">
+                      {eventSearchQuery.trim()
+                        ? 'No active events match this search.'
+                        : 'No active events are available.'}
+                    </Text>
+                  ) : modalFilteredSchedules.map(s => {
                     const hasToken = allTokens.some((t: any) => t.judge_id === selectedJudgeForToken?.id && t.schedule_id === s.id);
                     const isCompleted = workflowStatusBySchedule[s.id]?.marks_completed === true;
                     const assignedJudgeIds = Array.isArray(s.assigned_judge_ids)
@@ -1381,7 +1407,7 @@ export default function JudgesPage() {
                     label="Generate Code & QR"
                     onPress={() => handleGenerateToken()}
                     isLoading={isGenerating}
-                    disabled={!selectedScheduleId}
+                    disabled={!selectedScheduleId || !selectedScheduleIsActive}
                   />
                 </View>
               </>
@@ -1416,6 +1442,21 @@ export default function JudgesPage() {
                     <Text className="font-poppins text-core-danger-red-700 text-xs">{printError}</Text>
                   </View>
                 )}
+                <TouchableOpacity
+                  onPress={() => {
+                    setGeneratedToken(null);
+                    setSelectedScheduleId('');
+                    setEventSearchQuery('');
+                    setErrorMessage(null);
+                    setPrintError(null);
+                  }}
+                  className="self-start min-h-10 flex-row items-center gap-x-2 px-3 mb-3 bg-core-surface-white border border-ui-border rounded-lg"
+                  accessibilityRole="button"
+                  accessibilityLabel="Change active event"
+                >
+                  <Search size={15} color={coreColor('#475569', 'textMuted')} />
+                  <Text className="font-poppins-bold text-xs text-ui-text">Change event</Text>
+                </TouchableOpacity>
                 <View className="bg-ui-muted rounded-xl p-4 items-center mb-4 border border-ui-border">
                   <View className="bg-core-surface-white p-2.5 rounded-xl mb-3 border border-ui-border">
                     <QRCode

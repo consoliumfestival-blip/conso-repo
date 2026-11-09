@@ -93,7 +93,7 @@ export function buildJudgeEvaluationSheetPrintDocument(input: JudgeEvaluationShe
       <div>
         <div class="brand">
           <img src="${escapeHtml(input.logoUrl)}" alt="Consolium logo" />
-          <div class="brand-name">CONSOLIUM</div>
+          <div class="brand-name">CONSOULIUM</div>
         </div>
         <h1 class="sheet-title">Official Evaluation Sheet</h1>
         <p class="invitation">Respected <strong>${escapeHtml(input.judgeName)}</strong>, please evaluate the competition. Scan the QR code to sign in to the Judge Portal.</p>

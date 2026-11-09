@@ -1076,6 +1076,9 @@ export default function ScheduleDashboard() {
         <View>
           {filteredSchedules.map((schedule: any) => {
             const scheduleName = schedule.items?.item_name_en || 'Unknown Event';
+            const scheduleCategoryCodes = Array.isArray(schedule.items?.category_codes)
+              ? schedule.items.category_codes as string[]
+              : [];
             const hasTabletSideActionLayout = tabletScheduleOrientation !== null;
             const cardLifecycleActions = (
               <ScheduleLifecycleActions
@@ -1124,7 +1127,7 @@ export default function ScheduleDashboard() {
                     <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
                       <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-core-success-green-800">
                         {schedule.venues?.name || 'Unknown Venue'}
-                        {schedule.items?.category_codes?.length ? ` / ${schedule.items.category_codes.join(', ')}` : ''}
+                        {!tabletScheduleOrientation && scheduleCategoryCodes.length ? ` / ${scheduleCategoryCodes.join(', ')}` : ''}
                       </Text>
                     </View>
                   </View>
@@ -1142,9 +1145,9 @@ export default function ScheduleDashboard() {
                       {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
                     </Text>
                   </TouchableOpacity>
-                  {false && schedule.items?.category_codes && schedule.items.category_codes.length > 0 && (
+                  {tabletScheduleOrientation && scheduleCategoryCodes.length > 0 && (
                     <View className="mt-1.5 flex-row flex-wrap gap-1">
-                      {(schedule.items.category_codes as string[]).map((code: string) => (
+                      {scheduleCategoryCodes.map((code: string) => (
                         <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
                           <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
                         </View>

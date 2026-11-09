@@ -181,8 +181,10 @@ export type ChanceSheetRow = {
 export type ChanceSheetPdfInput = {
   festivalName?: string | null;
   festivalYear?: number | string | null;
+  itemCode?: string | null;
   itemName: string;
   category: string;
+  participationType: 'individual' | 'group';
   rows: ChanceSheetRow[];
 };
 
@@ -202,44 +204,93 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
   const height = doc.internal.pageSize.getHeight();
   const left = 8;
   const right = width - 8;
-  const blankCellCount = 18;
-  const fixedWidths = [9, 18, 17, 42];
-  const blankCellWidth = (right - left - fixedWidths.reduce((sum, value) => sum + value, 0)) / blankCellCount;
-  const head = ['No.', 'Chest No.', 'Code Letter', 'Participant / Group', ...Array.from({ length: blankCellCount }, () => '')];
+  const columnWidths = [18, 58, 20, 24, 24, 23, 13, 14];
+  const head = ['Chest No.', 'Participant', 'Code Letter', 'Chance\n1', 'Chance\n2', 'Dead\nRound', 'Grade', 'Prize'];
 
   const drawHeader = () => {
-    // Text wordmarks keep the sheet portable across web and native PDF output.
     doc.setTextColor(15, 23, 42);
+    doc.addImage(logoBytes, 'PNG', left, 7, 17, 17);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('CONSOULIUM', left + 22, 16);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    doc.text('Ayatic', left + 4, 17);
+    doc.setFontSize(8);
+    const festivalLabel = [input.festivalName, input.festivalYear].filter(Boolean).join(' · ') || 'Festival';
+    doc.setTextColor(100, 116, 139);
+    doc.text(doc.splitTextToSize(festivalLabel, right - (left + 22)), left + 22, 22);
+    doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('Codex', left + 4, 23);
+    doc.setFontSize(9);
+    doc.text('Ayatic Codex', right, 13, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('OFFICIAL JUDGING SHEET', right, 19, { align: 'right' });
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.35);
+    doc.line(left, 29, right, 29);
 
-    doc.addImage(logoBytes, 'PNG', width / 2 - 5, 1.5, 10, 10);
+    const cardX = left;
+    const cardY = 33;
+    const cardWidth = right - left;
+    const innerX = cardX + 4;
+    const innerWidth = cardWidth - 8;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(23);
-    doc.text('CONSOULIUM', width / 2, 18, { align: 'center' });
+    doc.setFontSize(15);
+    const itemNameLines = doc.splitTextToSize(input.itemName, innerWidth);
+    const nameY = cardY + 15;
+    const metadataY = nameY + itemNameLines.length * 6.2 + 2;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const categoryLines = doc.splitTextToSize(input.category || '-', innerWidth - 22);
+    const categoryY = metadataY + 8;
+    const cardBottom = categoryY + Math.max(1, categoryLines.length - 1) * 4 + 6;
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.25);
+    doc.roundedRect(cardX, cardY, cardWidth, cardBottom - cardY, 2, 2, 'FD');
+
+    // Draw the text after the card fill so the panel stays behind its content.
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.setTextColor(13, 116, 106);
+    doc.text('CHANCE SHEET · ITEM', innerX, cardY + 7);
+    doc.setFontSize(15);
+    doc.setTextColor(15, 23, 42);
+    doc.text(itemNameLines, innerX, nameY);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Item code: ${input.itemCode || '-'}`, innerX, metadataY);
+    doc.text(`Type: ${input.participationType === 'group' ? 'Group' : 'Individual'}`, innerX + innerWidth * 0.43, metadataY);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Entries: ${input.rows.length}`, right - 4, metadataY, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
-    const festivalLabel = [input.festivalName, input.festivalYear].filter(Boolean).join(' · ') || 'Festival';
-    doc.text(festivalLabel, width / 2, 24, { align: 'center' });
+    doc.setTextColor(100, 116, 139);
+    doc.text('Category:', innerX, categoryY);
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+    doc.text(categoryLines, innerX + 22, categoryY);
 
-    doc.setFontSize(9);
-    doc.text('Judge: Name & Signature', left + 2, 39);
-    doc.text(`Item: ${input.itemName}`, right - 2, 37, { align: 'right' });
-    doc.text(`Category: ${input.category || '-'}`, right - 2, 43, { align: 'right' });
-    doc.setFont('helvetica', 'bold');
-    doc.text(`TOTAL ENTRIES  ${input.rows.length}`, right - 2, 49, { align: 'right' });
+    const judgeY = cardBottom + 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Judge name:', left, judgeY);
+    doc.line(left + 20, judgeY + 0.5, left + 84, judgeY + 0.5);
+    doc.text('Signature:', left + 94, judgeY);
+    doc.line(left + 112, judgeY + 0.5, right, judgeY + 0.5);
+    return judgeY + 7;
   };
 
-  drawHeader();
+  const tableStartY = drawHeader();
   autoTable(doc, {
-    startY: 57,
+    startY: tableStartY,
     head: [head],
-    body: input.rows.map((row, index) => [String(index + 1), row.chestNumber, '', row.name, ...Array.from({ length: blankCellCount }, () => '')]),
-    margin: { left, right: width - right, top: 57, bottom: 10 },
+    body: input.rows.map((row) => [row.chestNumber, row.name, '', '', '', '', '', '']),
+    margin: { left, right: width - right, top: tableStartY, bottom: 10 },
     theme: 'grid',
     styles: {
       font: 'helvetica',
@@ -250,22 +301,19 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
       cellPadding: { top: 2.4, right: 0.5, bottom: 2.4, left: 1.2 },
       overflow: 'linebreak',
       valign: 'middle',
-      minCellHeight: 9,
+      minCellHeight: 11,
     },
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [15, 23, 42],
       fontStyle: 'bold',
       halign: 'center',
-      minCellHeight: 7,
+      minCellHeight: 12,
     },
-    columnStyles: {
-      0: { cellWidth: fixedWidths[0], halign: 'center' },
-      1: { cellWidth: fixedWidths[1], halign: 'center' },
-      2: { cellWidth: fixedWidths[2], halign: 'center' },
-      3: { cellWidth: fixedWidths[3] },
-      ...Object.fromEntries(Array.from({ length: blankCellCount }, (_, index) => [index + 4, { cellWidth: blankCellWidth } ])),
-    },
+    columnStyles: Object.fromEntries(columnWidths.map((cellWidth, index) => [index, {
+      cellWidth,
+      halign: index === 0 || index >= 2 ? 'center' : 'left',
+    }])),
     didDrawPage: (data) => {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);

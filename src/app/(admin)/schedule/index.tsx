@@ -212,6 +212,7 @@ export default function ScheduleDashboard() {
   const [selectedStatus, setSelectedStatus] = React.useState('All');
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const [chanceSheetSearchQuery, setChanceSheetSearchQuery] = React.useState('');
   const [calendarMonth, setCalendarMonth] = React.useState(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
@@ -228,6 +229,17 @@ export default function ScheduleDashboard() {
    enabled:isFocused && !!tenant_id && !!user?.id && !!festival?.id,
    staleTime:5*60*1000,retry:false,
   });
+  const chanceSheetSchedulesQuery = useQuery({
+    queryKey: ['chance-sheet-active-schedules', tenant_id, festival?.id],
+    queryFn: () => scheduleOverviewService.allFiltered({
+      tenantId: tenant_id!,
+      festivalId: festival!.id,
+      timezone: scheduleTimezone,
+    }),
+    enabled: chanceSheetItemPickerOpen && !!tenant_id && !!festival?.id,
+    staleTime: 0,
+    retry: false,
+  });
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery.trim()), 300);
     return () => clearTimeout(timer);
@@ -237,6 +249,26 @@ export default function ScheduleDashboard() {
   }, [tenant_id, festival?.id, debouncedSearchQuery, selectedItem, selectedCategory, selectedVenue, selectedStatus, selectedDate, pageSize]);
 
   const isSearchDebouncing = searchQuery.trim() !== debouncedSearchQuery;
+  const chanceSheetScheduledItemIds = React.useMemo(() => new Set(
+    (chanceSheetSchedulesQuery.data ?? [])
+      .filter((schedule: any) =>
+        !schedule.is_postponed
+        && !schedule.is_overdue_unstarted
+        && ['scheduled', 'ongoing'].includes(normalizeScheduleLifecycleStatus(schedule.status) ?? ''),
+      )
+      .map((schedule: any) => String(schedule.item_id ?? schedule.items?.id ?? ''))
+      .filter(Boolean),
+  ), [chanceSheetSchedulesQuery.data]);
+  const filteredChanceSheetItems = React.useMemo(() => {
+    const query = chanceSheetSearchQuery.trim().toLocaleLowerCase();
+    return (activeItems as any[]).filter((item) => {
+      if (!item?.id || !chanceSheetScheduledItemIds.has(String(item.id))) return false;
+      if (!query) return true;
+      const categories = Array.isArray(item.category_codes) ? item.category_codes : item.category_codes ? [item.category_codes] : [];
+      return [item.item_name_en, item.item_name_ml, item.item_code, ...categories]
+        .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
+    });
+  }, [activeItems, chanceSheetScheduledItemIds, chanceSheetSearchQuery]);
   const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, setSchedulePostponed, updateSchedule } = useSchedule({
     overviewPage: {
       search: debouncedSearchQuery,
@@ -435,8 +467,10 @@ export default function ScheduleDashboard() {
       const result = await downloadChanceSheetPdf({
         festivalName: festival?.custom_name || null,
         festivalYear: festival?.festival_year || null,
-        itemName: item.item_code ? `${item.item_code} · ${itemName}` : itemName,
+        itemCode: item.item_code || null,
+        itemName,
         category,
+        participationType: isGroupCompetition(item) ? 'group' : 'individual',
         rows: sheetRows,
       });
       const message = `Chance sheet PDF downloaded: ${result.entryCount} ${isGroupCompetition(item) ? 'groups' : 'participants'}.`;
@@ -520,6 +554,7 @@ export default function ScheduleDashboard() {
   const selectSchedulePdfExport = (option: SchedulePdfExportOption) => {
     setSchedulePdfExportOpen(false);
     if (option === 'chance-sheet') {
+      setChanceSheetSearchQuery('');
       setChanceSheetItemPickerOpen(true);
     } else if (option === 'team-attendance') {
       void exportTeamAttendancePdf();
@@ -1358,10 +1393,35 @@ export default function ScheduleDashboard() {
                 <X size={16} color={ui.colors.textMuted} />
               </TouchableOpacity>
             </View>
-            <Text className="font-poppins text-xs text-ui-text-muted mb-3">Select one active item. Its PDF will be generated after selection.</Text>
+            <Text className="font-poppins text-xs text-ui-text-muted mb-3">Only scheduled or started competitions are listed. Search by item name, code, or category.</Text>
+            <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-lg px-3 h-10 mb-3">
+              <Search size={16} color={ui.colors.textMuted} />
+              <TextInput
+                className="flex-1 ml-2 font-poppins text-xs text-ui-text outline-none"
+                placeholder="Search active schedule items…"
+                placeholderTextColor={ui.colors.textMuted}
+                value={chanceSheetSearchQuery}
+                onChangeText={setChanceSheetSearchQuery}
+                accessibilityLabel="Search active schedule items"
+                returnKeyType="search"
+              />
+              {!!chanceSheetSearchQuery && (
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear item search" onPress={() => setChanceSheetSearchQuery('')}>
+                  <X size={15} color={ui.colors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </View>
             <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator>
-              {isLoadingItems && <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">Loading active items…</Text>}
-              {(activeItems as any[]).filter((item) => item?.id).map((item) => {
+              {(isLoadingItems || chanceSheetSchedulesQuery.isLoading) && <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">Loading active schedules…</Text>}
+              {chanceSheetSchedulesQuery.isError && (
+                <View className="items-center py-5">
+                  <Text className="font-poppins text-xs text-ui-text-muted text-center mb-2">Active schedules could not be loaded.</Text>
+                  <TouchableOpacity accessibilityRole="button" onPress={() => void chanceSheetSchedulesQuery.refetch()} className="min-h-9 justify-center rounded-lg border border-ui-border px-3">
+                    <Text className="font-poppins-bold text-[10px] text-ui-text">Retry</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              {!isLoadingItems && !chanceSheetSchedulesQuery.isLoading && !chanceSheetSchedulesQuery.isError && filteredChanceSheetItems.map((item) => {
                 const itemName = item.item_name_en || item.item_name_ml || 'Unnamed item';
                 const categories = (Array.isArray(item.category_codes) ? item.category_codes : item.category_codes ? [item.category_codes] : [])
                   .map((value: unknown) => normalizeCategory(String(value))).filter(Boolean).join(', ');
@@ -1384,7 +1444,13 @@ export default function ScheduleDashboard() {
                   </TouchableOpacity>
                 );
               })}
-              {!isLoadingItems && !(activeItems as any[]).length && <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">No active items are available for this festival.</Text>}
+              {!isLoadingItems && !chanceSheetSchedulesQuery.isLoading && !chanceSheetSchedulesQuery.isError && !filteredChanceSheetItems.length && (
+                <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">
+                  {chanceSheetScheduledItemIds.size === 0
+                    ? 'No active schedules are available for this festival.'
+                    : 'No active schedule items match this search.'}
+                </Text>
+              )}
             </ScrollView>
           </Pressable>
         </Pressable>

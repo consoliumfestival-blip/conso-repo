@@ -18,6 +18,7 @@ export type CompetitionItemUpdate = {
   groupMemberCount: number | null;
   itemType: 'stage' | 'offstage' | null;
   maxParticipantsPerTeam: number | null;
+  participationType?: 'individual' | 'group';
   expectedUpdatedAt: string | null;
 };
 

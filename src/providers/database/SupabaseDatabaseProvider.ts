@@ -89,7 +89,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   }
 
   async updateCompetitionItem(input: CompetitionItemUpdate): Promise<QueryResult<void>> {
-    const { error } = await supabase.rpc('update_competition_item', {
+    const { error } = await supabase.rpc(input.participationType ? 'change_competition_item_type' : 'update_competition_item', {
       p_festival_id: input.festivalId,
       p_item_id: input.itemId,
       p_item_name_ml: input.itemNameMl,
@@ -97,6 +97,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       p_group_member_count: input.groupMemberCount,
       p_item_type: input.itemType,
       p_max_participants_per_team: input.maxParticipantsPerTeam,
+      ...(input.participationType ? { p_participation_type: input.participationType } : {}),
       p_expected_updated_at: input.expectedUpdatedAt,
     });
     return { data: undefined, error: normalizeError(error) };

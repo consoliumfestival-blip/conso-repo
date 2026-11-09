@@ -5,6 +5,7 @@ const { PGlite } = require('@electric-sql/pglite');
 
 const id = (n) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
 const migration = fs.readFileSync('supabase/migrations/20261029100000_admin_schedule_overview_pagination.sql', 'utf8');
+const childEntriesMigration = fs.readFileSync('supabase/migrations/20261107094959_admin_schedule_overview_child_entries.sql', 'utf8');
 
 test('Schedule overview applies scope, filters, relevance ordering, pagination and date metadata in Postgres', async () => {
   const db = new PGlite();
@@ -211,6 +212,43 @@ test('Schedule overview applies scope, filters, relevance ordering, pagination a
     assert.equal(availableDayStrings.includes('2020-12-15'), false, 'available-date metadata excludes another festival');
     await assert.rejects(call(id(11)), /Festival unavailable/);
     await assert.rejects(call(id(10), { timezone: 'Not/A_Timezone' }), /Invalid schedule timezone/);
+    await db.exec(`
+      RESET ROLE;
+      ALTER TABLE public.schedules ADD COLUMN is_postponed boolean DEFAULT false;
+      DROP POLICY tenant_rows ON public.registrations;
+      CREATE POLICY visible_registration_rows ON public.registrations TO authenticated
+        USING (tenant_id IN ('${id(1)}', '${id(2)}'));
+    `);
+    await db.exec(childEntriesMigration);
+    await db.exec(`
+      INSERT INTO public.items
+        SELECT '${id(39)}', tenant_id, festival_id, 'CHILD-ONLY', item_name_en, item_name_ml, category_codes
+        FROM public.items WHERE id = '${id(30)}';
+      INSERT INTO public.schedules
+        (id, tenant_id, festival_id, item_id, venue_id, start_time, end_time, status,
+         is_shuffle_locked, is_public_visible, expected_judge_count)
+        SELECT '${id(29)}', tenant_id, festival_id, '${id(39)}', venue_id, start_time, end_time,
+          status, is_shuffle_locked, is_public_visible, expected_judge_count
+        FROM public.schedules WHERE id = '${id(20)}';
+      INSERT INTO public.registrations VALUES
+        ('${id(46)}','${id(2)}','${id(10)}','${id(30)}','approved',true,'C'),
+        ('${id(47)}','${id(2)}','${id(11)}','${id(30)}','approved',true,'D'),
+        ('${id(48)}','${id(3)}','${id(10)}','${id(30)}','approved',true,'E'),
+        ('${id(49)}','${id(2)}','${id(10)}','${id(39)}','approved',true,'F'),
+        ('${id(55)}','${id(2)}','${id(11)}','${id(39)}','approved',true,'G'),
+        ('${id(56)}','${id(3)}','${id(10)}','${id(39)}','approved',true,'H');
+      SET ROLE authenticated;
+    `);
+    const childOnly = (await call(id(10), { item: 39 })).rows[0];
+    assert.equal(childOnly.active_count, 1, 'child-only program does not appear empty');
+    assert.equal(childOnly.verified_count, 1);
+    assert.equal(childOnly.coded_count, 1);
+    const childEntries = (await call(id(10), { item: 30 })).rows.find((row) => row.id === id(20));
+    assert.equal(childEntries.active_count, 3, 'visible child-team entry is counted');
+    assert.equal(childEntries.verified_count, 2, 'verified child-team entry is counted');
+    assert.equal(childEntries.coded_count, 2, 'coded child-team entry is counted');
+    assert.equal((await call(id(10), { status: 'codes_done', size: 100 })).rows.some((row) => row.id === id(29)), true,
+      'workflow filter uses the same corrected registration scope');
     await db.exec('RESET ROLE; SET ROLE anon');
     await assert.rejects(call(id(10)), /permission denied/);
   } finally {

@@ -1,11 +1,14 @@
 import { coreColor } from '@/constants/coreTheme';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import React from 'react';
+import { Modal } from '@/components/ui/CoreModal';
 import { GroupEntryRoster } from './GroupEntryRoster';
 import {
   ActivityIndicator,
+  Animated,
   Alert,
   Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -19,6 +22,7 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Lock,
   MapPin,
@@ -32,6 +36,8 @@ import {
 import { SsfButton } from '@/components/ui/SsfButton';
 import { SsfCard } from '@/components/ui/SsfCard';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
+import { SsfDatePicker } from '@/components/ui/SsfDatePicker';
+import { scheduleLocalDateKey, sortStageSchedulesAroundToday } from '@/core/utils/stageScheduleDate';
 import { stageManagementService, StageRegistrationRow, StageScheduleRow, StageVenueSummarySchedule } from '@/services/stageManagementService';
 import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '@/core/utils/codeLetters';
 import { invalidateCodeLetters } from '@/core/utils/invalidateCodeLetters';
@@ -68,6 +74,44 @@ const confirmAction = (title: string, body: string, action: () => void) => {
 
 const dateText = (value: string | null) => value ? new Date(value).toLocaleDateString() : '—';
 const timeText = (value: string | null) => value ? formatScheduleTime(value) : '—';
+
+function MobileScheduleRow({ schedule, registrations, summary, onPress, last }: {
+  schedule: StageScheduleRow;
+  registrations: PortalRegistration[];
+  summary?: StageVenueSummarySchedule['registration_summary'];
+  onPress: () => void;
+  last: boolean;
+}) {
+  const scale = React.useRef(new Animated.Value(1)).current;
+  const animate = (toValue: number) => Animated.spring(scale, {
+    toValue, useNativeDriver: true, speed: 30, bounciness: 0,
+  }).start();
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Open actions for ${schedule.item_name_en || 'event'}`}
+        onPressIn={() => animate(0.98)}
+        onPressOut={() => animate(1)}
+        onPress={onPress}
+        className={`min-h-[76px] bg-core-surface-white px-3 py-2.5 ${last ? '' : 'border-b border-ui-border'}`}
+      >
+        <View className="flex-row items-center gap-2">
+          <View className="min-w-0 flex-1">
+            <Text numberOfLines={1} className="font-poppins-bold text-sm text-ssf-text">{schedule.item_name_en || 'Unknown Event'}</Text>
+            <Text numberOfLines={1} className="mt-0.5 font-poppins text-[11px] text-ssf-text-muted">
+              {dateText(schedule.start_time)} · {timeText(schedule.start_time)}
+            </Text>
+          </View>
+          <ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} />
+        </View>
+        <View className="mt-1.5">
+          <WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={registrations} summary={summary} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function WorkflowBadges({ registrations, summary, status, isShuffleLocked }: { registrations: PortalRegistration[]; summary?: StageVenueSummarySchedule['registration_summary']; status?: string | null; isShuffleLocked?: boolean }) {
   const active = registrations.filter((row) => row.status !== 'rejected');
@@ -113,7 +157,11 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   const [search, setSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
+  const [selectedDate, setSelectedDate] = React.useState('');
+  const [scheduleSortNow, setScheduleSortNow] = React.useState(() => Date.now());
   const [selectedScheduleId, setSelectedScheduleId] = React.useState<string | null>(null);
+  const [actionScheduleId, setActionScheduleId] = React.useState<string | null>(null);
+  const [showStatusChoices, setShowStatusChoices] = React.useState(false);
   const [mode, setMode] = React.useState<PortalMode>('checkin');
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [entrySearch, setEntrySearch] = React.useState('');
@@ -123,6 +171,11 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   const [editingEntry, setEditingEntry] = React.useState<PortalRegistration | null>(null);
   const [letterDraft, setLetterDraft] = React.useState('');
   const [letterError, setLetterError] = React.useState('');
+
+  React.useEffect(() => {
+    const interval = setInterval(() => setScheduleSortNow(Date.now()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const venueQuery = useQuery({
     queryKey: optimizedRead ? ['stage-venue-portal', venueId, pin, 'v2'] : ['stage-venue-portal', venueId, pin],
@@ -156,6 +209,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   });
   React.useEffect(() => applyPortalPwaMetadata('stage', venueQuery.data?.venue.name, venueId), [venueQuery.data?.venue.name, venueId]);
   const schedules = venueQuery.data?.schedules ?? [];
+  const actionSchedule = schedules.find((row) => row.id === actionScheduleId) ?? null;
   const registrations = (venueQuery.data?.registrations ?? []) as PortalRegistration[];
   const refresh = async () => {
     await venueQuery.refetch();
@@ -226,16 +280,38 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
       || (selectedStatus === 'checkin_done' && checkinDone)
       || (selectedStatus === 'codes_pending' && codesPending)
       || (selectedStatus === 'codes_done' && codesDone);
-    return categoryMatch && textMatch && statusMatch;
-  }).sort((a, b) =>
-    (b.start_time ?? '').localeCompare(a.start_time ?? '') || a.id.localeCompare(b.id));
+    return categoryMatch && textMatch && statusMatch
+      && (!selectedDate || scheduleLocalDateKey(schedule.start_time) === selectedDate);
+  });
+  const orderedSchedules = sortStageSchedulesAroundToday(filteredSchedules, scheduleSortNow);
 
   const openSchedule = (schedule: StageScheduleRow, nextMode: PortalMode) => {
+    setActionScheduleId(null);
+    setShowStatusChoices(false);
     setSelectedScheduleId(schedule.id);
     setMode(nextMode);
     setEntrySearch('');
     setSelectedSubstageId('all');
     setLetterError('');
+  };
+
+  const changeActionScheduleStatus = (nextStatus: 'scheduled' | 'ongoing' | 'completed') => {
+    if (!actionSchedule || normalizeScheduleLifecycleStatus(actionSchedule.status) === nextStatus) return;
+    const schedule = actionSchedule;
+    setActionScheduleId(null);
+    setShowStatusChoices(false);
+    const title = 'Change event status?';
+    const body = `Change “${schedule.item_name_en || 'Event'}” to ${getScheduleLifecycleLabel(nextStatus)}?`;
+    const run = () => {
+      void runMutation(`status-${schedule.id}`,
+        () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, nextStatus, schedule.status),
+        `Event status changed to ${getScheduleLifecycleLabel(nextStatus)}.`);
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${body}`)) run();
+    } else {
+      Alert.alert(title, body, [{ text: 'Cancel', style: 'cancel' }, { text: 'Change status', onPress: run }]);
+    }
   };
 
   const drawCodeLetters = async () => {
@@ -672,10 +748,12 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
 
   const filteredCategory = selectedCategory !== 'All';
   const filteredWorkflow = selectedStatus !== 'All';
+  const mobileFilterWidth = width >= 320 ? Math.floor((width - 64) / 2) : Math.max(0, width - 56);
 
   return (
+    <>
       <ScrollView className={`flex-1 bg-ssf-bg ${isMobile ? 'px-3 py-3' : 'px-4 py-6'}`} refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={refresh} />}>
-      <View className="mb-5 flex-row items-center justify-between gap-3">
+      <View className={`${isMobile ? 'mb-3' : 'mb-5'} flex-row items-center justify-between gap-3`}>
         <View className="flex-1 flex-row items-center gap-3">
           <ConsoliumLogo size={isMobile ? 38 : 46} />
           <View className="flex-1">
@@ -690,14 +768,14 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
 
       <View className="mb-4"><PwaInstallCard appName={venueQuery.data?.venue.name || 'Stage Management'} /></View>
 
-      <View className="mb-4 flex-row flex-wrap gap-3">
+      {!isMobile ? <View className="mb-4 flex-row flex-wrap gap-3">
         <View className="min-w-[140px] flex-1 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white p-3">
           <View><Text className="font-poppins-black text-lg text-ui-text">1</Text><Text className="font-poppins text-xs text-ui-text-muted">Venue</Text></View><MapPin color={coreColor("#0F766E", 'primaryText')} size={22} />
         </View>
         <View className="min-w-[140px] flex-1 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white p-3">
           <View><Text className="font-poppins-black text-lg text-ui-text">{filteredSchedules.length}</Text><Text className="font-poppins text-xs text-ui-text-muted">Scheduled Events</Text></View><Calendar color={coreColor("#0F766E", 'primaryText')} size={22} />
         </View>
-      </View>
+      </View> : null}
 
       <View className="mb-3 h-11 flex-row items-center rounded-xl border border-ui-border bg-core-surface-white px-4">
         <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
@@ -705,13 +783,13 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
         {search ? <TouchableOpacity onPress={() => setSearch('')}><X size={16} color={coreColor("#9CA3AF", 'textMuted')} /></TouchableOpacity> : null}
       </View>
 
-      <View className="mb-5 rounded-xl border border-ui-border bg-core-surface-white p-3">
+      <View className={`mb-4 rounded-xl border border-ui-border bg-core-surface-white ${isMobile ? 'p-2' : 'p-3'}`}>
         <View className="flex-row flex-wrap items-center gap-2">
           <SsfSelectMenu
             value={selectedCategory}
             onValueChange={setSelectedCategory}
             accessibilityLabel="Filter by category"
-            width={isMobile ? Math.max(120, (width - 72) / 2) : 180}
+            width={isMobile ? mobileFilterWidth : 180}
             compact
             active={filteredCategory}
             options={categories.map((category) => ({ label: category === 'All' ? 'Category: All' : `Category: ${category}`, value: category }))}
@@ -720,24 +798,25 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
             value={selectedStatus}
             onValueChange={setSelectedStatus}
             accessibilityLabel="Filter by workflow status"
-            width={isMobile ? Math.max(180, width - 56) : 210}
+            width={isMobile ? mobileFilterWidth : 210}
             compact
             active={filteredWorkflow}
             options={statuses.map((status) => ({ label: status.id === 'All' ? 'Workflow: All' : `Workflow: ${status.name}`, value: status.id }))}
           />
-          {filteredCategory || filteredWorkflow ? (
-            <TouchableOpacity onPress={() => { setSelectedCategory('All'); setSelectedStatus('All'); }} className="h-9 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-3">
+          <SsfDatePicker value={selectedDate} onValueChange={setSelectedDate} placeholder={isMobile ? 'Date: All' : 'Calendar: All dates'} width={isMobile ? mobileFilterWidth : 180} />
+          {filteredCategory || filteredWorkflow || selectedDate ? (
+            <TouchableOpacity onPress={() => { setSelectedCategory('All'); setSelectedStatus('All'); setSelectedDate(''); }} className="h-9 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-3">
               <RotateCcw size={13} color={coreColor("#64748B", 'textMuted')} /><Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">Reset</Text>
             </TouchableOpacity>
           ) : null}
-          <View className="h-9 items-center justify-center rounded-lg bg-ui-muted px-3"><Text className="font-poppins-bold text-[10px] text-ui-text-muted">{filteredSchedules.length} results</Text></View>
+          {!isMobile ? <View className="h-9 items-center justify-center rounded-lg bg-ui-muted px-3"><Text className="font-poppins-bold text-[10px] text-ui-text-muted">{filteredSchedules.length} results</Text></View> : null}
         </View>
       </View>
 
       {schedules.length === 0 ? (
         <SsfCard className="items-center py-10"><Calendar size={44} color={coreColor("#D1D5DB", 'textMuted')} /><Text className="mt-3 text-center font-poppins text-sm text-ssf-text-muted">No schedules assigned to this stage yet.</Text></SsfCard>
       ) : filteredSchedules.length === 0 ? (
-        <SsfCard className="items-center py-10"><Search size={42} color={coreColor("#D1D5DB", 'textMuted')} /><Text className="mt-3 text-center font-poppins text-sm text-ssf-text-muted">No scheduled events found matching your search or filters.</Text><TouchableOpacity onPress={() => { setSearch(''); setSelectedCategory('All'); setSelectedStatus('All'); }} className="mt-4"><Text className="font-poppins-bold text-sm text-ui-primary-text">Reset All Filters</Text></TouchableOpacity></SsfCard>
+        <SsfCard className="items-center py-10"><Search size={42} color={coreColor("#D1D5DB", 'textMuted')} /><Text className="mt-3 text-center font-poppins text-sm text-ssf-text-muted">No scheduled events found matching your search or filters.</Text><TouchableOpacity onPress={() => { setSearch(''); setSelectedCategory('All'); setSelectedStatus('All'); setSelectedDate(''); }} className="mt-4"><Text className="font-poppins-bold text-sm text-ui-primary-text">Reset All Filters</Text></TouchableOpacity></SsfCard>
       ) : !isMobile ? (
         <View className="w-full overflow-hidden rounded-xl border border-ui-border bg-core-surface-white">
           <View className="h-11 flex-row items-center border-b border-ui-border bg-ui-muted px-4">
@@ -747,7 +826,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
             <Text style={{ flex: 1.3 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workflow</Text>
             <Text style={{ width: 190 }} className="text-right font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Actions</Text>
           </View>
-          {filteredSchedules.map((schedule) => (
+            {orderedSchedules.map((schedule) => (
             <View key={schedule.id} className="min-h-16 flex-row items-center border-b border-ui-border bg-core-surface-white px-4 py-2">
               <View style={{ flex: 1.4 }} className="pr-3"><Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{schedule.item_name_en || 'Unknown Event'}</Text><Text numberOfLines={1} className="mt-0.5 font-poppins text-[10px] text-ui-text-muted">{schedule.item_name_ml || schedule.item_code || '—'}</Text></View>
               <View style={{ flex: 1 }} className="items-start pr-3"><View className="rounded-md border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50 px-2 py-1"><Text numberOfLines={1} className="font-poppins-bold text-[9px] text-core-success-emerald-700">{schedule.venue_name || venueQuery.data?.venue.name || 'Stage'}</Text></View>{!!schedule.category_codes?.length ? <Text className="mt-1 font-poppins-bold text-[9px] text-core-primary-text-teal-700">{schedule.category_codes.join(', ')}</Text> : null}</View>
@@ -758,23 +837,57 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
           ))}
         </View>
       ) : (
-        <View className="gap-y-4">
-          {filteredSchedules.map((schedule) => (
-            <SsfCard key={schedule.id} className={isMobile ? 'p-3' : 'p-4'}>
-              <View className="mb-2">
-                <Text numberOfLines={2} className="font-poppins-bold text-base text-ssf-text">{schedule.item_name_en || 'Unknown Event'}</Text>
-                {schedule.item_name_ml ? <Text numberOfLines={1} className="mt-0.5 font-poppins text-xs text-ssf-text-muted">{schedule.item_name_ml}</Text> : null}
-                <View className="mt-2 self-start rounded bg-core-success-soft-green-100 px-2 py-1"><Text className="font-poppins-bold text-xs text-core-success-green-800">{schedule.venue_name || venueQuery.data?.venue.name || 'Stage'}</Text></View>
-                {!!schedule.category_codes?.length ? <View className="mt-2 flex-row flex-wrap gap-1">{schedule.category_codes.map((code) => <View key={code} className="rounded-full border border-ssf-primary/20 bg-ssf-primary/10 px-2 py-0.5"><Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text></View>)}</View> : null}
-              </View>
-              <View className="mb-3 flex-row flex-wrap items-center gap-x-4 gap-y-1"><View className="flex-row items-center gap-x-1"><Clock size={13} color={coreColor("#6B7280", 'text')} /><Text className="font-poppins text-xs text-core-text-gray-600">{timeText(schedule.start_time)} – {timeText(schedule.end_time)}</Text></View><View className="flex-row items-center gap-x-1"><Calendar size={13} color={coreColor("#6B7280", 'text')} /><Text className="font-poppins text-xs text-core-text-gray-600">{dateText(schedule.start_time)}</Text></View></View>
-              <WorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={eventRegistrations(schedule.id)} summary={optimizedRead ? (schedule as StageVenueSummarySchedule).registration_summary : undefined} />
-              <View className="mt-3 flex-row gap-x-2 border-t border-core-border-gray-100 pt-3"><SsfButton label="Check-In" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'checkin')} /><SsfButton label="Code Letters" variant="outline" size={isMobile ? 'md' : 'sm'} className="flex-1" onPress={() => openSchedule(schedule, 'codes')} /><ScheduleLifecycleActions scheduleName={schedule.item_name_en || 'Event'} status={schedule.status} disabled={busyId === `status-${schedule.id}`} onStatusChange={(status, expectedStatus) => runMutation(`status-${schedule.id}`, () => stageManagementService.venuePortalSetScheduleStatus(venueId, pin, schedule.id, status, expectedStatus), `Event status changed to ${getScheduleLifecycleLabel(status)}.`)} /></View>
-            </SsfCard>
+        <View className="mb-4 overflow-hidden rounded-xl border border-ui-border bg-core-surface-white">
+          {orderedSchedules.map((schedule, index) => (
+            <MobileScheduleRow
+              key={schedule.id}
+              schedule={schedule}
+              registrations={eventRegistrations(schedule.id)}
+              summary={optimizedRead ? (schedule as StageVenueSummarySchedule).registration_summary : undefined}
+              onPress={() => { setActionScheduleId(schedule.id); setShowStatusChoices(false); }}
+              last={index === orderedSchedules.length - 1}
+            />
           ))}
         </View>
       )}
     </ScrollView>
+    <Modal visible={isMobile && !!actionSchedule} transparent animationType="slide" onRequestClose={() => setActionScheduleId(null)}>
+      <View className="flex-1 justify-end bg-core-surface-strong-black/50">
+        <Pressable accessibilityLabel="Close event actions" onPress={() => setActionScheduleId(null)} className="absolute inset-0" />
+        {actionSchedule ? <View style={{ maxHeight: '85%' }} className="w-full max-w-md self-center rounded-t-2xl border border-ui-border bg-core-surface-white px-4 pb-6 pt-3">
+          <ScrollView showsVerticalScrollIndicator={false}>
+          <View className="mb-3 h-1 w-10 self-center rounded-full bg-core-surface-muted-gray-100" />
+          <View className="mb-3 flex-row items-start gap-3">
+            <View className="min-w-0 flex-1">
+              <Text numberOfLines={2} className="font-poppins-bold text-base text-ssf-text">{actionSchedule.item_name_en || 'Unknown Event'}</Text>
+              <Text className="mt-0.5 font-poppins text-xs text-ssf-text-muted">{dateText(actionSchedule.start_time)} · {timeText(actionSchedule.start_time)}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close event actions" onPress={() => setActionScheduleId(null)} className="h-10 w-10 items-center justify-center rounded-lg border border-ui-border"><X size={17} color={coreColor('#475569', 'text')} /></TouchableOpacity>
+          </View>
+          <WorkflowBadges status={actionSchedule.status} isShuffleLocked={actionSchedule.is_shuffle_locked} registrations={eventRegistrations(actionSchedule.id)} summary={optimizedRead ? (actionSchedule as StageVenueSummarySchedule).registration_summary : undefined} />
+          <View className="mt-4 gap-2 border-t border-ui-border pt-3">
+            <TouchableOpacity accessibilityRole="button" onPress={() => openSchedule(actionSchedule, 'checkin')} className="h-12 flex-row items-center justify-between rounded-xl bg-core-primary-teal-700 px-4">
+              <Text className="font-poppins-bold text-sm text-core-on-primary-white">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'onPrimary')} />
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={() => openSchedule(actionSchedule, 'codes')} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4">
+              <Text className="font-poppins-bold text-sm text-ssf-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} />
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showStatusChoices }} onPress={() => setShowStatusChoices((value) => !value)} className="h-11 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4">
+              <Text className="font-poppins-bold text-xs text-ssf-text">Change status</Text><ChevronRight size={16} color={coreColor('#64748B', 'textMuted')} />
+            </TouchableOpacity>
+            {showStatusChoices ? <View className="flex-row flex-wrap gap-2 pb-1">
+              {(['scheduled', 'ongoing', 'completed'] as const).map((status) => (
+                <TouchableOpacity key={status} accessibilityRole="button" accessibilityState={{ disabled: normalizeScheduleLifecycleStatus(actionSchedule.status) === status }} disabled={normalizeScheduleLifecycleStatus(actionSchedule.status) === status || !!busyId} onPress={() => changeActionScheduleStatus(status)} className={`min-h-11 flex-1 items-center justify-center rounded-lg border border-ui-border px-2 ${normalizeScheduleLifecycleStatus(actionSchedule.status) === status ? 'bg-ui-muted opacity-60' : 'bg-core-surface-white'}`}>
+                  <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-ssf-text">{getScheduleLifecycleLabel(status)}</Text>
+                </TouchableOpacity>
+              ))}
+            </View> : null}
+          </View>
+          </ScrollView>
+        </View> : null}
+      </View>
+    </Modal>
+    </>
   );
 }
 

@@ -279,7 +279,9 @@ export async function downloadAdminSchedulePdf(input: AdminSchedulePdfInput) {
       ? 'Organisation-wise Schedule'
       : 'Festival Master Schedule';
   const subtitle = input.festivalName || 'Festival Schedule';
-  const rows = [...schedules].sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+  // The schedule overview RPC returns the canonical status-priority order;
+  // preserve it so exported schedules match the on-screen list and pagination.
+  const rows = [...schedules];
 
   if (input.mode === 'organisation') {
     const grouped = new Map<string, { organisation: string; schedule: ScheduleRow; participants: ParticipantRow[] }[]>();

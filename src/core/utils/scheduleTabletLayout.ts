@@ -4,6 +4,12 @@ export function showScheduleCardActions(width: number): boolean {
 
 export type CompactScheduleActionOrientation = 'portrait' | 'landscape' | null;
 
+export function shouldUseTabletScheduleTable(isTabletScreen: boolean, width: number): boolean {
+  // Keep the row table for tablets only when the page has enough room for its
+  // event, date, status, and action columns. Smaller tablets use schedule cards.
+  return isTabletScreen && width >= 1200;
+}
+
 export function getScheduleActionRows<T>(actions: readonly T[]): [T[], T[]] {
   return [actions.slice(0, 2), actions.slice(2, 4)];
 }

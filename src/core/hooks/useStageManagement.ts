@@ -96,9 +96,13 @@ export const useStageManagement = (options: { scheduleId?: string; summaryOnly?:
   const updateRegistrationMutation = useMutation({
     mutationFn: (input: { scheduleId: string; registrationId: string; action: 'verify' | 'unverify' | 'reject' | 'restore' }) =>
       stageManagementService.updateRegistration(input.scheduleId, input.registrationId, input.action),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ['stage-management-registrations'] });
       queryClient.invalidateQueries({ queryKey: ['stage-management-summary-v2'] });
+      if (input.action === 'verify') {
+        queryClient.invalidateQueries({ queryKey: ['stage-management-schedules', context?.tenant_id, context?.festival_id] });
+        queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] });
+      }
     },
   });
 

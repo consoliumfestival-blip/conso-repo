@@ -570,7 +570,6 @@ export default function JudgesPage() {
         codeLetter: codeLetterAt(index),
       }));
       const printDocument = buildJudgeEvaluationSheetPrintDocument({
-        judgeName: selectedJudgeForToken?.name || 'Judge',
         eventName: selectedSchedule?.items?.item_name_ml || selectedSchedule?.items?.item_name_en || 'Competition',
         category: String(category),
         accessCode: generatedToken,
@@ -1658,7 +1657,7 @@ export default function JudgesPage() {
           <QRCode
             value={getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`) || ''}
             size={140}
-            color="#000080"
+            color="#000000"
             backgroundColor={ui.colors.surface}
           />
         </View>

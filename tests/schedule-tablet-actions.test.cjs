@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, '../src/core/utils/scheduleT
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const mod = { exports: {} };
 new Function('module', 'exports', code)(mod, mod.exports);
-const { showScheduleCardActions, getCompactScheduleActionOrientation, getScheduleActionRows } = mod.exports;
+const { showScheduleCardActions, getCompactScheduleActionOrientation, getScheduleActionRows, shouldUseTabletScheduleTable } = mod.exports;
 
 test('schedule card workflow actions are visible at constrained card-layout widths independent of device detection', () => {
   for (const width of [600, 700, 768, 1024, 1194, 1366, 1399]) {
@@ -36,4 +36,14 @@ test('compact schedule actions are arranged as two buttons in each of two rows',
     ['Check-in', 'Codes'],
     ['Marks', 'Results'],
   ]);
+});
+
+test('small tablet schedules use cards while wider tablets retain the row table', () => {
+  for (const width of [600, 768, 1024, 1194, 1199]) {
+    assert.equal(shouldUseTabletScheduleTable(true, width), false, `${width}px tablet uses cards`);
+  }
+  for (const width of [1200, 1280, 1376, 1399]) {
+    assert.equal(shouldUseTabletScheduleTable(true, width), true, `${width}px tablet keeps table`);
+  }
+  assert.equal(shouldUseTabletScheduleTable(false, 1024), false, 'non-tablet does not switch layout by this rule');
 });

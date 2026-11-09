@@ -22,7 +22,7 @@ import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import * as Device from 'expo-device';
-import { getCompactScheduleActionOrientation, getScheduleActionRows, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
+import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const normalizeCategory = (value: string) => {
@@ -189,11 +189,14 @@ export default function ScheduleDashboard() {
     maxTouchPoints,
   );
   const isTabletScheduleTable = tabletScheduleOrientation !== null
-    && (Device.deviceType === Device.DeviceType.TABLET || maxTouchPoints > 0);
+    && shouldUseTabletScheduleTable(
+      Device.deviceType === Device.DeviceType.TABLET || maxTouchPoints > 0,
+      width,
+    );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
-  // Touch tablets use the desktop table with fewer metadata columns and wrapping actions.
+  // Smaller tablets use the compact card layout; wider tablets retain the row table.
   // Phones and compact pointer windows keep their existing card layout.
   const isCompactScheduleLayout = width < 1400 && !isTabletScheduleTable;
 

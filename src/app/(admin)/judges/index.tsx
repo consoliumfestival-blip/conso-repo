@@ -1,4 +1,3 @@
-import { fixedCoreOutputVariables, legacyCoreOutputColors } from '@/constants/coreThemeOutput';
 import { coreColor } from '@/constants/coreTheme';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import { Modal } from '@/components/ui/CoreModal';
@@ -44,6 +43,7 @@ import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { ConsoliumLogo } from '../../../components/ui/ConsoliumLogo';
 import { codeLetterAt } from '../../../core/utils/codeLetters';
+import { buildJudgeEvaluationSheetPrintDocument } from '@/core/utils/judgeEvaluationSheetPrint';
 
 export default function JudgesPage() {
   const router = useRouter();
@@ -58,12 +58,18 @@ export default function JudgesPage() {
   } = useJudges();
   const { schedules, venues } = useSchedule();
   const { width } = useWindowDimensions();
-  const isMobile = width < 768;
+  const isCompactLayout = width < 1280;
 
   const [activeTab, setActiveTab] = useState<'judges' | 'assignments'>('judges');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [printRowCount, setPrintRowCount] = useState(18);
+  const [printRowCountScheduleId, setPrintRowCountScheduleId] = useState<string | null>(null);
+  const [isLoadingPrintRowCount, setIsLoadingPrintRowCount] = useState(false);
+  const [printRowCountError, setPrintRowCountError] = useState<string | null>(null);
+  const [printRowCountRetry, setPrintRowCountRetry] = useState(0);
+  const [isPreparingPrint, setIsPreparingPrint] = useState(false);
+  const [printError, setPrintError] = useState<string | null>(null);
   const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
   const [isPanelEditModalOpen, setIsPanelEditModalOpen] = useState(false);
   const [selectedScheduleForPanel, setSelectedScheduleForPanel] = useState<any>(null);
@@ -73,6 +79,10 @@ export default function JudgesPage() {
   const [form, setForm] = useState({ name: '', phone: '', specialization: '' });
   const [selectedJudgeForToken, setSelectedJudgeForToken] = useState<any>(null);
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>('');
+  const isPrintBlocked = isLoadingPrintRowCount
+    || !!printRowCountError
+    || isPreparingPrint
+    || printRowCountScheduleId !== selectedScheduleId;
   const [generatedToken, setGeneratedToken] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [deletingJudgeId, setDeletingJudgeId] = useState<string | null>(null);
@@ -81,22 +91,52 @@ export default function JudgesPage() {
   const [panelErrorMessage, setPanelErrorMessage] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (selectedScheduleId) {
-      const schedule = (schedules as any[])?.find((s) => s.id === selectedScheduleId);
-      if (schedule && schedule.item_id) {
-        supabase
+    if (!selectedScheduleId) {
+      setPrintRowCount(18);
+      setPrintRowCountScheduleId(null);
+      setPrintRowCountError(null);
+      setIsLoadingPrintRowCount(false);
+      return;
+    }
+
+    const schedule = (schedules as any[])?.find((s) => s.id === selectedScheduleId);
+    if (!schedule?.item_id) {
+      setPrintRowCount(18);
+      setPrintRowCountScheduleId(selectedScheduleId);
+      setPrintRowCountError(null);
+      setIsLoadingPrintRowCount(false);
+      return;
+    }
+
+    let isCurrentRequest = true;
+    setIsLoadingPrintRowCount(true);
+    setPrintRowCountError(null);
+    const loadPrintRowCount = async () => {
+      try {
+        const { count, error } = await supabase
           .from('registrations')
           .select('id', { count: 'exact', head: true })
           .eq('item_id', schedule.item_id)
-          .neq('status', 'rejected')
-          .then(({ count }) => {
-            setPrintRowCount(count && count > 0 ? count : 18);
-          });
-      } else {
-        setPrintRowCount(18);
+          .neq('status', 'rejected');
+        if (!isCurrentRequest) return;
+        if (error) {
+          setPrintRowCountError('Could not load the participant count. Retry before printing.');
+          return;
+        }
+        setPrintRowCount(count && count > 0 ? count : 18);
+        setPrintRowCountScheduleId(selectedScheduleId);
+      } catch {
+        if (isCurrentRequest) {
+          setPrintRowCountError('Could not load the participant count. Retry before printing.');
+        }
+      } finally {
+        if (isCurrentRequest) setIsLoadingPrintRowCount(false);
       }
-    }
-  }, [selectedScheduleId, schedules]);
+    };
+    void loadPrintRowCount();
+
+    return () => { isCurrentRequest = false; };
+  }, [selectedScheduleId, schedules, printRowCountRetry]);
 
   React.useEffect(() => {
     if (!isGenerating) return;
@@ -457,6 +497,7 @@ export default function JudgesPage() {
   const openTokenModal = (judge: any, scheduleId: string = '') => {
     setIsGenerating(false);
     setErrorMessage(null);
+    setPrintError(null);
     setSelectedJudgeForToken(judge);
     const existingToken = scheduleId
       ? allTokens.find(
@@ -468,6 +509,88 @@ export default function JudgesPage() {
     setEventSearchQuery('');
     setIsTokenModalOpen(true);
     fetchJudgeManagementData();
+  };
+
+  const handlePrintEvaluationSheet = async () => {
+    if (
+      Platform.OS !== 'web'
+      || !generatedToken
+      || isPrintBlocked
+    ) return;
+
+    // Open synchronously from the user's click so the browser does not block
+    // the print document as an unsolicited popup.
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setPrintError('Allow pop-ups for this site, then try printing again.');
+      return;
+    }
+
+    setIsPreparingPrint(true);
+    setPrintError(null);
+    try {
+      const qrElement = document.querySelector('#evaluation-sheet-qr svg') as SVGSVGElement | null;
+      const logoElement = document.querySelector('#evaluation-sheet-logo img') as HTMLImageElement | null;
+      if (!qrElement || !logoElement?.src) {
+        throw new Error('The evaluation sheet logo or QR code is not ready. Please wait a moment and try again.');
+      }
+
+      const qrCopy = qrElement.cloneNode(true) as SVGSVGElement;
+      qrCopy.querySelectorAll('script, foreignObject').forEach((element) => element.remove());
+      Array.from(qrCopy.querySelectorAll('*')).forEach((element) => {
+        Array.from(element.attributes).forEach((attribute) => {
+          if (/^on/i.test(attribute.name) || /javascript:/i.test(attribute.value)) {
+            element.removeAttribute(attribute.name);
+          }
+        });
+      });
+
+      const selectedSchedule = (schedules as any[])?.find((schedule) => schedule.id === selectedScheduleId);
+      const category = selectedSchedule?.items?.category
+        || (Array.isArray(selectedSchedule?.items?.category_codes)
+          ? selectedSchedule.items.category_codes.join(', ')
+          : selectedSchedule?.items?.category_codes)
+        || '-';
+      const rows = Array.from({ length: printRowCount }, (_, index) => ({
+        serialNumber: index + 1,
+        codeLetter: codeLetterAt(index),
+      }));
+      const printDocument = buildJudgeEvaluationSheetPrintDocument({
+        judgeName: selectedJudgeForToken?.name || 'Judge',
+        eventName: selectedSchedule?.items?.item_name_ml || selectedSchedule?.items?.item_name_en || 'Competition',
+        category: String(category),
+        accessCode: generatedToken,
+        logoUrl: logoElement.currentSrc || logoElement.src,
+        qrSvg: qrCopy.outerHTML,
+        rows,
+      });
+
+      printWindow.document.open();
+      printWindow.document.write(printDocument);
+      printWindow.document.close();
+
+      await Promise.all([
+        printWindow.document.fonts?.ready ?? Promise.resolve(),
+        ...Array.from(printWindow.document.images).map((image) => image.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              image.addEventListener('load', () => resolve(), { once: true });
+              image.addEventListener('error', () => resolve(), { once: true });
+            })),
+      ]);
+      const logoReady = printWindow.document.querySelector('img') as HTMLImageElement | null;
+      if (!logoReady || logoReady.naturalWidth === 0) {
+        throw new Error('The logo could not be loaded into the evaluation sheet. Please try again.');
+      }
+
+      printWindow.focus();
+      printWindow.print();
+    } catch (error: any) {
+      printWindow.close();
+      setPrintError(error?.message || 'Could not prepare the evaluation sheet. Please try again.');
+    } finally {
+      setIsPreparingPrint(false);
+    }
   };
 
   const handleGenerateToken = async (forceRefresh: boolean = false) => {
@@ -555,7 +678,7 @@ export default function JudgesPage() {
               </Text>
             </View>
           </View>
-          <View className="flex-row items-center gap-x-2">
+          <View className="flex-row flex-wrap items-center justify-end gap-2">
             <TouchableOpacity
               onPress={() => router.push('/(admin)/judges/approvals' as any)}
               className="h-9 flex-row items-center bg-core-surface-white px-3 rounded-lg border border-ui-border"
@@ -593,25 +716,29 @@ export default function JudgesPage() {
             )}
           </View>
         </View>
-        <View className="flex-row mt-4 border-b border-ui-border">
-          <TouchableOpacity 
-            onPress={() => setActiveTab('judges')} 
-            className={`px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
-            accessibilityRole="tab"
-            accessibilityLabel="Judges Directory"
-            accessibilityState={{ selected: activeTab === 'judges' }}
-          >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'judges' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Judges Directory</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setActiveTab('assignments')} 
-            className={`px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
-            accessibilityRole="tab"
-            accessibilityLabel="Assignments and Codes"
-            accessibilityState={{ selected: activeTab === 'assignments' }}
-          >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'assignments' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Assignments & Codes</Text>
-          </TouchableOpacity>
+        <View className="mt-4 border-b border-ui-border">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+            <View className="flex-row">
+              <TouchableOpacity
+                onPress={() => setActiveTab('judges')}
+                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
+                accessibilityRole="tab"
+                accessibilityLabel="Judges Directory"
+                accessibilityState={{ selected: activeTab === 'judges' }}
+              >
+                <Text numberOfLines={1} className={`font-poppins-bold text-xs ${activeTab === 'judges' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Judges Directory</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('assignments')}
+                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
+                accessibilityRole="tab"
+                accessibilityLabel="Assignments and Codes"
+                accessibilityState={{ selected: activeTab === 'assignments' }}
+              >
+                <Text numberOfLines={1} className={`font-poppins-bold text-xs ${activeTab === 'assignments' ? 'text-core-primary-text-teal-700' : 'text-ui-text-muted'}`}>Assignments &amp; Codes</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </View>
       </View>
 
@@ -628,7 +755,7 @@ export default function JudgesPage() {
                 const s = schedules?.find((x: any) => x.id === token.schedule_id);
                 return (
                   <View key={token.id} className="bg-core-surface-white p-3 rounded-xl border border-core-border-gray-100 flex-row items-center justify-between shadow-sm">
-                    <View className="flex-1">
+                    <View className="flex-1" style={{ minWidth: 0 }}>
                       <Text className="font-poppins-bold text-ssf-text">{j?.name || 'Unknown Judge'}</Text>
                       <Text className="font-poppins text-xs text-ssf-text-muted mt-0.5">
                         {s?.items?.item_name_en || 'Unknown Event'} - Code: {token.token}
@@ -663,7 +790,7 @@ export default function JudgesPage() {
           </View>
         )}
         {isLoadingJudges ? (
-          <SsfTableSkeleton rows={7} columns={4} compact={isMobile} />
+          <SsfTableSkeleton rows={7} columns={4} compact={isCompactLayout} />
         ) : activeTab === 'judges' ? (
           /* ================= JUDGES DIRECTORY ================= */
           judges.length === 0 ? (
@@ -674,9 +801,75 @@ export default function JudgesPage() {
                 Add judges who will evaluate participants
               </Text>
             </SsfCard>
+          ) : isCompactLayout ? (
+            <View className="gap-y-3 mb-24">
+              {judges.map((judge: any) => {
+                const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
+                const latestToken = judgeTokens[0];
+                return (
+                  <SsfCard key={judge.id} className="p-3">
+                    <View className="flex-row items-start gap-x-3">
+                      <View className="h-9 w-9 rounded-xl bg-core-primary-soft-teal-50 items-center justify-center">
+                        <Text className="font-poppins-black text-sm text-core-primary-text-teal-700">
+                          {judge.name?.charAt(0)?.toUpperCase() ?? '?'}
+                        </Text>
+                      </View>
+                      <View className="flex-1" style={{ minWidth: 0 }}>
+                        <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
+                          <Text className="font-poppins-bold text-sm text-ui-text">{judge.name}</Text>
+                          {judgeTokens.length > 0 && (
+                            <View className="px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
+                              <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
+                                {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <View className="flex-row items-start mt-1">
+                          {judge.phone && <Phone size={12} color={ui.colors.textMuted} style={{ marginTop: 2 }} />}
+                          <Text className="font-poppins text-xs text-ui-text-muted ml-1.5 flex-1" style={{ minWidth: 0 }}>
+                            {judge.phone || 'No phone number'}
+                          </Text>
+                        </View>
+                        <Text className="font-poppins text-xs text-ui-text-muted mt-1" style={{ overflowWrap: 'anywhere' } as any}>
+                          {Array.isArray(judge.specialization) && judge.specialization.length
+                            ? judge.specialization.join(', ')
+                            : 'No specialization'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center gap-x-2 mt-3">
+                      <TouchableOpacity
+                        onPress={() => openTokenModal(judge, latestToken?.schedule_id || '')}
+                        className={`h-9 flex-1 flex-row items-center justify-center border rounded-lg px-3 ${latestToken ? 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200' : 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200'}`}
+                        accessibilityRole="button"
+                        accessibilityLabel={latestToken ? `View active access code for ${judge.name}` : `Generate access code for ${judge.name} in an assigned event`}
+                      >
+                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor('#0F766E', 'primaryText')} />}
+                        <Text numberOfLines={1} className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-core-info-blue-700' : 'text-core-primary-text-teal-700'}`}>
+                          {latestToken ? 'View / Copy Code' : 'Generate Code'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDelete(judge.id, judge.name)}
+                        className="h-9 w-10 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white items-center justify-center"
+                        disabled={deletingJudgeId === judge.id}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete judge ${judge.name}`}
+                        accessibilityState={{ disabled: deletingJudgeId === judge.id, busy: deletingJudgeId === judge.id }}
+                      >
+                        {deletingJudgeId === judge.id
+                          ? <ActivityIndicator size="small" color={coreColor('#EF4444', 'danger')} />
+                          : <Trash2 size={14} color={coreColor('#EF4444', 'danger')} />}
+                      </TouchableOpacity>
+                    </View>
+                  </SsfCard>
+                );
+              })}
+            </View>
           ) : (
             <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-24" style={{ minWidth: 760 }}>
+              <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-24" style={{ minWidth: 720 }}>
                 <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
                   <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Judge</Text>
                   <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Phone</Text>
@@ -750,7 +943,10 @@ export default function JudgesPage() {
           <View className="mb-24">
             {/* Filters */}
             <View className="flex-row flex-wrap items-center gap-2 mb-4 bg-core-surface-white p-3 rounded-xl border border-ui-border">
-              <View className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border flex-1 min-w-[260px]">
+              <View
+                className="flex-row items-center bg-core-surface-white rounded-lg px-3 h-10 border border-ui-border flex-1"
+                style={isCompactLayout ? { width: '100%', flexBasis: '100%', minWidth: 0 } : { minWidth: 260 }}
+              >
                 <Search size={16} color={coreColor("#9CA3AF", 'textMuted')} />
                 <TextInput
                   className="flex-1 ml-2 font-poppins text-sm text-ssf-text h-full outline-none"
@@ -811,8 +1007,8 @@ export default function JudgesPage() {
                 <ListFilter size={40} color={ui.colors.border} />
                 <Text className="font-poppins text-ssf-text-muted mt-3">No assignments match your filters.</Text>
               </View>
-            ) : isMobile ? (
-              /* Mobile Cards Layout */
+            ) : isCompactLayout ? (
+              /* Phone and tablet cards layout */
               <View className="gap-y-3">
                 {filteredSchedules.map(schedule => (
                   <SsfCard key={schedule.id} className="p-4">
@@ -927,15 +1123,15 @@ export default function JudgesPage() {
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex-1 bg-core-surface-white rounded-xl border border-ui-border overflow-hidden" style={{ minWidth: 1150 }}>
+              <View className="flex-1 bg-core-surface-white rounded-xl border border-ui-border overflow-hidden" style={{ minWidth: 980 }}>
                 <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
-                  <Text style={{ width: 340 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event Details</Text>
-                  <Text style={{ width: 210 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue</Text>
+                  <Text style={{ width: 290 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event Details</Text>
+                  <Text style={{ width: 170 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue</Text>
                   <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted flex-1">Assigned Judges & Codes</Text>
                 </View>
                 {filteredSchedules.map(schedule => (
                   <View key={schedule.id} className="flex-row px-4 py-4 border-b border-ui-border items-start bg-core-surface-white">
-                    <View style={{ width: 340 }} className="pr-5">
+                    <View style={{ width: 290 }} className="pr-4">
                       <Text className="font-poppins-bold text-sm text-ui-text">
                         {schedule.items?.item_name_en} {schedule.items?.item_code ? `(${schedule.items.item_code})` : ''}
                       </Text>
@@ -969,7 +1165,7 @@ export default function JudgesPage() {
                         );
                       })()}
                     </View>
-                    <View style={{ width: 210 }} className="justify-center pr-5">
+                    <View style={{ width: 170 }} className="justify-center pr-4">
                       <View className="bg-core-info-soft-blue-50 self-start px-2.5 py-1 rounded-lg border border-core-info-soft-blue-100">
                         <Text className="font-poppins text-[10px] text-core-info-blue-700" numberOfLines={1}>{schedule.venues?.name || 'N/A'}</Text>
                       </View>
@@ -1198,6 +1394,30 @@ export default function JudgesPage() {
                     <Text className="font-poppins text-core-danger-red-700 text-xs">{errorMessage}</Text>
                   </View>
                 )}
+                {isLoadingPrintRowCount && (
+                  <View className="mb-3 flex-row items-center gap-x-2">
+                    <ActivityIndicator size="small" color={coreColor('#0F766E', 'primaryText')} />
+                    <Text className="font-poppins text-ui-text-muted text-xs">Loading participant count…</Text>
+                  </View>
+                )}
+                {printRowCountError && (
+                  <View className="bg-core-danger-soft-red-50 p-3 rounded-lg mb-3 border border-core-danger-soft-red-200">
+                    <Text className="font-poppins text-core-danger-red-700 text-xs">{printRowCountError}</Text>
+                    <TouchableOpacity
+                      onPress={() => setPrintRowCountRetry((attempt) => attempt + 1)}
+                      className="self-start mt-2 px-2 py-1 rounded bg-core-surface-white border border-core-danger-soft-red-200"
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry loading participant count"
+                    >
+                      <Text className="font-poppins-bold text-core-danger-red-700 text-[10px]">Retry</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {printError && (
+                  <View className="bg-core-danger-soft-red-50 p-3 rounded-lg mb-3 border border-core-danger-soft-red-200">
+                    <Text className="font-poppins text-core-danger-red-700 text-xs">{printError}</Text>
+                  </View>
+                )}
                 <View className="bg-ui-muted rounded-xl p-4 items-center mb-4 border border-ui-border">
                   <View className="bg-core-surface-white p-2.5 rounded-xl mb-3 border border-ui-border">
                     <QRCode
@@ -1225,17 +1445,22 @@ export default function JudgesPage() {
                     <Text className="font-poppins-bold text-core-text-gray-700 text-sm">Copy</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => {
-                      if (Platform.OS === 'web') {
-                        setTimeout(() => window.print(), 100);
-                      }
-                    }}
-                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-core-primary-indigo-600 rounded-lg"
+                    onPress={handlePrintEvaluationSheet}
+                    disabled={isPrintBlocked}
+                    className={`flex-1 h-10 flex-row items-center justify-center gap-x-2 rounded-lg ${
+                      isPrintBlocked
+                        ? 'bg-core-primary-indigo-600/50'
+                        : 'bg-core-primary-indigo-600'
+                    }`}
                     accessibilityRole="button"
                     accessibilityLabel="Print evaluation sheet"
+                    accessibilityState={{
+                      disabled: isPrintBlocked,
+                      busy: isLoadingPrintRowCount || isPreparingPrint,
+                    }}
                   >
                     <Printer size={16} color={ui.colors.onPrimary} />
-                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">Print</Text>
+                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">{isPreparingPrint ? 'Preparing…' : 'Print'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={shareToken}
@@ -1380,120 +1605,25 @@ export default function JudgesPage() {
       </Modal>
     </View>
 
-    {/* ── Print Evaluation Sheet ── */}
+    {/* Assets are rendered off-screen so the print document can reuse the exact
+        colored logo and generated QR without depending on the app page layout. */}
     {Platform.OS === 'web' && generatedToken && selectedScheduleId && (
-      <>
-        <style dangerouslySetInnerHTML={{ __html: `
-          @media screen {
-            #print-evaluation-sheet {
-              display: none !important;
-            }
-          }
-          @media print {
-            .no-print, [role="dialog"], [aria-modal="true"] {
-              display: none !important;
-            }
-            #print-evaluation-sheet {
-              display: block !important;
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              height: auto;
-              background-color: white !important;
-              z-index: 999999;
-            }
-            @page {
-              margin: 0;
-              size: A4;
-            }
-            * {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-          }
-        `}} />
-        <View id="print-evaluation-sheet" style={{ ...fixedCoreOutputVariables, display: 'none' }}>
-          <View style={{ width: '210mm', minHeight: '297mm', backgroundColor: 'white', padding: '10mm', position: 'relative' }}>
-          {/* Header (Increased to ~7cm = 265px) */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#000080', paddingBottom: 24, marginBottom: 16, maxHeight: 265 }}>
-            {/* Left Side: Inviting Message & Event Details */}
-            <View style={{ flex: 1, paddingRight: 16, justifyContent: 'flex-start' }}>
-              <ConsoliumLogo size={48} style={{ marginBottom: 8 }} />
-              <Text style={{ fontSize: 26, fontFamily: 'Poppins_900Black', color: '#000080', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
-                CONSOLIUM
-              </Text>
-              <Text style={{ fontSize: 16, fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.text, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
-                OFFICIAL EVALUATION SHEET
-              </Text>
-              
-              <Text style={{ fontSize: 13, fontFamily: 'Poppins_400Regular', color: '#000080', marginBottom: 16, lineHeight: 20, paddingRight: 20 }}>
-                Respected <Text style={{ fontFamily: 'Poppins_700Bold', color: '#000080' }}>{selectedJudgeForToken?.name || 'Judge'}</Text>, we cordially invite you to evaluate the upcoming competition. Please scan the QR code to login digitally to the Judge Portal.
-              </Text>
-              
-              {(() => {
-                const selectedS = modalFilteredSchedules?.find((s: any) => s.id === selectedScheduleId);
-                return (
-                  <View style={{ borderLeftWidth: 4, borderLeftColor: '#000080', paddingLeft: 12, marginTop: 4 }}>
-                    <Text style={{ fontSize: 11, fontFamily: 'Poppins_700Bold', color: '#555', textTransform: 'uppercase', marginBottom: 2 }}>Event / Item</Text>
-                    <Text style={{ fontSize: 24, fontFamily: 'Poppins_900Black', color: '#000080' }}>
-                      {selectedS?.items?.item_name_ml || selectedS?.items?.item_name_en}
-                    </Text>
-                    <Text style={{ fontSize: 15, fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.text, marginTop: 2 }}>
-                      Category: {selectedS?.items?.category || (selectedS?.items?.category_codes ? (selectedS.items.category_codes as string[]).join(', ') : '-')}
-                    </Text>
-                  </View>
-                );
-              })()}
-            </View>
-
-            {/* Right Side: QR Code & Access Code (No border, Dark Blue QR) */}
-            <View style={{ alignItems: 'center', justifyContent: 'center', padding: 8 }}>
-              <QRCode
-                value={getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`) || ''}
-                size={140}
-                color="#000080"
-                backgroundColor={legacyCoreOutputColors.surface}
-              />
-              <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 24, color: '#000080', letterSpacing: 4, marginTop: 12 }}>
-                {generatedToken}
-              </Text>
-            </View>
-          </View>
-
-          {/* Grid for manual marking */}
-          <View style={{ width: '100%', borderWidth: 1, borderColor: '#000080', marginTop: 10 }}>
-            {/* Table Header */}
-            <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderColor: '#000080', backgroundColor: '#f0f0f0' }}>
-              <View style={{ width: 60, borderRightWidth: 1, borderColor: '#000080', padding: 8, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#000080' }}>Sl No</Text>
-              </View>
-              <View style={{ flex: 1, borderRightWidth: 1, borderColor: '#000080', padding: 8, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#000080' }}>Code Letter</Text>
-              </View>
-              <View style={{ flex: 2, padding: 8, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#000080' }}>Marks</Text>
-              </View>
-            </View>
-            
-            {/* Table Rows */}
-            {Array.from({ length: printRowCount }).map((_, i) => (
-              <View key={i} style={{ flexDirection: 'row', borderBottomWidth: i === printRowCount - 1 ? 0 : 1, borderColor: '#000080', height: 35 }}>
-                <View style={{ width: 60, borderRightWidth: 1, borderColor: '#000080', justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#000080' }}>{i + 1}</Text>
-                </View>
-                <View style={{ flex: 1, borderRightWidth: 1, borderColor: '#000080', justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#000080' }}>
-                    {codeLetterAt(i)}
-                  </Text>
-                </View>
-                <View style={{ flex: 2 }} />
-              </View>
-            ))}
-          </View>
-          </View>
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', left: -10000, top: 0, width: 160, height: 160, opacity: 0 }}
+      >
+        <View id="evaluation-sheet-logo">
+          <ConsoliumLogo size={48} />
         </View>
-      </>
+        <View id="evaluation-sheet-qr">
+          <QRCode
+            value={getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`) || ''}
+            size={140}
+            color="#000080"
+            backgroundColor={ui.colors.surface}
+          />
+        </View>
+      </View>
     )}
     </>
   );

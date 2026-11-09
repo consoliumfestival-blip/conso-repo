@@ -132,6 +132,13 @@ export interface DatabaseProvider {
     maxMark?: number;
     criteriaSnapshot?: { key: string; label: string; max: number }[];
   }): Promise<QueryResult<T>>;
+  submitJudgeMarks<T>(payload: {
+    token: string;
+    entries: { registrationId: string; criteriaScores: Record<string, number>; totalMark: number }[];
+    entryMode: 'criteria' | 'total_only';
+    maxMark: number;
+    criteriaSnapshot?: { key: string; label: string; max: number }[];
+  }): Promise<QueryResult<T>>;
   
   // Results Methods
   listResults<T>(scheduleId: string): Promise<ListResult<T>>;

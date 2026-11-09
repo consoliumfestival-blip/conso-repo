@@ -1309,6 +1309,28 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: (data as T) ?? null, error: normalizeError(error) };
   }
 
+  async submitJudgeMarks<T>(payload: {
+    token: string;
+    entries: { registrationId: string; criteriaScores: Record<string, number>; totalMark: number }[];
+    entryMode: 'criteria' | 'total_only';
+    maxMark: number;
+    criteriaSnapshot?: { key: string; label: string; max: number }[];
+  }): Promise<QueryResult<T>> {
+    const { data, error } = await supabase.rpc('submit_judge_marks', {
+      p_token: payload.token.toUpperCase().trim(),
+      p_entries: payload.entries.map((entry) => ({
+        registration_id: entry.registrationId,
+        criteria_scores: entry.criteriaScores ?? {},
+        total_mark: entry.totalMark,
+      })),
+      p_entry_mode: payload.entryMode,
+      p_max_mark: payload.maxMark,
+      p_criteria_snapshot: payload.criteriaSnapshot ?? [],
+    });
+
+    return { data: (data as T) ?? null, error: normalizeError(error) };
+  }
+
   // ─── Results Methods ───────────────────────────────────────────────────────────
 
   async listResults<T>(scheduleId: string): Promise<ListResult<T>> {

@@ -8,7 +8,6 @@ import { CheckCircle2, AlertCircle, LogOut, Info, X, Bell } from 'lucide-react-n
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { databaseProvider } from '../../providers/database';
-import { judgeTokenService } from '../../services/judgeTokenService';
 import { pointsService } from '../../services/pointsService';
 import { GradeThresholds } from '../../core/utils/flexiblePointsEngine';
 import { calculateGrade } from '../../services/judgeService';
@@ -302,28 +301,25 @@ export default function JudgeMarksPage() {
   const submitMarks = async () => {
     setSubmitting(true);
     try {
-      // Save each mark entry
-      for (const reg of registrations) {
-        const scores = marks[reg.id] ?? {};
-        const total = getTotal(reg.id);
-        const criteriaSnapshot = eventCriteria.map(c => ({
-          key: c.key,
-          label: c.label,
-          max: c.max,
-        }));
-        const res = await databaseProvider.submitJudgeMark({
-          token: session.token,
-          registrationId: reg.id,
-          criteriaScores: entryMode === 'total_only' ? {} : scores,
-          totalMark: total,
-          status: 'final',
-          entryMode,
-          maxMark: eventTotalMarks,
-          criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [],
-        });
-        if (res.error) {
-          throw new Error(`Failed to save mark entry: ${res.error.message}`);
-        }
+      const criteriaSnapshot = eventCriteria.map(c => ({
+        key: c.key,
+        label: c.label,
+        max: c.max,
+      }));
+      const entries = registrations.map((reg) => ({
+        registrationId: reg.id,
+        criteriaScores: entryMode === 'total_only' ? {} : (marks[reg.id] ?? {}),
+        totalMark: getTotal(reg.id),
+      }));
+      const result = await databaseProvider.submitJudgeMarks({
+        token: session.token,
+        entries,
+        entryMode,
+        maxMark: eventTotalMarks,
+        criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [],
+      });
+      if (result.error) {
+        throw new Error(`Failed to submit all marks: ${result.error.message}`);
       }
 
       // Log the activity
@@ -345,9 +341,6 @@ export default function JudgeMarksPage() {
       } catch (logErr) {
         console.error('Failed to log MARKS_SUBMITTED', logErr);
       }
-
-      // Expire the token — cannot reuse
-      await judgeTokenService.expireToken(session.token);
 
       // Clear local session
       await AsyncStorage.removeItem('judge_session_token');

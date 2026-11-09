@@ -335,6 +335,7 @@ export function downloadTeamParticipantSlipsPdf(args: {
 
 /** Team report: one F4 PDF, with participant rows grouped by item. */
 export function downloadTeamItemParticipantsPdf(args: {
+  selectedItemIds: string[];
   teamName: string;
   teamId: string;
   participants: ExportParticipant[];
@@ -346,7 +347,10 @@ export function downloadTeamItemParticipantsPdf(args: {
   const itemMap = new Map(args.items.map((item) => [item.id, item]));
   const groups = new Map<string, { item: ExportItem; rows: { chest: string; category: string; name: string }[] }>();
 
+  const selectedItems = new Set(args.selectedItemIds);
+  if (!selectedItems.size) throw new Error('Select at least one competition to export.');
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
+    if (!selectedItems.has(assignment.item_id)) return;
     if (assignment.organisation_id && assignment.organisation_id !== args.teamId) return;
     const person = people.get(assignment.participant_id);
     const item = itemMap.get(assignment.item_id);
@@ -359,7 +363,7 @@ export function downloadTeamItemParticipantsPdf(args: {
     });
     groups.set(item.id, group);
   });
-  if (!groups.size) throw new Error('No active item assignments were found for this team.');
+  if (!groups.size) throw new Error('No active assignments were found for the selected competitions in this team.');
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] });
   doc.setFont('helvetica', 'bold');

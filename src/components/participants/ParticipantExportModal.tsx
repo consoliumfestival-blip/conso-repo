@@ -91,14 +91,18 @@ export function ParticipantExportModal({
   loadingOptions?: boolean; errorMessage?: string | null;
   onKindChange: (kind: ParticipantExportKind) => void; onTeamChange: (id: string) => void;
   onItemChange: (id: string) => void; onSortChange: (sort: 'team' | 'chest') => void;
-  onClose: () => void; onDownload: () => void;
+  onClose: () => void; onDownload: (selectedTeamItemIds: string[]) => void;
 }) {
+  const [selectedTeamItemIds, setSelectedTeamItemIds] = useState<string[]>([]);
+  const [teamItemSearch, setTeamItemSearch] = useState('');
+  React.useEffect(() => { setSelectedTeamItemIds([]); setTeamItemSearch(''); }, [visible, selectedTeamId, isTeamPortal]);
+  const filteredTeamItems = useMemo(() => { const query = teamItemSearch.trim().toLowerCase(); return query ? items.filter(item => item.label.toLowerCase().includes(query)) : items; }, [items, teamItemSearch]);
   const { width, height } = useWindowDimensions();
   const isPhone = width < 600;
   const report = REPORTS.find((candidate) => candidate.id === selectedKind)!;
   const needsTeam = !isTeamPortal && ['slips', 'team_items'].includes(selectedKind);
   const needsItem = selectedKind === 'item_verification';
-  const ready = !busy && !loadingOptions && (!errorMessage || selectedKind === 'csv') && (!needsTeam || !!selectedTeamId) && (!needsItem || !!selectedItemId);
+  const ready = !busy && !loadingOptions && (!errorMessage || selectedKind === 'csv') && (!needsTeam || !!selectedTeamId) && (!needsItem || !!selectedItemId) && (selectedKind !== 'team_items' || (selectedTeamItemIds.length > 0 && (isTeamPortal || !!selectedTeamId)));
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => !busy && onClose()}>
@@ -134,6 +138,21 @@ export function ParticipantExportModal({
             {loadingOptions ? <Text style={{ color: colors.muted, fontSize: 11, paddingVertical: 5 }}>Loading export data…</Text> : null}
             {!loadingOptions && errorMessage ? <Text accessibilityRole="alert" style={{ color: colors.muted, fontSize: 11, paddingVertical: 5 }}>{errorMessage} You can still export the participant CSV.</Text> : null}
             {needsTeam && !isTeamPortal ? <InlineSelect label="TEAM" value={selectedTeamId} choices={teams} placeholder="Select a team" colors={colors} onChange={onTeamChange} /> : null}
+            {selectedKind === 'team_items' && (isTeamPortal || !!selectedTeamId) && !loadingOptions && !errorMessage ? (
+              <View style={{ gap: 6 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: colors.muted, fontSize: 10, fontWeight: '700' }}>SELECT COMPETITIONS ({selectedTeamItemIds.length})</Text>
+                  <Pressable accessibilityRole="button" onPress={() => setSelectedTeamItemIds(items.map(item => item.id))} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 8 }}><Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>Select All</Text></Pressable>
+                </View>
+                <TextInput value={teamItemSearch} onChangeText={setTeamItemSearch} placeholder="Search competitions" placeholderTextColor={colors.muted} accessibilityLabel="Search competitions" style={{ height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, color: colors.text }} />
+                <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={{ maxHeight: 190, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}>
+                  {filteredTeamItems.length ? filteredTeamItems.map(item => {
+                    const checked = selectedTeamItemIds.includes(item.id);
+                    return <Pressable key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked }} onPress={() => setSelectedTeamItemIds(current => checked ? current.filter(id => id !== item.id) : [...current, item.id])} style={{ minHeight: 44, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: colors.border }}><View style={{ width: 20, height: 20, borderRadius: 4, borderWidth: 1, borderColor: colors.primary, backgroundColor: checked ? colors.primary : colors.surface, alignItems: 'center', justifyContent: 'center' }}>{checked ? <Check size={14} color={colors.onPrimary} /> : null}</View><Text style={{ flex: 1, color: colors.text, fontSize: 12 }}>{item.label}</Text></Pressable>;
+                  }) : <Text style={{ padding: 12, color: colors.muted, fontSize: 12 }}>No competitions found.</Text>}
+                </ScrollView>
+              </View>
+            ) : null}
             {needsItem ? <InlineSelect label="ITEM / COMPETITION" value={selectedItemId} choices={items} placeholder="Select an item" colors={colors} onChange={onItemChange} /> : null}
             {needsItem && !isTeamPortal ? (
               <View style={{ gap: 5 }}>
@@ -148,7 +167,7 @@ export function ParticipantExportModal({
             ) : null}
             <View style={{ paddingTop: 4, flexDirection: isPhone ? 'column' : 'row', alignItems: isPhone ? 'stretch' : 'center', justifyContent: 'space-between', gap: 8 }}>
               <Text numberOfLines={2} style={{ flex: 1, color: colors.muted, fontSize: 10 }}>{report.label} · {selectedKind === 'csv' ? 'CSV' : 'PDF'}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Download ${report.label}`} accessibilityState={{ disabled: !ready, busy }} disabled={!ready} onPress={onDownload} style={{ minHeight: 42, paddingHorizontal: 15, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.primary, opacity: ready ? 1 : 0.55 }}>
+              <Pressable accessibilityRole="button" accessibilityLabel={`Download ${report.label}`} accessibilityState={{ disabled: !ready, busy }} disabled={!ready} onPress={() => onDownload(selectedTeamItemIds)} style={{ minHeight: 42, paddingHorizontal: 15, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: colors.primary, opacity: ready ? 1 : 0.55 }}>
                 {selectedKind === 'csv' ? <FileSpreadsheet size={15} color={colors.onPrimary} /> : <Download size={15} color={colors.onPrimary} />}
                 <Text style={{ color: colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{busy || loadingOptions ? 'Preparing…' : `Download ${selectedKind === 'csv' ? 'CSV' : 'PDF'}`}</Text>
               </Pressable>

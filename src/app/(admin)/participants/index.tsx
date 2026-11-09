@@ -120,7 +120,7 @@ export default function ParticipantsList() {
       .filter((item: any) => item?.id)
       .map((item: any) => ({
         id: item.id,
-        label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}` : item.item_name_en || item.item_name_ml || 'Unnamed item',
+        label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item',
       }))
       .sort((a, b) => a.label.localeCompare(b.label)),
   ];
@@ -135,7 +135,7 @@ export default function ParticipantsList() {
         ? item.category_codes
         : item.category_codes ? [item.category_codes] : [null];
       const itemLabel = item.item_code
-        ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}`
+        ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}`
         : item.item_name_en || item.item_name_ml || 'Unnamed item';
       return rawCategories.map((categoryCode: string | null, index: number) => ({
         id: `${item.id}::${categoryCode || 'ALL'}::${index}`,
@@ -208,7 +208,7 @@ export default function ParticipantsList() {
   }, [isExportOpen, needsExportTeam, exportTeamsQuery.data, exportTeamId]);
   const exportItems: ExportChoice[] = (activeItems as any[])
     .filter((item: any) => item?.id)
-    .map((item: any) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))
+    .map((item: any) => ({ id: item.id, label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item' }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
   const openExport = () => {
@@ -217,7 +217,7 @@ export default function ParticipantsList() {
     setIsExportOpen(true);
   };
 
-  const runExport = async () => {
+  const runExport = async (selectedTeamItemIds: string[]) => {
     try {
       if (searchPending || pageQuery.isFetching) throw new Error('Wait for the current search to finish before exporting.');
       if (!selectionScopeMatchesSession()) throw new Error('Session changed. Please retry the export.');
@@ -291,7 +291,7 @@ export default function ParticipantsList() {
         const teamPeople = people.filter((person) => person.organisation_id === team.id);
         const teamAssignments = assignments.filter((assignment) => assignment.organisation_id === team.id);
         if (exportKind === 'slips') downloadTeamParticipantSlipsPdf({ teamName: team.label, participants: teamPeople, items: itemRecords, assignments: teamAssignments });
-        else downloadTeamItemParticipantsPdf({ teamName: team.label, teamId: team.id, participants: teamPeople, items: itemRecords, assignments: teamAssignments });
+        else downloadTeamItemParticipantsPdf({ selectedItemIds: selectedTeamItemIds, teamName: team.label, teamId: team.id, participants: teamPeople, items: itemRecords, assignments: teamAssignments });
       }
       setIsExportOpen(false);
     } catch (error: any) {

@@ -238,13 +238,13 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(15);
     const itemNameLines = doc.splitTextToSize(input.itemName, innerWidth);
-    const nameY = cardY + 15;
-    const metadataY = nameY + itemNameLines.length * 6.2 + 2;
+    const nameY = cardY + 12;
+    const metadataY = nameY + itemNameLines.length * 6.2 + 1;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     const categoryLines = doc.splitTextToSize(input.category || '-', innerWidth - 22);
-    const categoryY = metadataY + 8;
-    const cardBottom = categoryY + Math.max(1, categoryLines.length - 1) * 4 + 6;
+    const categoryY = metadataY + 6;
+    const cardBottom = categoryY + Math.max(1, categoryLines.length - 1) * 4 + 3;
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(203, 213, 225);
     doc.setLineWidth(0.25);
@@ -254,7 +254,7 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
     doc.setTextColor(13, 116, 106);
-    doc.text('CHANCE SHEET · ITEM', innerX, cardY + 7);
+    doc.text('CHANCE SHEET · ITEM', innerX, cardY + 6);
     doc.setFontSize(15);
     doc.setTextColor(15, 23, 42);
     doc.text(itemNameLines, innerX, nameY);

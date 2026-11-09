@@ -455,7 +455,6 @@ export default function ScheduleDashboard() {
           itemId: item.id,
           tenantId: tenant_id,
           festivalId: festival.id,
-          participationType: isGroupCompetition(item) ? 'group' : 'individual',
         }),
       ]);
 

@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Asset } from 'expo-asset';
 import type { TeamLeaderContext, TeamLeaderScheduleRow } from './teamLeaderPortalService';
 import { normalizeScheduleLifecycleStatus } from '../core/utils/scheduleLifecycle';
 import { formatScheduleTime } from '../core/utils/scheduleTime';
@@ -171,6 +172,112 @@ export type BlankSchedulePdfInput = {
   items: BlankScheduleItem[];
   allTenants?: boolean;
 };
+
+export type ChanceSheetRow = {
+  chestNumber: string;
+  name: string;
+};
+
+export type ChanceSheetPdfInput = {
+  festivalName?: string | null;
+  festivalYear?: number | string | null;
+  itemName: string;
+  category: string;
+  rows: ChanceSheetRow[];
+};
+
+/** Creates a printable judging sheet without exposing assigned code letters. */
+export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
+  if (!input.rows.length) throw new Error('No active entries were found for this item.');
+
+  const logoAsset = Asset.fromModule(require('../../public/brand/consolium-icon-192.png'));
+  await logoAsset.downloadAsync();
+  const logoUri = logoAsset.localUri || logoAsset.uri;
+  const logoResponse = await fetch(logoUri);
+  if (!logoResponse.ok) throw new Error('Unable to load the Consolium logo for this PDF.');
+  const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const width = doc.internal.pageSize.getWidth();
+  const height = doc.internal.pageSize.getHeight();
+  const left = 8;
+  const right = width - 8;
+  const blankCellCount = 18;
+  const fixedWidths = [9, 18, 17, 42];
+  const blankCellWidth = (right - left - fixedWidths.reduce((sum, value) => sum + value, 0)) / blankCellCount;
+  const head = ['No.', 'Chest No.', 'Code Letter', 'Participant / Group', ...Array.from({ length: blankCellCount }, () => '')];
+
+  const drawHeader = () => {
+    // Text wordmarks keep the sheet portable across web and native PDF output.
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+    doc.text('Ayatic', left + 4, 17);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('Codex', left + 4, 23);
+
+    doc.addImage(logoBytes, 'PNG', width / 2 - 5, 1.5, 10, 10);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(23);
+    doc.text('CONSOULIUM', width / 2, 18, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    const festivalLabel = [input.festivalName, input.festivalYear].filter(Boolean).join(' · ') || 'Festival';
+    doc.text(festivalLabel, width / 2, 24, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.text('Judge: Name & Signature', left + 2, 39);
+    doc.text(`Item: ${input.itemName}`, right - 2, 37, { align: 'right' });
+    doc.text(`Category: ${input.category || '-'}`, right - 2, 43, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`TOTAL ENTRIES  ${input.rows.length}`, right - 2, 49, { align: 'right' });
+  };
+
+  drawHeader();
+  autoTable(doc, {
+    startY: 57,
+    head: [head],
+    body: input.rows.map((row, index) => [String(index + 1), row.chestNumber, '', row.name, ...Array.from({ length: blankCellCount }, () => '')]),
+    margin: { left, right: width - right, top: 57, bottom: 10 },
+    theme: 'grid',
+    styles: {
+      font: 'helvetica',
+      fontSize: 7.5,
+      textColor: [15, 23, 42],
+      lineColor: [35, 35, 35],
+      lineWidth: 0.22,
+      cellPadding: { top: 2.4, right: 0.5, bottom: 2.4, left: 1.2 },
+      overflow: 'linebreak',
+      valign: 'middle',
+      minCellHeight: 9,
+    },
+    headStyles: {
+      fillColor: [255, 255, 255],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      halign: 'center',
+      minCellHeight: 7,
+    },
+    columnStyles: {
+      0: { cellWidth: fixedWidths[0], halign: 'center' },
+      1: { cellWidth: fixedWidths[1], halign: 'center' },
+      2: { cellWidth: fixedWidths[2], halign: 'center' },
+      3: { cellWidth: fixedWidths[3] },
+      ...Object.fromEntries(Array.from({ length: blankCellCount }, (_, index) => [index + 4, { cellWidth: blankCellWidth } ])),
+    },
+    didDrawPage: (data) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Page ${data.pageNumber}`, right, height - 5, { align: 'right' });
+    },
+  });
+
+  const safeName = input.itemName.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'item';
+  doc.save(`chance-sheet-${safeName}.pdf`);
+  return { entryCount: input.rows.length };
+}
 
 export function downloadBlankSchedulePdf(input: BlankSchedulePdfInput) {
   if (!input.items.length) throw new Error('No active competitions found for this export.');

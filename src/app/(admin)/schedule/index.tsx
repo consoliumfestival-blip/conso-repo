@@ -11,6 +11,7 @@ import { useSchedule } from '../../../core/hooks/useSchedule';
 import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
+import { chanceSheetService } from '../../../services/chanceSheetService';
 
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useQuery } from '@tanstack/react-query';
@@ -20,6 +21,7 @@ import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService';
+import { isGroupCompetition } from '../../../core/utils/groupParticipation';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import * as Device from 'expo-device';
 import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
@@ -30,7 +32,7 @@ const normalizeCategory = (value: string) => {
   return norm === 'GN' ? 'GENERAL' : norm;
 };
 
-type SchedulePdfExportOption = AdminSchedulePdfMode | 'team-attendance' | 'blank';
+type SchedulePdfExportOption = AdminSchedulePdfMode | 'team-attendance' | 'blank' | 'chance-sheet';
 
 const schedulePdfExportOptions: { id: SchedulePdfExportOption; label: string; description: string }[] = [
   { id: 'master', label: 'Master Schedule', description: 'One PDF using the current schedule filters.' },
@@ -38,6 +40,7 @@ const schedulePdfExportOptions: { id: SchedulePdfExportOption; label: string; de
   { id: 'organisation', label: 'Organisation-wise Schedule', description: 'One PDF grouping participants by organisation for filtered schedules.' },
   { id: 'team-attendance', label: 'Team-wise Attendance PDF', description: 'Counts for all completed competitions; page filters do not apply.' },
   { id: 'blank', label: 'Blank Schedule PDF', description: 'An empty timetable for the active items.' },
+  { id: 'chance-sheet', label: 'Chance Sheet', description: 'Choose one item and create its printable chance sheet.' },
 ];
 
 function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false,isOverdueUnstarted=false,compact=false}: {
@@ -263,6 +266,7 @@ export default function ScheduleDashboard() {
   const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
+  const [chanceSheetItemPickerOpen, setChanceSheetItemPickerOpen] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
 
   const togglePublicVisibility = async (schedule: any) => {
@@ -395,6 +399,58 @@ export default function ScheduleDashboard() {
     }
   };
 
+  const exportChanceSheet = async (item: any) => {
+    if (exportLock.current) return;
+    if (!festival?.id || !tenant_id) {
+      const message = isLoadingFest ? 'Festival details are still loading. Please try again.' : 'No active festival or tenant is available.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Festival unavailable', message);
+      return;
+    }
+    if (!item?.id) {
+      if (Platform.OS === 'web') window.alert('Select an active item to create its chance sheet.');
+      else Alert.alert('Item unavailable', 'Select an active item to create its chance sheet.');
+      return;
+    }
+
+    try {
+      exportLock.current = true;
+      setChanceSheetItemPickerOpen(false);
+      setIsExportingSchedule(true);
+      const [{ downloadChanceSheetPdf }, sheetRows] = await Promise.all([
+        import('../../../services/schedulePdfService'),
+        chanceSheetService.loadRows({
+          itemId: item.id,
+          tenantId: tenant_id,
+          festivalId: festival.id,
+          participationType: isGroupCompetition(item) ? 'group' : 'individual',
+        }),
+      ]);
+
+      const itemCategories = Array.isArray(item.category_codes)
+        ? item.category_codes
+        : item.category_codes ? [item.category_codes] : [];
+      const itemName = String(item.item_name_en || item.item_name_ml || 'Unnamed item');
+      const category = itemCategories.map((value: unknown) => normalizeCategory(String(value))).filter(Boolean).join(', ');
+      const result = await downloadChanceSheetPdf({
+        festivalName: festival?.custom_name || null,
+        festivalYear: festival?.festival_year || null,
+        itemName: item.item_code ? `${item.item_code} · ${itemName}` : itemName,
+        category,
+        rows: sheetRows,
+      });
+      const message = `Chance sheet PDF downloaded: ${result.entryCount} ${isGroupCompetition(item) ? 'groups' : 'participants'}.`;
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Export complete', message);
+    } catch (error: any) {
+      if (Platform.OS === 'web') window.alert(error?.message || 'Unable to generate the chance sheet PDF.');
+      else Alert.alert('Export failed', error?.message || 'Unable to generate the chance sheet PDF.');
+    } finally {
+      exportLock.current = false;
+      setIsExportingSchedule(false);
+    }
+  };
+
   const exportTeamAttendancePdf = async () => {
     if (exportLock.current) return;
     if (!festival?.id || !tenant_id) {
@@ -463,7 +519,9 @@ export default function ScheduleDashboard() {
 
   const selectSchedulePdfExport = (option: SchedulePdfExportOption) => {
     setSchedulePdfExportOpen(false);
-    if (option === 'team-attendance') {
+    if (option === 'chance-sheet') {
+      setChanceSheetItemPickerOpen(true);
+    } else if (option === 'team-attendance') {
       void exportTeamAttendancePdf();
     } else if (option === 'blank') {
       void exportBlankSchedule();
@@ -1288,6 +1346,46 @@ export default function ScheduleDashboard() {
             <Text className="font-poppins text-[10px] text-ui-text-muted mt-1">
               Filtered schedule PDFs use the current filters. Team attendance includes all completed competitions. Items available for the blank schedule: {Math.max(0, itemsList.length - 1)}.
             </Text>
+          </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal transparent visible={chanceSheetItemPickerOpen} animationType="fade" onRequestClose={() => !isExportingSchedule && setChanceSheetItemPickerOpen(false)}>
+        <Pressable onPress={() => !isExportingSchedule && setChanceSheetItemPickerOpen(false)} className="flex-1 bg-black/40 items-center justify-center px-4 py-6">
+          <Pressable onPress={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-xl border border-ui-border bg-core-surface-white p-4" style={{ maxHeight: '90%' }}>
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="font-poppins-bold text-base text-ui-text">Choose item for Chance Sheet</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close item selection" disabled={isExportingSchedule} onPress={() => setChanceSheetItemPickerOpen(false)} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border">
+                <X size={16} color={ui.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <Text className="font-poppins text-xs text-ui-text-muted mb-3">Select one active item. Its PDF will be generated after selection.</Text>
+            <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator>
+              {isLoadingItems && <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">Loading active items…</Text>}
+              {(activeItems as any[]).filter((item) => item?.id).map((item) => {
+                const itemName = item.item_name_en || item.item_name_ml || 'Unnamed item';
+                const categories = (Array.isArray(item.category_codes) ? item.category_codes : item.category_codes ? [item.category_codes] : [])
+                  .map((value: unknown) => normalizeCategory(String(value))).filter(Boolean).join(', ');
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => void exportChanceSheet(item)}
+                    disabled={isExportingSchedule}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Generate Chance Sheet for ${itemName}`}
+                    accessibilityState={{ disabled: isExportingSchedule, busy: isExportingSchedule }}
+                    className={`mb-2 min-h-14 flex-row items-center gap-3 rounded-lg border border-ui-border px-3 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100 opacity-60' : 'bg-core-surface-white'}`}
+                  >
+                    <FileText size={17} color={ui.colors.primaryText} />
+                    <View className="flex-1">
+                      <Text className="font-poppins-bold text-xs text-ui-text">{item.item_code ? `${item.item_code} · ` : ''}{itemName}</Text>
+                      <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5">{categories || 'No category'} · {isGroupCompetition(item) ? 'Group' : 'Individual'}</Text>
+                    </View>
+                    {isExportingSchedule ? <Text className="font-poppins-bold text-[10px] text-ui-text-muted">Preparing…</Text> : <Download size={15} color={ui.colors.textMuted} />}
+                  </TouchableOpacity>
+                );
+              })}
+              {!isLoadingItems && !(activeItems as any[]).length && <Text className="py-6 text-center font-poppins text-xs text-ui-text-muted">No active items are available for this festival.</Text>}
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>

@@ -10,6 +10,13 @@ export function shouldUseTabletScheduleTable(isTabletScreen: boolean, width: num
   return isTabletScreen && width >= 1200;
 }
 
+export function shouldShowTabletLandscapeScheduleCategory(
+  isTabletScheduleTable: boolean,
+  orientation: CompactScheduleActionOrientation,
+): boolean {
+  return isTabletScheduleTable && orientation === 'landscape';
+}
+
 export function getScheduleActionRows<T>(actions: readonly T[]): [T[], T[]] {
   return [actions.slice(0, 2), actions.slice(2, 4)];
 }

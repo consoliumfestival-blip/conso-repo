@@ -24,7 +24,7 @@ import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService'
 import { isGroupCompetition } from '../../../core/utils/groupParticipation';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import * as Device from 'expo-device';
-import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
+import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldShowTabletLandscapeScheduleCategory, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 
 const normalizeCategory = (value: string) => {
@@ -196,6 +196,10 @@ export default function ScheduleDashboard() {
       Device.deviceType === Device.DeviceType.TABLET || maxTouchPoints > 0,
       width,
     );
+  const showTabletLandscapeScheduleCategory = shouldShowTabletLandscapeScheduleCategory(
+    isTabletScheduleTable,
+    tabletScheduleOrientation,
+  );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
@@ -1076,6 +1080,11 @@ export default function ScheduleDashboard() {
                       ? schedule.venues?.name || 'Unknown Venue'
                       : schedule.items?.item_name_ml || schedule.items?.item_code || '—'}
                   </Text>
+                  {showTabletLandscapeScheduleCategory && Array.isArray(schedule.items?.category_codes) && schedule.items.category_codes.length > 0 && (
+                    <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-0.5" numberOfLines={1}>
+                      {schedule.items.category_codes.join(', ')}
+                    </Text>
+                  )}
                 </View>
                 {!isTabletScheduleTable && <View style={{ flex: 0.9 }} className="pr-3 items-start">
                   <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-lg">

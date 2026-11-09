@@ -8,7 +8,7 @@ const source = fs.readFileSync(path.join(__dirname, '../src/core/utils/scheduleT
 const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
 const mod = { exports: {} };
 new Function('module', 'exports', code)(mod, mod.exports);
-const { showScheduleCardActions, getCompactScheduleActionOrientation, getScheduleActionRows, shouldUseTabletScheduleTable } = mod.exports;
+const { showScheduleCardActions, getCompactScheduleActionOrientation, getScheduleActionRows, shouldShowTabletLandscapeScheduleCategory, shouldUseTabletScheduleTable } = mod.exports;
 
 test('schedule card workflow actions are visible at constrained card-layout widths independent of device detection', () => {
   for (const width of [600, 700, 768, 1024, 1194, 1366, 1399]) {
@@ -46,4 +46,11 @@ test('small tablet schedules use cards while wider tablets retain the row table'
     assert.equal(shouldUseTabletScheduleTable(true, width), true, `${width}px tablet keeps table`);
   }
   assert.equal(shouldUseTabletScheduleTable(false, 1024), false, 'non-tablet does not switch layout by this rule');
+});
+
+test('schedule categories are shown only in the tablet landscape table layout', () => {
+  assert.equal(shouldShowTabletLandscapeScheduleCategory(true, 'landscape'), true);
+  assert.equal(shouldShowTabletLandscapeScheduleCategory(true, 'portrait'), false);
+  assert.equal(shouldShowTabletLandscapeScheduleCategory(false, 'landscape'), false);
+  assert.equal(shouldShowTabletLandscapeScheduleCategory(false, null), false);
 });

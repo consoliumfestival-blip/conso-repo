@@ -213,6 +213,7 @@ export default function ScheduleDashboard() {
   const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = React.useState(false);
   const [chanceSheetSearchQuery, setChanceSheetSearchQuery] = React.useState('');
+  const [chanceSheetItemPickerOpen, setChanceSheetItemPickerOpen] = React.useState(false);
   const [calendarMonth, setCalendarMonth] = React.useState(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
@@ -298,7 +299,6 @@ export default function ScheduleDashboard() {
   const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
-  const [chanceSheetItemPickerOpen, setChanceSheetItemPickerOpen] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
 
   const togglePublicVisibility = async (schedule: any) => {

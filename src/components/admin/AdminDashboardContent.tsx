@@ -3,6 +3,7 @@ import { useCoreAppearance } from '@/core/contexts/CoreAppearanceContext';
 import { ui } from '@/constants/designSystem';
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   RefreshControl,
   ScrollView,
@@ -29,6 +30,7 @@ import {
   Megaphone,
   Menu,
   Search,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Trophy,
@@ -345,6 +347,7 @@ export default function AdminDashboardContent() {
   const appearance = useCoreAppearance();
   const dashboardColors = appearance?.colors ?? resolveCoreColors(DEFAULT_CORE_APPEARANCE, false);
   const categoryColors = [dashboardColors.primary, dashboardColors.info, dashboardColors.success, dashboardColors.warning, dashboardColors.danger, dashboardColors.textMuted, dashboardColors.primaryHover, dashboardColors.borderStrong];
+  const categoryChartColors = ['#0D9488', '#2563EB', '#16A34A', '#7C3AED', '#E59B13', '#0891B2', '#DB4C78', '#64748B'];
   const { logout, user, role, is_superadmin } = useAuthStore();
   const router = useRouter();
   const { useStats } = useAdminDashboard();
@@ -634,20 +637,25 @@ export default function AdminDashboardContent() {
                   </View>
                 </View>
 
-                <View style={{ alignItems: isDesktop ? 'flex-end' : 'flex-start', marginTop: isDesktop ? 0 : 14 }}>
-                  <TouchableOpacity accessibilityRole="button" accessibilityLabel="Update Dashboard" disabled={isRefetching} onPress={onRefresh} style={{ minHeight: 40, maxWidth: '100%', flexWrap: 'wrap', paddingHorizontal: 12, borderWidth: 1, borderColor: BORDER, borderRadius: 8, flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                    <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Last updated: {updatedAt}</Text>
-                    <Text style={{ color: EMERALD, fontFamily: 'Poppins_700Bold', marginLeft: 8 }}>{isRefetching ? 'Updating…' : 'Update Dashboard'}</Text>
-                  </TouchableOpacity>
-                  <View style={{ width: 194, height: 38, borderRadius: 10, borderWidth: 1, borderColor: coreAlpha(coreColor('#e2e8f0', 'border'), 0.6), backgroundColor: ui.colors.surface, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: isError ? DANGER : SUCCESS, marginRight: 10 }} />
-                    <View>
-                      <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Dashboard Data</Text>
-                      <Text style={{ fontFamily: 'Poppins_700Bold', color: isError ? DANGER : EMERALD, fontSize: 11 }}>
-                        {isError ? 'Unable to sync' : 'Synced with Supabase'}
-                      </Text>
+                <View style={{ alignItems: isDesktop ? 'flex-end' : 'flex-start', alignSelf: isDesktop ? 'auto' : 'stretch', marginTop: isDesktop ? 0 : 14, gap: 7 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel="Update dashboard"
+                      accessibilityState={{ disabled: isRefetching, busy: isRefetching }}
+                      disabled={isRefetching}
+                      onPress={onRefresh}
+                      style={{ minHeight: 40, paddingHorizontal: 13, borderWidth: 1, borderColor: dashboardColors.border, borderRadius: 9, backgroundColor: dashboardColors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isRefetching ? 0.65 : 1 }}
+                    >
+                      {isRefetching ? <ActivityIndicator size="small" color={dashboardColors.primaryText} /> : <RefreshCw size={15} color={dashboardColors.primaryText} />}
+                      <Text style={{ color: dashboardColors.primaryText, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{isRefetching ? 'Updating…' : 'Update dashboard'}</Text>
+                    </TouchableOpacity>
+                    <View accessibilityRole="text" accessibilityLiveRegion="polite" style={{ minHeight: 32, maxWidth: '100%', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: isError ? ui.colors.dangerSoft : dashboardColors.primarySoft, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: isError ? DANGER : SUCCESS }} />
+                      <Text style={{ flexShrink: 1, color: isError ? DANGER : dashboardColors.primaryText, fontFamily: 'Poppins_600SemiBold', fontSize: 10 }}>{isError ? 'Unable to sync' : 'Synced with Supabase'}</Text>
                     </View>
                   </View>
+                  <Text style={{ fontFamily: 'Poppins_400Regular', color: dashboardColors.textMuted, fontSize: 10 }}>Last updated: {updatedAt}</Text>
                 </View>
               </View>
             </Animated.View>
@@ -705,27 +713,29 @@ export default function AdminDashboardContent() {
 
             <View style={{ flexDirection: isDesktop ? 'row' : 'column', gap: 16 }}>
               {insightView !== 'organisations' && (data?.categoryGraph && data.categoryGraph.length > 0 ? (
-                <Animated.View entering={FadeInUp.duration(460).delay(360).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'categories' ? 1.45 : 1, minWidth: 330, minHeight: 222, padding: 16 }]}>
+                <Animated.View entering={FadeInUp.duration(460).delay(360).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'categories' ? 1.45 : 1, minWidth: 0, minHeight: 222, padding: 16 }]}>
                   <SectionHeader title="Participants by Category" action="View Details" onAction={() => router.push('/(admin)/participants' as any)} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
-                      <Svg width={148} height={148} viewBox="0 0 148 148">
-                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="12" fill="none" />
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 16, paddingTop: 12 }}>
+                    <View accessibilityRole="image" accessibilityLabel={`Participants by category: ${categoryTotal} total`} style={{ width: 156, height: 156, alignItems: 'center', justifyContent: 'center' }}>
+                      <Svg width={156} height={156} viewBox="0 0 148 148">
+                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="16" fill="none" />
                         {(() => {
                           const radius = 58;
                           const circumference = 2 * Math.PI * radius;
                           let offset = 0;
                           return data.categoryGraph.map((item, index) => {
                             const segment = categoryTotal > 0 ? item.count / categoryTotal : 0;
-                            const dash = `${segment * circumference} ${circumference}`;
+                            const length = segment * circumference;
+                            const gap = data.categoryGraph.length > 1 && length > 6 ? 3 : 0;
+                            const dash = `${Math.max(0, length - gap)} ${circumference}`;
                             const circle = (
                               <Circle
                                 key={item.id ?? item.name}
                                 cx="74"
                                 cy="74"
                                 r={radius}
-                                stroke={categoryColors[index % categoryColors.length]}
-                                strokeWidth="12"
+                                stroke={categoryChartColors[index % categoryChartColors.length]}
+                                strokeWidth="16"
                                 fill="none"
                                 strokeDasharray={dash}
                                 strokeDashoffset={-offset}
@@ -740,19 +750,19 @@ export default function AdminDashboardContent() {
                         })()}
                       </Svg>
                       <View style={{ position: 'absolute', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 22 }}>{categoryTotal.toLocaleString()}</Text>
-                        <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11 }}>Total</Text>
+                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 24 }}>{categoryTotal.toLocaleString()}</Text>
+                        <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11 }}>Participants</Text>
                       </View>
                     </View>
 
-                    <View style={{ flex: 1, gap: 9 }}>
+                    <View style={{ flex: 1, minWidth: 150, gap: 10 }}>
                       {data.categoryGraph.slice(0, 7).map((item, index) => {
                         const pct = categoryTotal > 0 ? ((item.count / categoryTotal) * 100).toFixed(1) : '0.0';
                         return (
                           <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryColors[index % categoryColors.length], marginRight: 10 }} />
-                              <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 10 }}>{item.name}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 6 }}>
+                              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryChartColors[index % categoryChartColors.length], marginRight: 10 }} />
+                              <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, flexShrink: 1 }} numberOfLines={2}>{item.name}</Text>
                             </View>
                             <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 10 }}>
                               {item.count} ({pct}%)

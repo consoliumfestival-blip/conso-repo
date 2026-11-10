@@ -22,7 +22,6 @@ import { stageManagementService } from '@/services/stageManagementService';
 import { useQuery } from '@tanstack/react-query';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 import { substageForChest } from '@/core/utils/scheduleSubstages';
-import { useAuthStore } from '../../../../core/store/authStore';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -63,7 +62,7 @@ export default function CheckIn() {
   const isLoadingRegs = stage.registrationsQuery.isLoading;
   const refetch = stage.registrationsQuery.refetch;
 
-  const { role, is_superadmin } = useAuthStore();
+
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   
@@ -75,18 +74,6 @@ export default function CheckIn() {
     visible: boolean;
   }>({ reg: null, visible: false });
 
-  const handleUnlock = async () => {
-    setIsUpdating(true);
-    try {
-      await stage.updateScheduleLock({ scheduleId, locked: false });
-      refetch();
-    } catch (e: any) {
-      if (Platform.OS === 'web') window.alert('Error unlocking event: ' + e.message);
-      else Alert.alert('Error', e.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
 
   // Web QR scanner state
   const videoRef = useRef<any>(null);
@@ -346,11 +333,6 @@ export default function CheckIn() {
               <Lock size={17} color={coreColor("#B45309", 'warning')} />
               <Text className="flex-1 font-poppins-bold text-xs leading-5 text-core-warning-amber-800">Event is locked. Check-in is now read-only.</Text>
             </View>
-            {(role === 'admin' || is_superadmin) && (
-              <TouchableOpacity accessibilityRole="button" onPress={handleUnlock} disabled={isUpdating} className={`mt-2 h-11 items-center justify-center rounded-lg bg-core-warning-action-amber-600 px-4 ${isUpdating ? 'opacity-60' : ''}`}>
-                <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isUpdating ? 'Unlocking…' : 'Unlock event'}</Text>
-              </TouchableOpacity>
-            )}
           </View>
         )}
 
@@ -494,15 +476,6 @@ export default function CheckIn() {
                 Event is locked. Check-in is now read-only.
               </Text>
             </View>
-            {(role === 'admin' || is_superadmin) && (
-              <SsfButton 
-                label={isUpdating ? 'Unlocking...' : 'Unlock Event'} 
-                onPress={handleUnlock}
-                disabled={isUpdating}
-                size="sm"
-                className="bg-core-warning-action-amber-600 border-core-warning-amber-600 self-start"
-              />
-            )}
           </View>
         )}
 

@@ -9,7 +9,6 @@ import { useStageManagement } from '../../../../core/hooks/useStageManagement';
 import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users } from 'lucide-react-native';
-import { useAuthStore } from '../../../../core/store/authStore';
 import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '../../../../core/utils/codeLetters';
 
 export default function CodeLetterGeneration() {
@@ -61,7 +60,7 @@ export default function CodeLetterGeneration() {
     return () => clearInterval(timer);
   }, [showLockModal, lockCountdown]);
 
-  const { role, is_superadmin } = useAuthStore();
+
   
   const openLockModal = () => {
     setLockCountdown(10);
@@ -74,22 +73,6 @@ export default function CodeLetterGeneration() {
     setLockCountdown(10);
   };
 
-  const handleUnlock = async () => {
-    setIsLocking(true);
-    try {
-      await stage.updateScheduleLock({ scheduleId, locked: false });
-      if (Platform.OS === 'web') {
-        window.alert('🔓 Event unlocked successfully.');
-      } else {
-        Alert.alert('Unlocked', 'Event unlocked successfully.');
-      }
-    } catch (e: any) {
-      if (Platform.OS === 'web') window.alert('Error unlocking event: ' + e.message);
-      else Alert.alert('Error', e.message);
-    } finally {
-      setIsLocking(false);
-    }
-  };
 
 
 
@@ -127,6 +110,7 @@ export default function CodeLetterGeneration() {
            secureStage: true,
          });
         await stage.registrationsQuery.refetch();
+        openLockModal();
         const isSmart = result && (result as any).smartPriorityApplied;
         const msg = result?.conflictsUnavoidable
           ? 'Code letters assigned. Some overlapping-event letter conflicts remain; review the order.'
@@ -224,9 +208,9 @@ export default function CodeLetterGeneration() {
       await stage.updateScheduleLock({ scheduleId: schedule.id, locked: true });
       setShowLockModal(false);
       if (Platform.OS === 'web') {
-        window.alert('🔒 Code letters are now locked permanently.');
+        window.alert('Code letters are locked. An admin can unlock them from Schedule.');
       } else {
-        Alert.alert('Locked', 'Code letters are now locked permanently.');
+        Alert.alert('Locked', 'An admin can unlock code letters from Schedule.');
       }
     } catch (error: any) {
       if (Platform.OS === 'web') {
@@ -259,11 +243,6 @@ export default function CodeLetterGeneration() {
               <Lock size={17} color={coreColor("#B45309", 'warning')} />
               <Text className="flex-1 font-poppins-bold text-xs leading-5 text-core-warning-amber-800">Code-letter shuffle is locked. Assignments are read-only.</Text>
             </View>
-            {(role === 'admin' || is_superadmin) ? (
-              <TouchableOpacity accessibilityRole="button" onPress={handleUnlock} disabled={isLocking} className={`mt-2 h-11 items-center justify-center rounded-lg bg-core-warning-action-amber-600 px-4 ${isLocking ? 'opacity-60' : ''}`}>
-                <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isLocking ? 'Unlocking…' : 'Unlock event'}</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         ) : null}
 
@@ -363,15 +342,6 @@ export default function CodeLetterGeneration() {
                 🔒 Code Letter Shuffle Locked
               </Text>
             </View>
-            {(role === 'admin' || is_superadmin) && (
-              <SsfButton 
-                label={isLocking ? 'Unlocking...' : 'Unlock Event'} 
-                onPress={handleUnlock}
-                disabled={isLocking}
-                size="sm"
-                className="bg-core-warning-action-amber-600 border-core-warning-amber-600 self-start"
-              />
-            )}
           </View>
         )}
 

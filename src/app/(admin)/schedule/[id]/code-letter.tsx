@@ -1,6 +1,8 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
+import { useQueryClient } from '@tanstack/react-query';
+import { stageManagementService } from '../../../../services/stageManagementService';
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -17,6 +19,8 @@ export default function CodeLetterGeneration() {
   const { id } = useLocalSearchParams();
   const scheduleId = Array.isArray(id) ? id[0] : id;
   const goBack = useGoBack('/(admin)/schedule');
+  const queryClient = useQueryClient();
+  const [isUnlocking, setIsUnlocking] = React.useState(false);
 
   const { schedules, isLoadingSchedules } = useSchedule();
   const schedule = schedules.find((s: any) => s.id === scheduleId);
@@ -56,6 +60,25 @@ export default function CodeLetterGeneration() {
   }
 
   const isShuffleLocked = schedule?.is_shuffle_locked;
+
+  const handleUnlock = () => {
+    const unlock = async () => {
+      setIsUnlocking(true);
+      try {
+        await stageManagementService.updateScheduleLock(scheduleId, false);
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['schedules'] }),
+          queryClient.invalidateQueries({ queryKey: ['stage-management-summary-v2'] }),
+        ]);
+      } catch (error: any) {
+        if (Platform.OS === 'web') window.alert(error?.message || 'Unable to unlock this event.');
+        else Alert.alert('Unlock failed', error?.message || 'Unable to unlock this event.');
+      } finally { setIsUnlocking(false); }
+    };
+    const message = 'Unlock code letters and check-in for this event?';
+    if (Platform.OS === 'web') { if (window.confirm(message)) void unlock(); }
+    else Alert.alert('Unlock event?', message, [{ text: 'Cancel', style: 'cancel' }, { text: 'Unlock', onPress: () => { void unlock(); } }]);
+  };
 
   const handleGenerate = async () => {
     const hasExistingLetters = activeRegistrations.some((r: any) => r.code_letter);
@@ -181,7 +204,8 @@ export default function CodeLetterGeneration() {
       {isShuffleLocked && (
         <View className="bg-core-warning-soft-amber-50 border border-core-warning-soft-amber-200 rounded-lg p-3 mb-3 flex-row items-center gap-x-3">
           <Lock size={20} color={coreColor("#B45309", 'warning')} />
-          <Text className="font-poppins-bold text-core-warning-amber-700">🔒 Code Letter Shuffle Locked by Stage Portal</Text>
+          <Text className="font-poppins-bold text-core-warning-amber-700 flex-1">Code letters and check-in are locked.</Text>
+          <SsfButton label={isUnlocking ? 'Unlocking...' : 'Unlock'} onPress={handleUnlock} disabled={isUnlocking} size="sm" />
         </View>
       )}
 

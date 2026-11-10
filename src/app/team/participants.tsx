@@ -1,5 +1,8 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
+import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
@@ -25,9 +28,9 @@ export default function ParticipantsScreen() {
   const { context, loading: contextLoading } = useTeamLeaderContext();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
-  const [participants, setParticipants] = useState<TeamLeaderParticipant[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const participantsQuery = useTeamReadQuery('participants', teamLeaderPortalService.getParticipants);
+  const participants = participantsQuery.data ?? [];
+  const loading = participantsQuery.isLoading;
   const [filter, setFilter] = useState('all');
   const [selectedParticipant, setSelectedParticipant] = useState<TeamLeaderParticipant | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
@@ -46,40 +49,7 @@ export default function ParticipantsScreen() {
     refetchOnMount: 'always',
   });
 
-  useEffect(() => {
-    if (contextLoading) return;
-    if (!context) {
-      setParticipants([]);
-      setLoadError('Team details are unavailable for this account. Please sign in again or contact the festival administrator.');
-      setLoading(false);
-      return;
-    }
 
-    let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-    const timeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('The participant list took too long to load.')), 15000);
-    });
-
-    Promise.race([teamLeaderPortalService.getParticipants(), timeout])
-      .then((data) => {
-        if (cancelled) return;
-        setParticipants(data as TeamLeaderParticipant[]);
-      })
-      .catch((error: any) => {
-        if (cancelled) return;
-        setParticipants([]);
-        setLoadError(error?.message || 'Unable to load participants.');
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [context, contextLoading]);
 
   if (contextLoading || loading) {
     return (
@@ -101,18 +71,7 @@ export default function ParticipantsScreen() {
     );
   }
 
-  if (loadError) {
-    return (
-      <TeamLeaderAppShell>
-        <Card>
-          <CardContent style={{ padding: 24, alignItems: 'center' }}>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: ui.colors.text }}>Unable to load participants</Text>
-            <Text style={{ fontSize: 13, color: ui.colors.textMuted, marginTop: 8, textAlign: 'center' }}>{loadError}</Text>
-          </CardContent>
-        </Card>
-      </TeamLeaderAppShell>
-    );
-  }
+  if (!context || !participantsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (participantsQuery.error as Error)?.message || 'Unable to load participants.'} onRetry={() => void participantsQuery.retry()} /></TeamLeaderAppShell>;
 
   const filtered = filter === 'all' ? participants : participants.filter((p) => {
     if (filter === 'active') return p.status === 'active' || p.status === 'registered' || p.status === 'approved';
@@ -243,6 +202,7 @@ export default function ParticipantsScreen() {
 
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={participantsQuery.isFetching} error={participantsQuery.error} onRefresh={() => void participantsQuery.refetch()} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Participants" teamName={context?.team_name}
           subtitle={`${participants.length} registered participant${participants.length === 1 ? '' : 's'} in your team`}

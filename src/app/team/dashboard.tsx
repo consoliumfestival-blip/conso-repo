@@ -1,14 +1,16 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { TEAM_DESKTOP_MIN_WIDTH } from '@/constants/teamLeaderTheme';
 import { TeamText as Text } from '@/components/team/TeamText';
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { ArrowRight, CalendarDays, CheckCircle2, MessageSquare, Moon, Sun, Trophy, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
-import { teamLeaderPortalService, TeamLeaderScheduleRow, TeamLeaderPublishedResult, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
+import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
@@ -144,43 +146,24 @@ function SectionHeader({ icon: Icon, title, description, mobile }: { icon: React
 }
 
 export default function TeamLeaderDashboard() {
-  const { context, loading: contextLoading, error: contextError } = useTeamLeaderContext();
+  const { context, loading: contextLoading, error: contextError, refetch: refreshContext } = useTeamLeaderContext();
   const ui = useTeamUi();
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
-  const [results, setResults] = useState<TeamLeaderPublishedResult[]>([]);
-  const [standings, setStandings] = useState<TeamLeaderStanding[]>([]);
-  const [dataError, setDataError] = useState<string | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [reloadKey, setReloadKey] = useState(0);
-  const assignmentId = context?.assignment_id;
-
-  useFocusEffect(useCallback(() => {
-    // Updating this key intentionally reruns the focused load when Retry is pressed.
-    void reloadKey;
-    if (!assignmentId) return;
-    let cancelled = false;
-    setDataError(null);
-    setDataLoading(true);
-    Promise.all([
-      teamLeaderPortalService.getSchedule(),
-      teamLeaderPortalService.getPublishedResults(),
-      teamLeaderPortalService.getStandings(),
-    ]).then(([s, r, standingRows]) => {
-      if (cancelled) return;
-      setSchedule(s); setResults(r); setStandings(standingRows);
-    }).catch((error: any) => {
-      if (!cancelled) setDataError(error?.message || 'Please retry the team dashboard request.');
-    }).finally(() => {
-      if (!cancelled) setDataLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [assignmentId, reloadKey]));
+  const scheduleQuery = useTeamReadQuery('schedule', teamLeaderPortalService.getSchedule);
+  const resultsQuery = useTeamReadQuery('results', teamLeaderPortalService.getPublishedResults);
+  const standingsQuery = useTeamReadQuery('standings', teamLeaderPortalService.getStandings);
+  const schedule = scheduleQuery.data ?? [];
+  const results = resultsQuery.data ?? [];
+  const standings = standingsQuery.data ?? [];
+  const queries = [scheduleQuery, resultsQuery, standingsQuery];
+  const dataLoading = queries.some(query => query.isLoading);
+  const dataError = queries.find(query => query.error && !query.data)?.error as Error | undefined;
+  const refresh = () => { void Promise.all([refreshContext(), ...queries.map(query => query.refetch())]); };
 
   if (contextLoading) return <TeamLeaderAppShell><View style={{ gap: 12 }}><Skeleton style={{ height: 200, borderRadius: 20 }} /><Skeleton style={{ height: 110, borderRadius: 16 }} /><Skeleton style={{ height: 160, borderRadius: 16 }} /></View></TeamLeaderAppShell>;
-  if (contextError || !context) return <TeamLeaderAppShell><Card><CardContent style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: ui.colors.textMuted, textAlign: 'center' }}>{contextError || 'Unable to load portal context. Please try again.'}</Text></CardContent></Card></TeamLeaderAppShell>;
-  if (dataError) return <TeamLeaderAppShell><TeamLeaderDataError message={dataError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
+  if (!context) return <TeamLeaderAppShell><Card><CardContent style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: ui.colors.textMuted, textAlign: 'center' }}>{contextError || 'Unable to load portal context. Please try again.'}</Text></CardContent></Card></TeamLeaderAppShell>;
+  if (dataError) return <TeamLeaderAppShell><TeamLeaderDataError message={dataError.message || 'Please retry the team dashboard request.'} onRetry={refresh} /></TeamLeaderAppShell>;
   if (dataLoading) return <TeamLeaderAppShell><View style={{ gap: 10 }}><Skeleton style={{ height: 120, borderRadius: 17 }} /><Skeleton style={{ height: 100, borderRadius: 17 }} /><Skeleton style={{ height: 210, borderRadius: 17 }} /></View></TeamLeaderAppShell>;
 
   const teamName = context.team_name || 'Your Team';
@@ -195,6 +178,7 @@ export default function TeamLeaderDashboard() {
 
   return (
     <TeamLeaderAppShell hideMobileHeader mobileEdgeToEdge>
+      <TeamReadStatus fetching={queries.some(query => query.isFetching)} error={queries.find(query => query.error)?.error || contextError} onRefresh={refresh} />
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
         <View>
           <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? null} rank={ownStanding && ownStanding.total_points > 0 ? ownStanding.rank : undefined} todaysEvents={todaysEvents.length} completedEvents={completedEvents} totalEvents={schedule.length} now={now} mobile={mobile} />

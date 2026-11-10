@@ -11,11 +11,22 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const output = path.join(root, '.expo/popup-browser');
 fs.mkdirSync(output, { recursive: true });
 const stub = path.join(root, 'tests/fixtures/team-schedule-popup-stubs.tsx');
-const stubbed = ['expo-router', '@/core/contexts/TeamLeaderContext', '@/core/contexts/TeamLeaderThemeContext', '@/services/teamLeaderPortalService', '@/components/layout/TeamLeaderAppShell', '@/core/config/supabase', 'expo-file-system', 'expo-sharing'];
+const stubbed = ['expo-router', '@/core/contexts/TeamLeaderContext', '@/core/contexts/TeamLeaderThemeContext', '@/core/store/authStore', '@/services/festivalCategoryService', '@/services/teamLeaderPortalService', '@/components/layout/TeamLeaderAppShell', '@/core/config/supabase', 'expo-file-system', 'expo-sharing'];
 (async () => {
-  await build({ entryPoints: [path.join(root, 'tests/fixtures/team-schedule-popup-entry.tsx')], bundle: true, platform: 'browser', format: 'iife', jsx: 'automatic', outfile: path.join(output, 'bundle.js'), alias: { 'react-native': 'react-native-web', 'lucide-react-native': 'lucide-react', ...Object.fromEntries(stubbed.map(name => [name, stub])) }, define: { __DEV__: 'true', 'process.env.NODE_ENV': '"development"' }, resolveExtensions: ['.web.tsx', '.tsx', '.web.ts', '.ts', '.web.js', '.js', '.json'] });
+  await build({ entryPoints: [path.join(root, 'tests/fixtures/team-schedule-popup-entry.tsx')], bundle: true, platform: 'browser', format: 'iife', loader: { '.png': 'dataurl', '.js': 'jsx' }, jsx: 'automatic', outfile: path.join(output, 'bundle.js'), alias: { 'react-native': 'react-native-web', 'lucide-react-native': 'lucide-react', ...Object.fromEntries(stubbed.map(name => [name, stub])) }, define: { __DEV__: 'true', 'process.env.NODE_ENV': '"development"' }, resolveExtensions: ['.web.tsx', '.tsx', '.web.ts', '.ts', '.web.js', '.js', '.json'] });
   const html = '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{margin:0;min-height:100%;font-family:system-ui}*{box-sizing:border-box}</style></head><body><div id="root"></div><script src="/bundle.js"></script></body></html>';
-  const server = http.createServer((req, res) => { res.setHeader('Content-Type', req.url === '/bundle.js' ? 'application/javascript' : 'text/html'); res.end(req.url === '/bundle.js' ? fs.readFileSync(path.join(output, 'bundle.js')) : html); });
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://127.0.0.1');
+    if (url.pathname === '/fixture-schedule') {
+      return setTimeout(() => {
+        res.setHeader('Content-Type', 'application/json');
+        if (url.searchParams.get('error')) { res.statusCode = url.searchParams.get('error') === 'auth' ? 403 : 500; res.end(JSON.stringify({ code: res.statusCode === 403 ? '42501' : 'FIXTURE_OFFLINE', message: res.statusCode === 403 ? 'Fixture access denied' : 'Fixture schedule unavailable' })); }
+        else res.end(JSON.stringify({ name: url.searchParams.get('name') }));
+      }, Number(url.searchParams.get('delay')) || 0);
+    }
+    res.setHeader('Content-Type', req.url === '/bundle.js' ? 'application/javascript' : 'text/html');
+    res.end(req.url === '/bundle.js' ? fs.readFileSync(path.join(output, 'bundle.js')) : html);
+  });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   server.unref();
   const browser = await chromium.launch({ headless: true, ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}) });
@@ -110,6 +121,77 @@ const stubbed = ['expo-router', '@/core/contexts/TeamLeaderContext', '@/core/con
     const scheduleDownload = page.waitForEvent('download');
     await page.getByText('My Team Schedule', { exact: true }).click();
     assert.match((await scheduleDownload).suggestedFilename(), /^my-team-schedule-/); checks += 1;
+    // Exercise the actual Schedule screen with a persistent QueryClient and fixture-only RPCs.
+    let scheduleRequests = 0;
+    page.on('request', request => { if (new URL(request.url()).pathname === '/fixture-schedule') scheduleRequests += 1; });
+    await mount({ complete: true });
+    assert.equal(await page.evaluate(() => window.popupFixture.scheduleCalls), 1);
+    assert.equal(scheduleRequests, 1, 'first page load sends one request');
+    await page.evaluate(() => window.leaveScheduleFixture());
+    await page.getByText('Fixture away').waitFor();
+    await page.evaluate(() => window.returnScheduleFixture());
+    await page.getByRole('button', { name: 'View participants for Speech Competition' }).waitFor();
+    assert.equal(await page.evaluate(() => window.popupFixture.scheduleCalls), 1, 'fresh cache should avoid another request');
+    assert.equal(scheduleRequests, 1, 'returning to the fresh page sends no network request');
+    await page.evaluate(() => { window.popupFixture.scheduleDelay = 450; window.popupFixture.scheduleName = 'Updated Competition'; });
+    await page.getByRole('button', { name: 'Refresh page data' }).click();
+    await page.getByText('Refreshing…').waitFor();
+    assert.ok(await page.getByRole('button', { name: 'View participants for Speech Competition' }).isVisible(), 'cached schedule stays visible while refreshing');
+    await page.getByRole('button', { name: 'View participants for Updated Competition' }).waitFor();
+    assert.equal(await page.evaluate(() => window.popupFixture.scheduleCalls), 2);
+    assert.equal(scheduleRequests, 2, 'manual refresh sends one request');
+    for (const [width, height] of [[320, 568], [768, 1024], [1024, 768], [1366, 768]]) {
+      await page.setViewportSize({ width, height });
+      const box = await page.getByRole('button', { name: 'Refresh page data' }).boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= width + 1, `refresh button is visible at ${width}x${height}`);
+      await page.screenshot({ path: path.join(output, `refresh-${width}x${height}.png`) });
+    }
+    checks += 1;
+    await page.evaluate(() => { window.popupFixture.scheduleError = true; window.popupFixture.scheduleDelay = 50; });
+    await page.getByRole('button', { name: 'Refresh page data' }).click();
+    await page.getByText('Unable to refresh. Showing last available data.').waitFor();
+    assert.ok(await page.getByRole('button', { name: 'View participants for Updated Competition' }).isVisible(), 'network failure retains cached data');
+    await page.evaluate(() => window.updatePopupFixture({
+      userId: 'other-user', scheduleError: false, scheduleDelay: 350,
+      scheduleName: 'Other Team Competition',
+      context: { assignment_id: 'assignment-2', parent_tenant_id: 'tenant', festival_id: 'festival', festival_team_id: 'festival-team-2', organisation_id: 'team-2', team_name: 'Team Two' },
+    }));
+    await page.getByRole('button', { name: 'View participants for Other Team Competition' }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'View participants for Updated Competition' }).count(), 0, 'previous team schedule must not appear');
+    await page.evaluate(() => { window.popupFixture.scheduleError = 'auth'; window.popupFixture.scheduleDelay = 0; });
+    await page.getByRole('button', { name: 'Refresh page data' }).click();
+    await page.getByText('Fixture access denied').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'View participants for Other Team Competition' }).count(), 0, 'authorization failures hide cached schedule');
+    checks += 3;
+    await mount({ complete: true });
+    for (const name of ['dashboard', 'results', 'team', 'announcements', 'participants', 'schedule']) {
+      await page.evaluate(name => window.navigateTeamFixture(name), name);
+      await page.getByRole('button', { name: 'Refresh page data' }).waitFor();
+    }
+    const callsBefore = await page.evaluate(() => ({ ...window.popupFixture }));
+    for (const name of ['dashboard', 'results', 'team', 'announcements', 'participants', 'schedule']) {
+      await page.evaluate(name => window.navigateTeamFixture(name), name);
+      await page.getByRole('button', { name: 'Refresh page data' }).waitFor();
+    }
+    const callsAfter = await page.evaluate(() => ({ ...window.popupFixture }));
+    for (const key of ['scheduleCalls', 'resultsCalls', 'standingsCalls', 'participantCalls', 'announcementCalls']) assert.equal(callsAfter[key], callsBefore[key], `${key} remains cached on navigation`);
+    for (const [name, counter] of [['dashboard', 'scheduleCalls'], ['results', 'resultsCalls'], ['team', 'standingsCalls'], ['announcements', 'announcementCalls'], ['participants', 'participantCalls'], ['schedule', 'scheduleCalls']]) {
+      await page.evaluate(name => window.navigateTeamFixture(name), name);
+      const refresh = page.getByRole('button', { name: 'Refresh page data' });
+      await refresh.waitFor();
+      const previous = await page.evaluate(counter => window.popupFixture[counter], counter);
+      await refresh.click();
+      await page.waitForFunction(({ counter, previous }) => window.popupFixture[counter] > previous, { counter, previous });
+    }
+    for (const [name, counter] of [['programs', 'programCalls'], ['profile', 'contextCalls']]) {
+      await page.evaluate(name => window.navigateTeamFixture(name), name);
+      const refresh = page.getByRole('button', { name: 'Refresh page data' });
+      await refresh.waitFor();
+      const previous = await page.evaluate(counter => window.popupFixture[counter] || 0, counter);
+      await refresh.click();
+      await page.waitForFunction(({ counter, previous }) => (window.popupFixture[counter] || 0) > previous, { counter, previous });
+    }
+    checks += 1;
     assert.deepEqual(errors, []);
     console.log(`Passed ${checks} browser scenarios; responsive screenshots and real PDF saved in .expo/popup-browser.`);
   } finally { await browser.close(); await new Promise(resolve => server.close(resolve)); }

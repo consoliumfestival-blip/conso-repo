@@ -1,5 +1,6 @@
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React from 'react';
+import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { Alert, View } from 'react-native';
@@ -15,7 +16,8 @@ import { Separator } from '@/components/team/TeamSeparator';
 
 export default function ProfileScreen() {
   const ui = useTeamUi();
-  const { context } = useTeamLeaderContext();
+  const { context, error: contextError, refetch: refreshContext } = useTeamLeaderContext();
+  const [refreshing, setRefreshing] = useState(false);
   const { user, logoutTeamLeader } = useAuthStore();
   const router = useRouter();
 
@@ -39,6 +41,7 @@ export default function ProfileScreen() {
 
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={refreshing} error={contextError} onRefresh={() => { setRefreshing(true); void refreshContext().finally(() => setRefreshing(false)); }} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Profile" teamName={context?.team_name} subtitle="Your account and portal details" />
 

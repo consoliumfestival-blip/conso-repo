@@ -1,38 +1,34 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { View } from 'react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
-import { teamLeaderPortalService, TeamLeaderScheduleRow } from '@/services/teamLeaderPortalService';
+import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
+import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function FullScheduleScreen() {
   const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
-  const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!context) return;
-    teamLeaderPortalService.getSchedule().then((data) => {
-      const now = Date.now();
-      setSchedule([...data].sort((a, b) => {
-        const aUpcoming = a.end_time ? new Date(a.end_time).getTime() >= now : !!a.start_time && new Date(a.start_time).getTime() >= now;
-        const bUpcoming = b.end_time ? new Date(b.end_time).getTime() >= now : !!b.start_time && new Date(b.start_time).getTime() >= now;
-        if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
-        const startOrder = (a.start_time ?? '').localeCompare(b.start_time ?? '');
-        return (aUpcoming ? startOrder : -startOrder) || a.schedule_id.localeCompare(b.schedule_id);
-      }));
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [context]);
+  const scheduleQuery = useTeamReadQuery('schedule', teamLeaderPortalService.getSchedule);
+  const loading = scheduleQuery.isLoading;
+  const now = Date.now();
+  const schedule = [...(scheduleQuery.data ?? [])].sort((a, b) => {
+    const aUpcoming = a.end_time ? new Date(a.end_time).getTime() >= now : !!a.start_time && new Date(a.start_time).getTime() >= now;
+    const bUpcoming = b.end_time ? new Date(b.end_time).getTime() >= now : !!b.start_time && new Date(b.start_time).getTime() >= now;
+    if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1;
+    const startOrder = (a.start_time ?? '').localeCompare(b.start_time ?? '');
+    return (aUpcoming ? startOrder : -startOrder) || a.schedule_id.localeCompare(b.schedule_id);
+  });
 
   if (contextLoading || loading) {
     return (
@@ -46,8 +42,11 @@ export default function FullScheduleScreen() {
     );
   }
 
+  if (!context || !scheduleQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (scheduleQuery.error as Error)?.message || 'Unable to load schedule.'} onRetry={() => void scheduleQuery.retry()} /></TeamLeaderAppShell>;
+
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={scheduleQuery.isFetching} error={scheduleQuery.error} onRefresh={() => void scheduleQuery.refetch()} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Full Schedule" teamName={context?.team_name}
           subtitle="Complete event schedule for your team" />

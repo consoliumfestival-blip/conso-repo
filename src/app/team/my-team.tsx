@@ -1,34 +1,23 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { View } from 'react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
-import { teamLeaderPortalService, TeamLeaderStanding } from '@/services/teamLeaderPortalService';
+import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
 import { Skeleton } from '@/components/team/TeamSkeleton';
-import { useFocusEffect } from 'expo-router';
+import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function MyTeamScreen() {
   const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
-  const [standings, setStandings] = useState<TeamLeaderStanding[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useFocusEffect(useCallback(() => {
-    if (!context?.assignment_id) return;
-    let cancelled = false;
-    setLoading(true);
-    teamLeaderPortalService.getStandings().then((data) => {
-      if (cancelled) return;
-      setStandings(data);
-      setLoading(false);
-    }).catch(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [context?.assignment_id]));
+  const standingsQuery = useTeamReadQuery('standings', teamLeaderPortalService.getStandings);
+  const standings = standingsQuery.data ?? [];
+  const loading = standingsQuery.isLoading;
 
   if (contextLoading || loading) {
     return (
@@ -41,6 +30,8 @@ export default function MyTeamScreen() {
     );
   }
 
+  if (!context || !standingsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (standingsQuery.error as Error)?.message || 'Unable to load team standings.'} onRetry={() => void standingsQuery.retry()} /></TeamLeaderAppShell>;
+
   const ownTeam = standings.find((s) => s.is_own_team);
   const ownRank = ownTeam?.rank ?? 0;
   const totalPoints = ownTeam?.total_points ?? 0;
@@ -50,6 +41,7 @@ export default function MyTeamScreen() {
 
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={standingsQuery.isFetching} error={standingsQuery.error} onRefresh={() => void standingsQuery.refetch()} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="My Team" teamName={context?.team_name}
           subtitle="Track your team's position and points" />

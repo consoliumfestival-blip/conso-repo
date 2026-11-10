@@ -1,45 +1,26 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { View } from 'react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
-import { teamLeaderPortalService, TeamLeaderPublishedResult } from '@/services/teamLeaderPortalService';
+import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
 import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
-import { useFocusEffect } from 'expo-router';
 
 export default function ResultsScreen() {
   const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
-  const [results, setResults] = useState<TeamLeaderPublishedResult[]>([]);
-  const [loading, setLoading] = useState(true);
+  const resultsQuery = useTeamReadQuery('results', teamLeaderPortalService.getPublishedResults);
+  const results = resultsQuery.data ?? [];
+  const loading = resultsQuery.isLoading;
   const [filter, setFilter] = useState('all');
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
-
-  useFocusEffect(useCallback(() => {
-    // Changing this key retries the focused results request.
-    void reloadKey;
-    if (!context?.assignment_id) return;
-    let cancelled = false;
-    setLoadError(null);
-    setLoading(true);
-    teamLeaderPortalService.getPublishedResults().then((data) => {
-      if (cancelled) return;
-      setResults(data);
-      setLoading(false);
-    }).catch((error: any) => {
-      if (cancelled) return;
-      setLoadError(error?.message || 'Please retry the results request.');
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [context?.assignment_id, reloadKey]));
 
   if (contextLoading || loading) {
     return (
@@ -52,7 +33,7 @@ export default function ResultsScreen() {
       </TeamLeaderAppShell>
     );
   }
-  if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
+  if (!context || !resultsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (resultsQuery.error as Error)?.message || 'Unable to load results.'} onRetry={() => void resultsQuery.retry()} /></TeamLeaderAppShell>;
 
   const filtered = filter === 'all' ? results : results.filter((r) => {
     if (filter === 'medal') return r.rank != null && r.rank <= 3;
@@ -60,6 +41,7 @@ export default function ResultsScreen() {
   });
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={resultsQuery.isFetching} error={resultsQuery.error} onRefresh={() => void resultsQuery.refetch()} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Results" teamName={context?.team_name}
           subtitle={`${results.length} published result${results.length === 1 ? '' : 's'} for your team`} />

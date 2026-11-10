@@ -1,5 +1,7 @@
+import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
 import { Modal, Platform, Pressable, View, useWindowDimensions } from 'react-native';
@@ -23,27 +25,19 @@ import { TeamScheduleParticipantsModal } from '@/components/team/TeamSchedulePar
 export default function ScheduleScreen() {
   const ui = useTeamUi();
   const { context, loading: contextLoading } = useTeamLeaderContext();
-  const [schedule, setSchedule] = useState<TeamLeaderScheduleRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const scheduleQuery = useTeamReadQuery('schedule', teamLeaderPortalService.getSchedule);
+  const schedule = scheduleQuery.data ?? [];
+  const loading = scheduleQuery.isLoading;
   const [filter, setFilter] = useState('scheduled');
   const [isExporting, setIsExporting] = useState(false);
   const [exportPickerOpen, setExportPickerOpen] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [reloadKey, setReloadKey] = useState(0);
+
   const [selectedEvent, setSelectedEvent] = useState<TeamLeaderScheduleRow | null>(null);
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
   const router = useRouter();
 
-  useEffect(() => {
-    if (!context) return;
-    setLoadError(null);
-    setLoading(true);
-    teamLeaderPortalService.getSchedule().then((data) => {
-      setSchedule(data);
-      setLoading(false);
-    }).catch((error: any) => { setLoadError(error?.message || 'Please retry the schedule request.'); setLoading(false); });
-  }, [context, reloadKey]);
+
 
   if (contextLoading || loading) {
     return (
@@ -56,7 +50,7 @@ export default function ScheduleScreen() {
       </TeamLeaderAppShell>
     );
   }
-  if (loadError) return <TeamLeaderAppShell><TeamLeaderDataError message={loadError} onRetry={() => setReloadKey((key) => key + 1)} /></TeamLeaderAppShell>;
+  if (!context || !scheduleQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (scheduleQuery.error as Error)?.message || 'Unable to load schedule.'} onRetry={() => void scheduleQuery.retry()} /></TeamLeaderAppShell>;
 
   const filteredSchedules = filter === 'all' ? schedule : schedule.filter((s) => filter === 'ongoing'
     ? normalizeScheduleLifecycleStatus(s.event_status) === 'ongoing'
@@ -85,6 +79,7 @@ export default function ScheduleScreen() {
 
   return (
     <TeamLeaderAppShell>
+      <TeamReadStatus fetching={scheduleQuery.isFetching} error={scheduleQuery.error} onRefresh={() => void scheduleQuery.refetch()} />
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Schedule" teamName={context?.team_name}
           subtitle={`${schedule.length} event${schedule.length === 1 ? '' : 's'} for your team`}

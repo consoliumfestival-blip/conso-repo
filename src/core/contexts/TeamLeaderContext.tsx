@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { teamLeaderPortalService, TeamLeaderContext } from '@/services/teamLeaderPortalService';
 import { useAuthStore } from '@/core/store/authStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface TeamLeaderState {
   context: TeamLeaderContext | null;
@@ -8,6 +9,7 @@ interface TeamLeaderState {
   error: string | null;
   portalEnabled: boolean;
   refetch: () => Promise<void>;
+  invalidateAccess: () => void;
 }
 
 const TeamLeaderContextProvider = createContext<TeamLeaderState>({
@@ -16,6 +18,7 @@ const TeamLeaderContextProvider = createContext<TeamLeaderState>({
   error: null,
   portalEnabled: false,
   refetch: async () => {},
+  invalidateAccess: () => {},
 });
 
 function authContextScope(userId?: string | null, tenantId?: string | null, role?: string | null) {
@@ -27,6 +30,8 @@ export function useTeamLeaderContext() {
 }
 
 export function TeamLeaderProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
+  const previousReadScope = useRef<string | null>(null);
   const [context, setContext] = useState<TeamLeaderContext | null>(null);
   const [contextOwnerScope, setContextOwnerScope] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +43,13 @@ export function TeamLeaderProvider({ children }: { children: React.ReactNode }) 
   const userId = useAuthStore((state) => state.user?.id as string | undefined);
   const tenantId = useAuthStore((state) => state.tenant_id);
   const contextScope = authContextScope(userId, tenantId, role);
+
+  const invalidateAccess = useCallback(() => {
+    setContext(null);
+    setContextOwnerScope(contextScope);
+    setPortalEnabled(false);
+    setError('Your team access could not be verified. Please retry or sign in again.');
+  }, [contextScope]);
 
   const fetchContext = useCallback(async (requestedScope = contextScope) => {
     const currentAuth = useAuthStore.getState();
@@ -108,6 +120,15 @@ export function TeamLeaderProvider({ children }: { children: React.ReactNode }) 
     return () => window.removeEventListener('online', refreshWhenOnline);
   }, [fetchContext, role]);
 
+  const currentReadScope = context && contextOwnerScope === contextScope && role === 'team_leader'
+    ? JSON.stringify([contextScope, context.assignment_id, context.parent_tenant_id, context.festival_id, context.festival_team_id, context.organisation_id]) : null;
+  useEffect(() => {
+    if (previousReadScope.current && previousReadScope.current !== currentReadScope) {
+      queryClient.removeQueries({ predicate: query => { const name = query.queryKey[0]; return typeof name === 'string' && (name === 'team-read' || name.startsWith('team-leader-') || name.startsWith('team-program-') || name.startsWith('team-group-')); } });
+    }
+    previousReadScope.current = currentReadScope;
+  }, [currentReadScope, queryClient]);
+
   const contextBelongsToCurrentScope = role === 'team_leader' && !!contextScope && contextOwnerScope === contextScope;
 
   return (
@@ -118,6 +139,7 @@ export function TeamLeaderProvider({ children }: { children: React.ReactNode }) 
         error: contextBelongsToCurrentScope ? error : null,
         portalEnabled: contextBelongsToCurrentScope && portalEnabled,
         refetch: fetchContext,
+        invalidateAccess,
       }}
     >
       {children}

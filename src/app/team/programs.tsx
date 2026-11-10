@@ -1,3 +1,5 @@
+import { isTeamAuthorizationError } from '@/core/utils/teamReadCache';
+import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
@@ -64,7 +66,7 @@ function TeamProgramsContent() {
   const isTabletOrDesktop = width >= 768;
   const isPhone = width < 600;
   const queryClient = useQueryClient();
-  const { context, loading: contextLoading } = useTeamLeaderContext();
+  const { context, loading: contextLoading, invalidateAccess } = useTeamLeaderContext();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
   const teamFestivalId = context?.festival_id;
@@ -158,7 +160,7 @@ function TeamProgramsContent() {
   );
   const getItemLimitStatus = (itemId: string) => itemLimitStatusById.get(itemId);
   const festivalCategoriesQuery = useQuery({
-    queryKey: ['team-leader-festival-categories', context?.festival_id],
+    queryKey: ['team-leader-festival-categories', context?.festival_id, ...teamScopeKey],
     enabled: !!context?.festival_id,
     queryFn: () => festivalCategoryService.list(context!.festival_id),
     staleTime: 5 * 60 * 1000,
@@ -196,6 +198,10 @@ function TeamProgramsContent() {
       pageSize: programPageSize,
     }),
   });
+  useEffect(() => {
+    if (isTeamAuthorizationError(programsQuery.error)) invalidateAccess();
+  }, [programsQuery.error, invalidateAccess]);
+  const programDataAvailable = !!programsQuery.data && !isTeamAuthorizationError(programsQuery.error);
   const programRows = useMemo(() => programsQuery.data?.rows ?? [], [programsQuery.data?.rows]);
   useEffect(() => {
     if (programsQuery.data && programsQuery.data.page !== programPage) setProgramPage(programsQuery.data.page);
@@ -417,6 +423,7 @@ function TeamProgramsContent() {
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: teamLeaderProgramsKey }),
+        queryClient.invalidateQueries({ queryKey: ['team-read'] }),
         queryClient.invalidateQueries({ queryKey: individualRosterKeyPrefix }),
         queryClient.invalidateQueries({ queryKey: groupRosterKeyPrefix }),
         queryClient.invalidateQueries({ queryKey: ['team-leader-participant-programs', context?.festival_id, ...teamScopeKey] }),
@@ -498,6 +505,7 @@ function TeamProgramsContent() {
     try {
       const created = await teamLeaderPortalService.createGeneralEntry(activeGeneralProgram.item_id, selectedGeneralParticipantIds);
       if (context?.festival_id) await invalidateGeneralMembership(queryClient, context.festival_id, selectedGeneralParticipantIds);
+      await queryClient.invalidateQueries({ queryKey: ['team-read'] });
       await queryClient.invalidateQueries({
         queryKey: teamLeaderProgramsKey,
       });
@@ -550,6 +558,7 @@ function TeamProgramsContent() {
     setNotice(null);
     try {
       const result = await teamLeaderPortalService.assignProgramParticipants(selectedIndividualParticipantIds, program.item_id);
+      await queryClient.invalidateQueries({ queryKey: ['team-read'] });
       await queryClient.invalidateQueries({
         queryKey: teamLeaderProgramsKey,
       });
@@ -570,6 +579,7 @@ function TeamProgramsContent() {
     setCompletionError('');
     try {
       const result = await teamLeaderPortalService.markProgramCompleted(program.item_id);
+      await queryClient.invalidateQueries({ queryKey: ['team-read'] });
       await queryClient.invalidateQueries({ queryKey: teamLeaderProgramsKey });
       setPendingCompletionProgram(null);
       setNotice({ kind: 'success', text: `${program.item_name_en || program.item_name_ml || program.item_code || 'Program'} marked complete for ${result.participant_count} participants.` });
@@ -955,11 +965,16 @@ function TeamProgramsContent() {
   return (
     <TeamLeaderAppShell>
       <ScrollView style={{ flex: 1, backgroundColor: ui.colors.background }} contentContainerStyle={{ width: '100%', maxWidth: 1320, alignSelf: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 28 }} keyboardShouldPersistTaps="handled">
+        <TeamReadStatus fetching={programsQuery.isFetching || itemLimitStatusQuery.isFetching || participantsLoading} error={programsQuery.error || itemLimitStatusQuery.error || participantError} onRefresh={() => {
+          setParticipantRetry(current => current + 1);
+          void Promise.all([programsQuery.refetch(), itemLimitStatusQuery.refetch(), festivalCategoriesQuery.refetch(),
+            ...(activeViewProgram ? [activeViewProgram.entry_kind === 'general_team' ? groupRosterQuery.refetch() : individualRosterQuery.refetch()] : [])]);
+        }} />
         <View style={{ marginBottom: 16, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
           <View>
             <Text style={{ color: muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Festival · {context?.festival_name || context?.team_name || 'Team portal'}</Text>
             <Text style={{ color: ui.colors.text, fontSize: 26, fontWeight: '800', marginTop: 3 }}>Programs</Text>
-            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{programsQuery.isError ? 'Programs unavailable' : programsQuery.isLoading ? 'Loading programs' : `${availableProgramCount} programs · ${activeProgramCount} ${programKind === 'participant' ? 'completed' : 'with team entries'}`}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{programsQuery.isError && !programDataAvailable ? 'Programs unavailable' : programsQuery.isLoading ? 'Loading programs' : `${availableProgramCount} programs · ${activeProgramCount} ${programKind === 'participant' ? 'completed' : 'with team entries'}`}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
             {(['participant', 'general_team'] as const).map((kind) => {
@@ -995,7 +1010,7 @@ function TeamProgramsContent() {
             {hasActiveFilters ? <Pressable accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setCategoryFilter('All categories'); setStageFilter('All stages'); setCompletionFilter('All statuses'); setProgramPage(1); }} style={{ minHeight: 44, width: isPhone ? '100%' : undefined, paddingHorizontal: 10, alignItems: isPhone ? 'flex-end' : 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.primary, fontSize: 11, fontWeight: '700' }}>Clear filters</Text></Pressable> : null}
           </View>
 
-          {programsQuery.isSuccess ? <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
+          {programDataAvailable ? <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
               <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}</Text>
               <Text style={{ color: ui.colors.primary, fontSize: 12, fontWeight: '700' }}>{progressPercent}%</Text>
@@ -1004,13 +1019,13 @@ function TeamProgramsContent() {
           </View> : null}
           {programKind === 'general_team' ? <Text style={{ marginBottom: 8, marginTop: 4, color: muted, fontSize: 11 }}>Create a group entry using eligible students from your team. The first selected student is the group leader.</Text> : null}
           {notice ? <View style={{ marginBottom: 10, paddingHorizontal: 11, paddingVertical: 9, borderRadius: 9, backgroundColor: notice.kind === 'success' ? ui.colors.primarySoft : ui.colors.dangerSoft, borderWidth: 1, borderColor: notice.kind === 'success' ? ui.colors.borderStrong : ui.colors.borderStrong }}><Text style={{ color: notice.kind === 'success' ? ui.colors.primary : ui.colors.danger, fontSize: 12 }}>{notice.text}</Text></View> : null}
-          {programsQuery.isError ? <View style={{ marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text><Pressable accessibilityRole="button" onPress={() => { void programsQuery.refetch(); }} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>Retry programs</Text></Pressable></View> : null}
+          {programsQuery.isError && !programDataAvailable ? <View style={{ marginBottom: 10, padding: 14, borderRadius: 10, backgroundColor: ui.colors.dangerSoft, borderWidth: 1, borderColor: ui.colors.borderStrong }}><Text style={{ color: ui.colors.danger, fontSize: 12 }}>{(programsQuery.error as Error).message || 'Unable to load programs.'}</Text><Pressable accessibilityRole="button" onPress={() => { void programsQuery.refetch(); }} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.danger, fontSize: 12, fontWeight: '700' }}>Retry programs</Text></Pressable></View> : null}
           {programsQuery.isLoading ? <View style={{ minHeight: 180, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color={orange} /></View> : null}
-          {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length === 0 ? <View style={{ marginTop: 4, padding: 18, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch || hasActiveFilters ? 'Try changing your search or filters.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match participants in your team. A registration restriction may also prevent entry.'}</Text></View> : null}
-          {!programsQuery.isLoading && !programsQuery.isError && visiblePrograms.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
+          {programDataAvailable && visiblePrograms.length === 0 ? <View style={{ marginTop: 4, padding: 18, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}><Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>No eligible programs found</Text><Text style={{ color: muted, fontSize: 12, lineHeight: 18, marginTop: 4 }}>{programSearch || hasActiveFilters ? 'Try changing your search or filters.' : programKind === 'general_team' ? 'No active group programs are currently available for this team.' : 'No active individual programs match participants in your team. A registration restriction may also prevent entry.'}</Text></View> : null}
+          {programDataAvailable && visiblePrograms.length > 0 ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 12 }}>
             {visiblePrograms.map((program) => programCard(program, cardWidth))}
           </View> : null}
-          {programsQuery.isSuccess && (programsQuery.data.has_previous || programsQuery.data.has_more) ? <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          {programDataAvailable && programsQuery.data && (programsQuery.data.has_previous || programsQuery.data.has_more) ? <View style={{ marginTop: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !programsQuery.data.has_previous || programsQuery.isFetching }} disabled={!programsQuery.data.has_previous || programsQuery.isFetching} onPress={() => setProgramPage(programsQuery.data.page - 1)} style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: border, justifyContent: 'center', opacity: !programsQuery.data.has_previous || programsQuery.isFetching ? 0.45 : 1 }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Previous</Text></Pressable>
             <Text accessibilityLiveRegion="polite" style={{ color: muted, fontSize: 12, fontWeight: '600' }}>Page {programsQuery.data.page}</Text>
             <Pressable accessibilityRole="button" accessibilityState={{ disabled: !programsQuery.data.has_more || programsQuery.isFetching }} disabled={!programsQuery.data.has_more || programsQuery.isFetching} onPress={() => setProgramPage(programsQuery.data.page + 1)} style={{ minHeight: 40, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: border, justifyContent: 'center', opacity: !programsQuery.data.has_more || programsQuery.isFetching ? 0.45 : 1 }}><Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '700' }}>Next</Text></Pressable>

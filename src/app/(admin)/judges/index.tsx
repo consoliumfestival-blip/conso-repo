@@ -69,7 +69,7 @@ export default function JudgesPage() {
   const [activeTab, setActiveTab] = useState<'judges' | 'assignments'>('judges');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [printRowCount, setPrintRowCount] = useState(18);
+  const [printRowCount, setPrintRowCount] = useState(0);
   const [printRowCountScheduleId, setPrintRowCountScheduleId] = useState<string | null>(null);
   const [isLoadingPrintRowCount, setIsLoadingPrintRowCount] = useState(false);
   const [printRowCountError, setPrintRowCountError] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export default function JudgesPage() {
 
   React.useEffect(() => {
     if (!selectedScheduleId) {
-      setPrintRowCount(18);
+      setPrintRowCount(0);
       setPrintRowCountScheduleId(null);
       setPrintRowCountError(null);
       setIsLoadingPrintRowCount(false);
@@ -107,9 +107,9 @@ export default function JudgesPage() {
 
     const schedule = (schedules as any[])?.find((s) => s.id === selectedScheduleId);
     if (!schedule?.item_id) {
-      setPrintRowCount(18);
-      setPrintRowCountScheduleId(selectedScheduleId);
-      setPrintRowCountError(null);
+      setPrintRowCount(0);
+      setPrintRowCountScheduleId(null);
+      setPrintRowCountError('Could not find the event details. Retry before printing.');
       setIsLoadingPrintRowCount(false);
       return;
     }
@@ -119,15 +119,21 @@ export default function JudgesPage() {
     setPrintRowCountError(null);
     const loadPrintRowCount = async () => {
       try {
-        const { count, error } = await supabase.rpc('get_judge_registrations', {
+        const { count, error } = await supabase.rpc('get_schedule_registrations', {
           p_schedule_id: selectedScheduleId,
-        }, { head: true, count: 'exact' });
+        }, { head: true, count: 'exact' })
+          .or('status.is.null,status.not.in.(rejected,cancelled,canceled)');
         if (!isCurrentRequest) return;
-        if (error) {
+        if (error || count === null) {
           setPrintRowCountError('Could not load the participant count. Retry before printing.');
           return;
         }
-        setPrintRowCount(count !== null && count > 0 ? count : 18);
+        setPrintRowCount(count);
+        if (count === 0) {
+          setPrintRowCountScheduleId(null);
+          setPrintRowCountError('No active entries were found for this event.');
+          return;
+        }
         setPrintRowCountScheduleId(selectedScheduleId);
       } catch {
         if (isCurrentRequest) {

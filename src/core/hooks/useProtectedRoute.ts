@@ -183,7 +183,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
+  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
 
   return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

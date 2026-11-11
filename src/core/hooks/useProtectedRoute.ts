@@ -33,6 +33,7 @@ export function useProtectedRoute() {
   const inTeamLogin = inTeamGroup && pathname === '/team/login';
   const isTeamLeader = role === 'team_leader';
   const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
+  const isAnnouncerLink = /^\/announcer\/[0-9a-f]{64}\/?$/i.test(pathname);
   const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal);
   const isInstalledAdmin = Boolean(user && role === 'admin' && !is_superadmin);
   const mainPortalRouteAllowed = !inTeamGroup
@@ -45,9 +46,10 @@ export function useProtectedRoute() {
   // role checks below remain authoritative after navigation.
   const mainPwaAdminRouteAllowed = mainPortalRouteAllowed
     || pathname === '/team-leaders'
-    || segments[0] === 'judge';
+    || segments[0] === 'judge'
+    || isAnnouncerLink;
   const teamManagementRouteAllowed = pathname === '/team-leaders' || segments[0] === '(auth)';
-  const mainPortalRouteBlocked = !mainPortalRouteAllowed && segments[0] !== '(auth)';
+  const mainPortalRouteBlocked = !mainPortalRouteAllowed && segments[0] !== '(auth)' && !isAnnouncerLink;
   const teamLeaderRouteBlocked = !inTeamGroup;
   const mustBlockInstalledPortalRoute = Boolean(initialized && (
     (!user && installedPortalMode === 'team-management' && !teamManagementRouteAllowed)
@@ -130,6 +132,7 @@ export function useProtectedRoute() {
         !inAuthGroup && 
         !inTeamLogin &&
         !isStageVenuePortal &&
+        !isAnnouncerLink &&
         segments[0] !== 'candidate' && 
         segments[0] !== 'unit-profile' && 
         !inJudgeGroup && 

@@ -18,6 +18,10 @@ import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategor
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { FestivalResult, ResultStatus } from '../../../../services/resultVisibilityService';
+import { itemResultIds } from '../../../../core/utils/itemResultSelection';
+import { AnnouncerQueue } from '../../../../components/leaderboard/AnnouncerQueue';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../../../core/config/supabase';
 
 const colors = {
   navy: ui.colors.primaryHover,
@@ -85,12 +89,21 @@ export interface ItemGroup {
 }
 
 export default function ItemResultsPage() {
-  const { tenant_id } = useAuthStore();
+  const { tenant_id, user } = useAuthStore();
 
   // Load active festival ID
   const { useActiveFestival, useItems } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const festivalId = activeFestival?.id;
+  const announcerQueue = useQuery({
+    queryKey: ['smart-announcer-admin-queue', user?.id, tenant_id, festivalId],
+    enabled: !!user?.id && !!tenant_id && !!festivalId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('smart_announcer_admin_queue', { p_tenant_id: tenant_id, p_festival_id: festivalId });
+      if (error) throw error;
+      return (data || []) as { item_id: string; announced_at: string | null; queue_position: number }[];
+    },
+  });
   const { data: festivalCategories = [] } = useFestivalCategories(festivalId, true);
   const { data: festivalItems = [] } = useItems(festivalId);
 
@@ -118,6 +131,15 @@ export default function ItemResultsPage() {
   );
 
   const itemDetailsMap = useMemo(() => new Map(festivalItems.map((item) => [item.id, item])), [festivalItems]);
+  const announcerItems = useMemo(() => {
+    const items = new Map<string, { id: string; name: string }>();
+    festivalResults.forEach(result => {
+      if (result.item_id && result.festival_id === festivalId && result.published && result.result_status === 'published') {
+        items.set(result.item_id, { id: result.item_id, name: result.item_name_ml || result.item_name || result.item_id });
+      }
+    });
+    return [...items.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [festivalResults, festivalId]);
 
   const itemCategoryCodes = useMemo(() => new Map(
     festivalItems.map((item: any) => [
@@ -219,7 +241,9 @@ export default function ItemResultsPage() {
   }, [filteredResults, publicOrderMap]);
 
   const handleItemBulkAction = async (group: ItemGroup, status: ResultStatus) => {
-    const ids = group.results.map(r => r.result_id);
+    // Group contents can be narrowed by participant/search filters; an item
+    // action must use the complete loaded item, not just the visible rows.
+    const ids = itemResultIds(festivalResults, group.item_id, festivalId);
     if (!ids.length) return;
     try {
       await bulkUpdateVisibility.mutateAsync({ resultIds: ids, status });
@@ -238,6 +262,7 @@ export default function ItemResultsPage() {
 
   return (
     <View style={styles.tableCard}>
+      {user?.id && tenant_id && festivalId ? <AnnouncerQueue key={`${user.id}:${tenant_id}:${festivalId}`} userId={user.id} tenantId={tenant_id} festivalId={festivalId} items={announcerItems} /> : null}
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
@@ -369,7 +394,7 @@ export default function ItemResultsPage() {
                       )}
                       {(itemDetailsMap.get(group.item_id)?.category_codes || []).map((code: string) => {
                         const cat = festivalCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
-                        const catName = cat ? cat.name_en : (code.charAt(0).toUpperCase() + code.slice(1));
+                        const catName = cat ? cat.name : (code.charAt(0).toUpperCase() + code.slice(1));
                         return (
                           <View key={code} style={styles.itemTypeBadge}>
                             <Text style={styles.itemTypeBadgeText}>{catName}</Text>
@@ -384,6 +409,9 @@ export default function ItemResultsPage() {
                     <View style={[styles.itemGroupStatusBadge, { backgroundColor: groupStatusBg }]}>
                       <Text style={[styles.itemGroupStatusText, { color: groupStatusColor }]}>{groupStatusText}</Text>
                     </View>
+                    {announcerQueue.data?.find(item => item.item_id === group.item_id) && <View style={styles.itemTypeBadge}>
+                      <Text style={styles.itemTypeBadgeText}>{announcerQueue.data.find(item => item.item_id === group.item_id)?.announced_at ? 'Announced' : 'To Announce'}</Text>
+                    </View>}
                   </View>
                   
                   {/* Bulk Actions for Item */}
@@ -488,7 +516,7 @@ export default function ItemResultsPage() {
                      )}
                      {(itemDetailsMap.get(previewGroup.item_id)?.category_codes || []).map((code: string) => {
                         const cat = festivalCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
-                        const catName = cat ? cat.name_en : (code.charAt(0).toUpperCase() + code.slice(1));
+                        const catName = cat ? cat.name : (code.charAt(0).toUpperCase() + code.slice(1));
                         return (
                           <View key={code} style={styles.itemTypeBadge}>
                             <Text style={styles.itemTypeBadgeText}>{catName}</Text>

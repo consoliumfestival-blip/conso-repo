@@ -18,6 +18,7 @@ export const useResultVisibility = (
   const invalidateAll = () => {
     // Invalidate the admin result list (item-results page)
     queryClient.invalidateQueries({ queryKey });
+    queryClient.invalidateQueries({ queryKey: ['smart-announcer-recommendations', tenantId, festivalId] });
     // Invalidate admin leaderboard and ALL variants of public-leaderboard (prefix match)
     // This covers: public page (no params), unit-rankings (tenant+festival), admin layout
     queryClient.invalidateQueries({ queryKey: ['admin-leaderboard'] });

@@ -85,6 +85,19 @@ export function DirectMarkEntryModal({
     });
   };
 
+  const handleScoreChange = (key: string, text: string, max: number) => {
+    const numericText = text.replace(/[^0-9]/g, '');
+    if (numericText === '') {
+      setScoresByJudge(prev => {
+        const current = { ...(prev[selectedJudge] ?? {}) };
+        delete current[key];
+        return { ...prev, [selectedJudge]: current };
+      });
+      return;
+    }
+    updateScore(key, Number(numericText), max);
+  };
+
   const getTotal = (judgeScores = scores) => {
     return entryMode === 'total_only'
       ? Number(judgeScores.total ?? 0)
@@ -95,14 +108,60 @@ export function DirectMarkEntryModal({
     if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0) {
       Alert.alert('Scoring configuration required', 'Configure maximum marks for this competition first.'); return;
     }
-    const marks = Object.fromEntries(Object.entries(scoresByJudge)
-      .filter(([, judgeScores]) => Object.keys(judgeScores).length > 0)
-      .map(([index, judgeScores]) => [Number(index), getTotal(judgeScores)]));
+    if (entryMode === 'criteria' && eventCriteria.length === 0) {
+      Alert.alert('Scoring configuration required', 'No scoring criteria are configured for this competition.'); return;
+    }
+
+    const marks: Record<number, number> = {};
+    const missingByJudge: { judge: number; fields: string[] }[] = [];
+    for (let judge = 1; judge <= judgeCount; judge += 1) {
+      const current = scoresByJudge[judge] ?? {};
+      if (entryMode === 'total_only') {
+        marks[judge] = Number(current.total ?? 0);
+        if (current.total === undefined) missingByJudge.push({ judge, fields: ['Total mark'] });
+        continue;
+      }
+      const hasCriteriaEntry = eventCriteria.some(criterion => current[criterion.key] !== undefined);
+      if (current.total !== undefined && !hasCriteriaEntry) {
+        marks[judge] = Number(current.total);
+        continue;
+      }
+      const missing = eventCriteria.filter(criterion => current[criterion.key] === undefined);
+      const completedScores = eventCriteria.reduce((next, criterion) => ({
+        ...next,
+        [criterion.key]: current[criterion.key] ?? 0,
+      }), {} as Record<string, number>);
+      marks[judge] = Object.values(completedScores).reduce((sum, value) => sum + value, 0);
+      if (missing.length > 0) {
+        missingByJudge.push({
+          judge,
+          fields: missing.map(criterion => criterion.label || criterion.key),
+        });
+      }
+    }
     if (Object.values(marks).some(total => !Number.isFinite(total) || total < 0 || total > eventTotalMarks)) {
       Alert.alert('Invalid marks', 'Check each judge mark before saving.'); return;
     }
-    onSave(marks, eventTotalMarks);
-    onClose();
+
+    const save = () => {
+      onSave(marks, eventTotalMarks);
+      onClose();
+    };
+    if (missingByJudge.length === 0) {
+      save();
+      return;
+    }
+
+    const details = missingByJudge.map(row => `Judge ${row.judge}: ${row.fields.join(', ')}`).join('\n');
+    const description = `Blank fields for Code ${codeLetter} will be saved as 0:\n${details}`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${description}\n\nContinue?`)) save();
+      return;
+    }
+    Alert.alert('Blank marks will be 0', description, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Save as 0', onPress: save },
+    ]);
   };
 
   return (
@@ -149,7 +208,7 @@ export function DirectMarkEntryModal({
                       <TextInput
                         keyboardType="numeric"
                         value={scores.total !== undefined ? scores.total.toString() : ''}
-                        onChangeText={(val) => updateScore('total', Number(val), eventTotalMarks)}
+                        onChangeText={(val) => handleScoreChange('total', val, eventTotalMarks)}
                         style={{ width: 60, height: 40, textAlign: 'center', fontSize: 16, fontWeight: 'bold' }}
                       />
                       <View className="bg-core-surface-muted-slate-100 h-full px-2 justify-center border-l border-core-border-slate-200">
@@ -168,7 +227,7 @@ export function DirectMarkEntryModal({
                         <TextInput
                           keyboardType="numeric"
                           value={scores[c.key] !== undefined ? scores[c.key].toString() : ''}
-                          onChangeText={(val) => updateScore(c.key, Number(val), c.max)}
+                          onChangeText={(val) => handleScoreChange(c.key, val, c.max)}
                           style={{ width: 50, height: 36, textAlign: 'center', fontSize: 14, fontWeight: 'bold' }}
                         />
                       </View>

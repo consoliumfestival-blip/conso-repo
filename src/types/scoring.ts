@@ -5,7 +5,7 @@ export type CompetitionPublication = {
   requestId: string;
   bracket: string | null;
   groupSize: number | null;
-  entries: { registration_id: string; raw_marks?: { total: number; maximum: number }[] }[];
+  entries: { registration_id: string; raw_marks?: { judge_slot?: number; total: number; maximum: number }[] }[];
 };
 export const competitionArguments = (input: CompetitionPublication) => ({
   p_schedule_id: input.scheduleId, p_expected_version: input.expectedVersion,

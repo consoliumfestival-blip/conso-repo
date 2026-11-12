@@ -3,7 +3,7 @@ import { AdminMarkEntryModal } from '../../../../components/ui/AdminMarkEntryMod
 import { DirectMarkEntryModal } from '../../../../components/ui/DirectMarkEntryModal';
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
+  View, Text, ScrollView, TouchableOpacity, Modal,
   ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -43,6 +43,8 @@ type ResultEntry = {
   grade: string | null;
 };
 
+type ZeroMarkSummary = { codeLetter: string; judges: string[] };
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ResultsPage() {
   const { id } = useLocalSearchParams();
@@ -79,10 +81,18 @@ export default function ResultsPage() {
   // result edits. Participant eligibility changes still update these IDs.
   const registrationIdentity = registrations.map((registration: any) => registration.id).sort().join('|');
   const scoringRegistrationIds = React.useMemo(() => registrationIdentity ? registrationIdentity.split('|') : [], [registrationIdentity]);
-  const { data: markEntries } = useMarkEntries(scheduleId);
+  const {
+    data: markEntries,
+    isLoading: markEntriesLoading,
+    isError: markEntriesError,
+  } = useMarkEntries(scheduleId, 30000);
   const { data: existingResults } = useResults(scheduleId);
   const { data: pointsConfig, error: pointsConfigError } = usePointsConfig(resolvedFestivalId ?? undefined);
-  const { data: judgeSummary } = useJudgeSubmissionSummary(scheduleId);
+  const {
+    data: judgeSummary,
+    isLoading: judgeSummaryLoading,
+    isError: judgeSummaryError,
+  } = useJudgeSubmissionSummary(scheduleId);
   const flexiblePointsConfig = React.useMemo(
     () => normalizePointsConfig(pointsConfig),
     [pointsConfig],
@@ -107,6 +117,9 @@ export default function ResultsPage() {
   const [saving, setSaving] = useState(false);
   const [published, setPublished] = useState(false);
   const [editingRegistration, setEditingRegistration] = useState<any>(null);
+  const [showZeroMarkConfirmation, setShowZeroMarkConfirmation] = useState(false);
+  const [zeroMarksExpanded, setZeroMarksExpanded] = useState(false);
+  const [zeroMarkSummary, setZeroMarkSummary] = useState<ZeroMarkSummary[]>([]);
   
   const [officialBracket, setOfficialBracket] = useState<string>('');
   const [bracketManuallyOverridden, setBracketManuallyOverridden] = useState(false);
@@ -294,6 +307,51 @@ export default function ResultsPage() {
   };
 
   const expectedJudges = schedule?.expected_judge_count || 3;
+  const activeJudgeSummary: any[] = React.useMemo(
+    () => Array.isArray(judgeSummary)
+      ? [...judgeSummary].sort((left: any, right: any) => String(left.judge_name ?? '').localeCompare(String(right.judge_name ?? '')))
+      : [],
+    [judgeSummary],
+  );
+  const assignedJudgeIds = React.useMemo(
+    () => new Set(activeJudgeSummary.map((judge: any) => judge.judge_id)),
+    [activeJudgeSummary],
+  );
+  const judgeAssignmentCountMismatch = mode === 'marks' && activeJudgeSummary.length !== expectedJudges;
+  const missingJudgeSlots = React.useCallback((reg: any): string[] => {
+    if (mode === 'direct') {
+      const marks = directMarks[reg.id]?.marks ?? {};
+      const missing = Array.from({ length: expectedJudges }, (_, index) => index + 1)
+        .filter(slot => marks[slot] === undefined)
+        .map(slot => `Judge ${slot}`);
+      const unexpected = Object.keys(marks)
+        .map(Number)
+        .filter(slot => !Number.isInteger(slot) || slot < 1 || slot > expectedJudges)
+        .map(slot => `Unexpected Judge ${slot}`);
+      const invalid = Object.entries(marks)
+        .filter(([, total]) => !Number.isFinite(Number(total))
+          || Number(total) < 0
+          || !Number.isFinite(Number(directMarks[reg.id]?.maxMark))
+          || Number(total) > Number(directMarks[reg.id]?.maxMark))
+        .map(([slot]) => `Invalid Judge ${slot}`);
+      return [...missing, ...unexpected, ...invalid];
+    }
+
+    const submittedJudgeIds = new Set(getJudgeMarks(reg.id)
+      .filter((mark: any) => mark.is_final === true
+        && assignedJudgeIds.has(mark.judge_id)
+        && mark.total_mark !== null
+        && mark.total_mark !== undefined
+        && Number.isFinite(Number(mark.total_mark))
+        && Number.isFinite(Number(mark.max_mark_snapshot))
+        && Number(mark.max_mark_snapshot) > 0
+        && Number(mark.total_mark) >= 0
+        && Number(mark.total_mark) <= Number(mark.max_mark_snapshot))
+      .map((mark: any) => mark.judge_id));
+    return activeJudgeSummary
+      .filter((judge: any) => !submittedJudgeIds.has(judge.judge_id))
+      .map((judge: any, index: number) => judge.judge_name || `Judge ${index + 1}`);
+  }, [mode, directMarks, expectedJudges, getJudgeMarks, assignedJudgeIds, activeJudgeSummary]);
 
   // Overall readiness banner for the schedule
   const overallReadiness = React.useMemo(() => {
@@ -301,20 +359,24 @@ export default function ResultsPage() {
     
     const regs = (registrations as any[]) || [];
     if (!regs.length) return null;
+
+    if (judgeAssignmentCountMismatch) {
+      return {
+        label: `🟠 ${activeJudgeSummary.length}/${expectedJudges} active judge assignments`,
+        color: 'bg-orange-50',
+        textColor: 'text-orange-700',
+      };
+    }
     
     let fullyReadyCount = 0;
     let anySubmissions = false;
 
     regs.forEach(reg => {
-      if (mode === 'direct') {
-         const marksCount = directMarks[reg.id] ? Object.keys(directMarks[reg.id].marks).length : 0;
-         if (marksCount > 0) anySubmissions = true;
-         if (marksCount >= expectedJudges) fullyReadyCount++;
-      } else {
-         const marks = getJudgeMarks(reg.id).filter((m: any) => m.is_final === true);
-         if (marks.length > 0) anySubmissions = true;
-         if (marks.length >= expectedJudges) fullyReadyCount++;
-      }
+      const marksCount = mode === 'direct'
+        ? Object.keys(directMarks[reg.id]?.marks ?? {}).length
+        : getJudgeMarks(reg.id).filter((mark: any) => mark.is_final === true && assignedJudgeIds.has(mark.judge_id)).length;
+      if (marksCount > 0) anySubmissions = true;
+      if (missingJudgeSlots(reg).length === 0) fullyReadyCount++;
     });
 
     if (fullyReadyCount === regs.length && regs.length > 0) {
@@ -324,7 +386,7 @@ export default function ResultsPage() {
       return { label: `🟠 ${fullyReadyCount}/${regs.length} participants ready`, color: 'bg-core-warning-soft-orange-50', textColor: 'text-core-warning-orange-700' };
     }
     return { label: '🟡 Waiting for judge submissions', color: 'bg-core-warning-soft-yellow-50', textColor: 'text-core-warning-yellow-700' };
-  }, [registrations, expectedJudges, published, getJudgeMarks, mode, directMarks]);
+  }, [registrations, expectedJudges, published, getJudgeMarks, mode, directMarks, activeJudgeSummary, assignedJudgeIds, missingJudgeSlots, judgeAssignmentCountMismatch]);
 
   const hasAtLeastOneResult = React.useMemo(() => {
     return Object.values(results).some(
@@ -402,7 +464,7 @@ export default function ResultsPage() {
   }, [mode, autoFill, directMarks, markEntries]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
-  const handlePublish = async () => {
+  const handlePublish = async (confirmedZeroSignature?: string) => {
     if (pointsConfigError || !pointsConfig || scoringErrors.length) {
       const message = pointsConfigError?.message || scoringErrors[0] || 'Configure points before publishing.';
       if (Platform.OS === 'web') window.alert(message); else Alert.alert('Points configuration', message);
@@ -414,42 +476,53 @@ export default function ResultsPage() {
       return;
     }
 
+    let zeroSummary: ZeroMarkSummary[] = [];
     if (mode === 'marks' || mode === 'direct') {
       const regs = (registrations as any[]) || [];
-      let missingMarksCount = 0;
-      let anySubmissions = false;
 
-      regs.forEach(reg => {
-        let count = 0;
-        if (mode === 'direct') {
-          count = directMarks[reg.id] ? Object.keys(directMarks[reg.id].marks).length : 0;
-        } else {
-          count = getJudgeMarks(reg.id).filter((m: any) => m.is_final === true).length;
+      if (mode === 'marks') {
+        if (markEntriesLoading || judgeSummaryLoading) {
+          const message = 'Wait for judge assignments and submitted marks to finish loading before publishing.';
+          if (Platform.OS === 'web') window.alert(message); else Alert.alert('Marks are loading', message);
+          return;
         }
-        
-        if (count === 0) {
-          missingMarksCount++;
-        } else {
-          anySubmissions = true;
+        if (markEntriesError || judgeSummaryError || !markEntries || !judgeSummary) {
+          const message = 'Judge assignments or marks could not be loaded. Refresh this page and try again.';
+          if (Platform.OS === 'web') window.alert(message); else Alert.alert('Unable to verify marks', message);
+          return;
         }
-      });
-
-      if (anySubmissions && missingMarksCount > 0) {
-        const warnMsg = `⚠️ WARNING: ${missingMarksCount} participant(s) have NOT received any marks! Are you absolutely sure you want to publish the results now?`;
-        
-        if (Platform.OS === 'web') {
-          const confirmed = window.confirm(warnMsg);
-          if (!confirmed) return;
-        } else {
-          const confirmed = await new Promise((resolve) => {
-            Alert.alert('Incomplete Marks Warning', warnMsg, [
-              { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-              { text: 'Publish Anyway', style: 'destructive', onPress: () => resolve(true) }
-            ]);
-          });
-          if (!confirmed) return;
+        if (activeJudgeSummary.length !== expectedJudges) {
+          const message = `This schedule requires ${expectedJudges} active judge assignments, but ${activeJudgeSummary.length} are active. Correct the assignments before publishing.`;
+          if (Platform.OS === 'web') window.alert(message); else Alert.alert('Judge assignment count', message);
+          return;
         }
       }
+
+      const missingRows = regs.flatMap(reg => {
+        const missing = missingJudgeSlots(reg);
+        return missing.length > 0 ? [`Code ${reg.code_letter}: ${missing.join(', ')}`] : [];
+      });
+      if (missingRows.length > 0) {
+        const message = `Every required judge slot must have a submitted mark. Missing marks for ${missingRows.length} participant(s):\n\n${missingRows.join('\n')}`;
+        if (Platform.OS === 'web') window.alert(message); else Alert.alert('Required marks are missing', message);
+        return;
+      }
+
+      zeroSummary = regs.flatMap(reg => {
+        const zeroJudges = mode === 'direct'
+          ? Object.entries(directMarks[reg.id]?.marks ?? {})
+            .filter(([, total]) => Number(total) === 0)
+            .map(([slot]) => `Judge ${slot}`)
+          : getJudgeMarks(reg.id)
+            .filter((mark: any) => mark.is_final === true
+              && assignedJudgeIds.has(mark.judge_id)
+              && mark.total_mark !== null
+              && mark.total_mark !== undefined
+              && Number.isFinite(Number(mark.total_mark))
+              && Number(mark.total_mark) === 0)
+            .map((mark: any, index: number) => activeJudgeSummary.find((judge: any) => judge.judge_id === mark.judge_id)?.judge_name || `Judge ${index + 1}`);
+        return zeroJudges.length > 0 ? [{ codeLetter: reg.code_letter, judges: zeroJudges }] : [];
+      });
     }
 
     // Lock guard for republishing
@@ -468,6 +541,14 @@ export default function ResultsPage() {
         return;
       }
     }
+
+    const zeroSignature = JSON.stringify(zeroSummary);
+    if (zeroSummary.length > 0 && confirmedZeroSignature !== zeroSignature) {
+      setZeroMarkSummary(zeroSummary);
+      setZeroMarksExpanded(false);
+      setShowZeroMarkConfirmation(true);
+      return;
+    }
     
     setSaving(true);
     try {
@@ -484,9 +565,13 @@ export default function ResultsPage() {
         requestId: '',
         entries: (registrations as any[]).map(registration => ({
           registration_id: registration.id,
-          ...(mode === 'direct' ? { raw_marks: Object.values(directMarks[registration.id]?.marks ?? {}).map(total => ({
-            total, maximum: directMarks[registration.id]?.maxMark,
-          })) } : {}),
+          ...(mode === 'direct' ? { raw_marks: Object.entries(directMarks[registration.id]?.marks ?? {})
+            .map(([slot, total]) => ({
+              judge_slot: Number(slot),
+              total,
+              maximum: directMarks[registration.id]?.maxMark ?? 0,
+            }))
+            .sort((left, right) => left.judge_slot - right.judge_slot) } : {}),
         })),
       };
       const signature = JSON.stringify(input);
@@ -942,7 +1027,7 @@ export default function ResultsPage() {
           <View className="flex-1">
             <SsfButton
               label={(published && !forceRepublishConfirmed) ? '✅ Results Published' : '🚀 Publish Results'}
-              onPress={handlePublish}
+              onPress={() => { void handlePublish(); }}
               isLoading={saving}
               disabled={!hasAtLeastOneResult}
               className={`${published && !forceRepublishConfirmed ? 'opacity-80' : ''} ${!hasAtLeastOneResult ? 'opacity-50' : ''}`}
@@ -950,6 +1035,62 @@ export default function ResultsPage() {
           </View>
         </View>
       </View>
+
+      <Modal
+        visible={showZeroMarkConfirmation}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowZeroMarkConfirmation(false)}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center px-4 py-6">
+          <View className="w-full max-w-lg max-h-[85%] overflow-hidden rounded-2xl bg-white shadow-xl">
+            <View className="px-5 py-4 border-b border-amber-200 bg-amber-50">
+              <Text className="font-poppins-bold text-lg text-amber-900">Review explicit zero marks</Text>
+              <Text className="font-poppins text-sm text-amber-800 mt-1">
+                {zeroMarkSummary.length} participant(s) have at least one judge entry of 0. These are submitted marks, not missing entries.
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setZeroMarksExpanded(value => !value)}
+              className="px-5 py-3 border-b border-slate-100"
+              accessibilityRole="button"
+            >
+              <Text className="font-poppins-bold text-sm text-slate-800">
+                {zeroMarksExpanded ? 'Hide details' : `View affected participants (${zeroMarkSummary.length})`}
+              </Text>
+            </TouchableOpacity>
+            {zeroMarksExpanded && (
+              <ScrollView className="px-5 py-2" keyboardShouldPersistTaps="handled">
+                {zeroMarkSummary.map(row => (
+                  <View key={row.codeLetter} className="py-2 border-b border-slate-100">
+                    <Text className="font-poppins-bold text-sm text-slate-800">Code {row.codeLetter}</Text>
+                    <Text className="font-poppins text-xs text-slate-600 mt-0.5">0 entered by {row.judges.join(', ')}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+            <View className="flex-row gap-3 p-4 border-t border-slate-100">
+              <TouchableOpacity
+                onPress={() => setShowZeroMarkConfirmation(false)}
+                className="flex-1 h-11 rounded-xl border border-slate-300 items-center justify-center"
+              >
+                <Text className="font-poppins-bold text-slate-700">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={saving}
+                onPress={() => {
+                  const signature = JSON.stringify(zeroMarkSummary);
+                  setShowZeroMarkConfirmation(false);
+                  void handlePublish(signature);
+                }}
+                className={`flex-1 h-11 rounded-xl items-center justify-center ${saving ? 'bg-slate-400' : 'bg-amber-700'}`}
+              >
+                <Text className="font-poppins-bold text-white">Confirm & Publish</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Admin Re-Entry Modal */}
       {editingRegistration && schedule && activeFestival && (

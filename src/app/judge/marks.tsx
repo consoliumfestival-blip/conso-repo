@@ -59,6 +59,9 @@ export default function JudgeMarksPage() {
   const [eventGuidelines, setEventGuidelines] = useState<string | null>(null);
   const [eventTimeLimit, setEventTimeLimit] = useState<string | null>(null);
   const [showGuidelines, setShowGuidelines] = useState(false);
+  const [showZeroConfirmation, setShowZeroConfirmation] = useState(false);
+  const [pendingFinalScores, setPendingFinalScores] = useState<Record<string, Record<string, number>> | null>(null);
+  const [blankMarkSummary, setBlankMarkSummary] = useState<Array<{ codeLetter: string; fields: string[] }>>([]);
 
   // Mobile states
   const [activeRegIndex, setActiveRegIndex] = useState(0);
@@ -298,7 +301,15 @@ export default function JudgeMarksPage() {
       && eventCriteria.every(criterion => marks[regId]?.[criterion.key] !== undefined);
   };
 
-  const submitMarks = async () => {
+  const submitMarks = async (finalScores: Record<string, Record<string, number>>) => {
+    if (syncQueue.length > 0 || syncStatus !== 'synced') {
+      const message = syncStatus === 'offline'
+        ? 'Draft marks are not synced yet. Reconnect and wait for them to save before final submission.'
+        : 'Please wait for draft marks to finish saving before final submission.';
+      if (Platform.OS === 'web') window.alert(message); else Alert.alert('Marks still saving', message);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const criteriaSnapshot = eventCriteria.map(c => ({
@@ -306,11 +317,17 @@ export default function JudgeMarksPage() {
         label: c.label,
         max: c.max,
       }));
-      const entries = registrations.map((reg) => ({
-        registrationId: reg.id,
-        criteriaScores: entryMode === 'total_only' ? {} : (marks[reg.id] ?? {}),
-        totalMark: getTotal(reg.id),
-      }));
+      const entries = registrations.map((reg) => {
+        const scores = finalScores[reg.id] ?? {};
+        const totalMark = entryMode === 'total_only'
+          ? Number(scores.total ?? 0)
+          : eventCriteria.reduce((sum, criterion) => sum + Number(scores[criterion.key] ?? 0), 0);
+        return {
+          registrationId: reg.id,
+          criteriaScores: entryMode === 'total_only' ? {} : scores,
+          totalMark,
+        };
+      });
       const result = await databaseProvider.submitJudgeMarks({
         token: session.token,
         entries,
@@ -318,11 +335,8 @@ export default function JudgeMarksPage() {
         maxMark: eventTotalMarks,
         criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [],
       });
-      if (result.error) {
-        throw new Error(`Failed to submit all marks: ${result.error.message}`);
-      }
+      if (result.error) throw new Error(`Failed to submit all marks: ${result.error.message}`);
 
-      // Log the activity
       try {
         await databaseProvider.logJudgeActivity({
           judgeId: session.judge_id,
@@ -335,69 +349,121 @@ export default function JudgeMarksPage() {
             entryMode,
             scoringRuleId,
             maxMark: eventTotalMarks,
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         });
       } catch (logErr) {
         console.error('Failed to log MARKS_SUBMITTED', logErr);
       }
 
-      // Clear local session
       await AsyncStorage.removeItem('judge_session_token');
       await AsyncStorage.removeItem('judge_session_data');
-
+      setShowZeroConfirmation(false);
+      setPendingFinalScores(null);
       setSubmitted(true);
     } catch (e: any) {
-      if (Platform.OS === 'web') {
-        window.alert(e.message);
-      } else {
-        Alert.alert('Error', e.message);
-      }
+      if (Platform.OS === 'web') window.alert(e.message);
+      else Alert.alert('Error', e.message);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleSubmitAll = async () => {
-    const incomplete = registrations.filter(reg => !isRegistrationComplete(reg.id));
-    if (incomplete.length > 0) {
-      if (Platform.OS === 'web') {
-        window.alert(
-          entryMode === 'total_only'
-            ? `Incomplete Marks: ${incomplete.length} participant(s) still need a total mark.`
-            : `Incomplete Marks: ${incomplete.length} participant(s) still need marks in all criteria.`
-        );
-      } else {
-        Alert.alert(
-          'Incomplete Marks',
-          entryMode === 'total_only'
-            ? `${incomplete.length} participant(s) still need a total mark.`
-            : `${incomplete.length} participant(s) still need marks in all criteria.`
-        );
-      }
+    if (registrations.length === 0) return;
+    if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0
+      || (entryMode === 'criteria' && eventCriteria.length === 0)) {
+      const message = 'Scoring configuration is incomplete. Ask an administrator to review this competition before submitting.';
+      if (Platform.OS === 'web') window.alert(message); else Alert.alert('Scoring configuration', message);
       return;
     }
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('⚠️ Final Submission\n\nOnce submitted, you cannot change the marks. This access code will expire.\n\nAre you sure?');
-      if (confirmed) {
-        await submitMarks();
+    const finalScores: Record<string, Record<string, number>> = {};
+    const blanks: { codeLetter: string; fields: string[] }[] = [];
+    const isEnteredMark = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isFinite(value);
+
+    registrations.forEach(reg => {
+      const current = marks[reg.id] ?? {};
+      if (entryMode === 'total_only') {
+        finalScores[reg.id] = { total: isEnteredMark(current.total) ? current.total : 0 };
+        if (!isEnteredMark(current.total)) blanks.push({ codeLetter: reg.code_letter, fields: ['Total mark'] });
+        return;
       }
-    } else {
-      Alert.alert(
-        '⚠️ Final Submission',
-        'Once submitted, you cannot change the marks. This access code will expire.\n\nAre you sure?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Submit Final',
-            style: 'destructive',
-            onPress: submitMarks,
-          },
-        ]
-      );
-    }
+
+      const missingCriteria = eventCriteria.filter(criterion => !isEnteredMark(current[criterion.key]));
+      finalScores[reg.id] = eventCriteria.reduce((completed, criterion) => ({
+        ...completed,
+        [criterion.key]: isEnteredMark(current[criterion.key]) ? current[criterion.key] : 0,
+      }), {} as Record<string, number>);
+      if (missingCriteria.length > 0) {
+        blanks.push({
+          codeLetter: reg.code_letter,
+          fields: missingCriteria.map(criterion => criterion.label || criterion.key),
+        });
+      }
+    });
+
+    setPendingFinalScores(finalScores);
+    setBlankMarkSummary(blanks);
+    setShowZeroConfirmation(true);
   };
+
+  const ZeroConfirmationModal = () => (
+    <Modal
+      visible={showZeroConfirmation}
+      transparent
+      animationType="fade"
+      onRequestClose={() => !submitting && setShowZeroConfirmation(false)}
+    >
+      <View className="flex-1 bg-black/50 items-center justify-center px-4 py-6">
+        <View className="w-full max-w-lg max-h-[85%] overflow-hidden rounded-2xl bg-white shadow-xl">
+          <View className={`px-5 py-4 border-b ${blankMarkSummary.length ? 'border-amber-200 bg-amber-50' : 'border-slate-200 bg-slate-50'}`}>
+            <Text className={`font-poppins-bold text-lg ${blankMarkSummary.length ? 'text-amber-900' : 'text-slate-900'}`}>
+              {blankMarkSummary.length ? 'Confirm blank marks as 0' : 'Final submission'}
+            </Text>
+            <Text className="font-poppins text-sm text-slate-600 mt-1">
+              {blankMarkSummary.length
+                ? `${blankMarkSummary.length} participant(s) have blank mark fields. They will be submitted as 0.`
+                : 'All mark fields are filled. Final submission locks these marks and expires this access code.'}
+            </Text>
+          </View>
+
+          {blankMarkSummary.length > 0 && (
+            <ScrollView className="px-5 py-3" keyboardShouldPersistTaps="handled">
+              {blankMarkSummary.map(row => (
+                <View key={row.codeLetter} className="py-2 border-b border-slate-100">
+                  <Text className="font-poppins-bold text-sm text-slate-800">Code {row.codeLetter}</Text>
+                  <Text className="font-poppins text-xs text-slate-600 mt-0.5">0 for: {row.fields.join(', ')}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          <View className="flex-row gap-3 p-4 border-t border-slate-100">
+            <TouchableOpacity
+              disabled={submitting}
+              onPress={() => setShowZeroConfirmation(false)}
+              className="flex-1 h-11 rounded-xl border border-slate-300 items-center justify-center"
+            >
+              <Text className="font-poppins-bold text-slate-700">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={submitting || !pendingFinalScores}
+              onPress={() => pendingFinalScores && void submitMarks(pendingFinalScores)}
+              className={`flex-1 h-11 rounded-xl items-center justify-center ${submitting ? 'bg-slate-400' : 'bg-slate-900'}`}
+            >
+              {submitting ? <ActivityIndicator color="#FFF" /> : (
+                <Text className="font-poppins-bold text-white">
+                  {blankMarkSummary.length ? 'Confirm 0 & Submit' : 'Submit Final'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   // ─── Submitted success screen ─────────────────────────────────────────────
   if (submitted) {
@@ -520,8 +586,6 @@ export default function JudgeMarksPage() {
     const total = activeReg ? getTotal(activeReg.id) : 0;
     const grade = activeReg ? calculateGrade(total, eventTotalMarks, gradeContext) : '—';
     const allDone = activeReg ? isRegistrationComplete(activeReg.id) : false;
-    const allMarked = registrations.length > 0
-      && registrations.every(reg => isRegistrationComplete(reg.id));
 
     return (
       <View className="flex-1 bg-slate-50">
@@ -790,7 +854,7 @@ export default function JudgeMarksPage() {
               <Text className="font-poppins-bold text-slate-700 text-sm">◀ Prev</Text>
             </TouchableOpacity>
 
-            {activeRegIndex === registrations.length - 1 && allMarked ? (
+            {activeRegIndex === registrations.length - 1 ? (
               <TouchableOpacity
                 onPress={handleSubmitAll}
                 disabled={submitting}
@@ -820,6 +884,7 @@ export default function JudgeMarksPage() {
           </View>
         )}
       {GuidelinesModal()}
+      {ZeroConfirmationModal()}
     </View>
   );
 };
@@ -1010,6 +1075,7 @@ export default function JudgeMarksPage() {
         </TouchableOpacity>
       </View>
       {GuidelinesModal()}
+      {ZeroConfirmationModal()}
     </View>
   );
 }

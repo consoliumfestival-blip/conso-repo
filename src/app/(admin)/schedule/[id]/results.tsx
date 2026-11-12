@@ -3,7 +3,7 @@ import { AdminMarkEntryModal } from '../../../../components/ui/AdminMarkEntryMod
 import { DirectMarkEntryModal } from '../../../../components/ui/DirectMarkEntryModal';
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, Modal,
+  View, Text, ScrollView, TouchableOpacity, Modal, TextInput,
   ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -127,6 +127,9 @@ export default function ResultsPage() {
   const [officialBracket, setOfficialBracket] = useState<string>('');
   const [bracketManuallyOverridden, setBracketManuallyOverridden] = useState(false);
   const [forceRepublishConfirmed, setForceRepublishConfirmed] = useState(false);
+  const [unlockDialogVisible, setUnlockDialogVisible] = useState(false);
+  const [unlockCode, setUnlockCode] = useState('');
+  const [unlockError, setUnlockError] = useState('');
   
   const hasInitialized = React.useRef(false);
 
@@ -640,6 +643,27 @@ export default function ResultsPage() {
     }
   };
 
+  const closeUnlockDialog = () => {
+    setUnlockDialogVisible(false);
+    setUnlockCode('');
+    setUnlockError('');
+  };
+
+  const confirmUnlock = () => {
+    if (unlockScheduleMarks.isPending) return;
+    if (!schedule?.tenant_id || unlockCode.trim().toLowerCase() !== schedule.tenant_id.toLowerCase()) {
+      setUnlockError('Tenant ID does not match this schedule.');
+      return;
+    }
+    unlockScheduleMarks.mutate(scheduleId, {
+      onSuccess: () => {
+        setPublished(false);
+        setForceRepublishConfirmed(false);
+        closeUnlockDialog();
+      },
+    });
+  };
+
   // ── UI helpers ─────────────────────────────────────────────────────────────
   if (isLoading) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 60 }} />;
 
@@ -1040,27 +1064,9 @@ export default function ResultsPage() {
           {published && (mode === 'marks' || mode === 'direct') && (
             <TouchableOpacity
               onPress={() => {
-                const message = mode === 'direct'
-                  ? 'Results will be unpublished for correction. You can then edit the direct-entry marks and publish the results again. Continue?'
-                  : 'Results will be unpublished for correction. Judge marks will remain finalized; only marks you edit and save will change. Continue?';
-                const unlock = () => unlockScheduleMarks.mutate(scheduleId, {
-                  onSuccess: () => {
-                    setPublished(false);
-                    setForceRepublishConfirmed(false);
-                  },
-                });
-                if (Platform.OS === 'web') {
-                  if (window.confirm(message)) unlock();
-                } else {
-                  Alert.alert(
-                    "Enable Mark Editing",
-                    message,
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { text: "Continue", style: "destructive", onPress: unlock }
-                    ]
-                  );
-                }
+                setUnlockCode('');
+                setUnlockError('');
+                setUnlockDialogVisible(true);
               }}
               disabled={unlockScheduleMarks.isPending}
               className={`h-12 px-4 rounded-xl items-center justify-center border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 ${unlockScheduleMarks.isPending ? 'opacity-50' : ''}`}
@@ -1079,6 +1085,40 @@ export default function ResultsPage() {
           </View>
         </View>
       </View>
+
+      <Modal visible={unlockDialogVisible} transparent animationType="fade" onRequestClose={() => { if (!unlockScheduleMarks.isPending) closeUnlockDialog(); }}>
+        <View className="flex-1 bg-black/40 items-center justify-center p-4">
+          <View className="w-full max-w-md rounded-2xl bg-core-surface-white p-5">
+            <Text className="font-poppins-bold text-lg text-ssf-text">Unlock Marks</Text>
+            <Text className="font-poppins text-sm text-ssf-text-muted mt-2 mb-4">
+              {mode === 'direct'
+                ? 'Enter this schedule’s tenant ID to unpublish the results. You can then edit direct-entry marks and publish again.'
+                : 'Enter this schedule’s tenant ID to unpublish the results. Judge marks remain finalized; you can edit and save corrections.'}
+            </Text>
+            <TextInput
+              accessibilityLabel="Tenant ID unlock code"
+              placeholder="Tenant ID"
+              secureTextEntry
+              value={unlockCode}
+              onChangeText={(value) => { setUnlockCode(value); setUnlockError(''); }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!unlockScheduleMarks.isPending}
+              onSubmitEditing={confirmUnlock}
+              className="h-11 rounded-lg border border-ui-border px-3 font-poppins text-ssf-text"
+            />
+            {!!unlockError && <Text accessibilityRole="alert" className="mt-2 font-poppins text-sm text-core-danger-red-700">{unlockError}</Text>}
+            <View className="mt-4 flex-row justify-end gap-2">
+              <TouchableOpacity onPress={closeUnlockDialog} disabled={unlockScheduleMarks.isPending} className="h-11 justify-center rounded-lg border border-ui-border px-4">
+                <Text className="font-poppins-bold text-ssf-text">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={confirmUnlock} disabled={unlockScheduleMarks.isPending || !unlockCode.trim()} className={`h-11 justify-center rounded-lg bg-core-danger-red-700 px-4 ${unlockScheduleMarks.isPending || !unlockCode.trim() ? 'opacity-50' : ''}`}>
+                <Text className="font-poppins-bold text-white">{unlockScheduleMarks.isPending ? 'Unlocking…' : 'Unlock'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={showZeroMarkConfirmation}

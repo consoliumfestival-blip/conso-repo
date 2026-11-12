@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert, Platform } from 'react-native';
 import { useAuthStore } from '../store/authStore';
 import { judgeService } from '../../services/judgeService';
 import { useFestival } from './useFestival';
@@ -129,7 +130,9 @@ export const useJudges = () => {
 
   const unlockScheduleMarks = useMutation({
       onError: (err: any) => {
-        window.alert("Error unlocking marks: " + err.message);
+        const message = "Error unlocking marks: " + err.message;
+        if (Platform.OS === 'web') window.alert(message);
+        else Alert.alert('Unlock Marks', message);
       },
     mutationFn: (scheduleId: string) => judgeService.unlockScheduleMarks(scheduleId),
     onSuccess: (_, scheduleId) => {

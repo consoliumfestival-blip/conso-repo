@@ -1037,23 +1037,27 @@ export default function ResultsPage() {
           </View>
         )}
         <View className="flex-row gap-x-2">
-          {mode === 'marks' && (
+          {published && (mode === 'marks' || mode === 'direct') && (
             <TouchableOpacity
               onPress={() => {
+                const message = mode === 'direct'
+                  ? 'Results will be unpublished for correction. You can then edit the direct-entry marks and publish the results again. Continue?'
+                  : 'Results will be unpublished for correction. Judge marks will remain finalized; only marks you edit and save will change. Continue?';
+                const unlock = () => unlockScheduleMarks.mutate(scheduleId, {
+                  onSuccess: () => {
+                    setPublished(false);
+                    setForceRepublishConfirmed(false);
+                  },
+                });
                 if (Platform.OS === 'web') {
-                  const confirmed = window.confirm(
-                    "Results will be unpublished for correction. Judge marks will remain finalized; only marks you edit and save will change. Continue?",
-                  );
-                  if (confirmed) {
-                    unlockScheduleMarks.mutate(scheduleId, { onSuccess: () => setPublished(false) });
-                  }
+                  if (window.confirm(message)) unlock();
                 } else {
                   Alert.alert(
                     "Enable Mark Editing",
-                    "Results will be unpublished for correction. Judge marks will remain finalized; only marks you edit and save will change. Proceed?",
+                    message,
                     [
                       { text: "Cancel", style: "cancel" },
-                      { text: "Continue", style: "destructive", onPress: () => unlockScheduleMarks.mutate(scheduleId, { onSuccess: () => setPublished(false) }) }
+                      { text: "Continue", style: "destructive", onPress: unlock }
                     ]
                   );
                 }

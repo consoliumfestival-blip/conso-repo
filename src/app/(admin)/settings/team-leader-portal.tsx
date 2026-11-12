@@ -632,6 +632,9 @@ export default function TeamLeaderPortalAdmin() {
         <Text className="text-sm text-muted-foreground mt-0.5">
           Assign and manage team leaders
         </Text>
+        <TouchableOpacity accessibilityRole="button" onPress={() => router.push('/(admin)/smart-announcer' as any)} className="mt-3 self-start rounded-lg border border-border px-3 py-2">
+          <Text className="text-sm font-semibold text-primary">Open Smart Announcer</Text>
+        </TouchableOpacity>
       </View>
 
       <Card

@@ -19,7 +19,6 @@ import { useResultVisibility } from '../../../../core/hooks/useResultVisibility'
 import { useAuthStore } from '../../../../core/store/authStore';
 import { FestivalResult, ResultStatus } from '../../../../services/resultVisibilityService';
 import { itemResultIds } from '../../../../core/utils/itemResultSelection';
-import { AnnouncerQueue } from '../../../../components/leaderboard/AnnouncerQueue';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../../core/config/supabase';
 
@@ -131,15 +130,6 @@ export default function ItemResultsPage() {
   );
 
   const itemDetailsMap = useMemo(() => new Map(festivalItems.map((item) => [item.id, item])), [festivalItems]);
-  const announcerItems = useMemo(() => {
-    const items = new Map<string, { id: string; name: string }>();
-    festivalResults.forEach(result => {
-      if (result.item_id && result.festival_id === festivalId && result.published && result.result_status === 'published') {
-        items.set(result.item_id, { id: result.item_id, name: result.item_name_ml || result.item_name || result.item_id });
-      }
-    });
-    return [...items.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [festivalResults, festivalId]);
 
   const itemCategoryCodes = useMemo(() => new Map(
     festivalItems.map((item: any) => [
@@ -262,7 +252,6 @@ export default function ItemResultsPage() {
 
   return (
     <View style={styles.tableCard}>
-      {user?.id && tenant_id && festivalId ? <AnnouncerQueue key={`${user.id}:${tenant_id}:${festivalId}`} userId={user.id} tenantId={tenant_id} festivalId={festivalId} items={announcerItems} /> : null}
       {/* Header */}
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>

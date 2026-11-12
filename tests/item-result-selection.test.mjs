@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { itemResultIds } from '../src/core/utils/itemResultSelection.ts';
+import { hasGrade, itemResultIds } from '../src/core/utils/itemResultSelection.ts';
+
+test('only results with a grade appear in item details', () => {
+  assert.equal(hasGrade({ total_score: 0, grade: null }), false);
+  assert.equal(hasGrade({ total_score: null, grade: 'A' }), true);
+  assert.equal(hasGrade({ total_score: null, grade: null }), false);
+  assert.equal(hasGrade({ total_score: null, grade: ' - ' }), false);
+});
 
 test('item actions include every loaded matching result and never another festival', () => {
   const results = [
@@ -13,4 +20,13 @@ test('item actions include every loaded matching result and never another festiv
   assert.deepEqual(itemResultIds(results, 'item', 'f1'), ['a', 'b']);
   assert.deepEqual(itemResultIds(results, 'result:e', 'f1'), ['e']);
   assert.deepEqual(itemResultIds(results, 'item', null), []);
+});
+
+test('item visibility actions exclude results without grades', () => {
+  const results = [
+    { result_id: 'marked', item_id: 'item', festival_id: 'f1', total_score: 0, grade: null },
+    { result_id: 'graded', item_id: 'item', festival_id: 'f1', total_score: null, grade: 'B' },
+    { result_id: 'empty', item_id: 'item', festival_id: 'f1', total_score: null, grade: null },
+  ];
+  assert.deepEqual(itemResultIds(results.filter(hasGrade), 'item', 'f1'), ['graded']);
 });

@@ -10,17 +10,13 @@ import {
   RefreshCw,
   Search,
   X,
-  Users,
-  User as UserIcon,
 } from 'lucide-react-native';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategories';
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { FestivalResult, ResultStatus } from '../../../../services/resultVisibilityService';
-import { itemResultIds } from '../../../../core/utils/itemResultSelection';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../../../../core/config/supabase';
+import { hasGrade, itemResultIds } from '../../../../core/utils/itemResultSelection';
 
 const colors = {
   navy: ui.colors.primaryHover,
@@ -88,21 +84,12 @@ export interface ItemGroup {
 }
 
 export default function ItemResultsPage() {
-  const { tenant_id, user } = useAuthStore();
+  const { tenant_id } = useAuthStore();
 
   // Load active festival ID
   const { useActiveFestival, useItems } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const festivalId = activeFestival?.id;
-  const announcerQueue = useQuery({
-    queryKey: ['smart-announcer-admin-queue', user?.id, tenant_id, festivalId],
-    enabled: !!user?.id && !!tenant_id && !!festivalId,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('smart_announcer_admin_queue', { p_tenant_id: tenant_id, p_festival_id: festivalId });
-      if (error) throw error;
-      return (data || []) as { item_id: string; announced_at: string | null; queue_position: number }[];
-    },
-  });
   const { data: festivalCategories = [] } = useFestivalCategories(festivalId, true);
   const { data: festivalItems = [] } = useItems(festivalId);
 
@@ -123,6 +110,7 @@ export default function ItemResultsPage() {
   const [resultTypeFilter, setResultTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
   const [resultStatusFilter, setResultStatusFilter] = useState<'all' | 'unpublished' | ResultStatus>('all');
   const [previewGroup, setPreviewGroup] = useState<ItemGroup | null>(null);
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
 
   const categoryOptions = useMemo(
     () => ['all', ...festivalCategories.map((category) => category.code.toLowerCase())],
@@ -163,6 +151,7 @@ export default function ItemResultsPage() {
   // Filtered results
   const filteredResults = useMemo(() => {
     return festivalResults.filter(r => {
+      if (!hasGrade(r)) return false;
       // 1. Type filter
       const typeMatch = resultTypeFilter === 'all'
         || (resultTypeFilter === 'individual' && !r.is_group)
@@ -233,7 +222,7 @@ export default function ItemResultsPage() {
   const handleItemBulkAction = async (group: ItemGroup, status: ResultStatus) => {
     // Group contents can be narrowed by participant/search filters; an item
     // action must use the complete loaded item, not just the visible rows.
-    const ids = itemResultIds(festivalResults, group.item_id, festivalId);
+    const ids = itemResultIds(festivalResults.filter(hasGrade), group.item_id, festivalId);
     if (!ids.length) return;
     try {
       await bulkUpdateVisibility.mutateAsync({ resultIds: ids, status });
@@ -351,59 +340,37 @@ export default function ItemResultsPage() {
       ) : (
         <ScrollView style={styles.rowsScrollContainer}>
           {groupedResults.map(group => {
-            const isAllPublished = group.status_summary.published === group.status_summary.total;
             const isAllPublic = group.results.every(r => r.public_visible === true);
             const isAllPublicHidden = group.results.every(r => r.public_visible !== true);
-            const isAllReady = group.status_summary.ready === group.status_summary.total;
-            
-            let groupStatusText = 'Mixed Status';
-            let groupStatusColor = coreColor('#F59E0B', 'warning');
-            let groupStatusBg = coreColor('#FEF3C7', 'warningSoft');
-            
-            if (isAllPublished && isAllPublic) { groupStatusText = 'Public'; groupStatusColor = coreColor('#15803D', 'success'); groupStatusBg = ui.colors.successSoft; }
-            else if (isAllPublished && isAllPublicHidden) { groupStatusText = 'Admin Published'; groupStatusColor = ui.colors.info; groupStatusBg = ui.colors.infoSoft; }
-            else if (isAllReady) { groupStatusText = 'All Ready'; groupStatusColor = ui.colors.info; groupStatusBg = ui.colors.infoSoft; }
-            else if (group.status_summary.draft === group.status_summary.total) { groupStatusText = 'All Draft'; groupStatusColor = ui.colors.textMuted; groupStatusBg = coreColor('#F1F5F9', 'surfaceMuted'); }
+            const expanded = expandedItemId === group.item_id;
 
             return (
               <View key={group.item_id} style={styles.itemGroupCard}>
-                {/* Item Group Header */}
-                <View style={styles.itemGroupHeader}>
-                  <View style={{ flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <TouchableOpacity
+                  style={styles.itemGroupHeader}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${group.item_name_ml || group.item_name}, ${group.results.length} results`}
+                  onPress={() => setExpandedItemId(expanded ? null : group.item_id)}
+                >
+                  <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {publicOrderMap.has(group.item_id) && (
                       <View style={{ backgroundColor: coreColor('#0F766E', 'primary'), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, minWidth: 32, alignItems: 'center' }}>
                         <Text style={{ color: coreColor('#FFFFFF', 'onPrimary'), fontFamily: 'Montserrat_700Bold', fontSize: 12 }}>#{publicOrderMap.get(group.item_id)}</Text>
                       </View>
                     )}
-                    <Text style={styles.itemGroupTitle}>{group.item_name_ml || group.item_name}</Text>
+                    <Text style={styles.itemGroupTitle} numberOfLines={1}>{group.item_name_ml || group.item_name}</Text>
                       {itemDetailsMap.get(group.item_id)?.item_code && (
                         <View style={[styles.itemTypeBadge, { backgroundColor: coreColor('#f3f4f6', 'surface'), borderColor: coreColor('#e5e7eb', 'border'), borderWidth: 1 }]}>
                           <Text style={[styles.itemTypeBadgeText, { color: coreColor('#4b5563', 'text') }]}>{itemDetailsMap.get(group.item_id).item_code}</Text>
                         </View>
                       )}
-                      {(itemDetailsMap.get(group.item_id)?.category_codes || []).map((code: string) => {
-                        const cat = festivalCategories.find(c => c.code.toLowerCase() === code.toLowerCase());
-                        const catName = cat ? cat.name : (code.charAt(0).toUpperCase() + code.slice(1));
-                        return (
-                          <View key={code} style={styles.itemTypeBadge}>
-                            <Text style={styles.itemTypeBadgeText}>{catName}</Text>
-                          </View>
-                        );
-                      })}
-                    
-                    <View style={styles.itemTypeBadge}>
-                      {group.is_group ? <Users size={12} color={coreColor(colors.navy, 'primaryText')} style={{ marginRight: 4 }} /> : <UserIcon size={12} color={coreColor(colors.navy, 'primaryText')} style={{ marginRight: 4 }} />}
-                      <Text style={styles.itemTypeBadgeText}>{group.is_group ? 'Group' : 'Individual'}</Text>
-                    </View>
-                    <View style={[styles.itemGroupStatusBadge, { backgroundColor: groupStatusBg }]}>
-                      <Text style={[styles.itemGroupStatusText, { color: groupStatusColor }]}>{groupStatusText}</Text>
-                    </View>
-                    {announcerQueue.data?.find(item => item.item_id === group.item_id) && <View style={styles.itemTypeBadge}>
-                      <Text style={styles.itemTypeBadgeText}>{announcerQueue.data.find(item => item.item_id === group.item_id)?.announced_at ? 'Announced' : 'To Announce'}</Text>
-                    </View>}
                   </View>
-                  
-                  {/* Bulk Actions for Item */}
+                  <Text style={styles.itemGroupCount}>{group.results.length}</Text>
+                  <Text style={styles.itemGroupCount}>{expanded ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+
+                {expanded && <>
                   <View style={styles.itemGroupActions}>
                     <TouchableOpacity onPress={() => setPreviewGroup(group)} style={styles.bulkActionBtn}>
                       <Eye size={16} color={coreColor(colors.navy, 'primaryText')} />
@@ -423,11 +390,10 @@ export default function ItemResultsPage() {
                       </TouchableOpacity>
                     )}
                   </View>
-                </View>
 
                 {/* nested participants */}
                 <View style={styles.itemGroupParticipants}>
-                  {group.results.sort((a, b) => (a.rank || 99) - (b.rank || 99)).map((r, i) => {
+                  {[...group.results].sort((a, b) => (a.rank || 99) - (b.rank || 99)).map((r, i) => {
                     const status = (r.result_status ?? 'draft') as ResultStatus;
                     const isLast = i === group.results.length - 1;
                     return (
@@ -473,6 +439,7 @@ export default function ItemResultsPage() {
                     );
                   })}
                 </View>
+                </>}
               </View>
             );
           })}
@@ -699,7 +666,7 @@ const styles = StyleSheet.create({
   },
   itemGroupCard: {
     marginHorizontal: 20,
-    marginVertical: 10,
+    marginVertical: 4,
     backgroundColor: ui.colors.surface,
     borderRadius: 10,
     borderWidth: 1,
@@ -708,19 +675,25 @@ const styles = StyleSheet.create({
   },
   itemGroupHeader: {
     backgroundColor: coreColor('#F8FAFC', 'surface'),
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderBottomWidth: 1,
     borderBottomColor: coreColor('#E2E8F0', 'border'),
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
+    alignItems: 'center',
+    gap: 8,
   },
   itemGroupTitle: {
+    flexShrink: 1,
     color: coreColor(colors.navy, 'primaryText'),
     fontFamily: 'Montserrat_700Bold',
-    fontSize: 16,
+    fontSize: 13,
+  },
+  itemGroupCount: {
+    color: colors.muted,
+    fontFamily: 'Montserrat_700Bold',
+    fontSize: 12,
   },
   itemTypeBadge: {
     flexDirection: 'row',
@@ -751,6 +724,7 @@ const styles = StyleSheet.create({
     gap: 8,
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
+    padding: 10,
   },
   bulkActionBtn: {
     flexDirection: 'row',

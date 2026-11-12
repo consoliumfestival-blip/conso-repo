@@ -89,9 +89,9 @@ export const useJudges = () => {
   });
 
   // ── Mark entries for a schedule ───────────────────────────────────────────────
-  const useMarkEntries = (scheduleId: string | undefined, refetchInterval?: number) => useQuery({
-    queryKey: ['markEntries', scheduleId],
-    queryFn: () => judgeService.listMarkEntries<any>(scheduleId!),
+  const useMarkEntries = (scheduleId: string | undefined, refetchInterval?: number, complete = false) => useQuery({
+    queryKey: complete ? ['markEntries', scheduleId, 'complete'] : ['markEntries', scheduleId],
+    queryFn: () => judgeService.listMarkEntries<any>(scheduleId!, complete),
     enabled: !!scheduleId,
     ...(refetchInterval ? { refetchInterval } : {}),
   });
@@ -150,6 +150,7 @@ export const useJudges = () => {
     mutationFn: (input: CompetitionPublication) => judgeService.publishResults(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
+      queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduleReadiness'] });
       queryClient.invalidateQueries({ queryKey: ['judgeSubmissionSummary'] });
       queryClient.invalidateQueries({ queryKey: ['festival-results'] });

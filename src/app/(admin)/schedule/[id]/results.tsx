@@ -27,6 +27,8 @@ import {
   validateFlexiblePointsConfig,
 } from '../../../../core/utils/flexiblePointsEngine';
 import { createRequestId } from '../../../../core/utils/requestId';
+import { completeDirectMarks } from '../../../../core/utils/completeDirectMarks';
+import { getScoringRulesForItem } from '../../../../core/utils/scoringRules';
 import type { CompetitionPublication } from '../../../../types/scoring';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -43,7 +45,7 @@ type ResultEntry = {
   grade: string | null;
 };
 
-type ZeroMarkSummary = { codeLetter: string; judges: string[] };
+type ZeroMarkSummary = { registrationId: string; codeLetter: string; judges: string[] };
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ResultsPage() {
@@ -85,7 +87,7 @@ export default function ResultsPage() {
     data: markEntries,
     isLoading: markEntriesLoading,
     isError: markEntriesError,
-  } = useMarkEntries(scheduleId, 30000);
+  } = useMarkEntries(scheduleId, 30000, true);
   const { data: existingResults } = useResults(scheduleId);
   const { data: pointsConfig, error: pointsConfigError } = usePointsConfig(resolvedFestivalId ?? undefined);
   const {
@@ -120,6 +122,7 @@ export default function ResultsPage() {
   const [showZeroMarkConfirmation, setShowZeroMarkConfirmation] = useState(false);
   const [zeroMarksExpanded, setZeroMarksExpanded] = useState(false);
   const [zeroMarkSummary, setZeroMarkSummary] = useState<ZeroMarkSummary[]>([]);
+  const [zeroConfirmationSignature, setZeroConfirmationSignature] = useState('');
   
   const [officialBracket, setOfficialBracket] = useState<string>('');
   const [bracketManuallyOverridden, setBracketManuallyOverridden] = useState(false);
@@ -477,6 +480,7 @@ export default function ResultsPage() {
     }
 
     let zeroSummary: ZeroMarkSummary[] = [];
+    const confirmedMissingMarks: NonNullable<CompetitionPublication['confirmedMissingMarks']> = [];
     if (mode === 'marks' || mode === 'direct') {
       const regs = (registrations as any[]) || [];
 
@@ -502,26 +506,49 @@ export default function ResultsPage() {
         const missing = missingJudgeSlots(reg);
         return missing.length > 0 ? [`Code ${reg.code_letter}: ${missing.join(', ')}`] : [];
       });
-      if (missingRows.length > 0) {
+      const hasInvalidDirectMarks = mode === 'direct' && regs.some(reg =>
+        missingJudgeSlots(reg).some(slot => !/^Judge \d+$/.test(slot)));
+      if (missingRows.length > 0 && hasInvalidDirectMarks) {
         const message = `Every required judge slot must have a submitted mark. Missing marks for ${missingRows.length} participant(s):\n\n${missingRows.join('\n')}`;
         if (Platform.OS === 'web') window.alert(message); else Alert.alert('Required marks are missing', message);
         return;
       }
 
+      if (mode === 'marks') {
+        for (const reg of regs) {
+          for (const judge of activeJudgeSummary) {
+            const mark = getJudgeMarks(reg.id).find((entry: any) => entry.judge_id === judge.judge_id);
+            if (mark?.is_final === true) {
+              if (mark.total_mark == null || !Number.isFinite(Number(mark.total_mark)) || Number(mark.total_mark) < 0
+                || !Number.isFinite(Number(mark.max_mark_snapshot)) || Number(mark.max_mark_snapshot) <= 0
+                || Number(mark.total_mark) > Number(mark.max_mark_snapshot)) {
+                const message = `Code ${reg.code_letter} has an invalid final mark. Review it before publishing.`;
+                if (Platform.OS === 'web') window.alert(message); else Alert.alert('Invalid mark', message);
+                return;
+              }
+            } else {
+              confirmedMissingMarks.push({ registration_id: reg.id, judge_id: judge.judge_id,
+                mark_id: mark?.id ?? null, updated_at: mark?.updated_at ?? null,
+                snapshot: mark ? { criteria_scores: mark.criteria_scores ?? null, total_mark: mark.total_mark ?? null,
+                  entry_mode_snapshot: mark.entry_mode_snapshot ?? null, max_mark_snapshot: mark.max_mark_snapshot ?? null,
+                  criteria_snapshot: mark.criteria_snapshot ?? null, is_draft: mark.is_draft ?? null } : null });
+            }
+          }
+        }
+      }
       zeroSummary = regs.flatMap(reg => {
         const zeroJudges = mode === 'direct'
-          ? Object.entries(directMarks[reg.id]?.marks ?? {})
-            .filter(([, total]) => Number(total) === 0)
-            .map(([slot]) => `Judge ${slot}`)
-          : getJudgeMarks(reg.id)
-            .filter((mark: any) => mark.is_final === true
-              && assignedJudgeIds.has(mark.judge_id)
-              && mark.total_mark !== null
-              && mark.total_mark !== undefined
-              && Number.isFinite(Number(mark.total_mark))
-              && Number(mark.total_mark) === 0)
-            .map((mark: any, index: number) => activeJudgeSummary.find((judge: any) => judge.judge_id === mark.judge_id)?.judge_name || `Judge ${index + 1}`);
-        return zeroJudges.length > 0 ? [{ codeLetter: reg.code_letter, judges: zeroJudges }] : [];
+          ? Array.from({ length: expectedJudges }, (_, index) => index + 1)
+            .filter(slot => directMarks[reg.id]?.marks?.[slot] === undefined || directMarks[reg.id]?.marks?.[slot] === 0)
+            .map(slot => `Judge ${slot}`)
+          : activeJudgeSummary.flatMap((judge: any, index: number) => {
+            const mark = getJudgeMarks(reg.id).find((entry: any) => entry.judge_id === judge.judge_id);
+            const name = judge.judge_name || `Judge ${index + 1}`;
+            if (!mark) return [`${name}: 0`];
+            if (mark.is_final !== true) return [`${name}: saved draft will be submitted; blank fields become 0`];
+            return Number(mark.total_mark) === 0 ? [`${name}: 0`] : [];
+          });
+        return zeroJudges.length > 0 ? [{ registrationId: reg.id, codeLetter: reg.code_letter, judges: zeroJudges }] : [];
       });
     }
 
@@ -542,9 +569,10 @@ export default function ResultsPage() {
       }
     }
 
-    const zeroSignature = JSON.stringify(zeroSummary);
+    const zeroSignature = JSON.stringify({ zeroSummary, confirmedMissingMarks });
     if (zeroSummary.length > 0 && confirmedZeroSignature !== zeroSignature) {
       setZeroMarkSummary(zeroSummary);
+      setZeroConfirmationSignature(zeroSignature);
       setZeroMarksExpanded(false);
       setShowZeroMarkConfirmation(true);
       return;
@@ -556,6 +584,17 @@ export default function ResultsPage() {
         throw new Error('Festival is missing for this schedule.');
       }
 
+      // Participants without any direct entries have no stored maximum yet.
+      // Resolve it using the same rule as the direct-entry dialog.
+      let defaultMaximum: number | undefined;
+      if ((mode === 'direct' && (registrations as any[]).some(registration => !directMarks[registration.id]))
+        || (mode === 'marks' && confirmedMissingMarks.length > 0)) {
+        if (!schedule) throw new Error('Schedule details are not loaded.');
+        const rules = await getScoringRulesForItem(schedule.items?.item_name_en, schedule.items?.item_name_ml,
+          schedule.items?.type, schedule.tenant_id);
+        defaultMaximum = rules.total_marks;
+      }
+
       const input: CompetitionPublication = {
         scheduleId: scheduleId as string,
         expectedVersion: flexiblePointsConfig.version,
@@ -563,13 +602,14 @@ export default function ResultsPage() {
         bracket: resolvedBracketKey,
         groupSize: isGeneralItem && flexiblePointsConfig.memberBracketsEnabled && configuredGroupSize === null ? manualGeneralSize : null,
         requestId: '',
+        ...(mode === 'marks' && confirmedMissingMarks.length ? { confirmedMissingMarks, zeroMaximum: defaultMaximum } : {}),
         entries: (registrations as any[]).map(registration => ({
           registration_id: registration.id,
-          ...(mode === 'direct' ? { raw_marks: Object.entries(directMarks[registration.id]?.marks ?? {})
+          ...(mode === 'direct' ? { raw_marks: Object.entries(completeDirectMarks(directMarks[registration.id]?.marks ?? {}, expectedJudges))
             .map(([slot, total]) => ({
               judge_slot: Number(slot),
               total,
-              maximum: directMarks[registration.id]?.maxMark ?? 0,
+              maximum: directMarks[registration.id]?.maxMark ?? defaultMaximum ?? 0,
             }))
             .sort((left, right) => left.judge_slot - right.judge_slot) } : {}),
         })),
@@ -1029,8 +1069,8 @@ export default function ResultsPage() {
               label={(published && !forceRepublishConfirmed) ? '✅ Results Published' : '🚀 Publish Results'}
               onPress={() => { void handlePublish(); }}
               isLoading={saving}
-              disabled={!hasAtLeastOneResult}
-              className={`${published && !forceRepublishConfirmed ? 'opacity-80' : ''} ${!hasAtLeastOneResult ? 'opacity-50' : ''}`}
+              disabled={!hasAtLeastOneResult && !((mode === 'direct' || mode === 'marks') && registrations.length > 0)}
+              className={`${published && !forceRepublishConfirmed ? 'opacity-80' : ''} ${!hasAtLeastOneResult && registrations.length === 0 ? 'opacity-50' : ''}`}
             />
           </View>
         </View>
@@ -1045,10 +1085,13 @@ export default function ResultsPage() {
         <View className="flex-1 bg-black/50 items-center justify-center px-4 py-6">
           <View className="w-full max-w-lg max-h-[85%] overflow-hidden rounded-2xl bg-white shadow-xl">
             <View className="px-5 py-4 border-b border-amber-200 bg-amber-50">
-              <Text className="font-poppins-bold text-lg text-amber-900">Review explicit zero marks</Text>
+              <Text className="font-poppins-bold text-lg text-amber-900">Review marks before publishing</Text>
               <Text className="font-poppins text-sm text-amber-800 mt-1">
-                {zeroMarkSummary.length} participant(s) have at least one judge entry of 0. These are submitted marks, not missing entries.
+                {mode === 'direct'
+                  ? `${zeroMarkSummary.length} participant(s) have at least one zero or blank judge mark. Blank marks will be submitted as 0.`
+                  : `${zeroMarkSummary.length} participant(s) have zero, missing or draft marks. Missing marks become 0; draft scores are preserved and submitted.`}
               </Text>
+              <Text className="font-poppins text-sm text-amber-800 mt-1">Publishing closes this event&#39;s active judge codes.</Text>
             </View>
             <TouchableOpacity
               onPress={() => setZeroMarksExpanded(value => !value)}
@@ -1062,9 +1105,9 @@ export default function ResultsPage() {
             {zeroMarksExpanded && (
               <ScrollView className="px-5 py-2" keyboardShouldPersistTaps="handled">
                 {zeroMarkSummary.map(row => (
-                  <View key={row.codeLetter} className="py-2 border-b border-slate-100">
+                  <View key={row.registrationId} className="py-2 border-b border-slate-100">
                     <Text className="font-poppins-bold text-sm text-slate-800">Code {row.codeLetter}</Text>
-                    <Text className="font-poppins text-xs text-slate-600 mt-0.5">0 entered by {row.judges.join(', ')}</Text>
+                    <Text className="font-poppins text-xs text-slate-600 mt-0.5">{row.judges.join(', ')}</Text>
                   </View>
                 ))}
               </ScrollView>
@@ -1079,7 +1122,7 @@ export default function ResultsPage() {
               <TouchableOpacity
                 disabled={saving}
                 onPress={() => {
-                  const signature = JSON.stringify(zeroMarkSummary);
+                  const signature = zeroConfirmationSignature;
                   setShowZeroMarkConfirmation(false);
                   void handlePublish(signature);
                 }}

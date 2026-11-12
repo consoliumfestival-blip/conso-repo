@@ -5,6 +5,8 @@ export type CompetitionPublication = {
   requestId: string;
   bracket: string | null;
   groupSize: number | null;
+  confirmedMissingMarks?: { registration_id: string; judge_id: string; mark_id: string | null; updated_at: string | null; snapshot: Record<string, unknown> | null }[];
+  zeroMaximum?: number;
   entries: { registration_id: string; raw_marks?: { judge_slot?: number; total: number; maximum: number }[] }[];
 };
 export const competitionArguments = (input: CompetitionPublication) => ({

@@ -1199,7 +1199,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: mapped as unknown as T[], error: null };
   }
 
-  async listMarkEntries<T>(scheduleId: string): Promise<ListResult<T>> {
+  async listMarkEntries<T>(scheduleId: string, complete = false): Promise<ListResult<T>> {
     const { data: assignments, error: assignmentsError } = await supabase
       .from('schedule_judge_assignments')
       .select('judge_id')
@@ -1215,12 +1215,31 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       return { data: [], error: null };
     }
 
-    const { data, error } = await supabase
-      .from('mark_entries')
-      .select('*, judges(name)')
-      .eq('schedule_id', scheduleId)
-      .in('judge_id', activeJudgeIds);
-    return { data: (data as T[]) ?? [], error: normalizeError(error) };
+    if (!complete) {
+      const { data, error } = await supabase.from('mark_entries').select('*, judges(name)')
+        .eq('schedule_id', scheduleId).in('judge_id', activeJudgeIds);
+      return { data: (data as T[]) ?? [], error: normalizeError(error) };
+    }
+
+    // The confirmation must include every mark even when PostgREST limits a response.
+    // Use a stable key instead of offsets, and continue until the server returns no rows.
+    const rows: T[] = [];
+    let lastId: string | undefined;
+    while (true) {
+      let query = supabase.from('mark_entries').select('*, judges(name)')
+        .eq('schedule_id', scheduleId).in('judge_id', activeJudgeIds).order('id').limit(500);
+      if (lastId) query = query.gt('id', lastId);
+      const { data, error } = await query;
+      if (error) return { data: [], error: normalizeError(error) };
+      if (!data?.length) break;
+      const nextId = data[data.length - 1].id;
+      if (typeof nextId !== 'string' || nextId === lastId) {
+        return { data: [], error: { message: 'Could not load a complete mark list. Refresh and try again.' } };
+      }
+      rows.push(...data as unknown as T[]);
+      lastId = nextId;
+    }
+    return { data: rows, error: null };
   }
 
   async upsertMarkEntry<T>(payload: Record<string, unknown>): Promise<QueryResult<T>> {
@@ -1363,8 +1382,9 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   }
 
   async publishResults(input: CompetitionPublication): Promise<QueryResult<void>> {
-    const { error } = await supabase.rpc('publish_competition_results', {
+    const { error } = await supabase.rpc('publish_results_closing_judge_codes', {
       ...competitionArguments(input), p_request_id: input.requestId,
+      p_missing: input.confirmedMissingMarks ?? [], p_zero_maximum: input.zeroMaximum ?? null,
     });
     return { data: undefined, error: normalizeError(error) };
   }

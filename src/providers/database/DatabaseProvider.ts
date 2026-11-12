@@ -116,7 +116,7 @@ export interface DatabaseProvider {
   getScheduleJudges<T>(scheduleId: string): Promise<ListResult<T>>;
 
   // Mark Entry Methods
-  listMarkEntries<T>(scheduleId: string): Promise<ListResult<T>>;
+  listMarkEntries<T>(scheduleId: string, complete?: boolean): Promise<ListResult<T>>;
   upsertMarkEntry<T>(payload: Record<string, unknown>): Promise<QueryResult<T>>;
   finalizeMarkEntry(markEntryId: string): Promise<QueryResult<void>>;
   unlockJudgeMarks(scheduleId: string, judgeId: string): Promise<QueryResult<void>>;

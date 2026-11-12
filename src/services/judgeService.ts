@@ -94,8 +94,8 @@ export const judgeService = {
     return data;
   },
 
-  async listMarkEntries<T>(scheduleId: string) {
-    const { data, error } = await judgeRepository.listMarkEntries<T>(scheduleId);
+  async listMarkEntries<T>(scheduleId: string, complete?: boolean) {
+    const { data, error } = await judgeRepository.listMarkEntries<T>(scheduleId, complete);
     if (error) throw new Error(error.message);
     return data ?? [];
   },

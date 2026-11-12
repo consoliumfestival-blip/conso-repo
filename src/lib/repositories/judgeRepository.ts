@@ -44,8 +44,8 @@ export const judgeRepository = {
   }) {
     return databaseProvider.submitJudgeMark<T>(payload);
   },
-  async listMarkEntries<T>(scheduleId: string) {
-    return databaseProvider.listMarkEntries<T>(scheduleId);
+  async listMarkEntries<T>(scheduleId: string, complete?: boolean) {
+    return databaseProvider.listMarkEntries<T>(scheduleId, complete);
   },
   async upsertMarkEntry<T>(payload: Record<string, unknown>) {
     return databaseProvider.upsertMarkEntry<T>(payload);

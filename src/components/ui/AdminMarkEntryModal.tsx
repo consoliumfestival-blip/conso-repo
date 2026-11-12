@@ -108,6 +108,21 @@ export function AdminMarkEntryModal({
     setDirtyJudges(prev => prev.includes(selectedJudgeId) ? prev : [...prev, selectedJudgeId]);
   };
 
+  const handleScoreChange = (key: string, text: string, max: number) => {
+    if (!selectedJudgeId) return;
+    const numericText = text.replace(/[^0-9]/g, '');
+    if (numericText === '') {
+      setScoresByJudge(prev => {
+        const current = { ...(prev[selectedJudgeId] ?? {}) };
+        delete current[key];
+        return { ...prev, [selectedJudgeId]: current };
+      });
+      setDirtyJudges(prev => prev.includes(selectedJudgeId) ? prev : [...prev, selectedJudgeId]);
+      return;
+    }
+    updateScore(key, Number(numericText), max);
+  };
+
   const getTotal = (judgeScores = scores) => {
     return entryMode === 'total_only'
       ? Number(judgeScores.total ?? 0)
@@ -117,44 +132,71 @@ export function AdminMarkEntryModal({
   const handleSubmit = async () => {
     if (!Number.isFinite(eventTotalMarks) || eventTotalMarks <= 0) { Alert.alert('Scoring configuration required', 'Configure maximum marks first.'); return; }
     if (!selectedJudgeId || submitting || dirtyJudges.length === 0) return;
-    setSubmitting(true);
-    try {
-      const criteriaSnapshot = eventCriteria.map(c => ({
-        key: c.key,
-        label: c.label,
-        max: c.max,
-      }));
-      
-      for (const judgeId of dirtyJudges) {
-        const judgeScores = scoresByJudge[judgeId] ?? {};
-        const total = getTotal(judgeScores);
-        if (!Number.isFinite(total) || total < 0 || total > eventTotalMarks) {
-          throw new Error('Check the marks for each judge before saving.');
+    if (entryMode === 'criteria' && eventCriteria.length === 0) { Alert.alert('Scoring configuration required', 'No scoring criteria are configured for this competition.'); return; }
+
+    const completedScoresByJudge: Record<string, Record<string, number>> = {};
+    const missingByJudge = dirtyJudges.flatMap(judgeId => {
+      const current = scoresByJudge[judgeId] ?? {};
+      if (entryMode === 'total_only') {
+        completedScoresByJudge[judgeId] = { total: current.total ?? 0 };
+        return current.total === undefined ? [{ judgeId, fields: ['Total mark'] }] : [];
+      }
+      const missing = eventCriteria.filter(criterion => current[criterion.key] === undefined);
+      completedScoresByJudge[judgeId] = eventCriteria.reduce((next, criterion) => ({
+        ...next,
+        [criterion.key]: current[criterion.key] ?? 0,
+      }), {} as Record<string, number>);
+      return missing.length > 0 ? [{ judgeId, fields: missing.map(criterion => criterion.label || criterion.key) }] : [];
+    });
+
+    const save = async () => {
+      setSubmitting(true);
+      try {
+        const criteriaSnapshot = eventCriteria.map(c => ({ key: c.key, label: c.label, max: c.max }));
+        for (const judgeId of dirtyJudges) {
+          const judgeScores = completedScoresByJudge[judgeId] ?? {};
+          const total = getTotal(judgeScores);
+          if (!Number.isFinite(total) || total < 0 || total > eventTotalMarks) {
+            throw new Error('Check the marks for each judge before saving.');
+          }
+          await adminUpsertMark({
+            scheduleId, judgeId, registrationId,
+            criteriaScores: entryMode === 'total_only' ? {} : judgeScores,
+            totalMark: total, maxMark: eventTotalMarks,
+            criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [], status: 'final',
+          });
+          setDirtyJudges(prev => prev.filter(id => id !== judgeId));
         }
-        await adminUpsertMark({
-          scheduleId, judgeId, registrationId,
-          criteriaScores: entryMode === 'total_only' ? {} : judgeScores,
-          totalMark: total, maxMark: eventTotalMarks,
-          criteriaSnapshot: entryMode === 'criteria' ? criteriaSnapshot : [], status: 'final',
-        });
-        setDirtyJudges(prev => prev.filter(id => id !== judgeId));
+
+        if (Platform.OS === 'web') window.alert('Mark updated successfully!');
+        else Alert.alert('Success', 'Mark updated successfully!');
+        onClose();
+      } catch (err: any) {
+        if (Platform.OS === 'web') window.alert(`${err.message} Saved judges remain saved; retry the remaining marks.`);
+        else Alert.alert('Error', `${err.message} Saved judges remain saved; retry the remaining marks.`);
+      } finally {
+        setSubmitting(false);
       }
-      
-      if (Platform.OS === 'web') {
-        window.alert('Mark updated successfully!');
-      } else {
-        Alert.alert('Success', 'Mark updated successfully!');
-      }
-      onClose();
-    } catch (err: any) {
-      if (Platform.OS === 'web') {
-        window.alert(`${err.message} Saved judges remain saved; retry the remaining marks.`);
-      } else {
-        Alert.alert('Error', `${err.message} Saved judges remain saved; retry the remaining marks.`);
-      }
-    } finally {
-      setSubmitting(false);
+    };
+
+    if (missingByJudge.length === 0) {
+      await save();
+      return;
     }
+
+    const missingDescription = missingByJudge.map(row => {
+      const judgeName = assignedJudges.find(judge => judge.judge_id === row.judgeId)?.judge_name ?? row.judgeId;
+      return `${judgeName}: ${row.fields.join(', ')}`;
+    }).join('\n');
+    const description = `Blank fields for Code ${codeLetter} will be saved as 0:\n${missingDescription}`;
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${description}\n\nContinue?`)) await save();
+      return;
+    }
+    Alert.alert('Blank marks will be 0', description, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Save as 0', onPress: () => { void save(); } },
+    ]);
   };
 
   return (
@@ -213,7 +255,7 @@ export function AdminMarkEntryModal({
                       <TextInput
                         keyboardType="numeric"
                         value={scores.total !== undefined ? scores.total.toString() : ''}
-                        onChangeText={(val) => updateScore('total', Number(val), eventTotalMarks)}
+                        onChangeText={(val) => handleScoreChange('total', val, eventTotalMarks)}
                         style={{ width: 60, height: 40, textAlign: 'center', fontSize: 16, fontWeight: 'bold' }}
                       />
                       <View className="bg-core-surface-muted-slate-100 h-full px-2 justify-center border-l border-core-border-slate-200">
@@ -232,7 +274,7 @@ export function AdminMarkEntryModal({
                         <TextInput
                           keyboardType="numeric"
                           value={scores[c.key] !== undefined ? scores[c.key].toString() : ''}
-                          onChangeText={(val) => updateScore(c.key, Number(val), c.max)}
+                          onChangeText={(val) => handleScoreChange(c.key, val, c.max)}
                           style={{ width: 50, height: 36, textAlign: 'center', fontSize: 14, fontWeight: 'bold' }}
                         />
                       </View>

@@ -2,13 +2,13 @@ import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
 import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { Download, ExternalLink, X } from 'lucide-react-native';
+import { Download, ExternalLink, Search, X } from 'lucide-react-native';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { useAuthStore } from '@/core/store/authStore';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
@@ -19,6 +19,9 @@ import { Skeleton } from '@/components/team/TeamSkeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { ParticipantExportModal, ParticipantExportKind } from '@/components/participants/ParticipantExportModal';
 import { downloadItemVerificationPdf, downloadParticipantsCsv, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf, ExportAssignment, ExportItem, ExportParticipant, ExportSort, TeamLeaderParticipantExportRow } from '@/services/participantExportService';
+import { compareParticipantsByChestNumber } from '@/core/utils/teamParticipantOrder';
+
+const EMPTY_PARTICIPANTS: TeamLeaderParticipant[] = [];
 
 export default function ParticipantsScreen() {
   const ui = useTeamUi();
@@ -29,9 +32,10 @@ export default function ParticipantsScreen() {
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
   const participantsQuery = useTeamReadQuery('participants', teamLeaderPortalService.getParticipants);
-  const participants = participantsQuery.data ?? [];
+  const participants = participantsQuery.data ?? EMPTY_PARTICIPANTS;
   const loading = participantsQuery.isLoading;
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [selectedParticipant, setSelectedParticipant] = useState<TeamLeaderParticipant | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
@@ -50,6 +54,15 @@ export default function ParticipantsScreen() {
   });
 
 
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    return participants.filter((p) => {
+      const active = p.status === 'active' || p.status === 'registered' || p.status === 'approved';
+      if (filter === 'active' && !active || filter === 'inactive' && active) return false;
+      return !query || [p.name, p.chest_number, p.category_code].some((value) => value?.toLocaleLowerCase().includes(query));
+    }).sort(compareParticipantsByChestNumber);
+  }, [participants, filter, search]);
 
   if (contextLoading || loading) {
     return (
@@ -73,11 +86,6 @@ export default function ParticipantsScreen() {
 
   if (!context || !participantsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (participantsQuery.error as Error)?.message || 'Unable to load participants.'} onRetry={() => void participantsQuery.retry()} /></TeamLeaderAppShell>;
 
-  const filtered = filter === 'all' ? participants : participants.filter((p) => {
-    if (filter === 'active') return p.status === 'active' || p.status === 'registered' || p.status === 'approved';
-    if (filter === 'inactive') return p.status !== 'active' && p.status !== 'registered' && p.status !== 'approved';
-    return true;
-  });
   const isPhone = width < 600;
   const tableCell = { paddingHorizontal: 12, justifyContent: 'center' as const, minHeight: 56 };
   const participantTable = (
@@ -208,6 +216,14 @@ export default function ParticipantsScreen() {
           subtitle={`${participants.length} registered participant${participants.length === 1 ? '' : 's'} in your team`}
           actions={<Pressable accessibilityRole="button" accessibilityLabel="Export participants" onPress={openExport} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.primary, backgroundColor: ui.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Download size={15} color={ui.colors.onPrimary} /><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Export</Text></Pressable>} />
 
+        <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface, paddingHorizontal: 12 }}>
+          <Search size={17} color={ui.colors.textMuted} />
+          <TextInput accessibilityLabel="Search participants" placeholder="Search name, chest number or category" placeholderTextColor={ui.colors.textMuted} value={search}
+            onChangeText={setSearch}
+            style={{ flex: 1, minWidth: 0, minHeight: 44, color: ui.colors.text, fontSize: 13 }} />
+          {!!search && <Pressable accessibilityRole="button" accessibilityLabel="Clear participant search" onPress={() => setSearch('')} style={{ minWidth: 36, minHeight: 40, alignItems: 'center', justifyContent: 'center' }}><X size={16} color={ui.colors.textMuted} /></Pressable>}
+        </View>
+
         <Tabs value={filter} onValueChange={setFilter}>
           <TabsList>
             <TabsTrigger value="all">All ({participants.length})</TabsTrigger>
@@ -219,7 +235,7 @@ export default function ParticipantsScreen() {
             {filtered.length === 0 ? (
               <Card>
                 <CardContent style={{ padding: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>No participants found</Text>
+                  <Text style={{ fontSize: 13, color: ui.colors.textMuted }}>{search ? 'No participants match your search' : 'No participants found'}</Text>
                 </CardContent>
               </Card>
             ) : isWideRoster ? (
@@ -231,18 +247,16 @@ export default function ParticipantsScreen() {
                       <CardContent style={{ padding: 0 }}>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`View details for ${p.name || 'participant'}`}
+                          accessibilityLabel={`View details for ${p.name || 'participant'}${p.chest_number ? `, chest number ${p.chest_number}` : ''}${p.category_code ? `, ${p.category_code}` : ''}`}
                           onPress={() => setSelectedParticipant(p)}
-                          style={{ padding: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}
+                          style={{ minHeight: 58, paddingHorizontal: 12, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 10 }}
                         >
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 14, fontWeight: '600', color: ui.colors.text }}>
+                          <View style={{ minWidth: 52, alignItems: 'center' }}><Text style={{ fontSize: 13, fontWeight: '800', color: ui.colors.primary }}>{p.chest_number ? `#${p.chest_number}` : '—'}</Text></View>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text numberOfLines={1} style={{ fontSize: 13, fontWeight: '700', color: ui.colors.text }}>
                               {p.name || 'Participant'}
                             </Text>
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                              {p.category_code && <Badge variant="outline">{p.category_code}</Badge>}
-                              {p.chest_number && <Badge variant="info">Chest #{p.chest_number}</Badge>}
-                            </View>
+                            {!!p.category_code && <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 2 }}>{p.category_code}</Text>}
                           </View>
                           {p.status && p.status !== 'approved' ? <Badge variant={p.status === 'rejected' ? 'destructive' : p.status === 'active' || p.status === 'registered' ? 'success' : 'warning'}>{p.status}</Badge> : null}
                         </Pressable>

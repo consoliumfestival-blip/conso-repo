@@ -5,6 +5,7 @@ import { LEADERBOARD_QUERY_KEYS } from '../../constants/leaderboard';
 export const useResultVisibility = (
   tenantId?: string | null,
   festivalId?: string | null,
+  options?: { enabled?: boolean },
 ) => {
   const queryClient = useQueryClient();
   const queryKey = LEADERBOARD_QUERY_KEYS.festivalResults(tenantId, festivalId);
@@ -12,7 +13,7 @@ export const useResultVisibility = (
   const results = useQuery({
     queryKey,
     queryFn: () => resultVisibilityService.listFestivalResults(tenantId, festivalId),
-    enabled: !!festivalId || !!tenantId,
+    enabled: options?.enabled !== false && (!!festivalId || !!tenantId),
   });
 
   const invalidateAll = () => {

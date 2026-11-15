@@ -16,7 +16,8 @@ import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategor
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { FestivalResult, ResultStatus } from '../../../../services/resultVisibilityService';
-import { hasGrade, itemResultIds } from '../../../../core/utils/itemResultSelection';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../../../core/config/supabase';
 
 const colors = {
   navy: ui.colors.primaryHover,
@@ -84,7 +85,8 @@ export interface ItemGroup {
 }
 
 export default function ItemResultsPage() {
-  const { tenant_id } = useAuthStore();
+  const { tenant_id, user } = useAuthStore();
+  const queryClient = useQueryClient();
 
   // Load active festival ID
   const { useActiveFestival, useItems } = useFestival();
@@ -95,14 +97,9 @@ export default function ItemResultsPage() {
 
   // Load results
   const {
-    results: festivalResults,
-    error: resultsError,
-    isLoading: isResultsLoading,
-    isRefetching: isResultsRefetching,
-    refetch: refetchResults,
     updateVisibility,
     bulkUpdateVisibility,
-  } = useResultVisibility(tenant_id, festivalId);
+  } = useResultVisibility(tenant_id, festivalId, { enabled: false });
 
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +108,31 @@ export default function ItemResultsPage() {
   const [resultStatusFilter, setResultStatusFilter] = useState<'all' | 'unpublished' | ResultStatus>('all');
   const [previewGroup, setPreviewGroup] = useState<ItemGroup | null>(null);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  const filteredQueryKey = ['admin-item-results-filtered', user?.id, tenant_id, festivalId];
+  const filteredQuery = useQuery({
+    queryKey: [...filteredQueryKey, debouncedSearch, selectedCategory, resultTypeFilter, resultStatusFilter],
+    enabled: !!user?.id && !!tenant_id && !!festivalId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_item_results_filtered', {
+        p_tenant_id: tenant_id, p_festival_id: festivalId, p_search: debouncedSearch,
+        p_category: selectedCategory, p_type: resultTypeFilter, p_status: resultStatusFilter,
+      });
+      if (error) throw error;
+      if (!data || !Array.isArray(data.rows) || !data.items || typeof data.items !== 'object') throw new Error('Invalid results response');
+      return data as { rows: FestivalResult[]; items: Record<string, { result_ids: string[]; all_public: boolean; all_hidden: boolean; public_order: number | null }> };
+    },
+  });
+  const filteredResults = useMemo(() => filteredQuery.data?.rows ?? [], [filteredQuery.data]);
+  const itemStats = useMemo(() => filteredQuery.data?.items ?? {}, [filteredQuery.data]);
+  const resultsError = filteredQuery.error;
+  const isResultsLoading = filteredQuery.isLoading;
+  const isResultsRefetching = filteredQuery.isRefetching;
+  const refetchResults = filteredQuery.refetch;
 
   const categoryOptions = useMemo(
     () => ['all', ...festivalCategories.map((category) => category.code.toLowerCase())],
@@ -119,66 +141,13 @@ export default function ItemResultsPage() {
 
   const itemDetailsMap = useMemo(() => new Map(festivalItems.map((item) => [item.id, item])), [festivalItems]);
 
-  const itemCategoryCodes = useMemo(() => new Map(
-    festivalItems.map((item: any) => [
-      item.id,
-      (Array.isArray(item.category_codes) ? item.category_codes : []).map((code: string) => code.toLowerCase()),
-    ]),
-  ), [festivalItems]);
-
-  // Compute public publish order: item_id → sequence number (#1, #2, ...)
-  const publicOrderMap = useMemo(() => {
-    const itemEarliestPublic = new Map<string, string>();
-    festivalResults.forEach(r => {
-      if (r.public_visible === true && r.published_at) {
-        const itemId = r.item_id ?? '';
-        const existing = itemEarliestPublic.get(itemId);
-        if (!existing || r.published_at < existing) {
-          itemEarliestPublic.set(itemId, r.published_at);
-        }
-      }
-    });
-    const sorted = Array.from(itemEarliestPublic.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-    const orderMap = new Map<string, number>();
-    sorted.forEach(([itemId], idx) => orderMap.set(itemId, idx + 1));
-    return orderMap;
-  }, [festivalResults]);
+  const publicOrderMap = useMemo(() => new Map(Object.entries(itemStats)
+    .filter(([, stats]) => stats.public_order != null)
+    .map(([id, stats]) => [id, stats.public_order as number])), [itemStats]);
 
   React.useEffect(() => {
     if (!categoryOptions.includes(selectedCategory)) setSelectedCategory('all');
   }, [categoryOptions, selectedCategory]);
-
-  // Filtered results
-  const filteredResults = useMemo(() => {
-    return festivalResults.filter(r => {
-      if (!hasGrade(r)) return false;
-      // 1. Type filter
-      const typeMatch = resultTypeFilter === 'all'
-        || (resultTypeFilter === 'individual' && !r.is_group)
-        || (resultTypeFilter === 'group' && r.is_group);
-
-      // 2. Status filter — Published/Unpublished means public_visible
-      const statusMatch = resultStatusFilter === 'all'
-        || (resultStatusFilter === 'published' && r.public_visible === true)
-        || (resultStatusFilter === 'unpublished' && r.public_visible !== true)
-        || (resultStatusFilter !== 'published' && resultStatusFilter !== 'unpublished' && r.result_status === resultStatusFilter);
-
-      // 3. Category filter
-      const categoryMatch = selectedCategory === 'all'
-        || itemCategoryCodes.get(r.item_id ?? '')?.includes(selectedCategory) === true;
-
-      // 4. Search query match
-      const query = searchQuery.trim().toLowerCase();
-      const searchMatch = !query
-        || (r.item_name && r.item_name.toLowerCase().includes(query))
-        || (r.item_name_ml && r.item_name_ml.toLowerCase().includes(query))
-        || (r.organisation_name && r.organisation_name.toLowerCase().includes(query))
-        || (r.participant_name && r.participant_name.toLowerCase().includes(query))
-        || (r.chest_number && r.chest_number.toLowerCase().includes(query));
-
-      return typeMatch && statusMatch && categoryMatch && searchMatch;
-    });
-  }, [festivalResults, resultTypeFilter, resultStatusFilter, selectedCategory, searchQuery, itemCategoryCodes]);
 
   // Grouped Results
   const groupedResults = useMemo(() => {
@@ -222,10 +191,11 @@ export default function ItemResultsPage() {
   const handleItemBulkAction = async (group: ItemGroup, status: ResultStatus) => {
     // Group contents can be narrowed by participant/search filters; an item
     // action must use the complete loaded item, not just the visible rows.
-    const ids = itemResultIds(festivalResults.filter(hasGrade), group.item_id, festivalId);
+    const ids = itemStats[group.item_id]?.result_ids ?? [];
     if (!ids.length) return;
     try {
       await bulkUpdateVisibility.mutateAsync({ resultIds: ids, status });
+      await queryClient.invalidateQueries({ queryKey: filteredQueryKey });
     } catch (err: any) {
       alert('Error updating results: ' + err.message);
     }
@@ -234,6 +204,7 @@ export default function ItemResultsPage() {
   const handleSingleVisibility = async (resultId: string, status: ResultStatus) => {
     try {
       await updateVisibility.mutateAsync({ resultId, status });
+      await queryClient.invalidateQueries({ queryKey: filteredQueryKey });
     } catch (err: any) {
       alert('Error updating result: ' + err.message);
     }
@@ -245,7 +216,7 @@ export default function ItemResultsPage() {
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>Result Visibility Management</Text>
-          <Text style={styles.cardSubTitle}>Manage public visibility of results grouped by item.</Text>
+          <Text style={styles.cardSubTitle}>Results with points above zero are listed. Item actions affect all published results for that item.</Text>
         </View>
         <TouchableOpacity onPress={() => refetchResults()} style={styles.secondaryAction}>
           <RefreshCw size={16} color={coreColor(colors.teal, 'primaryText')} />
@@ -340,8 +311,8 @@ export default function ItemResultsPage() {
       ) : (
         <ScrollView style={styles.rowsScrollContainer}>
           {groupedResults.map(group => {
-            const isAllPublic = group.results.every(r => r.public_visible === true);
-            const isAllPublicHidden = group.results.every(r => r.public_visible !== true);
+            const isAllPublic = itemStats[group.item_id]?.all_public === true;
+            const isAllPublicHidden = itemStats[group.item_id]?.all_hidden === true;
             const expanded = expandedItemId === group.item_id;
 
             return (

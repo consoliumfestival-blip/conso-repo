@@ -34,7 +34,8 @@ export function useProtectedRoute() {
   const isTeamLeader = role === 'team_leader';
   const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
   const isAnnouncerLink = /^\/announcer\/[0-9a-f]{64}\/?$/i.test(pathname);
-  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal);
+  const isReadonlyPortal = /^\/festival-view\/[0-9a-f-]{36}\/?$/i.test(pathname);
+  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal && !isReadonlyPortal);
   const isInstalledAdmin = Boolean(user && role === 'admin' && !is_superadmin);
   const mainPortalRouteAllowed = !inTeamGroup
     && pathname !== '/team-leaders'
@@ -51,7 +52,7 @@ export function useProtectedRoute() {
   const teamManagementRouteAllowed = pathname === '/team-leaders' || segments[0] === '(auth)';
   const mainPortalRouteBlocked = !mainPortalRouteAllowed && segments[0] !== '(auth)' && !isAnnouncerLink;
   const teamLeaderRouteBlocked = !inTeamGroup;
-  const mustBlockInstalledPortalRoute = Boolean(initialized && (
+  const mustBlockInstalledPortalRoute = Boolean(initialized && !isReadonlyPortal && (
     (!user && installedPortalMode === 'team-management' && !teamManagementRouteAllowed)
     || (!user && installedPortalMode === 'main' && mainPortalRouteBlocked)
     || (!user && installedPortalMode === 'team-leader' && teamLeaderRouteBlocked)
@@ -63,6 +64,7 @@ export function useProtectedRoute() {
   useEffect(() => {
     if (!initialized) return;
     if (isRecoveringTeamSession) return;
+    if (isReadonlyPortal) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -183,7 +185,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
+  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, isReadonlyPortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
 
   return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

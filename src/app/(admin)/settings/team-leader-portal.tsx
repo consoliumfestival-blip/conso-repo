@@ -22,6 +22,7 @@ import { useAuthStore } from '@/core/store/authStore';
 import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
 import { ChevronLeft, Search, Trash2, Users, Check, AlertCircle, Copy } from 'lucide-react-native';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { FestivalReadonlyPortalAdmin } from '@/components/team/FestivalReadonlyPortalAdmin';
 
 interface Participant {
   id: string;
@@ -636,6 +637,8 @@ export default function TeamLeaderPortalAdmin() {
           <Text className="text-sm font-semibold text-primary">Open Smart Announcer</Text>
         </TouchableOpacity>
       </View>
+
+      <FestivalReadonlyPortalAdmin tenantId={tenantId} festivalId={activeFestival?.id} />
 
       <Card
         style={{

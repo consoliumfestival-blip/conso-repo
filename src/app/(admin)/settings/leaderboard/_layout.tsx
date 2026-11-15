@@ -1,6 +1,8 @@
 import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from "@/constants/designSystem";
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../../../../core/config/supabase';
 import React, { useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -219,7 +221,7 @@ const MetricCard = ({
 export default function LeaderboardLayout() {
   const router = useRouter();
   const pathname = usePathname();
-  const { tenant_id } = useAuthStore();
+  const { tenant_id, user } = useAuthStore();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 1180;
   const isMobile = width < 760;
@@ -242,11 +244,20 @@ export default function LeaderboardLayout() {
   const { data: settings } = useGetLeaderboardSettings(festivalId);
 
   const isPublicVisible = settings?.is_public_visible ?? false;
-  const autoRefreshEnabled = settings?.auto_refresh_enabled ?? false;
-  const autoRefreshInterval = settings?.auto_refresh_interval ?? 30;
-
   const { data: leaderboardData = [] } = useAdminLeaderboard(festivalId ? tenant_id : null, festivalId);
   const { results: festivalResults = [] } = useResultVisibility(festivalId ? tenant_id : null, festivalId);
+  const coreItemCount = useQuery({
+    queryKey: ['festival-results', tenant_id, festivalId, 'core-item-count', user?.id],
+    enabled: !!user?.id && !!tenant_id && !!festivalId,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('admin_core_published_item_count', {
+        p_tenant_id: tenant_id, p_festival_id: festivalId,
+      });
+      if (error) throw error;
+      if (typeof data !== 'number' || !Number.isSafeInteger(data) || data < 0) throw new Error('Invalid item count');
+      return data;
+    },
+  });
 
   const rows = useMemo(() => {
     return leaderboardData.map((row) => ({
@@ -284,15 +295,7 @@ export default function LeaderboardLayout() {
   }, [activeItem]);
 
   const contentMaxWidth = isDesktop ? undefined : 980;
-  const metricCardWidth: number | `${number}%` = isMobile
-    ? 220
-    : width >= 1650
-      ? '18%'
-      : width >= 1380
-        ? '22%'
-        : width >= 1180
-          ? '30%'
-          : '47%';
+  const metricCardWidth = isMobile ? 170 : Math.max(180, Math.min(260, Math.floor((width - 320) / 5)));
 
   return (
     <View style={styles.page}>
@@ -339,9 +342,9 @@ export default function LeaderboardLayout() {
           )}
 
           <ScrollView
-            horizontal={isMobile}
+            horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[styles.metricsGrid, isMobile ? styles.metricsGridMobile : styles.metricsGridWrap]}
+            contentContainerStyle={styles.metricsGrid}
           >
             <MetricCard
               cardWidth={metricCardWidth}
@@ -378,9 +381,9 @@ export default function LeaderboardLayout() {
             />
             <MetricCard
               cardWidth={metricCardWidth}
-              label="Auto Update Interval"
-              value={autoRefreshInterval >= 60 ? `${autoRefreshInterval / 60} min` : `${autoRefreshInterval} sec`}
-              sub={autoRefreshEnabled ? 'Automatic refresh' : 'Manual refresh'}
+              label="Core-published items"
+              value={coreItemCount.data === undefined ? '—' : formatNumber(coreItemCount.data)}
+              sub={coreItemCount.isError ? 'Count unavailable' : 'Published from core'}
               tone={colors.cyan}
               icon={<Activity size={19} color={colors.cyan} />}
             />
@@ -630,8 +633,8 @@ const styles = StyleSheet.create({
   },
   metricsGrid: {
     flexDirection: 'row',
-    gap: 14,
-    marginBottom: 18,
+    gap: 8,
+    marginBottom: 14,
   },
   metricsGridWrap: {
     flexWrap: 'wrap',
@@ -647,7 +650,8 @@ const styles = StyleSheet.create({
     borderRadius: ui.radius.xl,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     shadowColor: ui.shadow.shadowColor,
     shadowOpacity: 0.025,
     shadowRadius: 10,
@@ -657,12 +661,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 4,
   },
   metricIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -676,14 +680,14 @@ const styles = StyleSheet.create({
   metricValue: {
     color: colors.text,
     fontFamily: 'Poppins_900Black',
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 20,
+    lineHeight: 25,
   },
   metricSub: {
     color: colors.muted,
     fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 11,
+    marginTop: 1,
   },
   mobileNavTab: {
     paddingHorizontal: 16,

@@ -24,7 +24,6 @@ import {
   UserCheck,
   Users,
   X,
-  Radio,
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/core/store/authStore";
@@ -118,17 +117,15 @@ const navItems: NavItem[] = [
     match: () => false,
   },
   {
-    label: "Team Leader Management",
+    label: "Portals",
     path: "/(admin)/team-leaders",
     icon: Users,
-    match: (path) => path.includes("/team-leaders"),
-  },
-  {
-    label: "Smart Announcer",
-    shortLabel: "Announcer",
-    path: "/(admin)/smart-announcer",
-    icon: Radio,
-    match: (path) => path.includes("/smart-announcer"),
+    match: (path) => path.includes("/team-leaders") || path.includes("/settings/team-leader-portal") || path.includes("/smart-announcer") || path.includes("/festival-viewer"),
+    children: [
+      { label: "Team Leader Management", path: "/(admin)/team-leaders", match: (path) => path.includes("/team-leaders") || path.includes("/settings/team-leader-portal") },
+      { label: "Smart Announcer", path: "/(admin)/smart-announcer", match: (path) => path.includes("/smart-announcer") },
+      { label: "Festival Viewer", path: "/(admin)/festival-viewer", match: (path) => path.includes("/festival-viewer") },
+    ],
   },
   {
     label: "Leaderboard Management",
@@ -182,7 +179,7 @@ const navItems: NavItem[] = [
     path: "/(admin)/settings/calendar",
     icon: Settings,
     match: (path) =>
-      path.includes("/settings") && !path.includes("/settings/leaderboard"),
+      path.includes("/settings") && !path.includes("/settings/leaderboard") && !path.includes("/settings/team-leader-portal"),
     children: [
       {
         label: "Festival Calendar",
@@ -220,6 +217,9 @@ const navItems: NavItem[] = [
 ];
 
 function getPageTitle(pathname: string) {
+  if (pathname.includes('/festival-viewer')) return 'Festival Viewer';
+  if (pathname.includes('/smart-announcer')) return 'Smart Announcer';
+  if (pathname.includes('/team-leaders') || pathname.includes('/settings/team-leader-portal')) return 'Team Leader Management';
   if (pathname.includes('/participants/programs')) return 'Programs';
   if (pathname.includes("/participants/")) {
     if (pathname.endsWith("/add")) return "Add Participant";
@@ -321,7 +321,7 @@ function DesktopSidebar({
                       if (collapsed) onToggle();
                       setOpenGroups((current) => ({
                         ...current,
-                        [item.label]: !expanded,
+                        [item.label]: item.label === 'Portals' && collapsed ? true : !expanded,
                       }));
                     } else {
                       router.push(item.path as any);
@@ -448,6 +448,7 @@ function MobileMenuSheet({
   const router = useRouter();
   const { user, role } = useAuthStore();
   const { pendingCount } = useJudgeApprovalStore();
+  const [portalsOpen, setPortalsOpen] = useState<boolean | null>(null);
 
   const navigate = (path: string) => {
     onClose();
@@ -488,9 +489,8 @@ function MobileMenuSheet({
               const active = item.match(pathname);
               const Icon = item.icon;
               const hasChildren = !!item.children;
-              // Expand automatically if active, but allow toggling in future if we had state. 
-              // Without state, we just show children if the parent is active.
-              const expanded = hasChildren && active;
+              // Portals expands in place; existing groups retain their navigation behavior.
+              const expanded = hasChildren && (item.label === 'Portals' ? (portalsOpen ?? active) : active);
 
               if (!hasChildren) {
                 return (
@@ -522,8 +522,8 @@ function MobileMenuSheet({
                     activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityLabel={item.label}
-                    accessibilityState={{ selected: active }}
-                    onPress={() => navigate(item.path)}
+                    accessibilityState={{ selected: active, expanded: item.label === 'Portals' ? expanded : undefined }}
+                    onPress={() => item.label === 'Portals' ? setPortalsOpen(!expanded) : navigate(item.path)}
                     style={[styles.menuTile, active && styles.menuTileActive, { width: '100%', flexDirection: 'row', alignItems: 'center', minHeight: 70, justifyContent: 'flex-start', paddingHorizontal: 20 }]}
                   >
                     <View
@@ -544,7 +544,7 @@ function MobileMenuSheet({
                     >
                       {item.label}
                     </Text>
-                    <ChevronRight size={18} color={ui.colors.textMuted} />
+                    {item.label === 'Portals' && expanded ? <ChevronDown size={18} color={ui.colors.textMuted} /> : <ChevronRight size={18} color={ui.colors.textMuted} />}
                   </TouchableOpacity>
                   
                   {expanded && (

@@ -38,6 +38,7 @@ export default function AdminLayout() {
       <Stack.Screen name="settings/team-leader-portal" />
       <Stack.Screen name="grace-marks/index" />
       <Stack.Screen name="smart-announcer/index" />
+      <Stack.Screen name="festival-viewer" />
     </Stack>
   );
   if (isStandaloneStagePortal) return <CoreAppearanceProvider>{stack}</CoreAppearanceProvider>;

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, ScrollView, Text } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { PortalManagementHeader } from '@/components/layout/PortalManagementHeader';
 import { AnnouncerQueue } from '@/components/leaderboard/AnnouncerQueue';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useResultVisibility } from '@/core/hooks/useResultVisibility';
@@ -19,9 +20,12 @@ export default function SmartAnnouncerPage() {
     });
     return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [results, festival?.id]);
-  return <ScrollView contentContainerStyle={{ padding: 16 }}>
+  return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+    <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center' }}>
+    <PortalManagementHeader title="Smart Announcer" description="Manage the announcement queue and announcer access." />
     {isFestivalLoading || (festival?.id && isLoading) ? <ActivityIndicator /> : festivalError ? <Text>Unable to load the active festival.</Text> : error ? <Text onPress={() => void refetch()}>Unable to load results. Tap to retry.</Text> :
       user?.id && tenant_id && festival?.id ? <AnnouncerQueue key={`${user.id}:${tenant_id}:${festival.id}`} userId={user.id} tenantId={tenant_id} festivalId={festival.id} items={items} /> :
         <Text>Select an active festival to manage the announcer queue.</Text>}
+    </View>
   </ScrollView>;
 }

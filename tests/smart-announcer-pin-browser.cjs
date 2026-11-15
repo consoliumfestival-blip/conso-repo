@@ -160,7 +160,8 @@ const session = { access_token, user, expires_at, refresh_token: 'fixture', toke
       await page.getByRole('button', { name: 'Refresh' }).click();
       await page.getByText('This link has expired or is no longer valid. Ask an admin for a new link.').waitFor();
       await page.goto(`http://localhost:${server.address().port}/team-leaders`);
-      await page.getByText('Open Smart Announcer', { exact: true }).click({ timeout: 15000 });
+      if (width < 600) await page.getByRole('button', { name: 'Menu', exact: true }).click();
+      await page.getByText('Smart Announcer', { exact: true }).click({ timeout: 15000 });
       await page.getByText('Announcer queue', { exact: true }).waitFor();
       if (width === 1440) {
         await page.goto(`http://localhost:${server.address().port}/settings/leaderboard/item-results`);

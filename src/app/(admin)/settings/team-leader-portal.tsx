@@ -22,6 +22,7 @@ import { useAuthStore } from '@/core/store/authStore';
 import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
 import { ChevronLeft, Search, Trash2, Users, Check, AlertCircle, Copy } from 'lucide-react-native';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
+import { PortalManagementHeader } from '@/components/layout/PortalManagementHeader';
 
 interface Participant {
   id: string;
@@ -622,17 +623,13 @@ export default function TeamLeaderPortalAdmin() {
   );
 
   return (
-    <ScrollView className="flex-1 p-4" horizontal={false} showsHorizontalScrollIndicator={false}>
-      <View className="mb-4">
+    <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 32 }} horizontal={false} showsHorizontalScrollIndicator={false}>
+      <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center' }}>
         <TouchableOpacity onPress={() => router.back()} className="flex-row items-center mb-2">
           <ChevronLeft size={20} className="text-foreground" />
           <Text className="text-sm text-muted-foreground ml-1">Back to Settings</Text>
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-foreground">Team Leader Portal</Text>
-        <Text className="text-sm text-muted-foreground mt-0.5">
-          Assign and manage team leaders
-        </Text>
-      </View>
+        <PortalManagementHeader title="Team Leader Management" description="Assign and manage team leaders." />
 
       <Card
         style={{
@@ -640,10 +637,10 @@ export default function TeamLeaderPortalAdmin() {
           zIndex: openDropdown ? 20 : 1,
         }}
       >
-        <CardHeader>
+        <CardHeader className="p-4">
           <CardTitle>Assign Team Leader</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           {loadingDropdowns ? (
             <Skeleton style={{ height: 200, borderRadius: 8 }} />
           ) : (
@@ -797,13 +794,13 @@ export default function TeamLeaderPortalAdmin() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4">
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <CardTitle>Current Assignments</CardTitle>
             <Badge variant="secondary">{assignments.length}</Badge>
           </View>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0">
           <View className="flex-row items-center border border-input rounded-lg px-3 mb-3 h-10">
             <Search size={16} className="text-muted-foreground" />
             <TextInput
@@ -844,7 +841,7 @@ export default function TeamLeaderPortalAdmin() {
                       {assignment.leader_name}
                     </Text>
                     {assignment.leader_code && (
-                      <View className="flex-row items-center mt-1">
+                      <View className="flex-row flex-wrap items-center mt-1" style={{ gap: 4 }}>
                         <Text className="text-xs font-medium text-foreground flex-1">
                           Username: <Text className="font-mono text-primary">{assignment.leader_code}</Text>
                         </Text>
@@ -925,6 +922,7 @@ export default function TeamLeaderPortalAdmin() {
           )}
         </CardContent>
       </Card>
+      </View>
     </ScrollView>
   );
 }

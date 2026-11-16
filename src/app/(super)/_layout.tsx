@@ -18,6 +18,15 @@ export default function SuperadminLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen
+        name="tenant-settings"
+        options={{
+          presentation: 'card',
+          headerShown: false,
+          animation: 'slide_from_right',
+          contentStyle: { backgroundColor: coreColor('#0B1524', 'background') },
+        }}
+      />
+      <Stack.Screen
         name="organisations/index"
         options={{
           presentation: 'card',

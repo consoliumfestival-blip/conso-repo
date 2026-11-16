@@ -977,7 +977,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   async listTenantAccounts<T>(): Promise<ListResult<T>> {
     const { data, error } = await supabase
       .from('organisations')
-      .select('id, name, org_type, tenant_id, admin_email, tenants!organisations_tenant_id_fkey(access_disabled)')
+      .select('id, name, org_type, tenant_id, admin_email, tenants!organisations_tenant_id_fkey(access_disabled,name)')
       .order('created_at', { ascending: false });
 
     // Ensure query errors are not suppressed and returned as empty arrays.
@@ -991,7 +991,8 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       const access_disabled = Array.isArray(embedded)
         ? embedded[0]?.access_disabled ?? false
         : embedded?.access_disabled ?? false;
-      return { ...o, access_disabled, tenants: undefined };
+      const tenant_name = (Array.isArray(embedded) ? embedded[0] : embedded)?.name ?? null;
+      return { ...o, access_disabled, tenant_name, tenants: undefined };
     });
 
     return { data: (flattened as T[]) ?? [], error: null };
@@ -1444,14 +1445,20 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     tenantId?: string | null,
     festivalId?: string | null,
     includeParticipantDetails = true,
+    scope: 'results' | 'participant_results' = 'results',
   ): Promise<ListResult<T>> {
-    let { data, error } = await supabase.rpc('get_public_published_results_scoped', {
+    let { data, error } = scope === 'participant_results'
+      ? await supabase.rpc('get_public_participant_results_scoped', {
+          p_tenant_id: tenantId ?? null,
+          p_festival_id: festivalId ?? null,
+        })
+      : await supabase.rpc('get_public_published_results_scoped', {
       p_tenant_id: tenantId ?? null,
       p_festival_id: festivalId ?? null,
       p_include_participant_details: includeParticipantDetails,
-    });
+      });
 
-    if (error && ['PGRST202', '42883'].includes((error as any).code)) {
+    if (scope === 'results' && error && ['PGRST202', '42883'].includes((error as any).code)) {
       ({ data, error } = await supabase.rpc('get_public_published_results', {
         p_tenant_id: tenantId ?? null,
         p_festival_id: festivalId ?? null,

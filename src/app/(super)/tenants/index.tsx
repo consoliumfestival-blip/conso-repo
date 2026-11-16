@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
 import type { FestivalTemplate } from '../../../lib/repositories/provisioningRepository';
 import { FEATURE_FLAGS } from '../../../core/config/features';
+import { supabase } from '../../../core/config/supabase';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft, Users, ShieldCheck, ShieldAlert, X, RefreshCw,
@@ -30,6 +31,7 @@ interface Org {
   name: string;
   org_type: OrgType;
   tenant_id: string | null;
+  tenant_name?: string | null;
   admin_email?: string | null;
   access_disabled?: boolean;
 }
@@ -54,11 +56,20 @@ function DetailModal({ visible, onClose, onComplete, org }: {
   onComplete: () => void; 
   org: Org | null 
 }) {
+  const router = useRouter();
   const [copied, setCopied]           = useState(false);
   const [copiedTenantId, setCopiedTenantId] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
   const [busy, setBusy]               = useState(false);
+  const [tenantName, setTenantName] = useState('');
+  const [originalTenantName, setOriginalTenantName] = useState('');
+  const [nameError, setNameError] = useState('');
+  useEffect(() => {
+    setTenantName(org?.tenant_name ?? '');
+    setOriginalTenantName(org?.tenant_name ?? '');
+    setNameError('');
+  }, [org?.tenant_id, org?.tenant_name, visible]);
   const { useDisableTenantAccess, useEnableTenantAccess, useResetRootTenantCredential, useTenantLeaderboardAgentPrompt } = useSuperAdmin();
   const disableMutation = useDisableTenantAccess();
   const enableMutation = useEnableTenantAccess();
@@ -70,6 +81,21 @@ function DetailModal({ visible, onClose, onComplete, org }: {
   const isDisabled = org.access_disabled === true;
   const prompt = promptQuery.data as any;
   const promptText = typeof prompt?.prompt_text === 'string' ? prompt.prompt_text : '';
+  const saveTenantName = async () => {
+    if (!org.tenant_id || busy) return;
+    const name = tenantName.trim();
+    if (!name || name.length > 160) { setNameError('Enter a name of 1 to 160 characters.'); return; }
+    setBusy(true);
+    setNameError('');
+    try {
+      const { data, error } = await supabase.rpc('super_update_tenant_name', { p_tenant_id: org.tenant_id, p_name: name, p_expected_name: originalTenantName });
+      if (error) throw error;
+      setOriginalTenantName(data);
+      setTenantName(data);
+      onComplete();
+    } catch (error: any) { setNameError(error.message || 'Could not update tenant name.'); }
+    finally { setBusy(false); }
+  };
 
   const handleCopy = () => {
     const text = `Email: ${org.admin_email ?? '—'}\nTenant ID: ${org.tenant_id ?? '—'}`;
@@ -268,6 +294,21 @@ function DetailModal({ visible, onClose, onComplete, org }: {
               <X size={22} color={C.muted} />
             </TouchableOpacity>
           </View>
+
+          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, marginBottom: 8 }}>TENANT NAME</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <TextInput accessibilityLabel="Tenant name" value={tenantName} onChangeText={setTenantName} editable={!busy && !!org.tenant_name} maxLength={160} style={{ flex: 1, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, color: C.text, backgroundColor: C.bg }} />
+            <TouchableOpacity accessibilityRole="button" onPress={saveTenantName} disabled={busy || !org.tenant_name || tenantName.trim() === originalTenantName} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 10, backgroundColor: C.green, opacity: busy || !org.tenant_name || tenantName.trim() === originalTenantName ? 0.5 : 1 }}><Text style={{ color: C.bg, fontFamily: 'Poppins_700Bold' }}>Save</Text></TouchableOpacity>
+          </View>
+          {!!nameError && <Text accessibilityRole="alert" style={{ color: C.danger, marginBottom: 8 }}>{nameError}</Text>}
+
+          {!!org.tenant_id && <TouchableOpacity accessibilityRole="button" onPress={() => {
+            onClose();
+            router.push({ pathname: '/(super)/tenant-settings', params: { tenant_id: org.tenant_id, tenant_name: org.tenant_name ?? org.name } });
+          }} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: C.accent + '55', backgroundColor: C.accentBg, marginBottom: 18 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Layers size={17} color={C.accent} /><View><Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Open tenant control center</Text><Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 10 }}>Portals, names, chest numbers and audit</Text></View></View>
+            <ChevronRight size={17} color={C.accent} />
+          </TouchableOpacity>}
 
           {/* Type badge */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>

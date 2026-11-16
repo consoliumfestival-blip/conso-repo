@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
-import { usePathname, useRouter, useSegments } from 'expo-router';
+import { useLocalSearchParams, usePathname, useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
+import { useTenantFeatures } from './useTenantFeatures';
 
 type InstalledPortalMode = 'main' | 'team-management' | 'team-leader';
 
@@ -26,9 +27,17 @@ export function useProtectedRoute() {
   const router = useRouter();
   const segments = useSegments();
   const pathname = usePathname();
-  const { user, role, is_superadmin, initialized, teamSessionStatus } = useAuthStore();
+  const routeParams = useLocalSearchParams<{ tenant_id?: string }>();
+  const { user, role, tenant_id, is_superadmin, initialized, teamSessionStatus } = useAuthStore();
+  const routeTenantId = Array.isArray(routeParams.tenant_id) ? routeParams.tenant_id[0] : routeParams.tenant_id;
+  const isPublicAuxiliaryPath = segments[0] === 'candidate' || segments[0] === 'unit-profile';
+  const isPublicPath = segments[0] === '(public)' || isPublicAuxiliaryPath;
+  const publicTenantId = isPublicPath ? (routeTenantId || tenant_id) : null;
+  const { settings: tenantFeatures, isLoading: tenantFeaturesLoading } = useTenantFeatures(tenant_id);
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(publicTenantId, true);
   const installedPortalMode = getInstalledPortalMode();
   const inTeamGroup = segments[0] === 'team';
+  const inJudgeRoute = segments[0] === 'judge';
   const isRecoveringTeamSession = inTeamGroup && !user && teamSessionStatus !== 'idle';
   const inTeamLogin = inTeamGroup && pathname === '/team/login';
   const isTeamLeader = role === 'team_leader';
@@ -61,10 +70,57 @@ export function useProtectedRoute() {
     || (user && isTeamLeader && installedPortalMode === 'team-leader' && teamLeaderRouteBlocked)
   ));
 
+  const blockedAdminModule = Boolean(user && role === 'admin' && !is_superadmin && !tenantFeaturesLoading && (
+    (pathname.startsWith('/team-leaders') && !tenantFeatures.modules.team_leader_management)
+    || (pathname.startsWith('/settings/team-leader-portal') && !tenantFeatures.modules.team_leader_management)
+    || (pathname.startsWith('/judges') && !tenantFeatures.modules.judge_portal)
+    || (pathname.startsWith('/stage-management') && !isStageVenuePortal && !tenantFeatures.modules.stage_management)
+    || (pathname.includes('/smart-announcer') && !tenantFeatures.modules.smart_announcer)
+    || (pathname.includes('/settings/leaderboard/poster-studio') && !tenantFeatures.modules.poster_studio)
+    || (pathname.includes('/settings/leaderboard/media-center') && !tenantFeatures.modules.media_center)
+  ));
+  const blockedJudgePortal = Boolean(user && !is_superadmin && (role === 'judge' || role === 'admin') && inJudgeRoute
+    && !tenantFeaturesLoading && !tenantFeatures.modules.judge_portal);
+
+  const publicSection = pathname.includes('/leaderboard/schedule') ? 'schedule'
+    : pathname.includes('/leaderboard/media') ? 'media'
+      : (pathname.includes('/participant-result') || segments[0] === 'candidate') ? 'participant_results'
+        : segments[0] === 'unit-profile' ? 'results'
+        : pathname.includes('/leaderboard/item-results') || pathname.includes('/leaderboard/individual-rankings')
+          || pathname.includes('/leaderboard/unit-rankings') ? 'results' : null;
+  const publicBoardRoute = segments[0] === 'unit-profile' || pathname.includes('/leaderboard/unit-rankings') || pathname.includes('/leaderboard/individual-rankings');
+  const blockedPublicModule = Boolean(isPublicPath && publicTenantId && pathname !== '/unavailable'
+    && !publicFeaturesLoading && (
+      !publicFeatures.modules.public_page
+      || (publicBoardRoute && !publicFeatures.modules.public_leaderboard)
+      || (publicSection === 'schedule' && !publicFeatures.sections.public_page.schedule)
+      || (publicSection === 'media' && !publicFeatures.sections.public_page.media)
+      || (publicSection === 'participant_results' && (!publicFeatures.sections.public_page.results || !publicFeatures.sections.public_page.participant_results))
+      || (publicSection === 'results' && !publicFeatures.sections.public_page.results)
+    ));
+
   useEffect(() => {
     if (!initialized) return;
     if (isRecoveringTeamSession) return;
     if (isReadonlyPortal) return;
+
+    if (blockedAdminModule) {
+      router.replace('/(admin)');
+      return;
+    }
+    if (blockedJudgePortal && tenant_id) {
+      router.replace({ pathname: '/(public)/unavailable', params: { tenant_id, section: 'Judge Portal' } } as any);
+      return;
+    }
+    if (blockedPublicModule && publicTenantId) {
+      const sectionLabel = !publicFeatures.modules.public_page ? 'Public page'
+        : publicBoardRoute && !publicFeatures.modules.public_leaderboard ? 'Public leaderboard'
+          : publicSection === 'participant_results' ? 'Participant results'
+            : publicSection === 'schedule' ? 'Public schedule'
+              : publicSection === 'media' ? 'Public media' : 'Public results';
+      router.replace({ pathname: '/(public)/unavailable', params: { tenant_id: publicTenantId, section: sectionLabel } } as any);
+      return;
+    }
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -185,7 +241,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, isReadonlyPortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, router]);
+  }, [user, role, tenant_id, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, isReadonlyPortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, blockedAdminModule, blockedJudgePortal, blockedPublicModule, publicTenantId, publicFeatures.modules.public_page, publicFeatures.modules.public_leaderboard, publicSection, publicBoardRoute, publicFeatures.sections.public_page, router]);
 
   return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

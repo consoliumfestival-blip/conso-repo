@@ -6,12 +6,12 @@ import { useAuthStore } from '@/core/store/authStore';
 
 import { isTeamAuthorizationError, teamReadKey } from '@/core/utils/teamReadCache';
 
-export function useTeamReadQuery<T>(resource: string, fetcher: () => Promise<T>) {
+export function useTeamReadQuery<T>(resource: string, fetcher: () => Promise<T>, sectionEnabled = true) {
   const { context, loading, refetch: refreshContext, invalidateAccess } = useTeamLeaderContext();
   const userId = useAuthStore(state => state.user?.id);
   const tenantId = useAuthStore(state => state.tenant_id);
   const role = useAuthStore(state => state.role);
-  const enabled = !!userId && role === 'team_leader' && !!context?.assignment_id && !loading;
+  const enabled = sectionEnabled && !!userId && role === 'team_leader' && !!context?.assignment_id && !loading;
   const queryKey = teamReadKey({ userId, tenantId, role, assignmentId: context?.assignment_id, parentTenantId: context?.parent_tenant_id, festivalId: context?.festival_id, festivalTeamId: context?.festival_team_id, organisationId: context?.organisation_id }, resource);
   const query = useQuery({
     queryKey,

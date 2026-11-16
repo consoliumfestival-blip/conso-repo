@@ -159,6 +159,31 @@ serve(async (req: Request) => {
       });
     }
 
+    // Poster paths are shared by Poster Studio and Media Center. Require at
+    // least one of those modules for signed upload/read/delete requests, so
+    // switching both off also invalidates direct object-key access.
+    if (objectKey.includes('/posters/') || objectKey.startsWith('generated-posters/')) {
+      const tenantId = festivalMatch?.[1]
+        ? (await supabaseClient.from('festival_calendar').select('tenant_id').eq('id', festivalMatch[1]).maybeSingle()).data?.tenant_id
+        : profile.tenant_id;
+      if (!tenantId) {
+        return new Response(JSON.stringify({ error: 'Tenant scope is required for poster assets' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const [mediaAccess, posterAccess] = await Promise.all([
+        supabaseClient.rpc('authenticated_tenant_module_enabled', { p_tenant_id: tenantId, p_module: 'media_center' }),
+        supabaseClient.rpc('authenticated_tenant_module_enabled', { p_tenant_id: tenantId, p_module: 'poster_studio' }),
+      ]);
+      if (mediaAccess.error || posterAccess.error || !(mediaAccess.data || posterAccess.data)) {
+        return new Response(JSON.stringify({ error: 'Poster Studio and Media Center are disabled for this tenant' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     if (operation === 'upload' && objectKey.includes('/profiles/') && !allowedImageTypes.has(contentType)) {
       return new Response(JSON.stringify({ error: 'Only JPG, PNG, and WEBP profile photos are allowed' }), {
         status: 400,

@@ -110,11 +110,13 @@ export const leaderboardService = {
     tenantId?: string | null,
     festivalId?: string | null,
     includeParticipantDetails = true,
+    scope: 'results' | 'participant_results' = 'results',
   ): Promise<PublicPublishedResultRow[]> {
     const { data, error } = await leaderboardRepository.listPublicPublishedResults<PublicPublishedResultRow>(
       tenantId,
       festivalId,
       includeParticipantDetails,
+      scope,
     );
     throwIfError(error);
 

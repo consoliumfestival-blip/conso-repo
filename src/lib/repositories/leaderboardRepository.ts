@@ -12,8 +12,9 @@ export const leaderboardRepository = {
     tenantId?: string | null,
     festivalId?: string | null,
     includeParticipantDetails = true,
+    scope: 'results' | 'participant_results' = 'results',
   ) {
-    return databaseProvider.listPublicPublishedResults<T>(tenantId, festivalId, includeParticipantDetails);
+    return databaseProvider.listPublicPublishedResults<T>(tenantId, festivalId, includeParticipantDetails, scope);
   },
   getPublicLeaderboardSettings<T>(tenantId?: string | null, festivalId?: string | null) {
     return databaseProvider.getPublicLeaderboardSettings<T>(tenantId, festivalId);

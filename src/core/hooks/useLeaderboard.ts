@@ -35,10 +35,11 @@ export const usePublicPublishedResults = (
   festivalId?: string | null,
   enabled = true,
   includeParticipantDetails = true,
+  scope: 'results' | 'participant_results' = 'results',
 ) => {
   return useQuery({
-    queryKey: LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, festivalId, includeParticipantDetails),
-    queryFn: () => leaderboardService.listPublicPublishedResults(tenantId, festivalId, includeParticipantDetails),
+    queryKey: LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, festivalId, includeParticipantDetails, scope),
+    queryFn: () => leaderboardService.listPublicPublishedResults(tenantId, festivalId, includeParticipantDetails, scope),
     enabled,
     staleTime: 300000, // 5 minutes
     gcTime: 1800000, // 30 minutes

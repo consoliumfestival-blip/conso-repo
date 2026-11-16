@@ -1,17 +1,52 @@
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import React from 'react';
-import { Stack, usePathname } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { Stack, usePathname, useRouter } from 'expo-router';
+import { ActivityIndicator, Platform, Text, TouchableOpacity, View } from 'react-native';
 import { TeamLeaderProvider } from '@/core/contexts/TeamLeaderContext';
+import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderThemeProvider, useTeamTheme } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamInstallPrompt } from '@/components/team/TeamInstallPrompt';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
+import { useTenantFeatures, type TeamPortalSection } from '@/core/hooks/useTenantFeatures';
+import { useAuthStore } from '@/core/store/authStore';
 
 function TeamStackFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { role, logoutTeamLeader } = useAuthStore();
+  const { context, loading, portalEnabled } = useTeamLeaderContext();
+  const { settings, isLoading: settingsLoading } = useTenantFeatures(context?.parent_tenant_id);
+  const portalModuleDisabled = !settingsLoading
+    && (!settings.modules.team_leader_management || !settings.modules.team_leader_portal);
+  const section: TeamPortalSection | null = pathname.startsWith('/team/my-team') ? 'my_team'
+    : pathname.startsWith('/team/profile') ? 'my_team'
+    : pathname.startsWith('/team/schedule') ? 'schedule'
+      : pathname.startsWith('/team/results') ? 'results'
+        : pathname.startsWith('/team/participants') ? 'participants'
+          : pathname.startsWith('/team/programs') ? 'programs'
+            : pathname.startsWith('/team/announcements') ? 'announcements' : null;
+  const sectionDisabled = !!section && !!context && !settingsLoading && !settings.sections.team_leader_portal[section];
+
+  React.useEffect(() => {
+    if (sectionDisabled) router.replace('/team/dashboard');
+  }, [router, sectionDisabled]);
+
   if (pathname === '/team/login' || pathname === '/team/first-login') {
     return <View style={{ flex: 1 }}>{children}</View>;
   }
+
+  if (role === 'team_leader' && !loading && (!portalEnabled || portalModuleDisabled)) {
+    return <View style={{ flex: 1, backgroundColor: '#F4F5F6', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+      <View style={{ width: '100%', maxWidth: 440, backgroundColor: '#FFFFFF', borderColor: '#DADFE3', borderWidth: 1, borderRadius: 16, padding: 22 }}>
+        <Text style={{ color: '#1D1B19', fontSize: 19, fontWeight: '800' }}>Team Leader Portal unavailable</Text>
+        <Text style={{ color: '#6D6965', fontSize: 13, lineHeight: 20, marginTop: 8 }}>This portal is disabled or your team access is no longer active. Contact the festival administrator.</Text>
+        <TouchableOpacity accessibilityRole="button" onPress={async () => { await logoutTeamLeader(); router.replace('/team/login'); }} style={{ minHeight: 44, marginTop: 16, borderRadius: 9, backgroundColor: '#0F766E', alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Sign out</Text>
+        </TouchableOpacity>
+      </View>
+    </View>;
+  }
+  if (sectionDisabled) return <View style={{ flex: 1, backgroundColor: '#F4F5F6', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#0F766E" /></View>;
 
   return (
     <TeamLeaderAppShell persistentShell hideMobileHeader={pathname === '/team/dashboard'}>

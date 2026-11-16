@@ -17,6 +17,8 @@ import { ArrowLeft, Medal, Search, Trophy, UserRound, X, ChevronDown } from 'luc
 import { useAuthStore } from '../../../core/store/authStore';
 import { useGetPublicLeaderboardSettings } from '../../../core/hooks/useLeaderboardSettings';
 import { usePublicPublishedResults } from '../../../core/hooks/useLeaderboard';
+import { useTenantFeatures } from '../../../core/hooks/useTenantFeatures';
+import { PublicUnavailableScreen } from '../../../components/publicLanding/PublicUnavailableScreen';
 
 // ── Palette (same tokens as leaderboard.tsx) ─────────────────────────────────
 const P = {
@@ -253,12 +255,17 @@ export default function IndividualRankingsPublicPage() {
   const isDesktop = width >= 1120;
 
   const tenantId = (Array.isArray(qTenantId) ? qTenantId[0] : qTenantId) || authTenantId || null;
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
+  const individualResultsEnabled = publicFeatures.modules.public_page
+    && publicFeatures.modules.public_leaderboard
+    && publicFeatures.sections.public_page.results;
   const settingsQ = useGetPublicLeaderboardSettings(tenantId);
   const festivalId = settingsQ.data?.festival_id;
   const festivalName = settingsQ.data?.public_festival_name?.trim() || 'Festival';
   const showCompetitionPointsGrades = settingsQ.data?.show_competition_points_grades !== false;
 
-  const resultsQ = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
+  const resultsQ = usePublicPublishedResults(tenantId, festivalId,
+    !publicFeaturesLoading && individualResultsEnabled && !!tenantId && !!festivalId, true);
 
   const [search, setSearch]     = useState('');
   const [catFilter, setCat]     = useState('All');
@@ -296,7 +303,11 @@ export default function IndividualRankingsPublicPage() {
     if (row.profileSlug) router.push(`/candidate/${row.profileSlug}` as any);
   }, [router]);
 
-  const isLoading = resultsQ.isLoading || settingsQ.isLoading;
+  const isLoading = publicFeaturesLoading || resultsQ.isLoading || settingsQ.isLoading;
+
+  if (!publicFeaturesLoading && !individualResultsEnabled) {
+    return <PublicUnavailableScreen title="Individual rankings unavailable." message="The festival administrator has disabled this public section." />;
+  }
 
   if (!isLoading && !showCompetitionPointsGrades) {
     return (

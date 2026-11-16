@@ -1,4 +1,4 @@
-import { scheduleOverviewService, type ScheduleOverviewFilters } from '../../services/scheduleOverviewService';
+import { scheduleOverviewService, type ScheduleOverviewFilters, type ScheduleOverviewPage } from '../../services/scheduleOverviewService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { scheduleService } from '../../services/scheduleService';
 import { useAuthStore } from '../store/authStore';
@@ -41,7 +41,7 @@ export const useSchedule = (options?: {
   });
 
   // Schedules
-  const schedulesQuery = useQuery({
+  const schedulesQuery = useQuery<ScheduleOverviewPage | any[]>({
     queryKey: options?.overviewPage
       ? ['schedules', tenant_id, activeFestival?.id, 'overview-page', user?.id,
         options.overviewPage.search ?? '', options.overviewPage.itemId ?? null,
@@ -109,14 +109,14 @@ export const useSchedule = (options?: {
     isDeletingVenue: deleteVenueMutation.isPending,
 
     schedules: options?.overviewPage
-      ? (schedulesQuery.data as any)?.rows ?? []
-      : schedulesQuery.data || [],
+      ? (schedulesQuery.data as ScheduleOverviewPage | undefined)?.rows ?? []
+      : (schedulesQuery.data as any[] | undefined) ?? [],
     totalSchedules: options?.overviewPage
-      ? Number((schedulesQuery.data as any)?.festivalTotalCount ?? 0)
-      : (schedulesQuery.data?.length ?? 0),
+      ? Number((schedulesQuery.data as ScheduleOverviewPage | undefined)?.festivalTotalCount ?? 0)
+      : ((schedulesQuery.data as any[] | undefined)?.length ?? 0),
     totalFilteredSchedules: options?.overviewPage
-      ? Number((schedulesQuery.data as any)?.totalCount ?? 0)
-      : (schedulesQuery.data?.length ?? 0),
+      ? Number((schedulesQuery.data as ScheduleOverviewPage | undefined)?.totalCount ?? 0)
+      : ((schedulesQuery.data as any[] | undefined)?.length ?? 0),
     hasScheduleData: schedulesQuery.data !== undefined,
     isLoadingSchedules: schedulesQuery.isLoading,
     isErrorSchedules: schedulesQuery.isError,
@@ -189,14 +189,14 @@ export const fetchPublicSchedules = async (festivalId: string, tenantId?: string
   }));
 };
 
-export const usePublicSchedule = (festivalId?: string | null, tenantId?: string | null) => {
+export const usePublicSchedule = (festivalId?: string | null, tenantId?: string | null, enabled = true) => {
   return useQuery({
     queryKey: ['public-schedules', tenantId, festivalId],
     queryFn: () => {
       if (!festivalId) throw new Error('Festival ID is required');
       return fetchPublicSchedules(festivalId, tenantId || undefined);
     },
-    enabled: !!festivalId && !!tenantId,
+    enabled: enabled && !!festivalId && !!tenantId,
     staleTime: 1000,
     refetchInterval: 60000,
   });

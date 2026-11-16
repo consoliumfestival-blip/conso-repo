@@ -5,6 +5,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAuthStore } from '../../core/store/authStore';
 import { useGetPublicLeaderboardSettings } from '../../core/hooks/useLeaderboardSettings';
 import { usePublicPublishedResults } from '../../core/hooks/useLeaderboard';
+import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
+import { PublicUnavailableScreen } from '../../components/publicLanding/PublicUnavailableScreen';
 import { ArrowLeft, Award, Medal } from 'lucide-react-native';
 
 export default function ParticipantResultPage() {
@@ -13,30 +15,41 @@ export default function ParticipantResultPage() {
   const { tenant_id: authTenantId } = useAuthStore();
   const tenantId = (Array.isArray(queryTenantId) ? queryTenantId[0] : queryTenantId) || authTenantId || 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
   const query = Array.isArray(searchQueryParam) ? searchQueryParam[0] : (searchQueryParam || '');
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
+  const participantResultsEnabled = publicFeatures.modules.public_page
+    && publicFeatures.sections.public_page.results
+    && publicFeatures.sections.public_page.participant_results;
 
   const settingsQuery = useGetPublicLeaderboardSettings(tenantId);
   const festivalId = settingsQuery.data?.festival_id;
 
-  const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
+  const publishedResultsQuery = usePublicPublishedResults(
+    tenantId, festivalId, !publicFeaturesLoading && participantResultsEnabled && !!tenantId && !!festivalId,
+    true, 'participant_results',
+  );
 
   const matchingResults = useMemo(() => {
     if (!publishedResultsQuery.data || !query.trim()) return [];
     const lowerQuery = query.toLowerCase().trim();
     
     return publishedResultsQuery.data.filter(r => {
-      if (!(r as any).participants) return false;
-      return (r as any).participants.some((p: any) => 
+      const participants = (r as any).participants ?? [{ name: r.participant_name, chest_no: r.chest_number }];
+      return participants.some((p: any) =>
         (p.chest_no && p.chest_no.toLowerCase().includes(lowerQuery)) || 
         (p.name && p.name.toLowerCase().includes(lowerQuery))
       );
     }).map(r => {
-      const matches = (r as any).participants.filter((p: any) => 
+      const participants = (r as any).participants ?? [{ name: r.participant_name, chest_no: r.chest_number }];
+      const matches = participants.filter((p: any) =>
         (p.chest_no && p.chest_no.toLowerCase().includes(lowerQuery)) || 
         (p.name && p.name.toLowerCase().includes(lowerQuery))
       );
       return { ...r, matchedParticipants: matches };
     });
   }, [publishedResultsQuery.data, query]);
+
+  if (publicFeaturesLoading) return <View style={{ flex: 1, minHeight: '100vh' as any, backgroundColor: '#071426', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color="#7DD3C7" /></View>;
+  if (!participantResultsEnabled) return <PublicUnavailableScreen title="Participant results unavailable." message="The festival administrator has disabled participant results." />;
 
   return (
     <div style={{ flex: 1, width: "100%", minHeight: "100vh", overflowY: "auto", overflowX: "hidden" }} className="bg-alviora-bg bg-pattern text-alviora-body font-body-md antialiased">

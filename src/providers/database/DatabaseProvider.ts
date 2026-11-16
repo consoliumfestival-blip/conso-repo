@@ -146,7 +146,7 @@ export interface DatabaseProvider {
   publishResults(input: CompetitionPublication): Promise<QueryResult<void>>;
   listAdminLeaderboard<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
   listPublicLeaderboard<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
-  listPublicPublishedResults<T>(tenantId?: string | null, festivalId?: string | null, includeParticipantDetails?: boolean): Promise<ListResult<T>>;
+  listPublicPublishedResults<T>(tenantId?: string | null, festivalId?: string | null, includeParticipantDetails?: boolean, scope?: 'results' | 'participant_results'): Promise<ListResult<T>>;
   getPublicLeaderboardSettings<T>(tenantId?: string | null, festivalId?: string | null): Promise<QueryResult<T>>;
   // Result Visibility Management
   listAdminPublishedResults<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;

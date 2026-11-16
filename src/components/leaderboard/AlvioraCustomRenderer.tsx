@@ -186,9 +186,10 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
 
   results.forEach((result) => {
     if (!result.participant_id) return;
+    const pointsAwarded = result.points_awarded ?? 0;
     const existing = grouped.get(result.participant_id);
     if (existing) {
-      existing.points += result.points_awarded;
+      existing.points += pointsAwarded;
       existing.resultCount += 1;
       existing.firstPlaces += result.rank === 1 ? 1 : 0;
       if (!existing.profileSlug && result.participant_profile_slug) existing.profileSlug = result.participant_profile_slug;
@@ -198,7 +199,7 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
       id: result.participant_id,
       name: result.participant_name || result.chest_number || 'Published participant',
       organisation: result.organisation_name,
-      points: result.points_awarded,
+      points: pointsAwarded,
       resultCount: 1,
       firstPlaces: result.rank === 1 ? 1 : 0,
       category: result.participant_category_code,
@@ -234,7 +235,7 @@ const toItemSections = (results: PublicPublishedResultRow[]): ItemResultSection[
       name: result.participant_name || result.chest_number || 'Published participant',
       organisationName: result.organisation_name,
       rank: result.rank,
-      points: result.points_awarded,
+      points: result.points_awarded ?? 0,
       grade: result.grade,
       chestNumber: result.chest_number,
       accent: accentByRank(rank),
@@ -312,7 +313,7 @@ export function AlvioraCustomRenderer({ page = 'landing' }: { page?: PublicLeade
 
     const refresh = () => {
       queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboard(tenantId, festivalId) });
-      queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, festivalId, true) });
+      queryClient.invalidateQueries({ queryKey: ['public-published-results', tenantId, festivalId] });
       queryClient.invalidateQueries({ queryKey: ['public-schedules', tenantId, festivalId] });
       queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboardSettings(tenantId, festivalId) });
     };

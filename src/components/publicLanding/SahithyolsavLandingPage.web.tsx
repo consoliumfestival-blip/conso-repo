@@ -13,6 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../core/config/supabase';
 import { getCategoryLabel } from '../../constants/categories';
 import { formatScheduleTime } from '../../core/utils/scheduleTime';
+import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
+import { PublicUnavailableScreen } from './PublicUnavailableScreen';
 
 const InitialLoader = ({ isReady }: { isReady: boolean }) => {
   const [shouldRender, setShouldRender] = React.useState(true);
@@ -302,13 +304,19 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
   const { tenant_id: queryTenantId } = useLocalSearchParams<{ tenant_id?: string }>();
   const { tenant_id: authTenantId } = useAuthStore();
   const tenantId = (Array.isArray(queryTenantId) ? queryTenantId[0] : queryTenantId) || authTenantId || 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
+  const showPublicPage = publicFeatures.modules.public_page;
+  const showPublicResults = showPublicPage && publicFeatures.sections.public_page.results;
+  const showPublicBoard = showPublicResults && publicFeatures.modules.public_leaderboard;
+  const showPublicSchedule = showPublicPage && publicFeatures.sections.public_page.schedule;
+  const showPublicMedia = showPublicPage && publicFeatures.sections.public_page.media;
 
   const settingsQuery = useGetPublicLeaderboardSettings(tenantId);
   const festivalId = settingsQuery.data?.festival_id;
 
-  const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
-  const organisationQuery = usePublicLeaderboard(tenantId, festivalId, !!tenantId && !!festivalId);
-  const scheduleQuery = usePublicSchedule(festivalId, tenantId);
+  const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !publicFeaturesLoading && showPublicResults && !!tenantId && !!festivalId, true);
+  const organisationQuery = usePublicLeaderboard(tenantId, festivalId, !publicFeaturesLoading && showPublicBoard && !!tenantId && !!festivalId);
+  const scheduleQuery = usePublicSchedule(festivalId, tenantId, !publicFeaturesLoading && showPublicSchedule);
 
   const { data: generatedPosters = [] } = useQuery({
     queryKey: ['public-generated-posters-item-results', festivalId],
@@ -332,7 +340,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
       }
       return data;
     },
-    enabled: page === 'items' && !!festivalId
+    enabled: !publicFeaturesLoading && showPublicResults && page === 'items' && !!festivalId
   });
 
   const { availableCategories, filteredItemResults: groupedItemResults } = React.useMemo(() => {
@@ -447,9 +455,10 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
   
   const [resolvedPosters, setResolvedPosters] = useState<string[]>([]);
   const [activePosterIdx, setActivePosterIdx] = useState(0);
+  const publicThemeConfig = (settingsQuery.data as unknown as { theme_config?: { team_point_posters?: string[] } } | undefined)?.theme_config;
 
   React.useEffect(() => {
-    const rawPosters = settingsQuery.data?.theme_config?.team_point_posters || [];
+    const rawPosters = showPublicMedia ? publicThemeConfig?.team_point_posters || [] : [];
     if (rawPosters.length === 0) {
       setResolvedPosters([]);
       return;
@@ -472,7 +481,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
       setResolvedPosters(urls);
     };
     resolveUrls();
-  }, [settingsQuery.data?.theme_config?.team_point_posters]);
+  }, [publicThemeConfig?.team_point_posters, showPublicMedia]);
 
   React.useEffect(() => {
     if (resolvedPosters.length > 1) {
@@ -583,6 +592,15 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
     return false;
   }, [page, settingsQuery.isLoading, scheduleQuery.isLoading, organisationQuery.isLoading, publishedResultsQuery.isLoading]);
 
+  if (publicFeaturesLoading) return <View style={{ flex: 1, minHeight: '100vh' as any, backgroundColor: '#071426', alignItems: 'center', justifyContent: 'center' }}><Swirling className="w-16 h-16 text-white" /></View>;
+  if (!showPublicPage) return <PublicUnavailableScreen title="Public page unavailable." message="The festival administrator has disabled the public page." />;
+  if ((page === 'schedule' && !showPublicSchedule)
+    || (page === 'units' && !showPublicBoard)
+    || (page === 'items' && !showPublicResults)
+    || (page === 'media' && !showPublicMedia)) {
+    return <PublicUnavailableScreen title="This public section is unavailable." message="The festival administrator has disabled this public section." />;
+  }
+
   return (
     <div style={{ flex: 1, width: "100%", height: "100vh", overflowY: "auto", overflowX: "hidden" }} className="bg-[#050505] text-alviora-body font-body-md antialiased relative">
       {/* Fixed Ambient Background Glows */}
@@ -654,11 +672,13 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
           </Link>
           <div className="hidden md:flex gap-8 handjet-wrapper">
             <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'landing' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard?tenant_id=${tenantId}&bypass_html=true`}>Home</Link>
-            <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'schedule' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/schedule?tenant_id=${tenantId}`}>Schedule</Link>
-            <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'units' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/unit-rankings?tenant_id=${tenantId}`}>Teams</Link>
-            <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'individuals' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/individual-rankings?tenant_id=${tenantId}`}>Individuals</Link>
-            <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'items' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/item-results?tenant_id=${tenantId}`}>Results</Link>
-              <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'media' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/media?tenant_id=${tenantId}`}>Posters</Link>
+            {showPublicSchedule && <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'schedule' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/schedule?tenant_id=${tenantId}`}>Schedule</Link>}
+            {showPublicBoard && <>
+              <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'units' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/unit-rankings?tenant_id=${tenantId}`}>Teams</Link>
+              <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${'text-white hover:text-gray-200'}`} href={`/leaderboard/individual-rankings?tenant_id=${tenantId}`}>Individuals</Link>
+            </>}
+            {showPublicResults && <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'items' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/item-results?tenant_id=${tenantId}`}>Results</Link>}
+            {showPublicMedia && <Link className={`transition-colors duration-200 font-bold text-lg uppercase tracking-widest ${page === 'media' ? 'text-[#c69a53]' : 'text-white hover:text-gray-200'}`} href={`/leaderboard/media?tenant_id=${tenantId}`}>Posters</Link>}
           </div>
           <div className="flex gap-4 handjet-wrapper">
             
@@ -689,41 +709,41 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
             >
               Home
             </Link>
-            <Link 
+            {showPublicSchedule && <Link
               className={`transition-colors duration-200 border-b border-white/10 pb-4 ${page === 'schedule' ? 'text-[#c69a53]' : 'text-white'}`} 
               href={`/leaderboard/schedule?tenant_id=${tenantId}`}
               onPress={() => setIsMobileMenuOpen(false)}
             >
               Schedule
-            </Link>
-            <Link 
+            </Link>}
+            {showPublicBoard && <Link
               className={`transition-colors duration-200 border-b border-white/10 pb-4 ${page === 'units' ? 'text-[#c69a53]' : 'text-white'}`} 
               href={`/leaderboard/unit-rankings?tenant_id=${tenantId}`}
               onPress={() => setIsMobileMenuOpen(false)}
             >
               Teams
-            </Link>
-            <Link 
-              className={`transition-colors duration-200 border-b border-white/10 pb-4 ${page === 'individuals' ? 'text-[#c69a53]' : 'text-white'}`} 
+            </Link>}
+            {showPublicBoard && <Link
+              className="transition-colors duration-200 border-b border-white/10 pb-4 text-white"
               href={`/leaderboard/individual-rankings?tenant_id=${tenantId}`}
               onPress={() => setIsMobileMenuOpen(false)}
             >
               Individuals
-            </Link>
-            <Link 
+            </Link>}
+            {showPublicResults && <Link
               className={`transition-colors duration-200 border-b border-white/10 pb-4 ${page === 'items' ? 'text-[#c69a53]' : 'text-white'}`} 
               href={`/leaderboard/item-results?tenant_id=${tenantId}`}
               onPress={() => setIsMobileMenuOpen(false)}
             >
               Results
-            </Link>
-            <Link 
+            </Link>}
+            {showPublicMedia && <Link
               className={`transition-colors duration-200 border-b border-white/10 pb-4 ${page === 'media' ? 'text-[#c69a53]' : 'text-white'}`} 
               href={`/leaderboard/media?tenant_id=${tenantId}`}
               onPress={() => setIsMobileMenuOpen(false)}
             >
               Posters
-            </Link>
+            </Link>}
             <button className="mt-8 bg-[#c69a53] text-black px-6 py-4 rounded-xl font-bold text-2xl uppercase tracking-widest shadow-sm">
               Get In Touch
             </button>
@@ -783,13 +803,13 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
                   <span className="material-symbols-outlined">emoji_events</span>
                   View Leaderboard
                 </a>
-                <a href="#live-schedule" className="hover-lift w-full sm:w-auto border border-white/20 text-white px-8 py-4 rounded-full font-title-md text-title-md hover:bg-[#333] transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
+                {showPublicSchedule && <a href="#live-schedule" className="hover-lift w-full sm:w-auto border border-white/20 text-white px-8 py-4 rounded-full font-title-md text-title-md hover:bg-[#333] transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
                   <span className="material-symbols-outlined">calendar_today</span>
-                  Today's Schedule</a>
-                  <Link href={`/leaderboard/item-results?tenant_id=${tenantId}`} className="hover-lift w-full sm:w-auto border border-[#c69a53]/40 text-[#c69a53] px-8 py-4 rounded-full font-title-md text-title-md hover:bg-[#c69a53]/10 transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
+                  Today&apos;s Schedule</a>}
+                  {showPublicResults && <Link href={`/leaderboard/item-results?tenant_id=${tenantId}`} className="hover-lift w-full sm:w-auto border border-[#c69a53]/40 text-[#c69a53] px-8 py-4 rounded-full font-title-md text-title-md hover:bg-[#c69a53]/10 transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
                     <span className="material-symbols-outlined">format_list_numbered</span>
                     Item Results
-                  </Link>
+                  </Link>}
               </div>
             </div>
           </div>
@@ -828,13 +848,13 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
                   <span className="material-symbols-outlined text-lg">emoji_events</span>
                   View Leaderboard
                 </a>
-                <a href="#live-schedule" className="w-full border border-white/20 text-white py-4 rounded-2xl font-bold text-sm hover:bg-[#333] transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
+                {showPublicSchedule && <a href="#live-schedule" className="w-full border border-white/20 text-white py-4 rounded-2xl font-bold text-sm hover:bg-[#333] transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
                   <span className="material-symbols-outlined text-lg">calendar_today</span>
-                  Live Schedule</a>
-                  <Link href={`/leaderboard/item-results?tenant_id=${tenantId}`} className="w-full border border-[#c69a53]/40 text-[#c69a53] py-4 rounded-2xl font-bold text-sm hover:bg-[#c69a53]/10 transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
+                  Live Schedule</a>}
+                  {showPublicResults && <Link href={`/leaderboard/item-results?tenant_id=${tenantId}`} className="w-full border border-[#c69a53]/40 text-[#c69a53] py-4 rounded-2xl font-bold text-sm hover:bg-[#c69a53]/10 transition-all flex items-center justify-center gap-2 bg-black/30 backdrop-blur-sm shadow-sm">
                     <span className="material-symbols-outlined text-lg">format_list_numbered</span>
                     Item Results
-                  </Link>
+                  </Link>}
               </div>
             </div>
           </div>
@@ -877,7 +897,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
 
         </>)}
         {/* Live Schedule */}
-        {(page === 'landing' || page === 'schedule') && (
+        {(page === 'landing' || page === 'schedule') && showPublicSchedule && (
         
           <section id="live-schedule" className="pt-4 md:pt-8 pb-section-gap max-w-full mx-auto fade-in-up visible handjet-wrapper overflow-hidden">
             <div className="max-w-[1400px] mx-auto px-gutter flex justify-between items-end mb-8">
@@ -1059,7 +1079,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
         )}
 
         {/* Top Leaderboard */}
-        {(page === 'landing' || page === 'units') && (
+        {(page === 'landing' || page === 'units') && showPublicBoard && (
         <section id="leaderboard" className={`py-section-gap px-gutter fade-in-up visible relative ${page === 'units' ? '' : 'border-none'}`}>
           
           {/* Subtle Glows in background like the image */}
@@ -1269,7 +1289,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
         )}
 
         {/* Item Results Section */}
-        {page === 'items' && (
+        {page === 'items' && showPublicResults && (
         <section id="item-results" className="bg-transparent backdrop-blur-sm py-section-gap px-gutter border-alviora-border fade-in-up visible">
           <div className="max-w-container-max mx-auto">
               <div className="text-center mb-10">

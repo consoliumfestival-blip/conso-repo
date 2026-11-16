@@ -24,6 +24,7 @@ import {
 } from "lucide-react-native";
 import { useAuthStore } from "@/core/store/authStore";
 import { useTeamLeaderContext } from "@/core/contexts/TeamLeaderContext";
+import { useTenantFeatures, type TeamPortalSection } from "@/core/hooks/useTenantFeatures";
 import { ConsoliumLogo } from "@/components/ui/ConsoliumLogo";
 import { applyPortalPwaMetadata } from "@/core/utils/portalPwaMetadata";
 import { PwaUpdateNotice } from "@/components/pwa/PwaUpdateNotice";
@@ -117,6 +118,16 @@ export function TeamLeaderAppShell({
   const logoutTeamLeader = useAuthStore((s) => s.logoutTeamLeader);
   const { width } = useWindowDimensions();
   const { context } = useTeamLeaderContext();
+  const { settings: tenantFeatures } = useTenantFeatures(context?.parent_tenant_id);
+  const sectionByRoute: Partial<Record<string, TeamPortalSection>> = {
+    '/team/my-team': 'my_team', '/team/schedule': 'schedule', '/team/results': 'results',
+    '/team/participants': 'participants', '/team/programs': 'programs', '/team/announcements': 'announcements',
+    '/team/profile': 'my_team',
+  };
+  const visibleNavItems = navItems.filter((item) => {
+    const section = sectionByRoute[item.path];
+    return !section || tenantFeatures.sections.team_leader_portal[section];
+  });
   const ui = useTeamUi();
   const { mode, toggleMode } = useTeamTheme();
 
@@ -269,7 +280,7 @@ export function TeamLeaderAppShell({
           {/* Nav items */}
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
             {sidebarOpen && <Text style={{ color: ui.colors.textMuted, fontSize: 9, fontWeight: '700', paddingHorizontal: 12, marginBottom: 9 }}>PLATFORM</Text>}
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = item.match(pathname);
               const Icon = item.icon;
               return (
@@ -363,7 +374,7 @@ export function TeamLeaderAppShell({
                 {context?.team_name || 'Team workspace'}
               </Text>
               <Text style={{ fontSize: 20, lineHeight: 26, fontWeight: '700', color: ui.colors.text }}>
-                {navItems.find((item) => item.match(pathname))?.label || 'Team Portal'}
+                {visibleNavItems.find((item) => item.match(pathname))?.label || 'Team Portal'}
               </Text>
             </View>
             <View
@@ -460,7 +471,7 @@ export function TeamLeaderAppShell({
         }}
       >
         {[
-          ...navItems.slice(0, 4),
+          ...visibleNavItems.slice(0, 4),
           {
             label: "More",
             shortLabel: "More",
@@ -517,7 +528,7 @@ export function TeamLeaderAppShell({
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={{ padding: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {navItems.slice(4).map((item) => {
+              {visibleNavItems.slice(4).map((item) => {
                 const Icon = item.icon;
                 const active = item.match(pathname);
                 return <TouchableOpacity key={item.path} onPress={() => navigate(item.path)}

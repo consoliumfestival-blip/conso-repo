@@ -27,6 +27,7 @@ import {
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/core/store/authStore";
+import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
 import { useFestival } from "@/core/hooks/useFestival";
 import { FEATURE_FLAGS } from "@/core/config/features";
 import { ui } from "@/constants/designSystem";
@@ -239,14 +240,33 @@ function getPageTitle(pathname: string) {
   );
 }
 
+function getTenantNavigation(settings: ReturnType<typeof useTenantFeatures>['settings']): NavItem[] {
+  return navItems.flatMap((item) => {
+    if (item.label === 'Team Leader Management' && !settings.modules.team_leader_management) return [];
+    if (item.label === 'Open Judge Portal' && !settings.modules.judge_portal) return [];
+    if (item.label === 'Judge Management' && !settings.modules.judge_portal) return [];
+    if (item.label === 'Stage Management' && !settings.modules.stage_management) return [];
+    if (item.label === 'Smart Announcer' && !settings.modules.smart_announcer) return [];
+    if (!item.children) return [item];
+    const children = item.children.filter((child) => {
+      if (child.label === 'Poster Studio') return settings.modules.poster_studio;
+      if (child.label === 'Media Center') return settings.modules.media_center;
+      return true;
+    });
+    return [{ ...item, children }];
+  });
+}
+
 function DesktopSidebar({
   pathname,
+  items,
   collapsed,
   onToggle,
   festivalName,
   tabletWidth,
 }: {
   pathname: string;
+  items: NavItem[];
   collapsed: boolean;
   onToggle: () => void;
   festivalName: string;
@@ -301,7 +321,7 @@ function DesktopSidebar({
           contentContainerStyle={{ paddingBottom: 20 }}
           showsVerticalScrollIndicator={false}
         >
-          {navItems.map((item) => {
+          {items.map((item) => {
             const active = item.match(pathname);
             const Icon = item.icon;
             const expanded = item.children
@@ -440,10 +460,12 @@ function MobileMenuSheet({
   visible,
   onClose,
   pathname,
+  items,
 }: {
   visible: boolean;
   onClose: () => void;
   pathname: string;
+  items: NavItem[];
 }) {
   const router = useRouter();
   const { user, role } = useAuthStore();
@@ -485,7 +507,7 @@ function MobileMenuSheet({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.menuGrid}
           >
-            {navItems.map((item) => {
+            {items.map((item) => {
               const active = item.match(pathname);
               const Icon = item.icon;
               const hasChildren = !!item.children;
@@ -592,12 +614,14 @@ function MobileMenuSheet({
 function MobileBottomBar({
   pathname,
   onMenu,
+  items,
 }: {
   pathname: string;
   onMenu: () => void;
+  items: NavItem[];
 }) {
   const router = useRouter();
-  const primaryItems = navItems.slice(0, 3);
+  const primaryItems = items.slice(0, 3);
 
   return (
     <SafeAreaView {...{ dataSet: { coreGlass: 'navigation' } } as any} className="no-print" style={styles.mobileBarSafe}>
@@ -655,6 +679,8 @@ function MobileBottomBar({
 
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const tenantId = useAuthStore((state) => state.tenant_id);
+  const { settings: tenantFeatures } = useTenantFeatures(tenantId);
   const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -662,6 +688,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   // Tablets use the full navigation rail; short landscape phone windows keep phone navigation.
   const showSidebar = width >= 900 || (width >= 600 && height >= 600);
   const tabletSidebarWidth = width < 900 ? (width < 720 ? 220 : 240) : undefined;
+  const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
   const { useActiveFestival } = useFestival();
@@ -685,6 +712,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
       {showSidebar && (
         <DesktopSidebar
           pathname={pathname}
+          items={visibleNavItems}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((current) => !current)}
           festivalName={festivalName}
@@ -721,11 +749,13 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
           <MobileBottomBar
             pathname={pathname}
             onMenu={() => setMenuOpen(true)}
+            items={visibleNavItems}
           />
           <MobileMenuSheet
             visible={menuOpen}
             pathname={pathname}
             onClose={() => setMenuOpen(false)}
+            items={visibleNavItems}
           />
         </>
       )}

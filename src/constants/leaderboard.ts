@@ -18,8 +18,8 @@ export const LEADERBOARD_QUERY_KEYS = {
     ['admin-leaderboard', tenantId ?? 'all', festivalId ?? 'active'],
   publicLeaderboard: (tenantId?: string | null, festivalId?: string | null) =>
     ['public-leaderboard', tenantId ?? 'all', festivalId ?? 'active'],
-  publicPublishedResults: (tenantId?: string | null, festivalId?: string | null, includeParticipantDetails = true) =>
-    ['public-published-results', tenantId ?? 'all', festivalId ?? 'active', includeParticipantDetails ? 'with-participants' : 'items-only'],
+  publicPublishedResults: (tenantId?: string | null, festivalId?: string | null, includeParticipantDetails = true, scope: 'results' | 'participant_results' = 'results') =>
+    ['public-published-results', tenantId ?? 'all', festivalId ?? 'active', includeParticipantDetails ? 'with-participants' : 'items-only', scope],
   publicLeaderboardSettings: (tenantId?: string | null, festivalId?: string | null) =>
     ['public-leaderboard-settings', tenantId ?? 'all', festivalId ?? 'active'],
   festivalResults: (tenantId?: string | null, festivalId?: string | null) =>

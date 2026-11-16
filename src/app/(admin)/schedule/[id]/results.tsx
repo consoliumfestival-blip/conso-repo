@@ -29,6 +29,7 @@ import {
 import { createRequestId } from '../../../../core/utils/requestId';
 import { completeDirectMarks } from '../../../../core/utils/completeDirectMarks';
 import { getScoringRulesForItem } from '../../../../core/utils/scoringRules';
+import { useTenantFeatures } from '../../../../core/hooks/useTenantFeatures';
 import type { CompetitionPublication } from '../../../../types/scoring';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -55,6 +56,9 @@ export default function ResultsPage() {
 
   const { schedules } = useSchedule();
   const schedule = schedules?.find((s: any) => s.id === scheduleId);
+  const { settings: tenantFeatures } = useTenantFeatures(schedule?.tenant_id);
+  const directEntryEnabled = tenantFeatures.modules.direct_entry;
+  const judgePortalEnabled = tenantFeatures.modules.judge_portal;
   const { usePointsConfig, useActiveFestival } = useFestival();
 
   // Resolve festival_id: use schedule's festival_id if set, else fall back to active festival
@@ -471,6 +475,11 @@ export default function ResultsPage() {
 
   // ── Save ───────────────────────────────────────────────────────────────────
   const handlePublish = async (confirmedZeroSignature?: string) => {
+    if ((mode === 'direct' && !directEntryEnabled) || (mode === 'marks' && !judgePortalEnabled)) {
+      const message = mode === 'direct' ? 'Direct Entry is disabled for this tenant.' : 'Judge Portal is disabled for this tenant.';
+      if (Platform.OS === 'web') window.alert(message); else Alert.alert('Portal disabled', message);
+      return;
+    }
     if (pointsConfigError || !pointsConfig || scoringErrors.length) {
       const message = pointsConfigError?.message || scoringErrors[0] || 'Configure points before publishing.';
       if (Platform.OS === 'web') window.alert(message); else Alert.alert('Points configuration', message);
@@ -691,7 +700,7 @@ export default function ResultsPage() {
           </Text>
 
           {/* Mode A: Judges used the system */}
-          <TouchableOpacity
+          {judgePortalEnabled && <TouchableOpacity
             onPress={() => setMode('marks')}
             className="bg-core-surface-white border border-ssf-primary rounded-lg p-4"
           >
@@ -706,10 +715,10 @@ export default function ResultsPage() {
             <Text className="font-poppins text-ssf-text-muted text-sm">
               ജഡ്ജിമാർ system-ൽ marks enter ചെയ്തിട്ടുണ്ട്. 3 judges-ന്റെ marks കണ്ട് final rank + grade confirm ചെയ്യാം.
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
           {/* Mode B: Direct entry */}
-          {(!markEntries || (markEntries as any[]).length === 0) && (
+          {directEntryEnabled && (!markEntries || (markEntries as any[]).length === 0) && (
             <TouchableOpacity
               onPress={() => setMode('direct')}
               className="bg-core-surface-white border border-core-border-gray-200 rounded-lg p-4"
@@ -727,6 +736,7 @@ export default function ResultsPage() {
               </Text>
             </TouchableOpacity>
           )}
+          {!directEntryEnabled && !judgePortalEnabled && <Text className="font-poppins text-sm text-ssf-text-muted text-center">Result entry is disabled for this tenant. Existing published results remain available to review.</Text>}
         </View>
       </View>
     );
@@ -1079,7 +1089,7 @@ export default function ResultsPage() {
               label={(published && !forceRepublishConfirmed) ? '✅ Results Published' : '🚀 Publish Results'}
               onPress={() => { void handlePublish(); }}
               isLoading={saving}
-              disabled={!hasAtLeastOneResult && !((mode === 'direct' || mode === 'marks') && registrations.length > 0)}
+              disabled={((mode === 'direct' && !directEntryEnabled) || (mode === 'marks' && !judgePortalEnabled)) || (!hasAtLeastOneResult && !((mode === 'direct' || mode === 'marks') && registrations.length > 0))}
               className={`${published && !forceRepublishConfirmed ? 'opacity-80' : ''} ${!hasAtLeastOneResult && registrations.length === 0 ? 'opacity-50' : ''}`}
             />
           </View>

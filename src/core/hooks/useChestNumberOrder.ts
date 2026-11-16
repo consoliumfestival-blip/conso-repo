@@ -9,7 +9,7 @@ export function useChestNumberOrder(festivalId: string) {
   const userId = useAuthStore(state => state.user?.id);
   const cache = useQueryClient();
   const key = ['chest-number-order', tenantId, userId, festivalId];
-  const query = useQuery({ queryKey: key, queryFn: () => chestNumberService.get(festivalId) });
+  const query = useQuery({ queryKey: key, queryFn: () => chestNumberService.get(festivalId), enabled: !!festivalId });
   const refreshNumbers = () => {
     for (const queryKey of [['participants'], ['participant'], ['publicCandidateProfile']]) {
       void cache.invalidateQueries({ queryKey });

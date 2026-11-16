@@ -49,6 +49,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LEADERBOARD_QUERY_KEYS } from '../../constants/leaderboard';
 import { supabase } from '../../core/config/supabase';
+import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
+import { PublicUnavailableScreen } from '../../components/publicLanding/PublicUnavailableScreen';
 
 type ActiveTab = 'organisations' | 'individuals';
 type Breakpoint = 'desktop' | 'tablet' | 'mobile';
@@ -373,15 +375,19 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
   });
 
   const tenantId = (Array.isArray(queryTenantId) ? queryTenantId[0] : queryTenantId) || authTenantId || null;
+  const { settings: publicFeatures } = useTenantFeatures(tenantId, true);
+  const showPublicResults = publicFeatures.sections.public_page.results;
+  const showPublicBoard = publicFeatures.modules.public_leaderboard && showPublicResults;
+  const showPublicSchedule = publicFeatures.sections.public_page.schedule;
   const settingsQuery = useGetPublicLeaderboardSettings(tenantId);
   const showCompetitionPointsGrades = settingsQuery.data?.show_competition_points_grades !== false;
-  const showIndividuals = settingsQuery.data?.show_individual_rankings === true && showCompetitionPointsGrades;
+  const showIndividuals = publicFeatures.modules.public_leaderboard && settingsQuery.data?.show_individual_rankings === true && showCompetitionPointsGrades;
   const festivalId = settingsQuery.data?.festival_id;
   const publicFestivalName = settingsQuery.data?.public_festival_name?.trim() || 'Festival';
 
-  const organisationQuery = usePublicLeaderboard(tenantId, festivalId, !!tenantId && !!festivalId);
-  const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
-  const scheduleQuery = usePublicSchedule(festivalId, tenantId);
+  const organisationQuery = usePublicLeaderboard(tenantId, festivalId, !!tenantId && !!festivalId && showPublicBoard);
+  const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId && showPublicResults, true);
+  const scheduleQuery = usePublicSchedule(festivalId, tenantId, showPublicSchedule);
   const queryClient = useQueryClient();
 
   // Keep the public board live without broad/global subscriptions. Every
@@ -392,7 +398,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
 
     const refresh = () => {
       queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboard(tenantId, festivalId) });
-      queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, festivalId, true) });
+      queryClient.invalidateQueries({ queryKey: ['public-published-results', tenantId, festivalId] });
       queryClient.invalidateQueries({ queryKey: ['public-schedules', tenantId, festivalId] });
       queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboardSettings(tenantId, festivalId) });
     };
@@ -776,7 +782,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
       <View style={styles.quickNavPanel}>
         <Text style={styles.sectionTitleLabel}>Quick Navigation</Text>
         <View style={styles.quickNavRow}>
-          <TouchableOpacity
+          {showPublicBoard && <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push('/(public)/leaderboard/unit-rankings' as never)}
             style={[styles.quickNavCardGlass, styles.cardGlowGreen, isMobile && styles.quickNavCardGlassMobile]}
@@ -789,9 +795,9 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
               <Trophy size={isMobile ? 18 : 22} color="#10B981" />
             </View>
             <Text style={[styles.quickNavTitleText, isMobile && styles.quickNavTitleTextMobile]}>Unit{'\n'}Rankings</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
-          <TouchableOpacity
+          {showPublicResults && <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push('/(public)/leaderboard/item-results' as never)}
             style={[styles.quickNavCardGlass, styles.cardGlowGold, isMobile && styles.quickNavCardGlassMobile]}
@@ -804,9 +810,9 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
               <ClipboardList size={isMobile ? 18 : 22} color="#FBBF24" />
             </View>
             <Text style={[styles.quickNavTitleText, isMobile && styles.quickNavTitleTextMobile]}>Item{'\n'}Results</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
-          <TouchableOpacity
+          {showIndividuals && <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push('/(public)/leaderboard/individual-rankings' as never)}
             style={[styles.quickNavCardGlass, styles.cardGlowBlue, isMobile && styles.quickNavCardGlassMobile]}
@@ -819,9 +825,9 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
               <UserRound size={isMobile ? 18 : 22} color="#3B82F6" />
             </View>
             <Text style={[styles.quickNavTitleText, isMobile && styles.quickNavTitleTextMobile]}>Individual{'\n'}Rankings</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
-          <TouchableOpacity
+          {showPublicSchedule && <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => router.push('/(public)/leaderboard/schedule' as never)}
             style={[styles.quickNavCardGlass, styles.cardGlowPurple, isMobile && styles.quickNavCardGlassMobile]}
@@ -834,12 +840,12 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
               <Calendar size={isMobile ? 18 : 22} color="#A78BFA" />
             </View>
             <Text style={[styles.quickNavTitleText, isMobile && styles.quickNavTitleTextMobile]}>Festival{'\n'}Schedule</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </View>
       </View>
 
       {/* Visual Podium Panel */}
-      <View style={styles.podiumPanel}>
+      {showPublicBoard && <View style={styles.podiumPanel}>
         {/* Ambient Background Glow */}
         <View style={[styles.podiumBgGlow, isMobile && styles.podiumBgGlowMobile]} />
 
@@ -971,7 +977,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
             style={[styles.podiumBaseStageFront, isMobile && styles.podiumBaseStageFrontMobile]}
           />
         </View>
-      </View>
+      </View>}
     </View>
   );
 
@@ -1381,6 +1387,19 @@ export function PublicLeaderboardExperience({ page = 'landing' }: { page?: Publi
   const { tenant_id: queryTenantId, bypass_html } = useLocalSearchParams<{ tenant_id?: string, bypass_html?: string }>();
   const { tenant_id: authTenantId } = useAuthStore();
   const tenantId = (Array.isArray(queryTenantId) ? queryTenantId[0] : queryTenantId) || authTenantId || 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
+
+  if (publicFeaturesLoading) return <View style={{ flex: 1, backgroundColor: '#071426', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color="#7DD3C7" /></View>;
+
+  if (!publicFeatures.modules.public_page) {
+    return <PublicUnavailableScreen title="Public page unavailable." message="The festival administrator has disabled the public page." />;
+  }
+  if ((page === 'schedule' && !publicFeatures.sections.public_page.schedule)
+    || (page === 'items' && !publicFeatures.sections.public_page.results)
+    || (page === 'units' && (!publicFeatures.modules.public_leaderboard || !publicFeatures.sections.public_page.results))) {
+    const title = page === 'schedule' ? 'Public schedule unavailable.' : page === 'units' ? 'Public leaderboard unavailable.' : 'Public results unavailable.';
+    return <PublicUnavailableScreen title={title} message="The festival administrator has disabled this public section." />;
+  }
 
   const TARGET_TENANT_ID = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
   const CUSTOM_RENDERER_ENABLED = process.env.EXPO_PUBLIC_CUSTOM_RENDERER_ENABLED !== 'false';
@@ -1891,12 +1910,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     shadowOpacity: 0.4,
-  },
-  cardGlowPurple: {
-    shadowColor: '#A78BFA',
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 24,
-    shadowOpacity: 0.15,
   },
   cardGlowBlue: {
     shadowColor: '#3B82F6',

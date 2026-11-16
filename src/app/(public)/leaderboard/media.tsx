@@ -7,12 +7,15 @@ import { supabase } from '../../../core/config/supabase';
 import { storageService } from '../../../services/storage/storageService';
 import { Download, Play, X, Maximize2 } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTenantFeatures } from '@/core/hooks/useTenantFeatures';
+import { PublicUnavailableScreen } from '@/components/publicLanding/PublicUnavailableScreen';
 
 const signedUrlCache = new Map<string, { url: string, expires: number }>();
 
 export default function PublicMediaCenter() {
   const params = useLocalSearchParams();
   const tenantId = params.tenant_id as string;
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
 
@@ -29,7 +32,7 @@ export default function PublicMediaCenter() {
       if (error) return null;
       return data;
     },
-    enabled: !!tenantId
+    enabled: !!tenantId && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media
   });
 
   const { data: posters = [], isLoading } = useQuery({
@@ -102,7 +105,7 @@ export default function PublicMediaCenter() {
       }
       return resultAssets;
     },
-    enabled: !!festivalInfo?.id,
+    enabled: !!festivalInfo?.id && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media,
   });
 
   useEffect(() => {
@@ -114,6 +117,11 @@ export default function PublicMediaCenter() {
     }
     return () => clearInterval(interval);
   }, [isFullscreen, posters.length]);
+
+  if (publicFeaturesLoading) return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0B1220' }}><ActivityIndicator size="large" color="#FFFFFF" /></View>;
+  if (!publicFeatures.modules.public_page || !publicFeatures.sections.public_page.media) {
+    return <PublicUnavailableScreen title="Public media unavailable." message="The festival administrator has disabled the public media section." />;
+  }
 
   const handleDownload = (url: string, filename: string) => {
     const a = document.createElement('a');

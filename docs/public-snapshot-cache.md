@@ -1,6 +1,6 @@
-# Public snapshot cache (local branch)
+# Public snapshot cache
 
-This document describes the implementation in `codex/public-cdn-cache`. It has not been deployed. The existing production site remains unchanged until a separate release is approved.
+This document describes the public snapshot implementation released from `conso-repo` main to `consoulium.sabicofficial.in` on 2026-11-17. The target Supabase revision migration is applied. The separate cloned Vite UI repository remains local.
 
 ## Data and API flow
 
@@ -28,10 +28,10 @@ Migration `20261117035458_public_snapshot_revision.sql` adds a tenant-scoped rev
 
 ## Boundaries and current limits
 
-- The target Supabase project `negkevoetuvuqqlecdno` has the tenant control, read-only active-festival lookup, read-only team-roster, and public snapshot revision migrations applied. The revision trigger runs during relevant writes but does not change their published data. The local public site/API code is not deployed.
+- The target Supabase project `negkevoetuvuqqlecdno` has the tenant control, read-only active-festival lookup, read-only team-roster, and public snapshot revision migrations applied. The revision trigger runs during relevant writes but does not change their published data. Live checks returned JSON from both public API routes, with Cloudflare Cache API `MISS` followed by `HIT` for each route. The live snapshot contained 46 public schedules, 5 teams, and no published results at the time of verification.
 - The tenant control migration's tracked filename now matches its applied remote version `20261117024449`; its SQL was compared byte-for-byte with the recorded remote migration statement before the rename. The active-festival, team-roster, and revision migrations' local and remote versions are `20261117025056`, `20261117030614`, and `20261117035458`.
 - The cloned Vite frontend at `localhost:3001` uses a development-only adapter to call this same Pages Function from the sibling main Conso worktree. It reads the target public Supabase configuration from the local release checkout. Vite alone does not deploy a Cloudflare Pages Function.
 - Signed media/generated-asset URLs and candidate profiles remain outside this shared snapshot. Their public read and authorization contracts require separate review before caching.
 - Cloudflare Cache API entries do not replicate between data centres; a simultaneous cold miss in different locations can issue separate Supabase reads. In-flight deduplication is only within one Function isolate. The separate public RPC reads are not one database transaction.
-- Every browser version or snapshot request still invokes a Pages Function. The Free plan quota and real payload/origin load need production-like measurements before release. A 60-second maximum display lease is enforced in code, but live Publish/Hide latency, CDN behavior, and browser state still need verification.
-- The Pages project deploys from `main` automatically. Do not push or deploy this branch without a separate release decision and checks against the then-current `main` and target database migration state.
+- Every browser version or snapshot request still invokes a Pages Function. The Free plan quota and origin load need production-like measurements. A 60-second maximum display lease is enforced in code; live Publish/Hide timing and load capacity have not yet been measured. Live HIT/MISS and page rendering were verified on the release date.
+- The Pages project deployed automatically after `main` advanced to `9a6b128` on 2026-11-17. This verifies that build path for this release, but future releases still require their own review and runtime validation.

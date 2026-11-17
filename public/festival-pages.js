@@ -49,7 +49,7 @@
   const loaderMinimumMs = reducedMotion ? 0 : 2600;
   const bandSweepMs = 2800;
   let loaderStarted = 0;
-  let loaderTimer;
+  let loaderFrame;
   let loaderSequence = 0;
   let blockingRequest = false;
   loader.querySelectorAll('.ld-petal').forEach((petal, index) => petal.style.setProperty('--petal-index', index % 24));
@@ -62,18 +62,22 @@
     loader.classList.remove('festival-loader-done');
     progress.textContent = '0';
     status.textContent = phrases[0];
-    clearInterval(loaderTimer);
-    loaderTimer = setInterval(() => {
-      const value = Math.min(95, Math.floor((performance.now() - loaderStarted) / 26));
-      progress.textContent = String(value);
-      status.textContent = phrases[Math.min(phrases.length - 1, Math.floor(value / 22))];
-    }, 80);
+    cancelAnimationFrame(loaderFrame);
+    const updateProgress = (now) => {
+      const value = Math.min(95, Math.floor((now - loaderStarted) / 26));
+      const nextProgress = String(value);
+      if (progress.textContent !== nextProgress) progress.textContent = nextProgress;
+      const nextStatus = phrases[Math.min(phrases.length - 1, Math.floor(value / 22))];
+      if (status.textContent !== nextStatus) status.textContent = nextStatus;
+      if (value < 95) loaderFrame = requestAnimationFrame(updateProgress);
+    };
+    loaderFrame = requestAnimationFrame(updateProgress);
   };
   const hideLoader = async (sequence) => {
     const remaining = Math.max(0, loaderMinimumMs - (performance.now() - loaderStarted));
     if (remaining) await new Promise((resolve) => setTimeout(resolve, remaining));
     if (sequence !== loaderSequence) return;
-    clearInterval(loaderTimer);
+    cancelAnimationFrame(loaderFrame);
     progress.textContent = '100';
     status.textContent = phrases.at(-1);
     if (reducedMotion) {

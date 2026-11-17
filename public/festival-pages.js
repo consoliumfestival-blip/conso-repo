@@ -1,10 +1,97 @@
 (() => {
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
-  const tenant = new URLSearchParams(location.search).get('tenant_id') || DEFAULT_TENANT;
+  const params = new URLSearchParams(location.search);
+  const requestedTenant = params.get('tenant_id');
+  const tenant = requestedTenant === 'f87172d1-ed27-4db4-842c-cc00d3d56de2'
+    ? DEFAULT_TENANT : requestedTenant || DEFAULT_TENANT;
+  if (requestedTenant !== tenant) {
+    params.set('tenant_id', tenant);
+    history.replaceState(null, '', `${location.pathname}?${params}${location.hash}`);
+  }
   const page = document.body.dataset.page;
+  if (page === 'results' || page === 'standings' || page === 'schedule') {
+    const title = document.querySelector('h1');
+    const label = title.textContent.trim();
+    title.setAttribute('aria-label', label);
+    title.classList.add('festival-animated-title');
+    title.replaceChildren(...Array.from(label, (letter, index) => {
+      const mask = document.createElement('span');
+      mask.className = 'festival-title-mask';
+      mask.setAttribute('aria-hidden', 'true');
+      const glyph = document.createElement('span');
+      glyph.className = 'festival-title-glyph';
+      glyph.style.setProperty('--glyph-index', index);
+      glyph.textContent = letter;
+      mask.append(glyph);
+      return mask;
+    }));
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      title.addEventListener('pointermove', (event) => {
+        for (const glyph of title.querySelectorAll('.festival-title-glyph')) {
+          const bounds = glyph.getBoundingClientRect();
+          const distance = Math.hypot(event.clientX - (bounds.left + bounds.width / 2), event.clientY - (bounds.top + bounds.height / 2));
+          glyph.style.fontWeight = String(Math.round(420 + Math.max(0, 1 - distance / 420) ** 2 * 580));
+        }
+      }, { passive: true });
+      title.addEventListener('pointerleave', () => {
+        for (const glyph of title.querySelectorAll('.festival-title-glyph')) glyph.style.fontWeight = '';
+      });
+    }
+  }
   const content = document.getElementById('content');
   const updated = document.getElementById('updated');
   const search = document.getElementById('search');
+  const loader = document.getElementById('loader');
+  const progress = loader.querySelector('.ld-num');
+  const status = loader.querySelector('.ld-status');
+  const phrases = ['Observing the manifest signs...', 'Decoding the cosmic codes...', 'Aligning the rhythmic order...', 'Contemplating the delicate balance...', 'Unveiling the Ayatic Codex...'];
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const loaderMinimumMs = reducedMotion ? 0 : 2600;
+  const bandSweepMs = 2800;
+  let loaderStarted = 0;
+  let loaderTimer;
+  let loaderSequence = 0;
+  let blockingRequest = false;
+  loader.querySelectorAll('.ld-petal').forEach((petal, index) => petal.style.setProperty('--petal-index', index % 24));
+  loader.querySelectorAll('.ld-band').forEach((band, index) => band.style.setProperty('--band-index', index));
+  const showLoader = () => {
+    blockingRequest = true;
+    loaderSequence += 1;
+    loaderStarted = performance.now();
+    loader.hidden = false;
+    loader.classList.remove('festival-loader-done');
+    progress.textContent = '0';
+    status.textContent = phrases[0];
+    clearInterval(loaderTimer);
+    loaderTimer = setInterval(() => {
+      const value = Math.min(95, Math.floor((performance.now() - loaderStarted) / 26));
+      progress.textContent = String(value);
+      status.textContent = phrases[Math.min(phrases.length - 1, Math.floor(value / 22))];
+    }, 80);
+  };
+  const hideLoader = async (sequence) => {
+    const remaining = Math.max(0, loaderMinimumMs - (performance.now() - loaderStarted));
+    if (remaining) await new Promise((resolve) => setTimeout(resolve, remaining));
+    if (sequence !== loaderSequence) return;
+    clearInterval(loaderTimer);
+    progress.textContent = '100';
+    status.textContent = phrases.at(-1);
+    if (reducedMotion) {
+      loader.hidden = true;
+      blockingRequest = false;
+      return;
+    }
+    loader.classList.add('festival-loader-done');
+    setTimeout(() => {
+      if (sequence !== loaderSequence) return;
+      loader.hidden = true;
+      blockingRequest = false;
+    }, bandSweepMs);
+  };
+  loader.querySelector('.ld-skip').addEventListener('click', () => {
+    // Skip only the minimum animation time; the data request must still settle.
+    loaderStarted = performance.now() - loaderMinimumMs;
+  });
   let snapshot = null;
   let requestId = 0;
   let confirmedAt = 0;
@@ -24,6 +111,8 @@
   const message = (text, isError = false) => {
     content.replaceChildren(element('div', `empty${isError ? ' error' : ''}`, text));
   };
+  // Keep existing cards and rows mounted. A changed score updates its text;
+  // a newly published schedule inserts one card without rebuilding the page.
   const reconcile = (parent, nextParent) => {
     const previous = Array.from(parent.childNodes);
     const next = Array.from(nextParent.childNodes);
@@ -136,8 +225,11 @@
     if (!content.childElementCount) message(term ? 'No matches found.' : page === 'schedule' ? 'No programs scheduled yet.' : 'Nothing published yet.');
   }
 
-  async function refresh() {
+  async function refresh(blocking = false) {
+    if (!blocking && blockingRequest) return;
     const id = ++requestId;
+    if (blocking) showLoader();
+    const sequence = loaderSequence;
     try {
       const versionResponse = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenant)}`, { cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
       if (!versionResponse.ok) throw new Error('Version unavailable');
@@ -152,7 +244,7 @@
         if (!wasFresh) render();
         return;
       }
-      const response = await fetch(`/api/public-snapshot?tenant_id=${encodeURIComponent(tenant)}`, { cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' } });
+      const response = await fetch(`/api/public-snapshot?tenant_id=${encodeURIComponent(tenant)}`, { cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
       if (!response.ok) throw new Error('Snapshot unavailable');
       const data = await response.json();
       if (data.tenant_id !== tenant || data.revision !== version.revision || !Number.isFinite(Date.parse(data.generated_at)) || !Number.isFinite(Date.parse(data.expires_at)) || Date.now() >= Date.parse(data.expires_at) || Date.parse(data.expires_at) - Date.parse(data.generated_at) > 60000) throw new Error('Expired snapshot');
@@ -164,13 +256,15 @@
     } catch {
       if (id !== requestId) return;
       if (!snapshot || Date.now() >= confirmedAt + 60000) render();
+    } finally {
+      if (blocking && id === requestId) await hideLoader(sequence);
     }
   }
 
   search.addEventListener('input', render);
-  document.getElementById('refresh').addEventListener('click', refresh);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (snapshot && Date.now() >= confirmedAt + 60000) render(); refresh(); } });
-  setInterval(() => { if (!document.hidden) refresh(); else if (snapshot) render(); }, 20000);
+  document.getElementById('refresh').addEventListener('click', () => refresh(false));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { if (snapshot && Date.now() >= confirmedAt + 60000) render(); refresh(false); } });
+  setInterval(() => { if (!document.hidden) refresh(false); else if (snapshot) render(); }, 20000);
   setInterval(() => { if (snapshot && Date.now() >= confirmedAt + 60000) render(); }, 1000);
-  refresh();
+  refresh(true);
 })();

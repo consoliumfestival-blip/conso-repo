@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "include": ["/api/public-snapshot", "/api/public-version", "/portal-manifest"],
+  "exclude": []
+}

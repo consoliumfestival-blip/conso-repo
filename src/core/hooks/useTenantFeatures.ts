@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../config/supabase';
+import { Platform } from 'react-native';
+import { usePublicSnapshot } from './usePublicSnapshot';
+import { useFreshPublicQuery } from './useFreshPublicQuery';
 
 export type TenantModuleKey =
   | 'team_leader_management'
@@ -80,11 +83,13 @@ function normalizeSettings(raw: any, publicOnly = false): TenantFeatureSettings 
 }
 
 export function useTenantFeatures(tenantId?: string | null, publicOnly = false) {
+  const snapshot = usePublicSnapshot(tenantId, publicOnly);
   const query = useQuery({
     queryKey: ['tenant-features', publicOnly ? 'public' : 'admin', tenantId],
-    enabled: !!tenantId,
+    enabled: !!tenantId && !(publicOnly && Platform.OS === 'web'),
     staleTime: 10_000,
-    refetchInterval: 15_000,
+    refetchInterval: publicOnly ? 10_000 : 15_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(
         publicOnly ? 'get_public_tenant_feature_settings' : 'get_tenant_feature_settings',
@@ -94,6 +99,25 @@ export function useTenantFeatures(tenantId?: string | null, publicOnly = false) 
       return normalizeSettings(data, publicOnly);
     },
   });
+  const freshPublicDirect = useFreshPublicQuery(query, publicOnly && !!tenantId);
+
+  if (publicOnly && Platform.OS === 'web') {
+    const settings = normalizeSettings(snapshot.data?.features ?? {
+      public_page: false,
+      public_leaderboard: false,
+      sections: { schedule: false, results: false, participant_results: false, media: false },
+    }, true);
+    return { ...snapshot, data: settings, settings };
+  }
+
+  if (publicOnly) {
+    const settings = freshPublicDirect.data ?? normalizeSettings({
+      public_page: false,
+      public_leaderboard: false,
+      sections: { schedule: false, results: false, participant_results: false, media: false },
+    }, true);
+    return { ...freshPublicDirect, settings };
+  }
 
   // Older sessions can briefly encounter a migration rollout window. The
   // server RPC remains authoritative after the migration is applied.

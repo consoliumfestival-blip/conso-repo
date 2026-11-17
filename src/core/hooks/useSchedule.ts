@@ -5,6 +5,9 @@ import { useAuthStore } from '../store/authStore';
 import { supabase } from '../config/supabase';
 import { useFestival } from './useFestival';
 import { scheduleLifecycleService } from '../../services/scheduleLifecycleService';
+import { Platform } from 'react-native';
+import { usePublicSnapshot } from './usePublicSnapshot';
+import { useFreshPublicQuery } from './useFreshPublicQuery';
 
 export const useSchedule = (options?: {
   overview?: boolean;
@@ -190,14 +193,26 @@ export const fetchPublicSchedules = async (festivalId: string, tenantId?: string
 };
 
 export const usePublicSchedule = (festivalId?: string | null, tenantId?: string | null, enabled = true) => {
-  return useQuery({
+  const snapshot = usePublicSnapshot(tenantId);
+  const direct = useQuery({
     queryKey: ['public-schedules', tenantId, festivalId],
     queryFn: () => {
       if (!festivalId) throw new Error('Festival ID is required');
       return fetchPublicSchedules(festivalId, tenantId || undefined);
     },
-    enabled: enabled && !!festivalId && !!tenantId,
-    staleTime: 1000,
-    refetchInterval: 60000,
+    enabled: Platform.OS !== 'web' && enabled && !!festivalId && !!tenantId,
+    staleTime: 0,
+    gcTime: 30_000,
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   });
+  const freshDirect = useFreshPublicQuery(direct, enabled && !!festivalId && !!tenantId);
+  if (Platform.OS !== 'web') return freshDirect;
+  const active = enabled && !!festivalId && snapshot.data?.festival_id === festivalId;
+  return {
+    ...snapshot,
+    data: active ? snapshot.data?.schedules : undefined,
+    isLoading: enabled && snapshot.isLoading,
+    isRefetching: enabled && snapshot.isRefetching,
+  };
 };

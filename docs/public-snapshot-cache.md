@@ -1,0 +1,37 @@
+# Public snapshot cache (local branch)
+
+This document describes the implementation in `codex/public-cdn-cache`. It has not been deployed. The existing production site remains unchanged until a separate release is approved.
+
+## Data and API flow
+
+On web public pages, `usePublicSnapshot(tenantId)` checks the small same-origin `GET /api/public-version?tenant_id=<uuid>` response every 20 seconds while visible. Only an initial visit or changed revision fetches `GET /api/public-snapshot?tenant_id=<uuid>`. Default, custom, schedule, result, ranking, and public feature hooks select from that shared response. Manual Refresh checks the revision first. Native public screens retain direct scoped Supabase reads and their separate 30-second local freshness limit.
+
+The Consolium homepage also links to `/festival-results.html`, `/festival-standings.html`, and `/festival-schedule.html`. These static pages use the same version and snapshot endpoints, tenant query parameter, visibility settings, and published data as the default public leaderboard. They do not add a second admin control panel or data source. Their shared CSS/JavaScript keeps the homepage's colors and typography; the homepage video and scrolling effects remain on the homepage. Results and standings provide search, and all three provide manual refresh, unavailable, empty, and expired-data states. Keyed DOM reconciliation retains unchanged cards and rows when a new revision arrives. Manual Refresh does not replay the initial page loader.
+The top navigation follows the new frontend's order: Home, Results, Standings, Schedule, Gallery, News, Media, Brochure. Gallery, News, Media, and Brochure are displayed as unavailable labels because those pages are outside the current implementation scope; they are not linked to nonexistent routes.
+
+The Cloudflare Pages Function first reads `get_public_tenant_feature_settings` and `get_public_leaderboard_settings` as the anonymous role. Its short context cache is keyed by validated tenant ID. When leaderboard settings are hidden but Public Page is enabled, `get_public_active_festival_id` resolves the active festival without exposing hidden leaderboard data. Public schedules can then load independently of leaderboard publication. When Public Page, Public Leaderboard, and Results switches are enabled, the tenant-scoped team roster supplies team names with zero points even before leaderboard publication. Existing published leaderboard rows replace those zero values only after leaderboard settings become public. Item results continue to require their existing publication gate.
+
+| Read | Condition | Purpose |
+| --- | --- | --- |
+| `get_public_leaderboard_scoped` | Public leaderboard and results enabled, settings visible | Unit standings |
+| `get_public_team_roster_scoped` | Public Page, Public Leaderboard, and Results enabled | Team names for zero-point standings; no scores or private results |
+| `get_public_published_results_scoped` | Results enabled, settings visible | Published item results |
+| `get_public_participant_results_scoped` | Participant results enabled, settings visible | Participant search |
+| `get_public_schedules_scoped` | Schedule enabled | Public schedule |
+| `items` `id,item_code` | Published results contain items | Preserve existing item-code display; failure leaves code blank |
+
+The data cache key contains validated tenant, active festival, and tenant revision. Each Cloudflare data centre can fill its own Cache API entry for 5 seconds. A changed revision cannot reuse the previous context or snapshot cache entry. The Function never forwards browser authorization or cookies to Supabase and uses only the publishable/anon key. It returns `Cache-Control: private, no-store` to browsers and an `X-Public-Snapshot-Cache` diagnostic header. A fresh version confirmation extends the displayed snapshot's lease for at most 60 seconds; if checks fail, the browser hides it when that lease expires. Initial snapshots still have a 60-second server-generated expiry.
+
+Migration `20261117035458_public_snapshot_revision.sql` adds a tenant-scoped revision row, private RLS-protected storage, an anon-safe read-only RPC, and triggers on public snapshot dependencies. Results bump revisions only when an old or new row is published and visible; final marks also bump revisions for public schedule metadata. Tenant settings, active festival, schedules, teams, item/venue labels, registrations, participant names, published-result ownership, points config, and grace marks bump the affected tenant. Child-unit name changes bump their parent tenant too. This is one coarse tenant revision, so a schedule change may still cause a full shared snapshot download on another public page. No per-section delta API is implemented.
+
+`public/_routes.json` limits Pages Function invocation to `/api/public-version`, `/api/public-snapshot`, and the existing `/portal-manifest`; static pages and assets stay outside Function billing. This remains a Pages Function and per-data-centre Cache API architecture: each version check still invokes the Function, though most checks avoid full snapshot and origin reads. DNS observed on 2026-11-17 shows `consoulium.sabicofficial.in` CNAME to `conso-repo.pages.dev`, while `sabicofficial.in` nameservers remain at Hostinger. A direct R2 custom-domain cache route has not been configured.
+
+## Boundaries and current limits
+
+- The target Supabase project `negkevoetuvuqqlecdno` has the tenant control, read-only active-festival lookup, read-only team-roster, and public snapshot revision migrations applied. The revision trigger runs during relevant writes but does not change their published data. The local public site/API code is not deployed.
+- The tenant control migration's tracked filename now matches its applied remote version `20261117024449`; its SQL was compared byte-for-byte with the recorded remote migration statement before the rename. The active-festival, team-roster, and revision migrations' local and remote versions are `20261117025056`, `20261117030614`, and `20261117035458`.
+- The cloned Vite frontend at `localhost:3001` uses a development-only adapter to call this same Pages Function from the sibling main Conso worktree. It reads the target public Supabase configuration from the local release checkout. Vite alone does not deploy a Cloudflare Pages Function.
+- Signed media/generated-asset URLs and candidate profiles remain outside this shared snapshot. Their public read and authorization contracts require separate review before caching.
+- Cloudflare Cache API entries do not replicate between data centres; a simultaneous cold miss in different locations can issue separate Supabase reads. In-flight deduplication is only within one Function isolate. The separate public RPC reads are not one database transaction.
+- Every browser version or snapshot request still invokes a Pages Function. The Free plan quota and real payload/origin load need production-like measurements before release. A 60-second maximum display lease is enforced in code, but live Publish/Hide latency, CDN behavior, and browser state still need verification.
+- The Pages project deploys from `main` automatically. Do not push or deploy this branch without a separate release decision and checks against the then-current `main` and target database migration state.

@@ -34,17 +34,13 @@ import {
   Trophy,
   UserRound,
 } from 'lucide-react-native';
-import { LeaderboardRow, PublicPublishedResultRow, leaderboardService } from '../../services/leaderboardService';
+import { LeaderboardRow, PublicPublishedResultRow } from '../../services/leaderboardService';
 import { usePublicLeaderboard, usePublicPublishedResults } from '../../core/hooks/useLeaderboard';
 import { useGetPublicLeaderboardSettings } from '../../core/hooks/useLeaderboardSettings';
-import { fetchPublicSchedules, usePublicSchedule } from '../../core/hooks/useSchedule';
+import { usePublicSchedule } from '../../core/hooks/useSchedule';
 import PublicAiChatbot from '../../components/leaderboard/PublicAiChatbot';
 import { useAuthStore } from '../../core/store/authStore';
 import { Bell } from 'lucide-react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LEADERBOARD_QUERY_KEYS } from '../../constants/leaderboard';
-import { supabase } from '../../core/config/supabase';
 
 type ActiveTab = 'organisations' | 'individuals';
 type Breakpoint = 'desktop' | 'tablet' | 'mobile';
@@ -303,138 +299,6 @@ export function AlvioraCustomRenderer({ page = 'landing' }: { page?: PublicLeade
   const organisationQuery = usePublicLeaderboard(tenantId, festivalId, !!tenantId && !!festivalId);
   const publishedResultsQuery = usePublicPublishedResults(tenantId, festivalId, !!tenantId && !!festivalId, true);
   const scheduleQuery = usePublicSchedule(festivalId, tenantId);
-  const queryClient = useQueryClient();
-
-  // Keep the public board live without broad/global subscriptions. Every
-  // channel is scoped to the tenant and active festival, and only invalidates
-  // the existing read-only queries; it never writes or bypasses the RPC layer.
-  useEffect(() => {
-    if (!tenantId || !festivalId) return;
-
-    const refresh = () => {
-      queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboard(tenantId, festivalId) });
-      queryClient.invalidateQueries({ queryKey: ['public-published-results', tenantId, festivalId] });
-      queryClient.invalidateQueries({ queryKey: ['public-schedules', tenantId, festivalId] });
-      queryClient.invalidateQueries({ queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboardSettings(tenantId, festivalId) });
-    };
-
-    const channel = supabase
-      .channel(`public-leaderboard:${tenantId}:${festivalId}_${Math.random().toString(36).substring(7)}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'results', filter: `tenant_id=eq.${tenantId}` }, refresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'schedules', filter: `tenant_id=eq.${tenantId}` }, refresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'festival_leaderboard_settings', filter: `tenant_id=eq.${tenantId}` }, refresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'festival_calendar', filter: `tenant_id=eq.${tenantId}` }, refresh)
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [festivalId, queryClient, tenantId]);
-
-  // 1. Asynchronously load cached data from AsyncStorage on mount to populate the React Query cache instantly
-  useEffect(() => {
-    const initCache = async () => {
-      try {
-        // Remove cache entries written by the old global public-board flow.
-        // Keeping them around could resurrect another tenant's podium after
-        // a tenant switch or a hot reload.
-        await Promise.all([
-          AsyncStorage.removeItem('cache:leaderboard_settings'),
-          AsyncStorage.removeItem('cache:public_leaderboard'),
-          AsyncStorage.removeItem('cache:public_published_results'),
-          AsyncStorage.removeItem('cache:public_schedule'),
-        ]);
-        queryClient.removeQueries({ queryKey: ['public-leaderboard', 'all', 'active'] });
-        queryClient.removeQueries({ queryKey: ['public-published-results', 'all', 'active'] });
-        queryClient.removeQueries({ queryKey: ['public-leaderboard-settings', 'all', 'active'] });
-        queryClient.removeQueries({ queryKey: ['public-schedules', 'none', 'none'] });
-
-        if (!tenantId) return;
-
-        // First load settings cache to get the festivalId immediately
-        const settingsCacheStr = await AsyncStorage.getItem('cache:leaderboard_settings:' + tenantId);
-        let cachedFestivalId: string | null = null;
-        if (settingsCacheStr) {
-          const settingsCache = JSON.parse(settingsCacheStr);
-          cachedFestivalId = settingsCache.festival_id;
-          queryClient.setQueryData(
-            LEADERBOARD_QUERY_KEYS.publicLeaderboardSettings(tenantId, cachedFestivalId),
-            settingsCache
-          );
-        }
-
-        // Use the cached festivalId or the active one
-        const activeFestivalId = festivalId || cachedFestivalId;
-
-        // Populate other caches using the festivalId
-        const lbCacheStr = await AsyncStorage.getItem('cache:public_leaderboard:' + tenantId);
-        if (lbCacheStr) {
-          queryClient.setQueryData(
-            LEADERBOARD_QUERY_KEYS.publicLeaderboard(tenantId, activeFestivalId),
-            JSON.parse(lbCacheStr)
-          );
-        }
-
-        const resultsCacheStr = await AsyncStorage.getItem('cache:public_published_results:' + tenantId);
-        if (resultsCacheStr) {
-          queryClient.setQueryData(
-            LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, activeFestivalId, true),
-            JSON.parse(resultsCacheStr)
-          );
-        }
-
-      } catch (err) {
-        console.warn('Failed to restore leaderboard local cache:', err);
-      }
-    };
-    initCache();
-  }, [queryClient, festivalId, tenantId]);
-
-  // 2. Silently sync fresh results to AsyncStorage when queries complete
-  useEffect(() => {
-    if (settingsQuery.data) {
-      AsyncStorage.setItem('cache:leaderboard_settings:' + tenantId, JSON.stringify(settingsQuery.data)).catch(() => {});
-    }
-  }, [settingsQuery.data, tenantId]);
-
-  useEffect(() => {
-    if (organisationQuery.data && festivalId) {
-      AsyncStorage.setItem('cache:public_leaderboard:' + tenantId, JSON.stringify(organisationQuery.data)).catch(() => {});
-    }
-  }, [organisationQuery.data, festivalId, tenantId]);
-
-  useEffect(() => {
-    if (publishedResultsQuery.data && festivalId) {
-      AsyncStorage.setItem('cache:public_published_results:' + tenantId, JSON.stringify(publishedResultsQuery.data)).catch(() => {});
-    }
-  }, [publishedResultsQuery.data, festivalId, tenantId]);
-
-  // 3. Background prefetching of all other tabs' data to ensure instant transitions
-  useEffect(() => {
-    if (festivalId) {
-      // Prefetch leaderboard (Unit Standings)
-      queryClient.prefetchQuery({
-        queryKey: LEADERBOARD_QUERY_KEYS.publicLeaderboard(tenantId, festivalId),
-        queryFn: () => leaderboardService.listPublicLeaderboard(tenantId, festivalId),
-        staleTime: 300000,
-      });
-
-      // Prefetch published results (Item Results)
-      queryClient.prefetchQuery({
-        queryKey: LEADERBOARD_QUERY_KEYS.publicPublishedResults(tenantId, festivalId, true),
-        queryFn: () => leaderboardService.listPublicPublishedResults(tenantId, festivalId, true),
-        staleTime: 300000,
-      });
-
-      // Prefetch schedules
-      queryClient.prefetchQuery({
-        queryKey: ['public-schedules', tenantId, festivalId],
-        queryFn: () => fetchPublicSchedules(festivalId, tenantId),
-        staleTime: 1000,
-      });
-
-    }
-  }, [festivalId, queryClient, tenantId]);
 
   const organisationData = useMemo(() => organisationQuery.data ?? [], [organisationQuery.data]);
   const publishedResults = useMemo(() => publishedResultsQuery.data ?? [], [publishedResultsQuery.data]);
@@ -589,6 +453,10 @@ export function AlvioraCustomRenderer({ page = 'landing' }: { page?: PublicLeade
   }, [page, activeRows.length, itemSections.length, filteredSchedules.length, visibleCounts]);
 
   const refreshAll = () => {
+    if (Platform.OS === 'web') {
+      void settingsQuery.refetch();
+      return;
+    }
     organisationQuery.refetch();
     publishedResultsQuery.refetch();
     settingsQuery.refetch();

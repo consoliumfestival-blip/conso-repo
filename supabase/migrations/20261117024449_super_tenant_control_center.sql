@@ -678,7 +678,7 @@ CREATE POLICY tenant_public_media_gate ON public.generated_posters
 -- Apply section checks at the database boundary as well as in navigation.
 -- SQL read functions receive a section-scoped context; procedural reads and
 -- writes fail explicitly before their existing logic runs.
-DO $function$
+DO $team_section_guards$
 DECLARE v_proc record; v_section text; v_definition text; v_guard text;
         v_open integer; v_close integer; v_body text;
 BEGIN
@@ -728,8 +728,9 @@ BEGIN
         v_open := strpos(v_definition, 'AS $function$');
         IF v_open = 0 THEN RAISE EXCEPTION 'Could not locate SQL body for Team Leader function %', v_proc.proname; END IF;
         v_open := v_open + length('AS $function$');
-        v_close := strpos(v_definition, '$function$;', v_open);
+        v_close := strpos(substr(v_definition, v_open), '$function$');
         IF v_close = 0 THEN RAISE EXCEPTION 'Could not locate end of SQL body for Team Leader function %', v_proc.proname; END IF;
+        v_close := v_open + v_close - 1;
         v_body := btrim(substr(v_definition, v_open, v_close - v_open));
         v_body := regexp_replace(v_body, ';[[:space:]]*$', '');
         v_definition := substr(v_definition, 1, v_open - 1) || pg_catalog.chr(10)
@@ -741,7 +742,7 @@ BEGIN
     END IF;
   END LOOP;
 END;
-$function$;
+$team_section_guards$;
 
 -- Judge token APIs derive the tenant from the approved token; both reads and
 -- writes are denied when the tenant turns the Judge Portal off.

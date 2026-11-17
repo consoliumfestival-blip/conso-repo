@@ -4,7 +4,7 @@ The custom Consoulium homepage and festival pages are served by the existing
 Cloudflare Pages project on the main Conso domain. Expo's `build:web` copies the
 files in `public/` into `dist/` alongside the main application. The main app's
 `/` route and its admin and tenant flows remain separate. The custom homepage
-is `/consoulium.html`; its Results, Standings, and Schedule links lead to the
+is `/consoulium`; its Results, Standings, and Schedule links lead to the
 three `/festival-*.html` pages.
 
 The homepage assets came from the local `mhdasjidp/consolium2k26asjid` checkout
@@ -12,7 +12,7 @@ at commit `f72d8867425933faf6e6efae04b8943175debdc9`, including local UI
 changes present on 2026-11-17. That checkout was not modified for this import.
 Its supplied homepage was a prebuilt JavaScript bundle. The imported
 `RouteLink-conso-a70430b7.js` changes only its homepage route from `/` to
-`/consoulium.html`; `nav-routes.js` adapts the prebuilt navigation to the
+`/consoulium`; `nav-routes.js` adapts the prebuilt navigation to the
 festival pages and carries `tenant_id`. This is a distributable static bundle,
 so editing the separate checkout's TSX files does not rebuild these assets.
 Future homepage design changes require recovering or establishing a verified

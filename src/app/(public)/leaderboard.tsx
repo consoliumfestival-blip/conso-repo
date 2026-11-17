@@ -1275,7 +1275,7 @@ export function PublicLeaderboardExperience({ page = 'landing' }: { page?: Publi
   if (tenantId === TARGET_TENANT_ID && CUSTOM_RENDERER_ENABLED) {
     if (page === 'landing' && Platform.OS === 'web' && bypass_html !== 'true') {
       if (typeof window !== 'undefined') {
-        window.location.replace('/consoulium.html?tenant_id=' + tenantId);
+        window.location.replace('/consoulium?tenant_id=' + tenantId);
       }
       return <View style={{flex: 1, backgroundColor: '#262626'}} />;
     }

@@ -2,7 +2,7 @@
   // The homepage is shipped as a prebuilt bundle. Keep its visible navigation
   // pointed at the public pages until the bundle can be rebuilt from source.
   const routes = new Map([
-    ['/', '/consoulium.html'],
+    ['/', '/consoulium'],
     ['#journey', '/festival-results.html'],
     ['/#journey', '/festival-results.html'],
     ['#race', '/festival-standings.html'],
@@ -44,7 +44,7 @@
     }
     if (!link.href) return;
     const url = new URL(link.href, location.origin);
-    if (url.pathname !== '/consoulium.html' && (!url.pathname.startsWith('/festival-') || !url.pathname.endsWith('.html'))) return;
+    if (url.pathname !== '/consoulium' && (!url.pathname.startsWith('/festival-') || !url.pathname.endsWith('.html'))) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     location.assign(url.pathname + url.search);

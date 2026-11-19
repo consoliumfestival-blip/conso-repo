@@ -17,9 +17,6 @@ import { Input } from '../../../components/ui/shadcn/input';
 import { Label } from '../../../components/ui/shadcn/label';
 import { createRequestId } from '../../../core/utils/requestId';
 
-// Match the temporary SQL-level pause of authenticated item-edit RPCs.
-const ITEM_EDITING_TEMPORARILY_DISABLED = true;
-
 export default function ItemActivationSettings() {
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -180,7 +177,6 @@ export default function ItemActivationSettings() {
   };
 
   const beginEditItem = (item: any) => {
-    if (ITEM_EDITING_TEMPORARILY_DISABLED) return;
     const categories = Array.isArray(item.category_codes) ? item.category_codes : [];
     const groupSize = item.group_min_members != null && item.group_min_members === item.group_max_members
       ? String(item.group_min_members)
@@ -199,7 +195,7 @@ export default function ItemActivationSettings() {
   };
 
   const handleSaveItemEdit = async () => {
-    if (!editingItem || ITEM_EDITING_TEMPORARILY_DISABLED) return;
+    if (!editingItem) return;
     const categoryCodes = isCollegeFest
       ? editForm.categoryCodes.map(code => code.trim()).filter(Boolean)
       : editForm.categoryText.split(',').map(code => code.trim()).filter(Boolean);
@@ -459,13 +455,10 @@ export default function ItemActivationSettings() {
                     <View className="w-10 items-end">
                       {canEditItem(item) && (
                         <TouchableOpacity
-                          className={`h-9 w-9 items-center justify-center rounded-md border border-ui-border ${ITEM_EDITING_TEMPORARILY_DISABLED ? 'bg-ui-muted/50 opacity-50' : 'bg-core-surface-white'}`}
+                          className="h-9 w-9 items-center justify-center rounded-md border border-ui-border bg-core-surface-white"
                           onPress={() => beginEditItem(item)}
-                          disabled={ITEM_EDITING_TEMPORARILY_DISABLED}
                           accessibilityRole="button"
                           accessibilityLabel={`Edit ${item.item_name_ml}`}
-                          accessibilityState={{ disabled: ITEM_EDITING_TEMPORARILY_DISABLED }}
-                          accessibilityHint={ITEM_EDITING_TEMPORARILY_DISABLED ? 'Item editing is temporarily unavailable' : undefined}
                         >
                           <Pencil size={15} color={ui.colors.textSubtle} />
                         </TouchableOpacity>
@@ -517,13 +510,10 @@ export default function ItemActivationSettings() {
                         </TouchableOpacity>
                         {canEditItem(item) && (
                           <TouchableOpacity
-                            className={`h-11 w-11 mr-2 items-center justify-center rounded-md border border-ui-border ${ITEM_EDITING_TEMPORARILY_DISABLED ? 'bg-ui-muted/50 opacity-50' : 'bg-core-surface-white'}`}
+                            className="h-11 w-11 mr-2 items-center justify-center rounded-md border border-ui-border bg-core-surface-white"
                             onPress={() => beginEditItem(item)}
-                            disabled={ITEM_EDITING_TEMPORARILY_DISABLED}
                             accessibilityRole="button"
                             accessibilityLabel={`Edit ${item.item_name_ml}`}
-                            accessibilityState={{ disabled: ITEM_EDITING_TEMPORARILY_DISABLED }}
-                            accessibilityHint={ITEM_EDITING_TEMPORARILY_DISABLED ? 'Item editing is temporarily unavailable' : undefined}
                           >
                             <Pencil size={15} color={ui.colors.textSubtle} />
                           </TouchableOpacity>
@@ -656,7 +646,7 @@ export default function ItemActivationSettings() {
       </Modal>
 
       <Modal
-        visible={!!editingItem && !ITEM_EDITING_TEMPORARILY_DISABLED}
+        visible={!!editingItem}
         transparent
         animationType="slide"
         onRequestClose={() => setEditingItem(null)}

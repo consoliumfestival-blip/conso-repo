@@ -56,7 +56,15 @@ export const useStageManagement = (options: { scheduleId?: string; summaryOnly?:
     });
   const schedulesQuery = useQuery({
     queryKey: ['stage-management-schedules', context?.tenant_id, context?.festival_id],
-    queryFn: async () => (context ? (await stageManagementService.getSchedules(context.festival_id)).map(mapSchedule) : []),
+    queryFn: async () => {
+      if (!context) return [];
+      const [rows, postponedIds] = await Promise.all([
+        stageManagementService.getSchedules(context.festival_id),
+        stageManagementService.getPostponedScheduleIds(context.festival_id),
+      ]);
+      const postponed = new Set(postponedIds);
+      return rows.map((row) => mapSchedule({ ...row, is_postponed: postponed.has(row.id) }));
+    },
     enabled: hasStageAccess && !!context?.tenant_id && !!context?.festival_id,
     staleTime: 15_000,
   });

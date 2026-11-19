@@ -50,7 +50,7 @@ export function ScheduleLifecycleActions({
     const title = nextValue ? 'Mark schedule as postponed?' : 'Clear manual postponed status?';
     const message = nextValue
       ? `“${scheduleName}” will show a Postponed badge until an admin clears it.`
-      : `The manual Postponed flag will be cleared for “${scheduleName}”. If it is already overdue and not started, the automatic Postponed badge will remain.`;
+      : `The manual Postponed flag will be cleared for “${scheduleName}”.`;
     const run = () => {
       setSavingPostponed(true);
       void onPostponedChange(nextValue, isPostponed)

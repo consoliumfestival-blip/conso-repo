@@ -176,6 +176,14 @@ export const stageManagementService = {
     return (data as StageScheduleRow[] | null) ?? [];
   },
 
+  async getPostponedScheduleIds(festivalId: string): Promise<string[]> {
+    const { data, error } = await supabase.rpc('get_stage_management_postponed_schedule_ids', {
+      p_festival_id: festivalId,
+    });
+    throwIfError(error);
+    return ((data as { schedule_id: string }[] | null) ?? []).map((row) => row.schedule_id);
+  },
+
   async getVenues(festivalId: string): Promise<StageVenueRow[]> {
     const [{ data: venues, error: venuesError }, { data: codes, error: codesError }] = await Promise.all([
       supabase.rpc('get_stage_management_venues', { p_festival_id: festivalId }),

@@ -44,13 +44,13 @@ const schedulePdfExportOptions: { id: SchedulePdfExportOption; label: string; de
   { id: 'chance-sheet', label: 'Chance Sheet', description: 'Choose one item and create its printable chance sheet.' },
 ];
 
-function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false,isOverdueUnstarted=false,compact=false}: {
+function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false,compact=false}: {
  status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean;
- isPostponed?: boolean; isOverdueUnstarted?: boolean; compact?: boolean;
+ isPostponed?: boolean; compact?: boolean;
 }) {
   const normalizedStatus = normalizeScheduleLifecycleStatus(status);
   const postponed = normalizedStatus !== 'ongoing' && normalizedStatus !== 'completed'
-    && (isPostponed || isOverdueUnstarted);
+    && isPostponed;
   const lifecycleLabel = postponed ? 'Postponed' : getScheduleLifecycleLabel(status);
   const lifecycleTone = postponed
     ? 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700'
@@ -259,7 +259,6 @@ export default function ScheduleDashboard() {
     (chanceSheetSchedulesQuery.data ?? [])
       .filter((schedule: any) =>
         !schedule.is_postponed
-        && !schedule.is_overdue_unstarted
         && ['scheduled', 'ongoing'].includes(normalizeScheduleLifecycleStatus(schedule.status) ?? ''),
       )
       .map((schedule: any) => String(schedule.item_id ?? schedule.items?.id ?? ''))
@@ -1246,7 +1245,6 @@ export default function ScheduleDashboard() {
                     summary={workflowMap.get(schedule.id)}
                     isShuffleLocked={schedule.is_shuffle_locked}
                     isPostponed={schedule.is_postponed === true}
-                    isOverdueUnstarted={schedule.is_overdue_unstarted === true}
                     compact={isTabletScheduleTable}
                   />
                 </View>
@@ -1412,7 +1410,6 @@ export default function ScheduleDashboard() {
                   summary={workflowMap.get(schedule.id)}
                   isShuffleLocked={schedule.is_shuffle_locked}
                   isPostponed={schedule.is_postponed === true}
-                  isOverdueUnstarted={schedule.is_overdue_unstarted === true}
                   compact
                 />
               </>

@@ -145,7 +145,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState(venueIdOverride || 'All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
-  const [selectedSchedulePeriod, setSelectedSchedulePeriod] = React.useState<'all' | 'upcoming' | 'past'>('all');
+  const [selectedSchedulePeriod, setSelectedSchedulePeriod] = React.useState<'all' | 'upcoming' | 'past' | 'postponed'>('all');
   const [selectedDate, setSelectedDate] = React.useState('');
   const [actionScheduleId, setActionScheduleId] = React.useState<string | null>(null);
   const [showStatusChoices, setShowStatusChoices] = React.useState(false);
@@ -224,7 +224,10 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const filteredSchedules = React.useMemo(() => {
     const matching = schedules.filter((schedule: any) => {
       const isPast = isPastSchedule(schedule, scheduleFilterNow);
-      const matchesSchedulePeriod = selectedSchedulePeriod === 'all' || (selectedSchedulePeriod === 'past' ? isPast : !isPast);
+      const matchesSchedulePeriod = selectedSchedulePeriod === 'all'
+        || (selectedSchedulePeriod === 'postponed'
+          ? schedule.is_postponed === true
+          : schedule.is_postponed !== true && (selectedSchedulePeriod === 'past' ? isPast : !isPast));
       const matchesDate = !selectedDate || scheduleLocalDateKey(schedule.start_time) === selectedDate;
 
       // 1. Search Query Filter
@@ -291,7 +294,11 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
       
       return matchesSchedulePeriod && matchesDate && matchesSearch && matchesCategory && matchesVenue && matchesStatus;
     });
-    return sortStageSchedulesAroundToday(matching, scheduleFilterNow);
+    return sortStageSchedulesAroundToday(matching, scheduleFilterNow).sort((left: any, right: any) => {
+      const leftPostponed = left.is_postponed === true;
+      const rightPostponed = right.is_postponed === true;
+      return Number(leftPostponed) - Number(rightPostponed);
+    });
   }, [schedules, scheduleFilterNow, selectedSchedulePeriod, selectedDate, searchQuery, selectedCategory, selectedVenue, selectedStatus, allRegistrations, summariesBySchedule, optimizedRead]);
 
   const changeActionStatus = (nextStatus: 'scheduled' | 'ongoing' | 'completed') => {
@@ -554,7 +561,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
         <View>
           <Text className="text-xl font-poppins-black text-ui-text">{activeVenue?.name || 'All Stages'}</Text>
           <Text className="font-poppins text-xs text-ssf-text-muted mt-1">
-            {filteredSchedules.length} {selectedSchedulePeriod === 'all' ? 'events' : selectedSchedulePeriod === 'upcoming' ? 'upcoming events' : 'past events'}
+            {filteredSchedules.length} {selectedSchedulePeriod === 'postponed' ? 'postponed events' : selectedSchedulePeriod === 'all' ? 'events' : selectedSchedulePeriod === 'upcoming' ? 'upcoming events' : 'past events'}
           </Text>
         </View>
         <View className="flex-row gap-x-3">
@@ -587,7 +594,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
           <View>
             <Text className="font-poppins-black text-ui-text text-lg">{filteredSchedules.length}</Text>
             <Text className="font-poppins text-ui-text-muted text-xs">
-              {selectedSchedulePeriod === 'all' ? 'Events' : selectedSchedulePeriod === 'upcoming' ? 'Upcoming Events' : 'Past Events'}
+              {selectedSchedulePeriod === 'postponed' ? 'Postponed Events' : selectedSchedulePeriod === 'all' ? 'Events' : selectedSchedulePeriod === 'upcoming' ? 'Upcoming Events' : 'Past Events'}
             </Text>
           </View>
           <Calendar color={coreColor("#0F766E", 'primaryText')} size={22} />
@@ -653,7 +660,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             />
             <SsfSelectMenu
               value={selectedSchedulePeriod}
-              onValueChange={(value) => setSelectedSchedulePeriod(value as 'all' | 'upcoming' | 'past')}
+              onValueChange={(value) => setSelectedSchedulePeriod(value as 'all' | 'upcoming' | 'past' | 'postponed')}
               accessibilityLabel="Filter schedules by time"
               width={isMobile ? mobileHalfFilterWidth : 180}
               compact
@@ -662,6 +669,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 { label: 'When: All dates', value: 'all' },
                 { label: 'When: Upcoming', value: 'upcoming' },
                 { label: 'When: Past', value: 'past' },
+                { label: 'When: Postponed', value: 'postponed' },
               ]}
             />
             <SsfDatePicker value={selectedDate} onValueChange={setSelectedDate} placeholder={isMobile ? 'Date: All' : 'Calendar: All dates'} width={isMobile ? mobileHalfFilterWidth : 180} />

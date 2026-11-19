@@ -1,14 +1,14 @@
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions, Modal, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, TextInput, useWindowDimensions, Modal, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 
 import { useSchedule } from '../../../core/hooks/useSchedule';
-import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react-native';
+import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight, Download, FileText, Share2, Copy, MessageCircle } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
 import { chanceSheetService } from '../../../services/chanceSheetService';
@@ -26,6 +26,7 @@ import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleL
 import * as Device from 'expo-device';
 import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldShowTabletLandscapeScheduleCategory, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
+import { stageManagementService } from '../../../services/stageManagementService';
 
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
@@ -304,6 +305,128 @@ export default function ScheduleDashboard() {
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
+  const [shareSchedule, setShareSchedule] = React.useState<any | null>(null);
+  const [shareStagePin, setShareStagePin] = React.useState<string | null>(null);
+  const [shareStageUrl, setShareStageUrl] = React.useState<string | null>(null);
+  const [shareError, setShareError] = React.useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = React.useState<string | null>(null);
+  const [isLoadingShareDetails, setIsLoadingShareDetails] = React.useState(false);
+  const [isCopyingShareDetails, setIsCopyingShareDetails] = React.useState(false);
+  const shareRequestId = React.useRef(0);
+
+  const openScheduleShare = async (schedule: any) => {
+    const requestId = ++shareRequestId.current;
+    setShareSchedule(schedule);
+    setShareStagePin(null);
+    setShareStageUrl(null);
+    setShareError(null);
+    setShareFeedback(null);
+    setIsLoadingShareDetails(true);
+
+    const venueId = schedule.venue_id || schedule.venues?.id;
+    const festivalId = schedule.festival_id || festival?.id;
+    if (!venueId || !festivalId) {
+      setShareError('This schedule does not have an assigned venue or festival.');
+      setIsLoadingShareDetails(false);
+      return;
+    }
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      setShareError('Open Schedule Management in a browser to create a shareable stage link.');
+      setIsLoadingShareDetails(false);
+      return;
+    }
+
+    try {
+      const [pin, readMode] = await Promise.all([
+        stageManagementService.getVenuePin(festivalId, venueId),
+        stageManagementService.getManagementReadMode(),
+      ]);
+      if (requestId !== shareRequestId.current) return;
+      if (!pin) throw new Error('No stage password is available for this venue.');
+      const readQuery = readMode === 'v2' ? '?read=v2' : '';
+      setShareStagePin(pin);
+      setShareStageUrl(`${window.location.origin}/stage-management/venue/${encodeURIComponent(venueId)}${readQuery}`);
+    } catch (error: any) {
+      if (requestId !== shareRequestId.current) return;
+      setShareError(error?.message || 'Unable to load stage sharing details.');
+    } finally {
+      if (requestId === shareRequestId.current) setIsLoadingShareDetails(false);
+    }
+  };
+
+  const closeScheduleShare = () => {
+    shareRequestId.current += 1;
+    setShareSchedule(null);
+    setShareStagePin(null);
+    setShareStageUrl(null);
+    setShareError(null);
+    setShareFeedback(null);
+    setIsLoadingShareDetails(false);
+    setIsCopyingShareDetails(false);
+  };
+
+  const shareMessage = React.useMemo(() => {
+    if (!shareSchedule || !shareStagePin || !shareStageUrl) return '';
+    const itemName = shareSchedule.items?.item_name_en
+      || shareSchedule.items?.item_name_ml
+      || shareSchedule.items?.item_code
+      || 'Unnamed item';
+    const categoryCodes = Array.isArray(shareSchedule.items?.category_codes)
+      ? shareSchedule.items.category_codes
+      : shareSchedule.items?.category_codes ? [shareSchedule.items.category_codes] : [];
+    return [
+      `Item: ${itemName}`,
+      `Category: ${categoryCodes.map((code: unknown) => String(code).trim()).filter(Boolean).join(', ') || '—'}`,
+      `Stage: ${shareSchedule.venues?.name || 'Stage'}`,
+      `Stage link: ${shareStageUrl}`,
+      `Password: ${shareStagePin}`,
+    ].join('\n');
+  }, [shareSchedule, shareStagePin, shareStageUrl]);
+
+  const copyScheduleShare = async () => {
+    if (!shareMessage) return;
+    setIsCopyingShareDetails(true);
+    try {
+      if (typeof navigator === 'undefined') throw new Error('Clipboard access is unavailable in this browser.');
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareMessage);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareMessage;
+        textArea.setAttribute('readonly', '');
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        let copied = false;
+        try {
+          textArea.select();
+          copied = document.execCommand('copy');
+        } finally {
+          document.body.removeChild(textArea);
+        }
+        if (!copied) throw new Error('Clipboard access is unavailable in this browser.');
+      }
+      setShareError(null);
+      setShareFeedback('Copied stage details to clipboard.');
+    } catch (error: any) {
+      setShareError(error?.message || 'Unable to copy stage details.');
+    } finally {
+      setIsCopyingShareDetails(false);
+    }
+  };
+
+  const sendScheduleShareToWhatsApp = () => {
+    if (!shareMessage || typeof window === 'undefined') return;
+    const url = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
+    setShareError(null);
+    setShareFeedback(null);
+    const opened = window.open(url, '_blank');
+    if (!opened) {
+      setShareError('Allow pop-ups to open WhatsApp.');
+      return;
+    }
+    opened.opener = null;
+  };
 
   const togglePublicVisibility = async (schedule: any) => {
     if (schedule.is_public_visible === undefined) {
@@ -1145,6 +1268,14 @@ export default function ScheduleDashboard() {
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Share stage details for ${schedule.items?.item_name_en || 'event'}`}
+                    onPress={() => void openScheduleShare(schedule)}
+                    className="h-8 w-8 rounded-lg border border-core-primary-soft-teal-200 bg-core-primary-soft-teal-50 items-center justify-center"
+                  >
+                    <Share2 size={14} color={coreColor('#0F766E', 'primaryText')} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     className={`h-8 w-8 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
                     onPress={() => {
                       if (schedule.is_shuffle_locked) {
@@ -1202,6 +1333,11 @@ export default function ScheduleDashboard() {
                     { label: 'Marks', icon: <FilePenLine size={15} color={ui.colors.textMuted} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/marks` as any) },
                     { label: 'Results', icon: <Trophy size={15} color={coreColor('#0F766E', 'primaryText')} />, onPress: () => router.push(`/(admin)/schedule/${schedule.id}/results` as any) },
                   ] : []),
+                  {
+                    label: 'Share stage details',
+                    icon: <Share2 size={15} color={coreColor('#0F766E', 'primaryText')} />,
+                    onPress: () => void openScheduleShare(schedule),
+                  },
                   {
                     label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',
                     separatorBefore: true,
@@ -1352,6 +1488,47 @@ export default function ScheduleDashboard() {
         </View>
       )}
       </ScrollView>
+      <Modal transparent visible={!!shareSchedule} animationType="fade" onRequestClose={closeScheduleShare}>
+        <Pressable onPress={closeScheduleShare} className="flex-1 bg-black/40 items-center justify-center px-4 py-6">
+          <Pressable onPress={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-xl border border-ui-border bg-core-surface-white p-4" style={{ maxHeight: '90%' }}>
+            <View className="mb-4 flex-row items-start justify-between">
+              <View className="mr-3 flex-1">
+                <Text className="font-poppins-bold text-base text-ui-text">Share stage details</Text>
+                <Text className="mt-1 font-poppins text-xs text-ui-text-muted">Copy the details or open WhatsApp to choose a recipient.</Text>
+              </View>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close stage sharing dialog" onPress={closeScheduleShare} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border">
+                <X size={16} color={ui.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            {isLoadingShareDetails ? (
+              <View className="min-h-32 items-center justify-center gap-2">
+                <ActivityIndicator color={ui.colors.primary} />
+                <Text className="font-poppins text-xs text-ui-text-muted">Loading stage password…</Text>
+              </View>
+            ) : shareMessage ? (
+              <ScrollView className="max-h-64 rounded-lg border border-ui-border bg-core-surface-muted-gray-50 p-3" nestedScrollEnabled>
+                <Text selectable className="font-poppins text-xs leading-6 text-ui-text">{shareMessage}</Text>
+              </ScrollView>
+            ) : (
+              <View className="min-h-24 justify-center rounded-lg border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 p-3">
+                <Text className="font-poppins text-xs text-core-warning-amber-800">{shareError || 'Stage sharing details are unavailable.'}</Text>
+              </View>
+            )}
+            {shareError && shareMessage ? <Text accessibilityRole="alert" className="mt-3 font-poppins text-xs text-core-danger-red-700">{shareError}</Text> : null}
+            {shareFeedback ? <Text accessibilityLiveRegion="polite" className="mt-3 font-poppins text-xs text-core-success-green-700">{shareFeedback}</Text> : null}
+            <View className="mt-4 flex-row flex-wrap justify-end gap-2">
+              <TouchableOpacity accessibilityRole="button" disabled={!shareMessage || isCopyingShareDetails} onPress={() => void copyScheduleShare()} className={`h-10 flex-row items-center justify-center gap-2 rounded-lg border px-4 ${shareMessage ? 'border-ui-border bg-core-surface-white' : 'border-core-border-gray-200 bg-core-surface-muted-gray-100 opacity-50'}`}>
+                {isCopyingShareDetails ? <ActivityIndicator size="small" color={ui.colors.text} /> : <Copy size={15} color={ui.colors.text} />}
+                <Text className="font-poppins-bold text-xs text-ui-text">{isCopyingShareDetails ? 'Copying…' : 'Copy'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" disabled={!shareMessage} onPress={sendScheduleShareToWhatsApp} className={`h-10 flex-row items-center justify-center gap-2 rounded-lg border px-4 ${shareMessage ? 'border-core-success-action-emerald-700 bg-core-success-action-emerald-700' : 'border-core-border-gray-200 bg-core-surface-muted-gray-100 opacity-50'}`}>
+                <MessageCircle size={15} color="#FFFFFF" />
+                <Text numberOfLines={1} className="font-poppins-bold text-xs text-core-on-primary-white">Send to WhatsApp</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Modal transparent visible={schedulePdfExportOpen} animationType="fade" onRequestClose={() => !isExportingSchedule && setSchedulePdfExportOpen(false)}>
         <Pressable onPress={() => !isExportingSchedule && setSchedulePdfExportOpen(false)} className="flex-1 bg-black/40 items-center justify-center px-4 py-6">
           <Pressable onPress={(event) => event.stopPropagation()} className="w-full max-w-lg rounded-xl border border-ui-border bg-core-surface-white p-4" style={{ maxHeight: '90%' }}>

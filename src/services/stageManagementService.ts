@@ -188,6 +188,15 @@ export const stageManagementService = {
     return ((venues as StageVenueRow[] | null) ?? []).map((venue) => ({ ...venue, pin: pinByVenue.get(venue.id) as string | undefined }));
   },
 
+  async getVenuePin(festivalId: string, venueId: string): Promise<string | null> {
+    const { data, error } = await supabase.rpc('get_stage_management_venue_codes', {
+      p_festival_id: festivalId,
+    });
+    throwIfError(error);
+    const venueCode = (data ?? []).find((row: { venue_id: string; pin: string | null }) => row.venue_id === venueId);
+    return venueCode?.pin ?? null;
+  },
+
   async getVenuePortalData(venueId: string, pin: string) {
     if (await this.getVenueReadMode(venueId) !== 'v1') {
       throw new Error('This Stage link uses v2. Refresh the page.');

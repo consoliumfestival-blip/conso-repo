@@ -16,7 +16,6 @@ type Festival = {
   is_active: boolean; festival_template: string; chest_number_template: 'team' | 'category';
   chest_number_category_range: 100 | 1000;
 };
-type Talent = { id: string; item_code: string | null; item_name_en: string | null; item_name_ml: string | null };
 type TenantControlData = { tenant: { id: string; name: string; festival_template: string; organisation_id: string | null; organisation_name: string | null }; settings: TenantFeatureSettings; festivals: Festival[] };
 type AuditRow = { id: string; action: string; table_name: string; old_value: any; new_value: any; created_at: string };
 
@@ -118,13 +117,8 @@ export default function SuperTenantSettings() {
   const [originalOrganisationName, setOriginalOrganisationName] = React.useState('');
   const [draft, setDraft] = React.useState<TenantFeatureSettings>(() => cloneSettings(DEFAULT_TENANT_FEATURE_SETTINGS));
   const [selectedFestivalId, setSelectedFestivalId] = React.useState('');
-  const [selectedTalentId, setSelectedTalentId] = React.useState('');
   const [festivalName, setFestivalName] = React.useState('');
   const [originalFestivalName, setOriginalFestivalName] = React.useState('');
-  const [talentNameEn, setTalentNameEn] = React.useState('');
-  const [talentNameMl, setTalentNameMl] = React.useState('');
-  const [originalTalentNameEn, setOriginalTalentNameEn] = React.useState('');
-  const [originalTalentNameMl, setOriginalTalentNameMl] = React.useState('');
   const [notice, setNotice] = React.useState('');
   const [busy, setBusy] = React.useState(false);
 
@@ -145,27 +139,6 @@ export default function SuperTenantSettings() {
     setFestivalName(selectedFestival?.custom_name ?? '');
     setOriginalFestivalName(selectedFestival?.custom_name ?? '');
   }, [selectedFestivalId, selectedFestival?.custom_name]);
-
-  const talentQuery = useQuery({
-    queryKey: ['superadmin', 'tenant-talents', tenantId, selectedFestivalId],
-    enabled: !!tenantId && !!selectedFestivalId,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('super_get_tenant_talents', { p_tenant_id: tenantId, p_festival_id: selectedFestivalId });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as Talent[];
-    },
-  });
-  const selectedTalent = talentQuery.data?.find((item) => item.id === selectedTalentId) ?? null;
-  React.useEffect(() => {
-    if (!talentQuery.data?.length) { setSelectedTalentId(''); return; }
-    setSelectedTalentId((current) => talentQuery.data!.some((item) => item.id === current) ? current : talentQuery.data![0].id);
-  }, [talentQuery.data]);
-  React.useEffect(() => {
-    setTalentNameEn(selectedTalent?.item_name_en ?? '');
-    setTalentNameMl(selectedTalent?.item_name_ml ?? '');
-    setOriginalTalentNameEn(selectedTalent?.item_name_en ?? '');
-    setOriginalTalentNameMl(selectedTalent?.item_name_ml ?? '');
-  }, [selectedTalentId, selectedTalent?.item_name_en, selectedTalent?.item_name_ml]);
 
   const featureQuery = useTenantFeatures(tenantId);
   const savedRevision = controlQuery.data?.settings?.revision ?? featureQuery.settings.revision ?? 1;
@@ -246,24 +219,6 @@ export default function SuperTenantSettings() {
     finally { setBusy(false); }
   };
 
-  const saveTalentName = async () => {
-    if (!tenantId || !selectedFestival || !selectedTalent || busy) return;
-    setBusy(true); setNotice('');
-    try {
-      const { data, error } = await supabase.rpc('super_update_talent_name', {
-        p_tenant_id: tenantId, p_festival_id: selectedFestival.id, p_item_id: selectedTalent.id,
-        p_name_en: talentNameEn, p_name_ml: talentNameMl || null,
-        p_expected_name_en: selectedTalent.item_name_en, p_expected_name_ml: selectedTalent.item_name_ml,
-      });
-      if (error) throw new Error(error.message);
-      setTalentNameEn(data.item_name_en ?? ''); setTalentNameMl(data.item_name_ml ?? '');
-      setOriginalTalentNameEn(data.item_name_en ?? ''); setOriginalTalentNameMl(data.item_name_ml ?? '');
-      setNotice('Talent name saved.');
-      await talentQuery.refetch(); await auditQuery.refetch();
-    } catch (error: any) { setNotice(error?.message || 'Could not save the talent name.'); }
-    finally { setBusy(false); }
-  };
-
   const updateCategoryTrophyMode = (enabled: boolean) => {
     if (!tenantId || !selectedFestivalId || categoryTrophyMode.isLoading || categoryTrophyMode.setMode.isPending) return;
     confirmOperation(
@@ -327,24 +282,13 @@ export default function SuperTenantSettings() {
       </View> : <Text style={{ color: C.muted, fontSize: 12 }}>No root organisation is linked to this tenant.</Text>}
     </Panel>
 
-    <Panel title="Festival and talent names" description="Names are scoped to this tenant and festival. The talent editor does not modify shared catalogue rows for other tenants.">
+    <Panel title="Festival name" description="Edit only the display name for the selected festival.">
       <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 6 }}>FESTIVAL</Text>
       {festivals.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>{festivals.map((festival) => <TouchableOpacity key={festival.id} onPress={() => setSelectedFestivalId(festival.id)} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: selectedFestivalId === festival.id ? C.primarySoft : '#F6F8F8', borderWidth: 1, borderColor: selectedFestivalId === festival.id ? '#78BDB3' : C.border }}><Text style={{ color: selectedFestivalId === festival.id ? C.primary : C.text, fontSize: 12, fontWeight: '700' }}>{festival.custom_name || `${festival.festival_year ?? 'Festival'} · ${festival.level ?? ''}`}</Text></TouchableOpacity>)}</View> : <Text style={{ color: C.muted, marginBottom: 12 }}>No festivals are configured for this tenant.</Text>}
       {selectedFestival ? <>
         <View style={{ flexDirection: compact ? 'column' : 'row', gap: 10, alignItems: compact ? 'stretch' : 'flex-end' }}>
           <LabeledInput label="FESTIVAL DISPLAY NAME" value={festivalName} onChangeText={setFestivalName} placeholder={`${selectedFestival.festival_year ?? ''} ${selectedFestival.level ?? 'Festival'}`} />
           <Button disabled={busy || !festivalName.trim() || festivalName.trim() === originalFestivalName} loading={busy} onPress={() => { void saveFestivalName(); }}>Save festival name</Button>
-        </View>
-        <View style={{ borderTopWidth: 1, borderTopColor: '#EDF1F1', marginTop: 8, paddingTop: 12 }}>
-          <Text style={{ color: C.muted, fontSize: 11, fontWeight: '700', marginBottom: 8 }}>TALENT / ITEM</Text>
-          {talentQuery.isLoading ? <ActivityIndicator color={C.primary} style={{ alignSelf: 'flex-start' }} /> : talentQuery.error ? <Text style={{ color: C.danger }}>{talentQuery.error.message}</Text> : !talentQuery.data?.length ? <Text style={{ color: C.muted, fontSize: 12 }}>No tenant-specific talents were found for this festival.</Text> : <>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, maxHeight: 130, marginBottom: 10 }}>{talentQuery.data.map((item) => <TouchableOpacity key={item.id} onPress={() => setSelectedTalentId(item.id)} style={{ paddingHorizontal: 10, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: selectedTalentId === item.id ? '#78BDB3' : C.border, backgroundColor: selectedTalentId === item.id ? C.primarySoft : '#F8FAFA' }}><Text style={{ color: selectedTalentId === item.id ? C.primary : C.text, fontSize: 11 }}>{item.item_code ? `${item.item_code} · ` : ''}{item.item_name_en || item.item_name_ml || 'Unnamed talent'}</Text></TouchableOpacity>)}</View>
-            <View style={{ flexDirection: compact ? 'column' : 'row', gap: 10, alignItems: compact ? 'stretch' : 'flex-end' }}>
-              <LabeledInput label="ENGLISH NAME" value={talentNameEn} onChangeText={setTalentNameEn} placeholder="Talent name" />
-              <LabeledInput label="MALAYALAM NAME" value={talentNameMl} onChangeText={setTalentNameMl} placeholder="പ്രതിഭയുടെ പേര്" />
-              <Button disabled={busy || !talentNameEn.trim() || (talentNameEn === originalTalentNameEn && talentNameMl === originalTalentNameMl)} loading={busy} onPress={() => { void saveTalentName(); }}>Save talent</Button>
-            </View>
-          </>}
         </View>
       </> : null}
       {selectedFestival ? <View style={{ borderTopWidth: 1, borderTopColor: '#EDF1F1', marginTop: 14, paddingTop: 12 }}>

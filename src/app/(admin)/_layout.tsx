@@ -20,6 +20,7 @@ export default function AdminLayout() {
       <Stack.Screen name="participants/manage-units" />
       <Stack.Screen name="participants/[id]/index" />
       <Stack.Screen name="schedule/index" />
+      <Stack.Screen name="reports/index" />
       <Stack.Screen name="schedule/create" />
       <Stack.Screen name="schedule/venues" />
       <Stack.Screen name="schedule/[id]/checkin" />

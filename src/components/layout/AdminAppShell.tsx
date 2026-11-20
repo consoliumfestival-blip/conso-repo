@@ -18,6 +18,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PanelsTopLeft,
+  Printer,
   Scale,
   Settings,
   Trophy,
@@ -83,6 +84,12 @@ const navItems: NavItem[] = [
     path: "/(admin)/schedule",
     icon: CalendarDays,
     match: (path) => path.includes("/schedule"),
+  },
+  {
+    label: "Reports & printouts",
+    path: "/(admin)/reports",
+    icon: Printer,
+    match: (path) => path.includes("/reports"),
   },
   {
     label: "Stage Management",
@@ -218,6 +225,7 @@ const navItems: NavItem[] = [
 ];
 
 function getPageTitle(pathname: string) {
+  if (pathname.includes('/reports')) return 'Reports & printouts';
   if (pathname.includes('/festival-viewer')) return 'Festival Viewer';
   if (pathname.includes('/smart-announcer')) return 'Smart Announcer';
   if (pathname.includes('/team-leaders') || pathname.includes('/settings/team-leader-portal')) return 'Team Leader Management';

@@ -977,7 +977,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   async listTenantAccounts<T>(): Promise<ListResult<T>> {
     const { data, error } = await supabase
       .from('organisations')
-      .select('id, name, org_type, tenant_id, admin_email, tenants!organisations_tenant_id_fkey(access_disabled,name)')
+      .select('id, name, org_type, parent_id, tenant_id, admin_email, tenants!organisations_tenant_id_fkey(access_disabled,name)')
       .order('created_at', { ascending: false });
 
     // Ensure query errors are not suppressed and returned as empty arrays.

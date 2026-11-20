@@ -679,7 +679,7 @@ export default function TenantsManager() {
   const router = useRouter();
   
   const { useTenantAccounts, useProvisionRootTenant } = useSuperAdmin();
-  const { data: orgsData, isLoading: loading, refetch } = useTenantAccounts<Org>();
+  const { data: orgsData, isLoading: loading, isError, error, refetch } = useTenantAccounts<Org>();
   const provisionMutation = useProvisionRootTenant();
   const orgs = (orgsData || []).map((o) => ({ ...o, org_type: (String(o.org_type ?? '').trim().toLowerCase() || 'unit') as OrgType }));
   
@@ -845,6 +845,16 @@ export default function TenantsManager() {
           <View style={{ padding: 20, gap: 12 }}>
             {loading ? (
               <ActivityIndicator color={C.accent} style={{ marginTop: 40 }} />
+            ) : isError ? (
+              <View style={{ marginTop: 24, padding: 18, borderRadius: 14, borderWidth: 1, borderColor: C.danger, backgroundColor: C.surface, alignItems: 'center', gap: 10 }}>
+                <ShieldAlert size={24} color={C.danger} />
+                <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 14, textAlign: 'center' }}>Could not load tenant hierarchy</Text>
+                <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, textAlign: 'center' }}>{error instanceof Error ? error.message : 'Check your connection and try again.'}</Text>
+                <TouchableOpacity onPress={fetchOrgs} accessibilityRole="button" style={{ marginTop: 2, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: C.accentBg, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                  <RefreshCw size={14} color={C.accent} />
+                  <Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Try again</Text>
+                </TouchableOpacity>
+              </View>
             ) : visibleRows.length === 0 ? (
               <View style={{ alignItems: 'center', marginTop: 40 }}>
                 <Users size={48} color={C.border} />

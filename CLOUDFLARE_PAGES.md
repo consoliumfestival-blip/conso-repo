@@ -31,6 +31,8 @@ the browser bundle, so these values are public to every visitor:
   `EXPO_PUBLIC_SUPABASE_ANON_KEY` (compatibility fallback)
 - `EXPO_PUBLIC_ENABLE_ONBOARDING` (optional; default `false`)
 - `EXPO_PUBLIC_ENABLE_COMMUNICATION_CENTER` (optional; default `false`)
+- `EXPO_PUBLIC_ADMIN_WEB_PUSH_VAPID_PUBLIC_KEY` (required for opted-in Admin
+  PWA code-release push; public key only, safe to include in the browser bundle)
 - `EXPO_PUBLIC_CUSTOM_RENDERER_ENABLED` (optional; default `false`)
 - `EXPO_PUBLIC_STORAGE_PROVIDER` (default `r2`, matching the source; target R2
   credentials must be configured before uploads work)

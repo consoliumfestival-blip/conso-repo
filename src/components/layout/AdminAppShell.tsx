@@ -38,6 +38,7 @@ import { ConsoliumLogo } from "@/components/ui/ConsoliumLogo";
 import { applyPortalPwaMetadata } from "@/core/utils/portalPwaMetadata";
 import { PortalInstallPrompt } from "@/components/pwa/PortalInstallPrompt";
 import { PwaUpdateNotice } from "@/components/pwa/PwaUpdateNotice";
+import { AdminCodeReleasePushPrompt } from "@/components/pwa/AdminCodeReleasePushPrompt";
 
 type IconType = React.ComponentType<{
   color?: string;
@@ -768,6 +769,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         </>
       )}
       <PwaUpdateNotice bottomOffset={showSidebar ? 16 : 92} />
+      <AdminCodeReleasePushPrompt />
     </View>
   );
 }

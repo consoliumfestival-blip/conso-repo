@@ -1,0 +1,16 @@
+{
+  "name": "consolium-admin-code-release-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "web-push": "4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.165.0"
+  }
+}

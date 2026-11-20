@@ -29,6 +29,7 @@ import { useEffect, useRef, useState } from "react";
 import * as SplashScreen from "expo-splash-screen";
 import { useProtectedRoute } from "../core/hooks/useProtectedRoute";
 import { useAuthStore } from "../core/store/authStore";
+import { supabase } from "../core/config/supabase";
 import { NotificationProvider } from "../core/contexts/NotificationContext";
 import { NotificationToast } from "../components/ui/NotificationToast";
 import { PwaUpdateNotice } from "../components/pwa/PwaUpdateNotice";
@@ -165,7 +166,28 @@ export default function RootLayout() {
 
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {});
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        queryClient.clear();
+        useAuthStore.getState().setUser(null, null, null, false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        if (event === 'SIGNED_IN') {
+          // Cached tenant-scoped responses must not survive an account change.
+          queryClient.clear();
+        }
+        // Run profile/session reads after the auth callback has returned.
+        setTimeout(() => {
+          void useAuthStore.getState().checkSession({ teamLeaderRoute: teamPortalAtStartup });
+        }, 0);
+      }
+    });
+
     checkSession({ teamLeaderRoute: teamPortalAtStartup });
+    return () => subscription.unsubscribe();
   }, [checkSession, teamPortalAtStartup]);
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { supabase } from '@/core/config/supabase';
 import { useTenantFeatures, DEFAULT_TENANT_FEATURE_SETTINGS, type TenantFeatureSettings, type TenantModuleKey, type TeamPortalSection, type PublicPageSection } from '@/core/hooks/useTenantFeatures';
 import { useChestNumberOrder } from '@/core/hooks/useChestNumberOrder';
 import { Button } from '@/components/ui/shadcn/button';
+import { useSuperCategoryTrophyMode } from '@/core/hooks/useCategoryTrophy';
 
 const C = { bg: '#F4F7F7', surface: '#FFFFFF', border: '#DCE5E4', primary: '#0F766E', primarySoft: '#E5F4F1', text: '#173331', muted: '#607573', danger: '#B42318', green: '#15803D', amber: '#A16207' };
 
@@ -139,6 +140,7 @@ export default function SuperTenantSettings() {
   }, [controlQuery.data]);
 
   const selectedFestival = controlQuery.data?.festivals.find((item) => item.id === selectedFestivalId) ?? null;
+  const categoryTrophyMode = useSuperCategoryTrophyMode(tenantId, selectedFestivalId);
   React.useEffect(() => {
     setFestivalName(selectedFestival?.custom_name ?? '');
     setOriginalFestivalName(selectedFestival?.custom_name ?? '');
@@ -262,6 +264,29 @@ export default function SuperTenantSettings() {
     finally { setBusy(false); }
   };
 
+  const updateCategoryTrophyMode = (enabled: boolean) => {
+    if (!tenantId || !selectedFestivalId || categoryTrophyMode.isLoading || categoryTrophyMode.setMode.isPending) return;
+    confirmOperation(
+      enabled ? 'Enable Category Trophy Mode?' : 'Disable Category Trophy Mode?',
+      enabled
+        ? 'Teams will be ranked separately inside every non-General category. Existing marks, points, ranks, publishing, and Overall Champion rules will not be changed.'
+        : 'Category Trophy standings will be hidden. Existing results and the Overall Champion leaderboard will remain unchanged.',
+      () => {
+        void (async () => {
+          setBusy(true); setNotice('');
+          try {
+            await categoryTrophyMode.setMode.mutateAsync({ enabled, expectedEnabled: categoryTrophyMode.data?.enabled === true });
+            setNotice(enabled ? 'Category Trophy Mode enabled.' : 'Category Trophy Mode disabled.');
+            await Promise.all([categoryTrophyMode.refetch(), auditQuery.refetch(), refreshControlData()]);
+          } catch (error: any) {
+            setNotice(error?.message || 'Could not change Category Trophy Mode. Refresh and try again.');
+            await categoryTrophyMode.refetch();
+          } finally { setBusy(false); }
+        })();
+      },
+    );
+  };
+
   const updateModule = (key: TenantModuleKey, value: boolean) => {
     setDraft((current) => ({
       ...current,
@@ -322,6 +347,16 @@ export default function SuperTenantSettings() {
           </>}
         </View>
       </> : null}
+      {selectedFestival ? <View style={{ borderTopWidth: 1, borderTopColor: '#EDF1F1', marginTop: 14, paddingTop: 12 }}>
+        <ToggleRow
+          title="Category Trophy Mode"
+          description="Super Admin controlled. Ranks active festival teams within each non-General category using the existing published-point rules; General remains Overall Champion only."
+          value={categoryTrophyMode.data?.enabled === true}
+          disabled={busy || categoryTrophyMode.isLoading || categoryTrophyMode.setMode.isPending}
+          onValueChange={updateCategoryTrophyMode}
+        />
+        {categoryTrophyMode.error ? <Text style={{ color: C.danger, fontSize: 11, marginTop: 5 }}>{categoryTrophyMode.error.message}</Text> : null}
+      </View> : null}
     </Panel>
 
     <Panel title="Portal and module access" description="Settings apply to this tenant only. Existing sessions and token based portal requests are checked on their next server request.">

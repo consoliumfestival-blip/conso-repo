@@ -27,6 +27,7 @@ import {
 import { useAuthStore } from '../../../../core/store/authStore';
 import { LeaderboardRow } from '../../../../services/leaderboardService';
 import { LeaderboardSettings } from '../../../../services/leaderboardSettingsService';
+import { CategoryTrophyBoard } from '@/components/leaderboard/CategoryTrophyBoard';
 
 const colors = {
   navy: ui.colors.primaryHover,
@@ -169,7 +170,8 @@ export default function UnitRankingsPage() {
   };
 
   return (
-    <View style={styles.workbench}>
+    <View style={{ width: '100%' }}>
+      <View style={styles.workbench}>
       <View style={styles.tableCard}>
         <View style={styles.cardHeader}>
           <View>
@@ -189,6 +191,8 @@ export default function UnitRankingsPage() {
         </View>
         {renderTable()}
       </View>
+      </View>
+      <CategoryTrophyBoard tenantId={tenant_id} festivalId={festivalId} audience="admin" />
     </View>
   );
 }

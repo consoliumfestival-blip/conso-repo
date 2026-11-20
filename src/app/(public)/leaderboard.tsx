@@ -47,6 +47,7 @@ import { Bell } from 'lucide-react-native';
 import { isGeneralCategoryCode } from '../../core/utils/generalCategory';
 import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
 import { PublicUnavailableScreen } from '../../components/publicLanding/PublicUnavailableScreen';
+import { CategoryTrophyBoard } from '../../components/leaderboard/CategoryTrophyBoard';
 
 type ActiveTab = 'organisations' | 'individuals';
 type Breakpoint = 'desktop' | 'tablet' | 'mobile';
@@ -1202,6 +1203,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
                 {renderHero()}
                 {renderLiveStatus()}
                 {renderQuickNavAndPodium()}
+                <CategoryTrophyBoard tenantId={tenantId} festivalId={festivalId} audience="public" />
               </View>
             ) : (
               <>
@@ -1211,6 +1213,7 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
                 
                 <View style={styles.subpageContentArea}>
                   {page === 'units' && renderUnitRankingsTable()}
+                  {page === 'units' && <CategoryTrophyBoard tenantId={tenantId} festivalId={festivalId} audience="public" />}
                   {page === 'items' && renderItemResultsTable()}
                   {page === 'schedule' && renderScheduleTimeline()}
                   

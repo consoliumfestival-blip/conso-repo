@@ -36,8 +36,8 @@ const REPORT_OPTIONS: { value: ReportKind; label: string; detail: string }[] = [
   { value: 'chance_sheet', label: 'Chance sheet', detail: 'The existing printable judging sheet for one program.' },
 ];
 
-function Filter({ label, value, options, onChange }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void }) {
-  return <View style={{ flex: 1, minWidth: 170, gap: 7 }}>
+function Filter({ label, value, options, onChange, width }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; width: string }) {
+  return <View style={{ flexBasis: width, flexGrow: 0, flexShrink: 1, minWidth: 170, gap: 7 }}>
     <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>{label.toUpperCase()}</Text>
     <SsfSelectMenu value={value} options={options} onValueChange={onChange} accessibilityLabel={label} placeholder={`All ${label.toLowerCase()}`} width={200} searchable={options.length > 7} keepInViewport />
   </View>;
@@ -63,6 +63,7 @@ export default function ReportsAndPrintouts() {
   const [errorMessage, setErrorMessage] = useState('');
   const participantReport = ['program_list', 'team_items', 'participant_slips'].includes(report);
   const scheduleReport = ['festival_schedule', 'venue_schedule', 'organisation_schedule', 'blank_schedule', 'team_attendance'].includes(report);
+  const filterWidth = compact ? (width >= 480 ? '48%' : '100%') : '23%';
 
   const teamsQuery = useQuery({
     queryKey: ['reports', 'teams', tenantId, userId, festival?.id],
@@ -111,9 +112,8 @@ export default function ReportsAndPrintouts() {
     && (categoryCode === 'All' || itemHasCategory(item, categoryCode)));
   const selectedTeam = (teamsQuery.data ?? []).find((team) => team.id === teamId);
   const needsTeam = report === 'team_items' || report === 'participant_slips';
-  const needsSelectedItem = (report === 'program_list' && fileType === 'PDF') || report === 'team_items'
-    || report === 'chance_sheet'
-    || programScope === 'selected';
+  const needsSelectedItem = (report === 'program_list' && (fileType === 'PDF' || programScope === 'selected'))
+    || report === 'team_items' || report === 'chance_sheet';
   const matchingSchedules = (scheduleQuery.data ?? []).filter((row: any) => reportItems.some((item) => item.id === row.item_id));
   const canDownload = !!festival?.id && !busy && !festivalLoading && !itemsLoading && (!needsTeam || !!selectedTeam)
     && (report !== 'chance_sheet' || !!tenantId)
@@ -281,13 +281,13 @@ export default function ReportsAndPrintouts() {
     <View style={{ flexDirection: compact ? 'column' : 'row', alignItems: 'stretch', gap: 16 }}>
       <SsfCard style={{ flex: 1, gap: 18 }}>
         <View><Text style={{ fontSize: 15, fontWeight: '800', color: ui.colors.text }}>Build a report</Text><Text style={{ marginTop: 4, fontSize: 12, color: ui.colors.textMuted }}>{reportMeta.detail}</Text></View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14 }}>
-          <Filter label="Report" value={report} onChange={(value) => { setReport(value as ReportKind); if (value !== 'program_list') setFileType('PDF'); if (value === 'chance_sheet') setCategoryCode('All'); }} options={REPORT_OPTIONS.map(({ value, label }) => ({ value, label }))} />
-          <Filter label="File type" value={fileType} onChange={(value) => setFileType(value as 'PDF' | 'CSV')} options={reportFormatOptions} />
-          <Filter label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} />
-          {participantReport ? <Filter label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[{ value: 'All', label: 'All permitted teams' }, ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} /> : null}
-          {report !== 'chance_sheet' ? <Filter label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); }} options={categoryOptions} /> : null}
-          <Filter label="Program" value={itemId} onChange={setItemId} options={visibleProgramOptions} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14 }}>
+          <Filter width={filterWidth} label="Report" value={report} onChange={(value) => { setReport(value as ReportKind); if (value !== 'program_list') setFileType('PDF'); if (value === 'chance_sheet') setCategoryCode('All'); }} options={REPORT_OPTIONS.map(({ value, label }) => ({ value, label }))} />
+          {report === 'program_list' ? <Filter width={filterWidth} label="File type" value={fileType} onChange={(value) => setFileType(value as 'PDF' | 'CSV')} options={reportFormatOptions} /> : null}
+          {report === 'program_list' ? <Filter width={filterWidth} label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} /> : null}
+          {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[{ value: 'All', label: 'All permitted teams' }, ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} /> : null}
+          {report !== 'chance_sheet' ? <Filter width={filterWidth} label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); }} options={categoryOptions} /> : null}
+          <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={visibleProgramOptions} />
         </View>
         {((participantReport && teamsQuery.isLoading) || itemsLoading || festivalLoading || (scheduleReport && scheduleQuery.isLoading)) ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><ActivityIndicator size="small" color={ui.colors.primary} /><Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Loading report options…</Text></View> : null}
         {participantReport && teamsQuery.isError ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load team options. Retry before exporting a team report.</Text> : null}

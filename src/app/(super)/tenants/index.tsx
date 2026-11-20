@@ -11,7 +11,7 @@ import { FEATURE_FLAGS } from '../../../core/config/features';
 import { supabase } from '../../../core/config/supabase';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import {
-  ArrowLeft, Users, ShieldCheck, ShieldAlert, X, RefreshCw,
+  ArrowLeft, Users, ShieldCheck, ShieldAlert, X, RefreshCw, ChevronDown,
   Building2, Map, GitBranch, Landmark, Flag, Layers,
   Mail, KeyRound, Info, ChevronRight, Copy, ExternalLink, Search,
 } from 'lucide-react-native';
@@ -36,6 +36,24 @@ interface Org {
   tenant_name?: string | null;
   admin_email?: string | null;
   access_disabled?: boolean;
+}
+
+interface TenantHierarchyNode {
+  row: { item: Org; depth: number; path: string; contextOnly: boolean };
+  children: TenantHierarchyNode[];
+}
+
+function buildTenantTree(rows: TenantHierarchyNode['row'][]): TenantHierarchyNode[] {
+  const nodes = rows.map((row) => ({ row, children: [] as TenantHierarchyNode[] }));
+  const byId = new Map(nodes.map((node) => [node.row.item.id, node]));
+  const roots: TenantHierarchyNode[] = [];
+  nodes.forEach((node) => {
+    const parentId = node.row.item.parent_id;
+    const parent = parentId ? byId.get(parentId) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  });
+  return roots;
 }
 
 const ORG_TYPE_CONFIG: Record<OrgType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
@@ -668,6 +686,7 @@ export default function TenantsManager() {
   const [activeFilter, setActiveFilter] = useState<'all' | OrgType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [rootScopeId, setRootScopeId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const [onboardOrg, setOnboardOrg]   = useState<Org | null>(null);
   const [detailOrg, setDetailOrg]     = useState<Org | null>(null);
 
@@ -680,6 +699,77 @@ export default function TenantsManager() {
     rootId: rootScopeId,
     searchText: (org) => `${org.admin_email ?? ''} ${org.tenant_name ?? ''}`,
   });
+  const hierarchy = buildTenantTree(visibleRows);
+  const filteredView = !!searchQuery.trim() || activeFilter !== 'all';
+  const toggleGroup = (id: string) => setCollapsedGroups((current) => {
+    const next = new Set(current);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const renderNode = (node: TenantHierarchyNode, depth = 0): React.ReactNode => {
+    const { item: org, path, contextOnly } = node.row;
+    const cfg = getOrgConfig(org.org_type);
+    const hasAccess = !!org.tenant_id;
+    const isDisabled = org.access_disabled === true;
+    const onboardingAllowed = FEATURE_FLAGS.ENABLE_ONBOARDING;
+    const rowAction = hasAccess
+      ? () => setDetailOrg(org)
+      : (onboardingAllowed ? () => setOnboardOrg(org) : undefined);
+    const collapsed = !filteredView && collapsedGroups.has(org.id);
+    const childCount = node.children.length;
+
+    return (
+      <Animated.View key={org.id} entering={FadeInDown.duration(300)} style={{ marginBottom: 12 }}>
+        <View style={{ marginLeft: Math.min(depth, 5) * 14, borderWidth: 1, borderColor: C.border, borderRadius: 14, backgroundColor: C.surface, overflow: 'hidden' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', minHeight: 76, borderLeftWidth: depth ? 3 : 0, borderLeftColor: cfg.color }}>
+            <TouchableOpacity
+              onPress={contextOnly ? undefined : rowAction}
+              activeOpacity={contextOnly ? 1 : rowAction ? 0.8 : 1}
+              style={{ flex: 1, minWidth: 0, padding: 15, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: contextOnly ? 0.68 : 1 }}
+            >
+              <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center' }}>{cfg.icon}</View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text numberOfLines={1} style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 15 }}>{org.name}</Text>
+                <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 2 }}>
+                  {cfg.label}{org.admin_email ? ` · ${org.admin_email}` : ''}
+                </Text>
+                {depth > 0 ? <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: 2 }}>{path}</Text> : null}
+                {contextOnly ? <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 9, marginTop: 2 }}>PARENT · OPEN TO SEE MATCHES</Text> : null}
+              </View>
+            </TouchableOpacity>
+
+            {contextOnly ? null : hasAccess ? (
+              <TouchableOpacity onPress={rowAction} style={{ paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 7 }} accessibilityLabel={`Open ${org.name} tenant details`}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
+                  {isDisabled ? <ShieldAlert size={12} color={C.danger} /> : <ShieldCheck size={12} color={C.green} />}
+                  <Text style={{ color: isDisabled ? C.danger : C.green, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{isDisabled ? 'Disabled' : 'Active'}</Text>
+                </View>
+                <ChevronRight size={16} color={C.muted} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={rowAction} disabled={!onboardingAllowed} style={{ marginRight: 14, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 5 }} accessibilityLabel={`Onboard ${org.name}`}>
+                <ShieldAlert size={12} color={C.danger} />
+                <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{onboardingAllowed ? 'Onboard' : 'Unavailable'}</Text>
+              </TouchableOpacity>
+            )}
+
+            {childCount > 0 ? (
+              <TouchableOpacity onPress={() => toggleGroup(org.id)} accessibilityRole="button" accessibilityLabel={`${collapsed ? 'Expand' : 'Collapse'} ${org.name} group`} accessibilityState={{ expanded: !collapsed }} style={{ minHeight: 52, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 7, borderLeftWidth: 1, borderLeftColor: C.border }}>
+                <Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{childCount} {childCount === 1 ? 'child' : 'children'}</Text>
+                {collapsed ? <ChevronRight size={16} color={C.muted} /> : <ChevronDown size={16} color={C.muted} />}
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          {!collapsed && childCount > 0 ? (
+            <View style={{ paddingLeft: 12, paddingRight: 10, paddingBottom: 2, marginLeft: 20, borderLeftWidth: 1, borderLeftColor: C.border }}>
+              {node.children.map((child) => renderNode(child, depth + 1))}
+            </View>
+          ) : null}
+        </View>
+      </Animated.View>
+    );
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -760,53 +850,7 @@ export default function TenantsManager() {
                 <Users size={48} color={C.border} />
                 <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', marginTop: 16 }}>No organisations found.</Text>
               </View>
-            ) : visibleRows.map(({ item: org, depth, path, contextOnly }, i) => {
-              const cfg = getOrgConfig(org.org_type);
-              const hasAccess = !!org.tenant_id;
-              const isDisabled = org.access_disabled === true;
-              const onboardingAllowed = FEATURE_FLAGS.ENABLE_ONBOARDING;
-              const rowAction = hasAccess
-                ? () => setDetailOrg(org)
-                : (onboardingAllowed ? () => setOnboardOrg(org) : undefined);
-              return (
-                <Animated.View key={org.id} entering={FadeInDown.delay(i * 50).duration(400)}>
-                  <TouchableOpacity
-                    onPress={contextOnly ? undefined : rowAction}
-                    activeOpacity={contextOnly ? 1 : rowAction ? 0.8 : 1}
-                    style={{ backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: hasAccess ? (isDisabled ? coreColor('#F8717130', 'border') : coreColor('#34D39930', 'border')) : C.border, borderLeftWidth: depth > 0 ? 3 : 1, borderLeftColor: depth > 0 ? cfg.color : (hasAccess ? C.green : C.border), marginLeft: Math.min(depth, 5) * 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', opacity: contextOnly ? 0.62 : 1 }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                      <View style={{ backgroundColor: cfg.bg, padding: 10, borderRadius: 12 }}>{cfg.icon}</View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 16 }}>{org.name}</Text>
-                        <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12 }}>
-                          {cfg.label}{org.admin_email ? ` · ${org.admin_email}` : ''}
-                        </Text>
-                        {depth > 0 && <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 2 }}>{path}</Text>}
-                        {contextOnly && <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 9, marginTop: 3 }}>PARENT</Text>}
-                      </View>
-                    </View>
-
-                    {contextOnly ? null : hasAccess ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: (isDisabled ? C.danger : coreColor('#34D399', 'border')) + '40' }}>
-                          {isDisabled ? <ShieldAlert size={12} color={C.danger} /> : <ShieldCheck size={12} color={C.green} />}
-                          <Text style={{ color: isDisabled ? C.danger : C.green, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{isDisabled ? 'Disabled' : 'Active'}</Text>
-                        </View>
-                        <ChevronRight size={16} color={C.muted} />
-                      </View>
-                    ) : (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.border, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
-                        <ShieldAlert size={12} color={C.danger} />
-                        <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>
-                          {onboardingAllowed ? 'Onboard' : 'Unavailable'}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
+            ) : hierarchy.map((node) => renderNode(node))}
           </View>
         </ScrollView>
       </Animated.View>

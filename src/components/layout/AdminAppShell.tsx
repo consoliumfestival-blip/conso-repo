@@ -87,12 +87,6 @@ const navItems: NavItem[] = [
     match: (path) => path.includes("/schedule"),
   },
   {
-    label: "Reports & printouts",
-    path: "/(admin)/reports",
-    icon: Printer,
-    match: (path) => path.includes("/reports"),
-  },
-  {
     label: "Stage Management",
     shortLabel: "Stage",
     path: "/stage-management",
@@ -222,6 +216,12 @@ const navItems: NavItem[] = [
         match: (path) => path.includes("/settings/api-keys"),
       },
     ],
+  },
+  {
+    label: "Reports & printouts",
+    path: "/(admin)/reports",
+    icon: Printer,
+    match: (path) => path.includes("/reports"),
   },
 ];
 

@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator, Clipboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
-import { buildHierarchyRows, getHierarchyRoots } from './hierarchySearch';
+import { buildHierarchyRows, getHierarchyRoots } from '../hierarchySearch';
 import type { FestivalTemplate } from '../../../lib/repositories/provisioningRepository';
 import { FEATURE_FLAGS } from '../../../core/config/features';
 import { supabase } from '../../../core/config/supabase';

@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
-import { buildHierarchyRows, getHierarchyRoots } from './hierarchySearch';
+import { buildHierarchyRows, getHierarchyRoots } from '../hierarchySearch';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft,

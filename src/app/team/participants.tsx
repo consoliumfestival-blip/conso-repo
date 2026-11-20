@@ -38,6 +38,7 @@ export default function ParticipantsScreen() {
   const [search, setSearch] = useState('');
   const [selectedParticipant, setSelectedParticipant] = useState<TeamLeaderParticipant | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [bulkHintVisible, setBulkHintVisible] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportRows, setExportRows] = useState<TeamLeaderParticipantExportRow[]>([]);
@@ -214,7 +215,12 @@ export default function ParticipantsScreen() {
       <View style={{ gap: 16 }}>
         <TeamPageHeading title="Participants" teamName={context?.team_name}
           subtitle={`${participants.length} registered participant${participants.length === 1 ? '' : 's'} in your team`}
-          actions={<Pressable accessibilityRole="button" accessibilityLabel="Export participants" onPress={openExport} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.primary, backgroundColor: ui.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Download size={15} color={ui.colors.onPrimary} /><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Export</Text></Pressable>} />
+          actions={<View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Bulk add participants, coming soon" onHoverIn={() => setBulkHintVisible(true)} onHoverOut={() => setBulkHintVisible(false)} onPress={() => setBulkHintVisible(true)} style={{ minHeight: 40, minWidth: 100, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: bulkHintVisible ? ui.colors.surfaceMuted : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700' }}>{bulkHintVisible ? 'Coming soon' : 'Bulk add'}</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Export participants" onPress={openExport} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.primary, backgroundColor: ui.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Download size={15} color={ui.colors.onPrimary} /><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Export</Text></Pressable>
+          </View>} />
 
         <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface, paddingHorizontal: 12 }}>
           <Search size={17} color={ui.colors.textMuted} />

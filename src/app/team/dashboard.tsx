@@ -3,8 +3,8 @@ import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { TEAM_DESKTOP_MIN_WIDTH } from '@/constants/teamLeaderTheme';
 import { TeamText as Text } from '@/components/team/TeamText';
 import React from 'react';
-import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
-import { ArrowRight, CalendarDays, CheckCircle2, MessageSquare, Moon, Sun, Trophy, Users } from 'lucide-react-native';
+import { ActivityIndicator, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { ArrowRight, CalendarDays, CheckCircle2, MessageSquare, Moon, RefreshCw, Sun, Trophy, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
@@ -39,7 +39,7 @@ function SummaryMetric({ icon: Icon, label, value, helper, tone, description, mo
   );
 }
 
-function DashboardHeaderActions({ showAnnouncements }: { showAnnouncements: boolean }) {
+function DashboardHeaderActions({ showAnnouncements, refreshing, onRetry }: { showAnnouncements: boolean; refreshing: boolean; onRetry: () => void }) {
   const { mode, toggleMode } = useTeamTheme();
   const router = useRouter();
   const ThemeIcon = mode === 'dark' ? Sun : Moon;
@@ -57,6 +57,9 @@ function DashboardHeaderActions({ showAnnouncements }: { showAnnouncements: bool
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Pressable disabled={refreshing} onPress={onRetry} accessibilityRole="button" accessibilityLabel="Retry dashboard data" accessibilityState={{ disabled: refreshing, busy: refreshing }} style={{ ...buttonStyle, opacity: refreshing ? 0.6 : 1 }}>
+        {refreshing ? <ActivityIndicator size="small" color="#FFFFFF" /> : <RefreshCw size={17} color="#FFFFFF" />}
+      </Pressable>
       <Pressable onPress={toggleMode} accessibilityRole="button" accessibilityLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} style={buttonStyle}>
         <ThemeIcon size={18} color="#FFFFFF" />
       </Pressable>
@@ -67,7 +70,7 @@ function DashboardHeaderActions({ showAnnouncements }: { showAnnouncements: bool
   );
 }
 
-function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, totalEvents, now, mobile, showMyTeam, showResults, showSchedule, showAnnouncements }: {
+function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, totalEvents, now, mobile, showMyTeam, showResults, showSchedule, showAnnouncements, refreshing, onRetry }: {
   teamName: string;
   points: number | null;
   rank?: number;
@@ -80,6 +83,8 @@ function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, 
   showResults: boolean;
   showSchedule: boolean;
   showAnnouncements: boolean;
+  refreshing: boolean;
+  onRetry: () => void;
 }) {
   const ui = useTeamUi();
   const router = useRouter();
@@ -97,7 +102,7 @@ function DashboardHero({ teamName, points, rank, todaysEvents, completedEvents, 
           {!mobile && <View style={{ flex: 1, minWidth: 0 }}>
             <Text numberOfLines={1} style={{ color: '#FFFFFF', fontSize: mobile ? 16 : 19, lineHeight: mobile ? 21 : 24, fontWeight: '700' }}>{greeting}, {teamName}</Text>
           </View>}
-          {mobile && <DashboardHeaderActions showAnnouncements={showAnnouncements} />}
+          {mobile && <DashboardHeaderActions showAnnouncements={showAnnouncements} refreshing={refreshing} onRetry={onRetry} />}
         </View>
         {mobile && <Text style={{ color: '#FFFFFF', fontSize: 21, lineHeight: 27, fontWeight: '700' }}>{greeting}, {teamName}</Text>}
 
@@ -188,10 +193,10 @@ export default function TeamLeaderDashboard() {
 
   return (
     <TeamLeaderAppShell hideMobileHeader mobileEdgeToEdge>
-      <TeamReadStatus fetching={queries.some(query => query.isFetching)} error={queries.find(query => query.error)?.error || contextError} onRefresh={refresh} />
+      {!mobile && <TeamReadStatus fetching={queries.some(query => query.isFetching)} error={queries.find(query => query.error)?.error || contextError} onRefresh={refresh} />}
       <View style={{ gap: 20, maxWidth: 1280, width: '100%', alignSelf: 'center' }}>
         <View>
-          <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? null} rank={ownStanding && ownStanding.total_points > 0 ? ownStanding.rank : undefined} todaysEvents={todaysEvents.length} completedEvents={completedEvents} totalEvents={schedule.length} now={now} mobile={mobile} showMyTeam={showMyTeam} showResults={showResults} showSchedule={showSchedule} showAnnouncements={showAnnouncements} />
+          <DashboardHero teamName={teamName} points={ownStanding?.total_points ?? null} rank={ownStanding && ownStanding.total_points > 0 ? ownStanding.rank : undefined} todaysEvents={todaysEvents.length} completedEvents={completedEvents} totalEvents={schedule.length} now={now} mobile={mobile} showMyTeam={showMyTeam} showResults={showResults} showSchedule={showSchedule} showAnnouncements={showAnnouncements} refreshing={queries.some(query => query.isFetching)} onRetry={refresh} />
         </View>
 
         {(showMyTeam || showSchedule || showResults) && <View style={{ marginHorizontal: mobile ? 16 : 0 }}>

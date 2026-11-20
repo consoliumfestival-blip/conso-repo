@@ -1,11 +1,34 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
-import { Check, RefreshCw } from 'lucide-react-native';
+import { Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react-native';
 import { ui } from '@/constants/designSystem';
 
 type UpdateState = 'hidden' | 'available' | 'updating' | 'updated';
+type UpdateNotes = { summary: string; details: string[] };
 const UPDATED_SESSION_KEY = 'consolium_pwa_update_requested';
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const FALLBACK_UPDATE_NOTES: UpdateNotes = {
+  summary: 'The latest app changes are ready. Expand to see the release notes before updating.',
+  details: [],
+};
+
+async function fetchUpdateNotes(): Promise<UpdateNotes> {
+  try {
+    const response = await fetch(`${window.location.origin}/app-update-notes.json`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) return FALLBACK_UPDATE_NOTES;
+    const value = await response.json() as Partial<UpdateNotes>;
+    const summary = typeof value.summary === 'string' ? value.summary.trim() : '';
+    const details = Array.isArray(value.details)
+      ? value.details.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
+      : [];
+    return summary ? { summary, details } : FALLBACK_UPDATE_NOTES;
+  } catch {
+    return FALLBACK_UPDATE_NOTES;
+  }
+}
 
 function currentAppAssets(doc: Document): string[] {
   const scripts = Array.from(doc.querySelectorAll<HTMLScriptElement>('script[src]'))
@@ -28,6 +51,8 @@ function isInstalledWebApp(): boolean {
 export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset = 16 }: { accentColor?: string; bottomOffset?: number }) {
   const [state, setState] = useState<UpdateState>('hidden');
   const [confirmingUpdate, setConfirmingUpdate] = useState(false);
+  const [showUpdateDetails, setShowUpdateDetails] = useState(false);
+  const [updateNotes, setUpdateNotes] = useState<UpdateNotes>(FALLBACK_UPDATE_NOTES);
   const pulse = useRef(new Animated.Value(1)).current;
 
   const checkForUpdate = useCallback(async () => {
@@ -49,6 +74,7 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
         setState('updated');
         window.setTimeout(() => setState('hidden'), 2600);
       } else if (hasUpdate) {
+        setUpdateNotes(await fetchUpdateNotes());
         setState('available');
       }
     } catch {
@@ -104,7 +130,7 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
         accessibilityLabel={label}
         accessibilityHint={complete ? 'The installed app has reloaded.' : 'Reloads the app to use the latest deployed version.'}
         disabled={busy || complete || !navigator.onLine}
-        onPress={() => setConfirmingUpdate(true)}
+        onPress={() => { setShowUpdateDetails(false); setConfirmingUpdate(true); }}
         style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: complete ? '#A7F3D0' : '#99D8CC', backgroundColor: complete ? '#ECFDF5' : '#FFFFFF', shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}
       >
         {busy ? <ActivityIndicator size="small" color={accentColor} /> : complete ? <Check size={16} color="#047857" /> : (
@@ -118,9 +144,35 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: 'rgba(15, 23, 42, 0.45)' }}>
           <View style={{ width: '100%', maxWidth: 400, padding: 20, borderRadius: 14, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface }}>
             <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '700' }}>Update app?</Text>
-            <Text style={{ marginTop: 8, color: ui.colors.textMuted, fontSize: 13, lineHeight: 20 }}>
-              The app will reload to apply the update. Save or submit any unfinished changes before continuing.
-            </Text>
+            <View style={{ marginTop: 10, padding: 12, borderRadius: 10, backgroundColor: ui.colors.background }}>
+              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>What changes</Text>
+              <Text style={{ marginTop: 4, color: ui.colors.textMuted, fontSize: 13, lineHeight: 19 }}>
+                {updateNotes.summary}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: showUpdateDetails }}
+                onPress={() => setShowUpdateDetails((shown) => !shown)}
+                style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 5, marginTop: 9, minHeight: 32 }}
+              >
+                <Text style={{ color: accentColor, fontSize: 12, fontWeight: '700' }}>
+                  {showUpdateDetails ? 'Hide details' : 'Show details'}
+                </Text>
+                {showUpdateDetails ? <ChevronUp size={15} color={accentColor} /> : <ChevronDown size={15} color={accentColor} />}
+              </Pressable>
+              {showUpdateDetails && (
+                <View style={{ marginTop: 4 }}>
+                  {updateNotes.details.map((detail, index) => (
+                    <Text key={`${index}-${detail}`} style={{ color: ui.colors.textMuted, fontSize: 13, lineHeight: 20, marginTop: index === 0 ? 0 : 4 }}>
+                      • {detail}
+                    </Text>
+                  ))}
+                  <Text style={{ color: ui.colors.textMuted, fontSize: 13, lineHeight: 20, marginTop: updateNotes.details.length ? 8 : 0 }}>
+                    Updating reloads the app to install the latest version. Saved data stays as it is. Save or submit unfinished work before updating.
+                  </Text>
+                </View>
+              )}
+            </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 18 }}>
               <Pressable
                 accessibilityRole="button"

@@ -23,6 +23,17 @@ test('category standings exclude General and use the public visibility gate', ()
   assert.match(sql, /reg\.status is distinct from 'rejected'/i);
 });
 
+test('backend standings keep hidden published results for admins only while mode is on', () => {
+  const migrationDir = path.join(root, 'supabase/migrations');
+  const files = fs.readdirSync(migrationDir).filter((name) => name.endsWith('_category_trophy_backend_visibility.sql'));
+  assert.equal(files.length, 1);
+  const sql = read(path.join('supabase/migrations', files[0]));
+  assert.equal((sql.match(/p_public is false or coalesce\(r\.public_visible, false\) is true/gi) ?? []).length, 2);
+  assert.match(sql, /sum\(rr\.points_awarded\)/i);
+  assert.match(sql, /where fs\.category_trophy_enabled is true/i);
+  assert.match(sql, /public\.get_my_tenant_id\(\) is distinct from p_tenant_id/i);
+});
+
 test('active item category assignments stay valid while the mode is enabled', () => {
   const sql = read('supabase/migrations/20261120090400_category_trophy_item_category_guard.sql');
   assert.match(sql, /before insert or update of festival_id, category_codes, is_active/i);

@@ -5,7 +5,9 @@ export const useCategoryTrophyMode = (tenantId?: string | null, festivalId?: str
   queryKey: ['category-trophy-mode', tenantId, festivalId],
   queryFn: () => categoryTrophyService.getMode(tenantId!, festivalId!),
   enabled: !!tenantId && !!festivalId,
-  staleTime: 30_000,
+  staleTime: 0,
+  refetchInterval: 15_000,
+  refetchIntervalInBackground: false,
 });
 
 export const usePublicCategoryTrophy = (tenantId?: string | null, festivalId?: string | null, enabled = true) => useQuery({

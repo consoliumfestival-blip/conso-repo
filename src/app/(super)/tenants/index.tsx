@@ -12,7 +12,7 @@ import { supabase } from '../../../core/config/supabase';
 import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft, Users, ShieldCheck, ShieldAlert, X, RefreshCw, ChevronDown,
-  Building2, Map, GitBranch, Landmark, Flag, Layers,
+  Building2, Map as MapIcon, GitBranch, Landmark, Flag, Layers,
   Mail, KeyRound, Info, ChevronRight, Copy, ExternalLink, Search,
 } from 'lucide-react-native';
 
@@ -58,7 +58,7 @@ function buildTenantTree(rows: TenantHierarchyNode['row'][]): TenantHierarchyNod
 
 const ORG_TYPE_CONFIG: Record<OrgType, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
   unit:     { label: 'Unit',     icon: <Building2 size={16} color={coreColor("#FBBF24", 'warning')} />, color: coreColor('#FBBF24', 'warning'), bg: coreColor('rgba(251,191,36,0.10)', 'background') },
-  sector:   { label: 'Sector',   icon: <Map       size={16} color={coreColor("#34D399", 'success')} />, color: coreColor('#34D399', 'success'), bg: coreColor('rgba(52,211,153,0.10)', 'background') },
+  sector:   { label: 'Sector',   icon: <MapIcon   size={16} color={coreColor("#34D399", 'success')} />, color: coreColor('#34D399', 'success'), bg: coreColor('rgba(52,211,153,0.10)', 'background') },
   division: { label: 'Division', icon: <GitBranch size={16} color={coreColor("#818CF8", 'info')} />, color: coreColor('#818CF8', 'info'), bg: coreColor('rgba(129,140,248,0.10)', 'background') },
   district: { label: 'District', icon: <Landmark  size={16} color={coreColor("#EC4899", 'info')} />, color: coreColor('#EC4899', 'info'), bg: coreColor('rgba(236,72,153,0.10)', 'background') },
   state:    { label: 'State',    icon: <Flag      size={16} color={coreColor("#A855F7", 'info')} />, color: coreColor('#A855F7', 'info'), bg: coreColor('rgba(168,85,247,0.10)', 'background') },

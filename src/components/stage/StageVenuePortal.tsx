@@ -152,8 +152,9 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   const queryClient = useQueryClient();
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
-  const [pinInput, setPinInput] = React.useState('');
-  const [pin, setPin] = React.useState('');
+  // Legacy RPC parameters remain for compatibility; the backend now authorizes
+  // by the existing venue link and validates each requested schedule scope.
+  const pin = '';
   const [search, setSearch] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedStatus, setSelectedStatus] = React.useState('All');
@@ -182,28 +183,28 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     queryFn: async () => optimizedRead
       ? { ...await stageManagementService.getVenuePortalSummaryV2(venueId, pin), registrations: [] as StageRegistrationRow[] }
       : stageManagementService.getVenuePortalData(venueId, pin),
-    enabled: !!pin,
+    enabled: !!venueId,
     retry: false,
     staleTime: 0,
   });
   const detailQuery = useQuery({
     queryKey: ['stage-venue-portal-detail-v2', venueId, pin, selectedScheduleId],
     queryFn: () => stageManagementService.getVenuePortalScheduleDetailV2(venueId, pin, selectedScheduleId!),
-    enabled: optimizedRead && !!pin && !!selectedScheduleId && venueQuery.isSuccess,
+    enabled: optimizedRead && !!venueId && !!selectedScheduleId && venueQuery.isSuccess,
     retry: false,
     staleTime: 0,
   });
   const substagesQuery = useQuery({
     queryKey: ['stage-venue-substages', venueId, pin, selectedScheduleId],
     queryFn: () => stageManagementService.getVenueScheduleSubstages(venueId, pin, selectedScheduleId!),
-    enabled: !!pin && !!selectedScheduleId && venueQuery.isSuccess,
+    enabled: !!venueId && !!selectedScheduleId && venueQuery.isSuccess,
     retry: false,
     staleTime: 15_000,
   });
   const checkinStateQuery = useQuery({
     queryKey: ['stage-venue-checkin-state', venueId, pin, selectedScheduleId],
     queryFn: () => stageManagementService.getVenueScheduleCheckinState(venueId, pin, selectedScheduleId!),
-    enabled: !!pin && !!selectedScheduleId && venueQuery.isSuccess,
+    enabled: !!venueId && !!selectedScheduleId && venueQuery.isSuccess,
     retry: false,
     staleTime: 10_000,
   });
@@ -216,18 +217,9 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     if (optimizedRead && selectedScheduleId) await detailQuery.refetch();
     if (selectedScheduleId) await checkinStateQuery.refetch();
   };
-  useCodeLetterUpdates(pin ? `venue:${venueId}` : null, refresh);
+  useCodeLetterUpdates(venueId ? `venue:${venueId}` : null, refresh);
   const selectedSchedule = schedules.find((row) => row.id === selectedScheduleId) ?? null;
   const isRefreshing = venueQuery.isRefetching || (optimizedRead && detailQuery.isRefetching);
-
-  const submitPin = () => {
-    if (!/^\d{4}$/.test(pinInput)) {
-      message('PIN required', 'Enter the four-digit PIN provided for this stage.');
-      return;
-    }
-    setPin(pinInput);
-    setPinInput('');
-  };
 
   const runMutation = async (id: string, operation: () => Promise<unknown>, successText: string) => {
     setBusyId(id);
@@ -388,30 +380,6 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     }
   };
 
-  if (!pin) {
-    return (
-      <View className="flex-1 bg-ssf-bg items-center justify-center px-5 py-8">
-        <SsfCard className={`w-full max-w-md shadow-sm ${isMobile ? 'p-4' : 'p-6'}`}>
-          <View className="mb-4"><ConsoliumLogo size={48} borderRadius={12} /></View>
-          <Text className="text-2xl font-poppins-black text-ssf-text">Stage access</Text>
-          <Text className="mt-1 font-poppins text-sm text-ssf-text-muted">Enter the four-digit PIN provided for this stage.</Text>
-          <TextInput
-            accessibilityLabel="Four-digit stage PIN"
-            value={pinInput}
-            onChangeText={(value) => setPinInput(value.replace(/\D/g, '').slice(0, 4))}
-            keyboardType="number-pad"
-            secureTextEntry
-            maxLength={4}
-            placeholder="••••"
-            onSubmitEditing={submitPin}
-            className="mt-5 h-10 rounded-xl border border-ssf-border bg-core-surface-white px-4 text-center text-xl tracking-[10px] text-ssf-text"
-          />
-          <SsfButton label="Continue" onPress={submitPin} className="mt-3 w-full" />
-        </SsfCard>
-      </View>
-    );
-  }
-
   if (venueQuery.isLoading) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator size="large" color={coreColor("#0F766E", 'primaryText')} /></View>;
   if (venueQuery.isError) {
     return (
@@ -420,12 +388,8 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
           <Text className="font-poppins-bold text-lg text-ssf-text">Stage access was not granted</Text>
           <Text className="mt-2 font-poppins text-sm text-ssf-text-muted">{(venueQuery.error as Error).message}</Text>
           <SsfButton
-            label="Try another PIN"
-            onPress={() => {
-              queryClient.removeQueries({ queryKey: optimizedRead ? ['stage-venue-portal', venueId, pin, 'v2'] : ['stage-venue-portal', venueId, pin], exact: true });
-              setPin('');
-              setPinInput('');
-            }}
+            label="Retry"
+            onPress={() => { void venueQuery.refetch(); }}
             className="mt-4"
           />
         </SsfCard>

@@ -151,7 +151,6 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [showStatusChoices, setShowStatusChoices] = React.useState(false);
   const [scheduleFilterNow, setScheduleFilterNow] = React.useState(() => Date.now());
   const [copiedVenueId, setCopiedVenueId] = React.useState<string | null>(null);
-  const [copiedPinVenueId, setCopiedPinVenueId] = React.useState<string | null>(null);
   const actionSchedule = schedules.find((row: any) => row.id === actionScheduleId) ?? null;
 
   React.useEffect(() => {
@@ -181,21 +180,6 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
       setTimeout(() => setCopiedVenueId((current) => current === venueId ? null : current), 1800);
     } catch (error: any) {
       Alert.alert('Copy failed', error.message || 'Unable to copy the stage link.');
-    }
-  };
-
-  const copyStagePin = async (venueId: string, pin?: string) => {
-    if (!pin) {
-      Alert.alert('PIN unavailable', 'Refresh Stage Management after applying the stage portal migration.');
-      return;
-    }
-    try {
-      if (Platform.OS !== 'web' || !navigator?.clipboard?.writeText) throw new Error('Clipboard is unavailable on this device.');
-      await navigator.clipboard.writeText(pin);
-      setCopiedPinVenueId(venueId);
-      setTimeout(() => setCopiedPinVenueId((current) => current === venueId ? null : current), 1800);
-    } catch (error: any) {
-      Alert.alert('Copy failed', error.message || 'Unable to copy the stage PIN.');
     }
   };
 
@@ -428,7 +412,6 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 schedule.venue_id === venue.id || schedule.venues?.id === venue.id
               );
               const copied = copiedVenueId === venue.id;
-              const copiedPin = copiedPinVenueId === venue.id;
 
               return (
                 <SsfCard key={venue.id} className="p-3">
@@ -443,18 +426,6 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                         <Text className="font-poppins-bold text-[10px] text-core-text-slate-600">{stageSchedules.length} events</Text>
                       </View>
                     </View>
-                  </View>
-
-                  <View className="mt-3 flex-row items-center justify-between rounded-lg border border-core-warning-soft-amber-200 bg-core-warning-soft-amber-50 pl-3">
-                    <Text className="font-poppins-bold text-xs text-core-warning-amber-900">PIN {venue.pin || '—'}</Text>
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      accessibilityLabel={`Copy PIN for ${venue.name}`}
-                      onPress={() => copyStagePin(venue.id, venue.pin)}
-                      className={`h-11 min-w-11 items-center justify-center rounded-r-lg px-3 ${copiedPin ? 'bg-core-success-soft-emerald-50' : 'bg-core-surface-white/60'}`}
-                    >
-                      {copiedPin ? <Check size={16} color={coreColor("#047857", 'success')} /> : <Copy size={16} color={coreColor("#92400E", 'warning')} />}
-                    </TouchableOpacity>
                   </View>
 
                   <View className="mt-3 flex-row gap-2">
@@ -487,7 +458,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 <Text style={{ flex: 1.2 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Stage</Text>
                 <Text style={{ flex: 1.8 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workspace</Text>
                 <Text style={{ width: 120 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Events</Text>
-                <Text style={{ width: 385 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Stage link & PIN</Text>
+                <Text style={{ width: 385 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Stage link</Text>
               </View>
               {venues.map((venue: any) => {
                 const stageSchedules = schedules.filter((schedule: any) =>
@@ -511,15 +482,6 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                       </View>
                     </View>
                     <View style={{ width: 385 }} className="flex-row items-center justify-end gap-x-2">
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={`Copy PIN for ${venue.name}`}
-                        onPress={() => copyStagePin(venue.id, venue.pin)}
-                        className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${copiedPinVenueId === venue.id ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-warning-soft-amber-50 border-core-warning-soft-amber-200'}`}
-                      >
-                        <Text className="font-poppins-bold text-[10px] text-core-warning-amber-800 mr-1.5">PIN {venue.pin || '—'}</Text>
-                        {copiedPinVenueId === venue.id ? <Check size={13} color={coreColor("#047857", 'success')} /> : <Copy size={13} color={coreColor("#92400E", 'warning')} />}
-                      </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => openStagePortal(venue.id)}
                         className="h-8 px-3 rounded-lg bg-core-primary-teal-700 flex-row items-center justify-center"

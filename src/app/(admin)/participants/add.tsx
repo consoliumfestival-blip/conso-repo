@@ -380,17 +380,17 @@ export default function AddParticipant() {
   return (
     <ScrollView className="flex-1 bg-ssf-bg px-4 py-5 md:px-8 md:py-7" contentContainerStyle={{ paddingBottom: 32 }}>
       <View className="mx-auto w-full max-w-7xl">
-        <View className="mb-4 flex-row items-center gap-3 px-1 md:mb-5">
-          <View className="h-12 w-12 items-center justify-center rounded-xl bg-core-success-soft-emerald-50">
+        <View className="mb-4 flex-row items-center gap-3 px-1 md:mb-6 md:gap-4">
+          <View className="h-12 w-12 items-center justify-center rounded-xl bg-core-success-soft-emerald-50 md:h-14 md:w-14 md:rounded-2xl">
             <UserRoundPlus size={24} color={coreColor("#0F766E", 'primaryText')} />
           </View>
           <View>
-            <Text className="font-poppins-black text-2xl text-ssf-text">Add Participant</Text>
+            <Text className="font-poppins-black text-2xl text-ssf-text md:text-[28px]">Add Participant</Text>
             <Text className="font-poppins text-xs text-ssf-text-muted">Enter participant details and configure profile settings.</Text>
           </View>
         </View>
 
-      <SsfCard className="gap-y-3 rounded-2xl border-core-border-slate-200 p-3 md:gap-y-4 md:p-5">
+      <SsfCard className="gap-y-3 rounded-2xl border-core-border-slate-200 p-3 md:gap-y-5 md:rounded-3xl md:p-6 md:shadow-md">
         <View className="flex-col gap-3 md:flex-row">
           {/* Name */}
           <View className="rounded-xl border border-core-border-slate-100 bg-core-surface-muted-slate-50/80 p-3 md:flex-[1.5] md:p-4">

@@ -13,6 +13,7 @@ type SsfSheetProps = {
   children: React.ReactNode;
   footer?: React.ReactNode;
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
+  presentation?: 'sheet' | 'dialog';
 };
 
 export function SsfSheet({
@@ -23,9 +24,10 @@ export function SsfSheet({
   children,
   footer,
   keyboardShouldPersistTaps = 'handled',
+  presentation = 'sheet',
 }: SsfSheetProps) {
   const { width } = useWindowDimensions();
-  const sheetWidth = width < 640 ? width : Math.min(520, width * 0.42);
+  const sheetWidth = presentation === 'dialog' ? Math.min(720, width - 48) : width < 640 ? width : Math.min(520, width * 0.42);
 
   return (
     <Modal
@@ -36,17 +38,17 @@ export function SsfSheet({
       statusBarTranslucent
     >
       <KeyboardAvoidingView
-        style={styles.root}
+        style={[styles.root, presentation === 'dialog' && { justifyContent: 'center', alignItems: 'center', padding: 24 }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close sheet"
-          style={styles.backdrop}
+          style={[styles.backdrop, presentation === 'dialog' && { backgroundColor: 'rgba(15,23,42,0.62)' }]}
           onPress={onClose}
         />
 
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }]}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: '88%', maxHeight: 840, borderRadius: 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <Text className="font-poppins-bold text-xl text-ssf-text">{title}</Text>

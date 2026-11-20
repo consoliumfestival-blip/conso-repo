@@ -5,6 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCodeLetterUpdates } from '../../../core/hooks/useCodeLetterUpdates';
 import { AdminParticipantFilters, loadAdminParticipantCategories, loadAdminParticipantPage, loadAllAdminParticipants, loadAdminExportTeams, loadAdminExportRegistrations, loadAdminTeamExportRegistrations, loadAdminExportGroupMembers, loadAdminExportPeople } from '../../../services/adminParticipantListService';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
+import { Modal } from '@/components/ui/CoreModal';
+import { participantService } from '@/services/participantService';
+import { supabase } from '@/core/config/supabase';
 import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { useParticipants } from '../../../core/hooks/useParticipants';
@@ -59,9 +62,9 @@ export default function ParticipantsList() {
   const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
-  // Reserve the dense participant table for screens wide enough to account
-  // for the admin sidebar as well as all table columns.
+  // The admin sidebar leaves room for three cards only on wider desktops.
   const isDesktopTable = width >= 1200;
+  const isCardLayout = width >= 768;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: festivalLoading, isError: festivalError } = useActiveFestival();
   useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true);
@@ -79,6 +82,7 @@ export default function ParticipantsList() {
   const {
     updateStatus,
     deleteMultiple,
+    deleteParticipant,
     approveMultiple,
     isDeleting,
     isApprovingMultiple
@@ -177,6 +181,31 @@ export default function ParticipantsList() {
 
   // Bulk action state
   const [selectMode, setSelectMode] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [programsTarget, setProgramsTarget] = useState<{ id: string; name: string } | null>(null);
+  const programsQuery = useQuery({
+    queryKey: ['participants', 'card-programs', tenantId, userId, activeFestival?.id, programsTarget?.id],
+    enabled: !!programsTarget && !!userId,
+    queryFn: () => participantService.getParticipantRegistrations<any>(programsTarget!.id),
+  });
+  const registrationIds = (programsQuery.data ?? []).map((registration: any) => registration.id as string);
+  const publishedResultsQuery = useQuery({
+    queryKey: ['participants', 'card-program-results', tenantId, userId, activeFestival?.id, programsTarget?.id, registrationIds],
+    enabled: !!programsTarget && programsQuery.isSuccess && !!activeFestival?.id,
+    queryFn: async () => {
+      if (registrationIds.length === 0) return [];
+      let query = supabase.from('results')
+        .select('registration_id,rank,grade,points_awarded,result_status')
+        .eq('festival_id', activeFestival!.id)
+        .eq('published', true)
+        .in('registration_id', registrationIds);
+      if (tenantId) query = query.eq('tenant_id', tenantId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []).filter((result) => result.result_status == null || result.result_status === 'published');
+    },
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const selectionScopeIsCurrent = selectionScope === currentSelectionScope;
   const selectionScopeMatchesSession = () => {
@@ -189,8 +218,14 @@ export default function ParticipantsList() {
     setSelected(new Set());
     setSelectMode(false);
     setIsExportOpen(false);
+    setDeleteTarget(null);
+    setProgramsTarget(null);
     setSelectionScope(currentSelectionScope);
   }, [currentSelectionScope, selectionScope]);
+  useEffect(() => {
+    setDeleteTarget(null);
+    setProgramsTarget(null);
+  }, [activeFestival?.id]);
 
   const processingBulk = isDeleting || isApprovingMultiple || isSelectingAll;
 
@@ -610,7 +645,7 @@ export default function ParticipantsList() {
       </View>
 
       {/* List */}
-      <SsfCard className="mb-4 p-0 overflow-hidden">
+      <SsfCard className={isCardLayout ? 'mb-4 p-0' : 'mb-4 p-0 overflow-hidden'} style={isCardLayout ? { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0 } : undefined}>
         {isLoadingList || isLoadingItems ? (
           <View className="p-4">
             <SsfTableSkeleton rows={7} columns={6} compact={!isDesktopTable} />
@@ -624,110 +659,55 @@ export default function ParticipantsList() {
           <View className="items-center justify-center py-10">
             <Text className="text-ssf-text-muted font-poppins mb-4">No participants found.</Text>
           </View>
-        ) : isDesktopTable ? (
-          <View>
-            <View className="min-h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
-              {selectMode && <View style={{ width: 42 }} />}
-              <Text style={{ flex: 2.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Participant
-              </Text>
-              <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Chest No.
-              </Text>
-              <Text style={{ flex: 0.75 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Category
-              </Text>
-              <Text style={{ flex: 0.75 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Gender
-              </Text>
-              <Text style={{ flex: 1.5 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Organisation
-              </Text>
-              <Text style={{ width: 112 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">
-                Status
-              </Text>
-              <Text style={{ width: 130 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">
-                Actions
-              </Text>
-            </View>
+        ) : isCardLayout ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
             {filteredParticipants.map((p: any) => {
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
               return (
-                <TouchableOpacity
-                  key={p.id}
-                  activeOpacity={0.72}
-                  className={`min-h-16 px-4 flex-row items-center border-b border-ui-border ${
-                    isSelected ? 'bg-core-primary-soft-teal-50' : 'bg-core-surface-white'
-                  }`}
-                  onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
-                  onLongPress={() => {
-                    if (!selectMode) setSelectMode(true);
-                    toggleSelect(p.id);
-                  }}
-                >
-                  {selectMode && (
-                    <View style={{ width: 42 }}>
-                      {isSelected
-                        ? <CheckSquare size={18} color={coreColor("#0F766E", 'primaryText')} />
-                        : <Square size={18} color={ui.colors.textSubtle} />}
+                <View key={p.id} style={{ width: isDesktopTable ? '33.333%' as const : '50%' as const, padding: 6 }}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`${selectMode ? 'Select' : 'Open'} ${p.name}`}
+                    activeOpacity={0.86}
+                    onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
+                    onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id); }}
+                    style={{ minHeight: 205, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                      {selectMode && <View style={{ paddingTop: 2 }}>{isSelected ? <CheckSquare size={18} color={ui.colors.primary} /> : <Square size={18} color={ui.colors.textSubtle} />}</View>}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{p.name || 'Participant'}</Text>
+                        <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 3 }}>{p.chest_number ? `#${p.chest_number}` : 'No chest number'}</Text>
+                      </View>
+                      {!selectMode && <ChevronRight size={17} color={ui.colors.textSubtle} />}
                     </View>
-                  )}
-                  <View style={{ flex: 2.4, paddingRight: 12 }}>
-                    <Text numberOfLines={1} className="font-poppins-bold text-sm text-ui-text">
-                      {p.name}
-                    </Text>
-                    <Text numberOfLines={1} className="font-poppins text-[10px] text-ui-text-muted mt-0.5">
-                      Registered {p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}
-                    </Text>
-                  </View>
-                  <Text style={{ flex: 0.9 }} numberOfLines={1} className="font-poppins text-xs text-ui-text">
-                    {p.chest_number || '—'}
-                  </Text>
-                  <Text style={{ flex: 0.75 }} numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">
-                    {p.category_code || '—'}
-                  </Text>
-                  <Text style={{ flex: 0.75 }} numberOfLines={1} className="font-poppins text-xs text-ui-text-muted capitalize">
-                    {p.gender || '—'}
-                  </Text>
-                  <View style={{ flex: 1.5, paddingRight: 12 }}>
-                    <Text numberOfLines={1} className="font-poppins text-xs text-ui-text">
-                      {p.organisations?.name || '—'}
-                    </Text>
-                    {p.organisations?.org_type && (
-                      <Text numberOfLines={1} className="font-poppins text-[9px] text-ui-text-muted capitalize">
-                        {p.organisations.org_type}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={{ width: 112, alignItems: 'flex-start' }}>
-                    <TouchableOpacity
-                      onPress={(event) => {
-                        event.stopPropagation();
-                        promptStatusChange(p);
-                      }}
-                      className={`px-2.5 py-1 rounded-full border ${statColor.bg} ${statColor.border}`}
-                    >
-                      <Text className={`font-poppins-bold text-[9px] uppercase ${statColor.text}`}>
-                        {p.status || 'Pending'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                  <View style={{ width: 130, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-                    {p.profile_slug && !selectMode && (
-                      <TouchableOpacity
-                        onPress={(event) => {
-                          event.stopPropagation();
-                          router.push(`/candidate/${p.profile_slug}` as any);
-                        }}
-                        className="h-8 px-2.5 rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 items-center justify-center"
-                      >
-                        <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700">Public Profile</Text>
+                    <View style={{ marginTop: 14, gap: 5 }}>
+                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Category  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.category_code || '—'}</Text></Text>
+                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Team  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.organisations?.name || '—'}</Text></Text>
+                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Gender  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.gender || '—'}</Text></Text>
+                    </View>
+                    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Change status for ${p.name}`} disabled={selectMode} onPress={(event) => { event.stopPropagation(); promptStatusChange(p); }} style={{ maxWidth: '60%' }} className={`px-2.5 py-1 rounded-full border ${statColor.bg} ${statColor.border}`}>
+                        <Text numberOfLines={1} className={`font-poppins-bold text-[9px] uppercase ${statColor.text}`}>{p.status || 'Pending'}</Text>
                       </TouchableOpacity>
-                    )}
-                    {!selectMode && <ChevronRight size={17} color={ui.colors.textSubtle} />}
-                  </View>
-                </TouchableOpacity>
+                      {!selectMode && p.profile_slug && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Open public profile for ${p.name}`} onPress={(event) => { event.stopPropagation(); router.push(`/candidate/${p.profile_slug}` as any); }} className="rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 px-2.5 py-1.5">
+                        <Text className="font-poppins-bold text-[10px] text-core-success-emerald-700">Public profile</Text>
+                      </TouchableOpacity>}
+                    </View>
+                    {!selectMode && <View style={{ marginTop: 13, flexDirection: 'row', gap: 7 }}>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Edit ${p.name}`} disabled={!!p.is_locked} onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#93C5FD', backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', opacity: p.is_locked ? 0.45 : 1 }}>
+                        <Text style={{ color: '#1D4ED8', fontSize: 11, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Delete ${p.name}`} onPress={(event) => { event.stopPropagation(); setDeleteError(null); setDeleteTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>Delete</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Programs for ${p.name}`} onPress={(event) => { event.stopPropagation(); setProgramsTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#86EFAC', backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '700' }}>Programs</Text>
+                      </TouchableOpacity>
+                    </View>}
+                  </TouchableOpacity>
+                </View>
               );
             })}
           </View>
@@ -803,6 +783,41 @@ export default function ParticipantsList() {
           <TouchableOpacity accessibilityRole="button" disabled={(page + 1) * 50 >= resultCount || pageQuery.isFetching} onPress={() => setPage(page + 1)} className="px-3 py-2 border border-ui-border rounded-lg"><Text className="font-poppins-bold text-xs text-ui-text">Next</Text></TouchableOpacity>
         </View>
       )}
+      <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => { if (!isDeleting) setDeleteTarget(null); }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
+          <View style={{ width: '100%', maxWidth: 420, borderRadius: 18, padding: 22, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border }}>
+            <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={22} color="#DC2626" /></View>
+            <Text style={{ color: ui.colors.text, fontSize: 19, fontWeight: '800', marginTop: 14 }}>Delete participant?</Text>
+            <Text style={{ color: ui.colors.textMuted, fontSize: 13, lineHeight: 20, marginTop: 7 }}>{deleteTarget?.name} will be permanently deleted. Participants with competition registrations cannot be deleted.</Text>
+            {!!deleteError && <Text accessibilityRole="alert" style={{ color: '#B91C1C', fontSize: 12, marginTop: 10 }}>{deleteError}</Text>}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+              <TouchableOpacity accessibilityRole="button" disabled={isDeleting} onPress={() => setDeleteTarget(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.text, fontWeight: '700' }}>Cancel</Text></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" disabled={isDeleting} onPress={async () => { if (!deleteTarget) return; try { setDeleteError(null); await deleteParticipant(deleteTarget.id); setDeleteTarget(null); } catch (error: any) { setDeleteError(error?.message || 'Could not delete this participant.'); } }} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', opacity: isDeleting ? 0.65 : 1 }}><Text style={{ color: '#FFFFFF', fontWeight: '800' }}>{isDeleting ? 'Deleting…' : 'Delete'}</Text></TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={!!programsTarget} transparent animationType="fade" onRequestClose={() => setProgramsTarget(null)}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
+          <View style={{ width: '100%', maxWidth: 620, maxHeight: '85%', borderRadius: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }}>
+            <View style={{ padding: 18, borderBottomWidth: 1, borderBottomColor: ui.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 18, fontWeight: '800' }}>Programs</Text><Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 3 }}>{programsTarget?.name}</Text></View>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close programs" onPress={() => setProgramsTarget(null)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}><X size={19} color={ui.colors.text} /></TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+              {programsQuery.isLoading ? <ActivityIndicator color={ui.colors.primary} /> : programsQuery.isError ? <View><Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load programs.</Text><TouchableOpacity accessibilityRole="button" onPress={() => void programsQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.primary, fontWeight: '700' }}>Retry</Text></TouchableOpacity></View> : programsQuery.data?.length ? programsQuery.data.map((registration: any) => {
+                const result = (publishedResultsQuery.data ?? []).find((row) => row.registration_id === registration.id);
+                return <View key={registration.id} style={{ padding: 13, borderRadius: 11, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceMuted }}>
+                  <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{registration.items?.item_name_en || registration.items?.item_name_ml || 'Program'}</Text>
+                  <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>{[registration.items?.item_code, registration.status].filter(Boolean).join(' · ')}</Text>
+                  {publishedResultsQuery.isLoading ? <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 7 }}>Loading result…</Text> : publishedResultsQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 11, marginTop: 7 }}>Result unavailable. Retry below.</Text> : result ? <Text style={{ color: ui.colors.primaryText, fontSize: 12, fontWeight: '700', marginTop: 7 }}>{[result.rank != null ? `Rank ${result.rank}` : null, result.grade ? `Grade ${result.grade}` : null, result.points_awarded != null ? `${result.points_awarded} points` : null].filter(Boolean).join(' · ') || 'Result published'}</Text> : <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 7 }}>No published result yet</Text>}
+                </View>;
+              }) : <Text style={{ color: ui.colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 24 }}>No programs assigned yet</Text>}
+              {publishedResultsQuery.isError && <TouchableOpacity accessibilityRole="button" onPress={() => void publishedResultsQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: ui.colors.primary, fontWeight: '700' }}>Retry results</Text></TouchableOpacity>}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
       <ParticipantExportModal
         visible={isExportOpen}
         isTeamPortal={false}

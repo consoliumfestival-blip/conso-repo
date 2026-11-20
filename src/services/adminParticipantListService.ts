@@ -27,7 +27,7 @@ function filteredQuery(filters: AdminParticipantFilters, count = false, columns 
 }
 
 export async function loadAdminParticipantPage(filters: AdminParticipantFilters, page: number, pageSize: number, signal?: AbortSignal) {
-  const { data, error, count } = await filteredQuery(filters, true, 'id,name,chest_number,category_code,gender,status,created_at,profile_slug,organisations(id,name,org_type)', signal).range(page * pageSize, (page + 1) * pageSize - 1);
+  const { data, error, count } = await filteredQuery(filters, true, 'id,name,chest_number,category_code,gender,status,is_locked,created_at,profile_slug,organisations(id,name,org_type)', signal).range(page * pageSize, (page + 1) * pageSize - 1);
   if (error) throw error;
   if (count == null) throw new Error('Participant count unavailable.');
   return { participants: responseRows<any>(data, 'Participant'), count };

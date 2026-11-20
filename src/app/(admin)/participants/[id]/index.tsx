@@ -1,6 +1,6 @@
 import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Platform, Switch, useWindowDimensions, Image, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -111,7 +111,7 @@ function DetailAccordion({
 export default function ParticipantDetails() {
   const tenant_id = useAuthStore((state) => state.tenant_id);
   const validTenantId = tenant_id;
-  const { id } = useLocalSearchParams();
+  const { id, open } = useLocalSearchParams();
   const participantId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -150,6 +150,13 @@ export default function ParticipantDetails() {
     useFestivalCategories(isCollegeFest ? festival?.id : undefined, false);
 
   const [isEditing, setIsEditing] = useState(false);
+  const openedFromCard = useRef(false);
+  useEffect(() => {
+    if (open === 'edit' && participant && !participant.is_locked && !openedFromCard.current) {
+      openedFromCard.current = true;
+      setIsEditing(true);
+    }
+  }, [open, participant]);
 
   // Editable fields
   const [name, setName] = useState('');
@@ -342,6 +349,7 @@ export default function ParticipantDetails() {
         return;
       }
       Alert.alert('Success', 'Participant updated.');
+      if (open === 'edit') router.back();
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
@@ -722,7 +730,8 @@ export default function ParticipantDetails() {
         {isEditing ? (
           <SsfSheet
             visible={isEditing}
-            onClose={() => setIsEditing(false)}
+            onClose={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
+            presentation={width >= 768 ? 'dialog' : 'sheet'}
             title="Edit profile"
             description="Update participant details and public profile settings. Save when you’re done."
             footer={
@@ -735,7 +744,7 @@ export default function ParticipantDetails() {
                 <SsfButton
                   label="Close"
                   variant="outline"
-                  onPress={() => setIsEditing(false)}
+                  onPress={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
                   disabled={isUpdatingParticipant}
                 />
               </>

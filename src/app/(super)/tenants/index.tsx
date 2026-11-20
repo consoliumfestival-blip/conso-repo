@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator, Clipboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSuperAdmin } from '../../../core/hooks/useSuperAdmin';
+import { buildHierarchyRows, getHierarchyRoots } from './hierarchySearch';
 import type { FestivalTemplate } from '../../../lib/repositories/provisioningRepository';
 import { FEATURE_FLAGS } from '../../../core/config/features';
 import { supabase } from '../../../core/config/supabase';
@@ -12,7 +13,7 @@ import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import {
   ArrowLeft, Users, ShieldCheck, ShieldAlert, X, RefreshCw,
   Building2, Map, GitBranch, Landmark, Flag, Layers,
-  Mail, KeyRound, Info, ChevronRight, Copy, ExternalLink,
+  Mail, KeyRound, Info, ChevronRight, Copy, ExternalLink, Search,
 } from 'lucide-react-native';
 
 const C = {
@@ -30,6 +31,7 @@ interface Org {
   id: string;
   name: string;
   org_type: OrgType;
+  parent_id: string | null;
   tenant_id: string | null;
   tenant_name?: string | null;
   admin_email?: string | null;
@@ -664,12 +666,20 @@ export default function TenantsManager() {
   const orgs = (orgsData || []).map((o) => ({ ...o, org_type: (String(o.org_type ?? '').trim().toLowerCase() || 'unit') as OrgType }));
   
   const [activeFilter, setActiveFilter] = useState<'all' | OrgType>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [rootScopeId, setRootScopeId] = useState<string | null>(null);
   const [onboardOrg, setOnboardOrg]   = useState<Org | null>(null);
   const [detailOrg, setDetailOrg]     = useState<Org | null>(null);
 
   const fetchOrgs = () => refetch();
 
-  const filteredOrgs = orgs.filter(o => activeFilter === 'all' || o.org_type === activeFilter);
+  const roots = getHierarchyRoots(orgs);
+  const visibleRows = buildHierarchyRows(orgs, {
+    query: searchQuery,
+    type: activeFilter === 'all' ? undefined : activeFilter,
+    rootId: rootScopeId,
+    searchText: (org) => `${org.admin_email ?? ''} ${org.tenant_name ?? ''}`,
+  });
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -718,16 +728,39 @@ export default function TenantsManager() {
             </ScrollView>
           </View>
 
+          <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 10 }}>
+            <View style={{ minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 13, borderRadius: 13, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface }}>
+              <Search size={18} color={C.muted} />
+              <TextInput
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder={rootScopeId ? `Search in ${orgs.find((o) => o.id === rootScopeId)?.name ?? 'tenant'} and children` : 'Search tenants, organisations or admin email'}
+                placeholderTextColor={C.muted}
+                style={{ flex: 1, color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, paddingVertical: 10, outlineStyle: 'none' as any } as any}
+                accessibilityLabel="Search tenant accounts"
+              />
+              {!!searchQuery && <TouchableOpacity onPress={() => setSearchQuery('')} accessibilityLabel="Clear search"><X size={17} color={C.muted} /></TouchableOpacity>}
+            </View>
+            {roots.length > 0 && <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {[{ id: null as string | null, name: 'All tenants' }, ...roots.map((root) => ({ id: root.id, name: root.name }))].map((root) => {
+                const selected = rootScopeId === root.id;
+                return <TouchableOpacity key={root.id ?? 'all'} onPress={() => setRootScopeId(root.id)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, borderColor: selected ? C.accent : C.border, backgroundColor: selected ? C.accentBg : C.surface }}>
+                  <Text style={{ color: selected ? C.accent : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{root.name}</Text>
+                </TouchableOpacity>;
+              })}
+            </ScrollView>}
+          </View>
+
           {/* List */}
           <View style={{ padding: 20, gap: 12 }}>
             {loading ? (
               <ActivityIndicator color={C.accent} style={{ marginTop: 40 }} />
-            ) : filteredOrgs.length === 0 ? (
+            ) : visibleRows.length === 0 ? (
               <View style={{ alignItems: 'center', marginTop: 40 }}>
                 <Users size={48} color={C.border} />
                 <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', marginTop: 16 }}>No organisations found.</Text>
               </View>
-            ) : filteredOrgs.map((org, i) => {
+            ) : visibleRows.map(({ item: org, depth, path, contextOnly }, i) => {
               const cfg = getOrgConfig(org.org_type);
               const hasAccess = !!org.tenant_id;
               const isDisabled = org.access_disabled === true;
@@ -738,9 +771,9 @@ export default function TenantsManager() {
               return (
                 <Animated.View key={org.id} entering={FadeInDown.delay(i * 50).duration(400)}>
                   <TouchableOpacity
-                    onPress={rowAction}
-                    activeOpacity={rowAction ? 0.8 : 1}
-                    style={{ backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: hasAccess ? (isDisabled ? coreColor('#F8717130', 'border') : coreColor('#34D39930', 'border')) : C.border, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+                    onPress={contextOnly ? undefined : rowAction}
+                    activeOpacity={contextOnly ? 1 : rowAction ? 0.8 : 1}
+                    style={{ backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: hasAccess ? (isDisabled ? coreColor('#F8717130', 'border') : coreColor('#34D39930', 'border')) : C.border, borderLeftWidth: depth > 0 ? 3 : 1, borderLeftColor: depth > 0 ? cfg.color : (hasAccess ? C.green : C.border), marginLeft: Math.min(depth, 5) * 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', opacity: contextOnly ? 0.62 : 1 }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
                       <View style={{ backgroundColor: cfg.bg, padding: 10, borderRadius: 12 }}>{cfg.icon}</View>
@@ -749,10 +782,12 @@ export default function TenantsManager() {
                         <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12 }}>
                           {cfg.label}{org.admin_email ? ` · ${org.admin_email}` : ''}
                         </Text>
+                        {depth > 0 && <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 2 }}>{path}</Text>}
+                        {contextOnly && <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 9, marginTop: 3 }}>PARENT</Text>}
                       </View>
                     </View>
 
-                    {hasAccess ? (
+                    {contextOnly ? null : hasAccess ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: (isDisabled ? C.danger : coreColor('#34D399', 'border')) + '40' }}>
                           {isDisabled ? <ShieldAlert size={12} color={C.danger} /> : <ShieldCheck size={12} color={C.green} />}

@@ -36,6 +36,7 @@ import { SsfSelectMenu } from '../../../../components/ui/SsfSelectMenu';
 import { SsfSheet } from '../../../../components/ui/SsfSheet';
 import { SsfProfileSkeleton } from '../../../../components/ui/SsfSkeleton';
 import { SsfDatePicker } from '../../../../components/ui/SsfDatePicker';
+import { Modal } from '@/components/ui/CoreModal';
 
 function InfoTile({
   label,
@@ -114,7 +115,7 @@ export default function ParticipantDetails() {
   const { id, open } = useLocalSearchParams();
   const participantId = Array.isArray(id) ? id[0] : id;
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   // The admin sidebar consumes significant width on tablets; use the stacked
   // profile layout until the remaining content area can support two columns.
   const isDesktopProfile = width >= 1200;
@@ -481,14 +482,24 @@ export default function ParticipantDetails() {
     });
   };
 
-  if (isLoadingDetail) return <SsfProfileSkeleton />;
+  if (isLoadingDetail) return (
+    <Modal visible transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+        <View style={{ width: Math.min(900, width - 24), height: Math.min(860, height - 24), borderRadius: 18, overflow: 'hidden', backgroundColor: ui.colors.surface }}><SsfProfileSkeleton /></View>
+      </View>
+    </Modal>
+  );
 
   if (!participant) {
     return (
-      <View className="flex-1 bg-ssf-bg p-6 justify-center items-center">
-        <Text className="font-poppins text-ssf-text">Participant not found.</Text>
-        <SsfButton label="Go Back" onPress={goBack} className="mt-4" />
-      </View>
+      <Modal visible transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
+        <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+          <View style={{ width: Math.min(900, width - 24), minHeight: 220, borderRadius: 18, overflow: 'hidden', backgroundColor: ui.colors.surface }} className="p-6 justify-center items-center">
+            <Text className="font-poppins text-ssf-text">Participant not found.</Text>
+            <SsfButton label="Go Back" onPress={goBack} className="mt-4" />
+          </View>
+        </View>
+      </Modal>
     );
   }
 
@@ -533,14 +544,16 @@ export default function ParticipantDetails() {
     .toUpperCase();
 
   return (
-    <ScrollView
-      className="flex-1 bg-ssf-bg"
+    <Modal visible transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
+      <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={{ width: Math.min(1000, width - 24), height: Math.min(900, height - 24), maxHeight: '96%', borderRadius: 18, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
+      <ScrollView
+      style={{ flex: 1, backgroundColor: ui.colors.background }}
       contentContainerStyle={{
         width: '100%',
-        maxWidth: 1360,
         alignSelf: 'center',
-        paddingHorizontal: isDesktopProfile ? 8 : 10,
-        paddingTop: isDesktopProfile ? 8 : 12,
+        paddingHorizontal: isDesktopProfile ? 16 : 10,
+        paddingTop: isDesktopProfile ? 12 : 12,
         paddingBottom: isDesktopProfile ? 18 : 28,
       }}
     >
@@ -1186,7 +1199,10 @@ export default function ParticipantDetails() {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+      </View>
+      </View>
+    </Modal>
   );
 }
 

@@ -405,25 +405,36 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <Text className="font-poppins-bold text-ssf-text mt-3">No stages available</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">Create venues from Schedule Management first.</Text>
           </SsfCard>
-        ) : isMobile ? (
-          <View className="gap-y-3 pb-5">
-            {venues.map((venue: any) => {
+        ) : (
+          <View className="flex-row flex-wrap gap-3 pb-5">
+            {venues.map((venue: any, index: number) => {
               const stageSchedules = schedules.filter((schedule: any) =>
                 schedule.venue_id === venue.id || schedule.venues?.id === venue.id
               );
               const copied = copiedVenueId === venue.id;
+              const accents = [
+                { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', icon: '#10B981' },
+                { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', icon: '#3B82F6' },
+                { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', icon: '#F97316' },
+                { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', icon: '#8B5CF6' },
+              ];
+              const accent = accents[index % accents.length];
 
               return (
-                <SsfCard key={venue.id} className="p-3">
-                  <View className="flex-row items-start gap-3">
-                    <View className="h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-core-success-soft-emerald-50">
-                      <MapPin size={18} color={coreColor("#047857", 'success')} />
+                <SsfCard key={venue.id} className="p-3" style={{
+                  width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
+                  backgroundColor: accent.backgroundColor,
+                  borderColor: accent.borderColor,
+                }}>
+                  <View className="flex-row items-start gap-2.5">
+                    <View className="h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-core-surface-white">
+                      <MapPin size={17} color={accent.icon} />
                     </View>
                     <View className="min-w-0 flex-1">
                       <Text className="font-poppins-bold text-sm text-ui-text" numberOfLines={2}>{venue.name}</Text>
-                      <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Independent check-in and code-letter workspace</Text>
-                      <View className="mt-2 self-start rounded-full border border-core-border-slate-200 bg-core-surface-muted-slate-50 px-2.5 py-1">
-                        <Text className="font-poppins-bold text-[10px] text-core-text-slate-600">{stageSchedules.length} events</Text>
+                      <Text className="mt-0.5 font-poppins text-[11px] text-ui-text-muted">Check-in and code-letter workspace</Text>
+                      <View className="mt-2 self-start rounded-full border border-white/80 bg-core-surface-white px-2.5 py-1">
+                        <Text className="font-poppins-bold text-[10px] text-ui-text">{stageSchedules.length} events</Text>
                       </View>
                     </View>
                   </View>
@@ -432,82 +443,26 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                     <TouchableOpacity
                       accessibilityRole="button"
                       onPress={() => openStagePortal(venue.id)}
-                      className="h-11 flex-1 flex-row items-center justify-center rounded-lg bg-core-primary-teal-700 px-2"
+                      className="h-11 flex-1 flex-row items-center justify-center rounded-lg px-2"
+                      style={{ backgroundColor: '#4ADE80' }}
                     >
-                      <ExternalLink size={15} color={coreColor("#FFFFFF", 'onPrimary')} />
-                      <Text className="ml-1.5 font-poppins-bold text-xs text-core-on-primary-white">Open Stage</Text>
+                      <ExternalLink size={15} color="#14532D" />
+                      <Text className="ml-1.5 font-poppins-bold text-xs" style={{ color: '#14532D' }}>Open Stage</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel={`Copy stage link for ${venue.name}`}
                       onPress={() => copyStageLink(venue.id)}
-                      className={`h-11 flex-1 flex-row items-center justify-center rounded-lg border px-2 ${copied ? 'border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50' : 'border-ui-border bg-core-surface-white'}`}
+                      className={`h-11 flex-1 flex-row items-center justify-center rounded-lg border px-2 ${copied ? 'border-core-success-soft-green-300 bg-core-success-soft-green-100' : 'border-white/80 bg-core-surface-white'}`}
                     >
-                      {copied ? <Check size={15} color={coreColor("#047857", 'success')} /> : <Copy size={15} color={coreColor("#475569", 'text')} />}
-                      <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-core-success-emerald-700' : 'text-core-text-slate-700'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
+                      {copied ? <Check size={15} color="#16A34A" /> : <Copy size={15} color="#475569" />}
+                      <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-core-success-green-700' : 'text-ui-text'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
                     </TouchableOpacity>
                   </View>
                 </SsfCard>
               );
             })}
           </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-            <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden" style={{ minWidth: 820 }}>
-              <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
-                <Text style={{ flex: 1.2 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Stage</Text>
-                <Text style={{ flex: 1.8 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workspace</Text>
-                <Text style={{ width: 120 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Events</Text>
-                <Text style={{ width: 385 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Stage link</Text>
-              </View>
-              {venues.map((venue: any) => {
-                const stageSchedules = schedules.filter((schedule: any) =>
-                  schedule.venue_id === venue.id || schedule.venues?.id === venue.id
-                );
-                const copied = copiedVenueId === venue.id;
-                return (
-                  <View key={venue.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
-                    <View style={{ flex: 1.2 }} className="flex-row items-center pr-4">
-                      <View className="h-8 w-8 rounded-lg bg-core-success-soft-emerald-50 items-center justify-center mr-2.5">
-                        <MapPin size={15} color={coreColor("#047857", 'success')} />
-                      </View>
-                      <Text numberOfLines={1} className="flex-1 font-poppins-bold text-xs text-ui-text">{venue.name}</Text>
-                    </View>
-                    <Text style={{ flex: 1.8 }} numberOfLines={1} className="font-poppins text-xs text-ui-text-muted pr-4">
-                      Independent check-in and code-letter workspace
-                    </Text>
-                    <View style={{ width: 120, alignItems: 'flex-start' }}>
-                      <View className="px-2.5 py-1 rounded-full bg-core-surface-muted-slate-50 border border-core-border-slate-200">
-                        <Text className="font-poppins-bold text-[9px] text-core-text-slate-600">{stageSchedules.length} events</Text>
-                      </View>
-                    </View>
-                    <View style={{ width: 385 }} className="flex-row items-center justify-end gap-x-2">
-                      <TouchableOpacity
-                        onPress={() => openStagePortal(venue.id)}
-                        className="h-8 px-3 rounded-lg bg-core-primary-teal-700 flex-row items-center justify-center"
-                      >
-                        <ExternalLink size={13} color={coreColor("#FFFFFF", 'onPrimary')} />
-                        <Text className="ml-1.5 font-poppins-bold text-[10px] text-core-on-primary-white">Open Stage</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        accessibilityRole="button"
-                        accessibilityLabel={`Copy stage link for ${venue.name}`}
-                        onPress={() => copyStageLink(venue.id)}
-                        className={`h-8 px-3 rounded-lg border flex-row items-center justify-center ${
-                          copied ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-surface-white border-ui-border'
-                        }`}
-                      >
-                        {copied ? <Check size={13} color={coreColor("#047857", 'success')} /> : <Copy size={13} color={coreColor("#475569", 'text')} />}
-                        <Text className={`ml-1.5 font-poppins-bold text-[10px] ${copied ? 'text-core-success-emerald-700' : 'text-core-text-slate-600'}`}>
-                          {copied ? 'Copied' : 'Copy Link'}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
         )}
       </ScrollView>
     );

@@ -745,88 +745,89 @@ export default function ParticipantDetails() {
             visible={isEditing}
             onClose={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
             presentation={width >= 768 ? 'dialog' : 'sheet'}
+            compactDialog
             title="Edit profile"
-            description="Update participant details and public profile settings. Save when you’re done."
+            description="Update participant details and public profile settings."
             footer={
               <>
+                {width >= 768 && <SsfButton
+                  label="Cancel"
+                  size="sm"
+                  variant="outline"
+                  onPress={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
+                  disabled={isUpdatingParticipant}
+                />}
                 <SsfButton
                   label={isUpdatingParticipant ? 'Saving...' : 'Save changes'}
+                  size={width >= 768 ? 'sm' : 'md'}
                   onPress={handleSave}
                   disabled={isUpdatingParticipant || (isCollegeFest && categoriesLoading)}
                 />
-                <SsfButton
+                {width < 768 && <SsfButton
                   label="Close"
                   variant="outline"
                   onPress={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
                   disabled={isUpdatingParticipant}
-                />
+                />}
               </>
             }
           >
-          <View className="gap-y-4">
-            <View className="items-center rounded-2xl border border-core-success-soft-emerald-100 bg-core-success-soft-emerald-50 p-5">
-              <Text className="mb-3 font-poppins-bold text-[10px] uppercase tracking-widest text-core-success-emerald-700">Live preview</Text>
-              <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-core-border-white bg-core-success-soft-emerald-200 shadow-sm">
-                <Text className="font-poppins-black text-2xl text-core-success-emerald-900">
-                  {(name || 'Participant').trim().split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase()}
-                </Text>
+          <View className="gap-y-3">
+            <View style={{ flexDirection: width >= 768 ? 'row' : 'column', gap: 12 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Name</Text>
+                <TextInput accessibilityLabel="Participant name" style={{ minHeight: 40, paddingHorizontal: 12, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, color: ui.colors.text, fontSize: 13 }} value={name} onChangeText={setName} />
               </View>
-              <Text className="mt-3 font-poppins-black text-xl text-ssf-text">{name || 'Participant name'}</Text>
-              <Text className="font-poppins text-xs text-ssf-text-muted">
-                {[categoryCode, participant.chest_number].filter(Boolean).join(' · ') || 'Candidate profile'}
-              </Text>
-            </View>
-            <View>
-              <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Name</Text>
-              <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={name} onChangeText={setName} />
-            </View>
-            <View className="flex-row gap-x-3" style={{ zIndex: 50 }}>
-              <View className="flex-1" style={{ zIndex: 50 }}>
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Category Code</Text>
+              <View style={{ flex: 1, minWidth: 0, zIndex: 50 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Category Code</Text>
                 <SsfSelectMenu
                   value={categoryCode}
                   onValueChange={setCategoryCode}
                   placeholder="-- Select Category --"
                   accessibilityLabel="Select category"
                   options={categoryOptions}
+                  compact
+                  keepInViewport
                 />
               </View>
-              {(!festival?.gender_mode || festival.gender_mode === 'both') && <View className="flex-1" style={{ zIndex: 40 }}>
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Gender (boys/girls)</Text>
+            </View>
+            <View style={{ flexDirection: width >= 768 ? 'row' : 'column', gap: 12 }}>
+              {(!festival?.gender_mode || festival.gender_mode === 'both') && <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Gender</Text>
                 <View className="flex-row gap-2">
-                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}><Text className={`font-poppins-bold text-sm capitalize ${gender === option ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
+                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`min-h-10 flex-1 items-center justify-center rounded-lg border px-3 py-2 ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}><Text className={`font-poppins-bold text-xs capitalize ${gender === option ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
                 </View>
               </View>}
-            </View>
-            <View>
-              <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Date of Birth (YYYY-MM-DD)</Text>
-              <SsfDatePicker value={dob} onValueChange={setDob} placeholder="Pick a date" />
-            </View>
-            {!isCollegeFest && <View className="flex-row gap-x-3">
-              <View className="flex-1">
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Class / Standard</Text>
-                <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={classStd} onChangeText={setClassStd} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Date of Birth</Text>
+                <SsfDatePicker value={dob} onValueChange={setDob} placeholder="Pick a date" />
               </View>
-              <View className="flex-1">
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-1">Education Type</Text>
-                <TextInput className="border border-ssf-border rounded-xl p-3 font-poppins" value={educationType} onChangeText={setEducationType} />
+            </View>
+            {!isCollegeFest && <View style={{ flexDirection: width >= 768 ? 'row' : 'column', gap: 12 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Class / Standard</Text>
+                <TextInput accessibilityLabel="Class or standard" style={{ minHeight: 40, paddingHorizontal: 12, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, color: ui.colors.text, fontSize: 13 }} value={classStd} onChangeText={setClassStd} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Education Type</Text>
+                <TextInput accessibilityLabel="Education type" style={{ minHeight: 40, paddingHorizontal: 12, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, color: ui.colors.text, fontSize: 13 }} value={educationType} onChangeText={setEducationType} />
               </View>
             </View>}
-            <View className="border-t border-core-border-gray-100 pt-4 gap-y-4">
+            <View className="border-t border-core-border-gray-100 pt-3 gap-y-3">
               <View className="flex-row items-center gap-x-2">
-                <Eye size={18} color={ui.colors.info} />
-                <Text className="font-poppins-bold text-base text-ssf-text">Public Candidate Profile</Text>
+                <Eye size={16} color={ui.colors.info} />
+                <Text className="font-poppins-bold text-sm text-ssf-text">Public Candidate Profile</Text>
               </View>
               <View>
-                <Text className="text-sm font-poppins text-ssf-text-muted mb-2">Profile Photo</Text>
-                <View className="flex-row items-center gap-3">
-                  {photoPreviewUrl ? <Image source={{ uri: photoPreviewUrl }} style={{ width: 56, height: 56, borderRadius: 28 }} /> : <View className="h-14 w-14 items-center justify-center rounded-full border border-ssf-border bg-core-surface-muted-slate-50"><Text className="font-poppins text-xl text-ssf-text-muted">?</Text></View>}
-                  <TouchableOpacity onPress={chooseProfilePhoto} className="min-h-10 flex-row items-center gap-2 rounded-xl border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-3"><Upload size={15} color={coreColor("#2563EB", 'info')}/><Text className="font-poppins-bold text-xs text-core-info-blue-700">Select Photo</Text></TouchableOpacity>
-                  {!!photoPreviewUrl && <TouchableOpacity onPress={clearProfilePhoto} className="min-h-10 rounded-xl border border-core-danger-soft-red-100 bg-core-danger-soft-red-50 px-3"><Text className="font-poppins-bold text-xs text-core-danger-red-700">Remove</Text></TouchableOpacity>}
+                <Text className="mb-1 font-poppins-bold text-[11px] text-ssf-text">Profile Photo</Text>
+                <View className="flex-row flex-wrap items-center gap-2">
+                  {photoPreviewUrl ? <Image source={{ uri: photoPreviewUrl }} style={{ width: 40, height: 40, borderRadius: 20 }} /> : <View className="h-10 w-10 items-center justify-center rounded-full border border-ssf-border bg-core-surface-muted-slate-50"><Text className="font-poppins text-base text-ssf-text-muted">?</Text></View>}
+                  <TouchableOpacity onPress={chooseProfilePhoto} className="min-h-10 flex-row items-center gap-2 rounded-lg border border-core-info-soft-blue-100 bg-core-info-soft-blue-50 px-3"><Upload size={14} color={coreColor("#2563EB", 'info')}/><Text className="font-poppins-bold text-xs text-core-info-blue-700">Select Photo</Text></TouchableOpacity>
+                  {!!photoPreviewUrl && <TouchableOpacity onPress={clearProfilePhoto} className="min-h-10 justify-center rounded-lg border border-core-danger-soft-red-100 bg-core-danger-soft-red-50 px-3"><Text className="font-poppins-bold text-xs text-core-danger-red-700">Remove</Text></TouchableOpacity>}
                   {(isUploadingProfilePhoto || isRemovingProfilePhoto) && <ActivityIndicator size="small" color={ui.colors.primaryText} />}
                 </View>
               </View>
-              <View className="flex-row justify-between items-center bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 rounded-xl p-3">
+              <View className="flex-row justify-between items-center bg-core-info-soft-blue-50 border border-core-info-soft-blue-100 rounded-lg px-3 py-2">
                 <View className="flex-1 pr-3">
                   <Text className="font-poppins-bold text-sm text-ssf-text">Public profile enabled</Text>
                   <Text className="font-poppins text-xs text-ssf-text-muted">Allow this candidate profile to be opened publicly.</Text>
@@ -838,7 +839,7 @@ export default function ParticipantDetails() {
                   thumbColor={publicProfileEnabled ? ui.colors.success : coreColor('#F8FAFC', 'primary')}
                 />
               </View>
-              <View className="flex-row justify-between items-center bg-core-success-soft-green-50 border border-core-success-soft-green-100 rounded-xl p-3">
+              <View className="flex-row justify-between items-center bg-core-success-soft-green-50 border border-core-success-soft-green-100 rounded-lg px-3 py-2">
                 <View className="flex-1 pr-3">
                   <Text className="font-poppins-bold text-sm text-ssf-text">Show organisation publicly</Text>
                   <Text className="font-poppins text-xs text-ssf-text-muted">Display organisation name on the public profile.</Text>

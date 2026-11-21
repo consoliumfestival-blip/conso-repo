@@ -63,11 +63,9 @@ export default function ParticipantsList() {
   const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
-  const [cardAreaWidth, setCardAreaWidth] = useState(0);
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const isCardLayout = width >= 768;
-  // Base the card count on the actual content area left beside the admin navigation.
-  const cardColumns = Math.max(1, Math.floor((cardAreaWidth + 10) / 330));
+  const cardColumns = width >= 1440 ? 4 : width >= 1100 ? 3 : width >= 820 ? 2 : 1;
   const isNarrowPhone = width < 600;
   const competitionFilterWidth = isNarrowPhone ? Math.max(180, Math.min(280, width - 48)) : 280;
   const phoneFilterWidth = isNarrowPhone ? Math.max(120, Math.min(152, Math.floor((width - 72) / 2))) : undefined;
@@ -647,7 +645,7 @@ export default function ParticipantsList() {
             <Text className="text-ssf-text-muted font-poppins mb-4">No participants found.</Text>
           </View>
         ) : isCardLayout ? (
-          <View onLayout={(event) => setCardAreaWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 }}>
+          <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 }}>
             {filteredParticipants.map((p: any) => {
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
@@ -659,21 +657,21 @@ export default function ParticipantsList() {
                     activeOpacity={0.86}
                     onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id); }}
-                    style={{ minHeight: 168, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
+                    style={{ minHeight: 148, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                       {selectMode && <View style={{ paddingTop: 2 }}>{isSelected ? <CheckSquare size={18} color={ui.colors.primary} /> : <Square size={18} color={ui.colors.textSubtle} />}</View>}
                       <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{p.name || 'Participant'}</Text>
+                        <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{p.name || 'Participant'}</Text>
                         <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 2 }}>{p.chest_number ? `#${p.chest_number}` : 'No chest number'}</Text>
                       </View>
                       {!selectMode && <ChevronRight size={17} color={ui.colors.textSubtle} />}
                     </View>
-                    <View style={{ marginTop: 8, gap: 4 }}>
+                    <View style={{ marginTop: 6, gap: 2 }}>
                       <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Category  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.category_code || '—'}</Text><Text style={{ color: ui.colors.textMuted }}> · Gender  </Text><Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.gender || '—'}</Text></Text>
                       <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Team  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.organisations?.name || '—'}</Text></Text>
                     </View>
-                    <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Change status for ${p.name}`} disabled={selectMode} onPress={(event) => { event.stopPropagation(); promptStatusChange(p); }} style={{ maxWidth: '60%' }} className={`px-2.5 py-1 rounded-full border ${statColor.bg} ${statColor.border}`}>
                         <Text numberOfLines={1} className={`font-poppins-bold text-[9px] uppercase ${statColor.text}`}>{p.status || 'Pending'}</Text>
                       </TouchableOpacity>
@@ -681,7 +679,7 @@ export default function ParticipantsList() {
                         <Text className="font-poppins-bold text-[10px] text-core-success-emerald-700">Public profile</Text>
                       </TouchableOpacity>}
                     </View>
-                    {!selectMode && <View style={{ marginTop: 8, flexDirection: 'row', gap: 5 }}>
+                    {!selectMode && <View style={{ marginTop: 6, flexDirection: 'row', gap: 5 }}>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Edit ${p.name}`} disabled={!!p.is_locked} onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#93C5FD', backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', opacity: p.is_locked ? 0.45 : 1 }}>
                         <Text numberOfLines={1} style={{ color: '#1D4ED8', fontSize: 10, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
                       </TouchableOpacity>

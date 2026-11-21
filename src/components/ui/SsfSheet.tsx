@@ -14,6 +14,7 @@ type SsfSheetProps = {
   footer?: React.ReactNode;
   keyboardShouldPersistTaps?: 'always' | 'never' | 'handled';
   presentation?: 'sheet' | 'dialog';
+  compactDialog?: boolean;
 };
 
 export function SsfSheet({
@@ -25,9 +26,11 @@ export function SsfSheet({
   footer,
   keyboardShouldPersistTaps = 'handled',
   presentation = 'sheet',
+  compactDialog = false,
 }: SsfSheetProps) {
-  const { width } = useWindowDimensions();
-  const sheetWidth = presentation === 'dialog' ? Math.min(720, width - 48) : width < 640 ? width : Math.min(520, width * 0.42);
+  const { width, height } = useWindowDimensions();
+  const compact = compactDialog && presentation === 'dialog';
+  const sheetWidth = presentation === 'dialog' ? Math.min(compact ? 680 : 720, width - 48) : width < 640 ? width : Math.min(520, width * 0.42);
 
   return (
     <Modal
@@ -48,12 +51,12 @@ export function SsfSheet({
           onPress={onClose}
         />
 
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: '88%', maxHeight: 840, borderRadius: 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
-          <View style={styles.header}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(720, height - 32) : '88%', maxHeight: 840, borderRadius: compact ? 12 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
+          <View style={[styles.header, compact && { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 }]}>
             <View style={styles.headerCopy}>
-              <Text className="font-poppins-bold text-xl text-ssf-text">{title}</Text>
+              <Text className={`font-poppins-bold ${compact ? 'text-base' : 'text-xl'} text-ssf-text`}>{title}</Text>
               {description ? (
-                <Text className="mt-1 font-poppins text-sm leading-5 text-ssf-text-muted">
+                <Text className={`mt-1 font-poppins ${compact ? 'text-xs' : 'text-sm'} leading-5 text-ssf-text-muted`}>
                   {description}
                 </Text>
               ) : null}
@@ -71,14 +74,14 @@ export function SsfSheet({
 
           <ScrollView
             style={styles.content}
-            contentContainerStyle={styles.contentContainer}
+            contentContainerStyle={[styles.contentContainer, compact && { paddingHorizontal: 18, paddingVertical: 16 }]}
             keyboardShouldPersistTaps={keyboardShouldPersistTaps}
             showsVerticalScrollIndicator={false}
           >
             {children}
           </ScrollView>
 
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
+          {footer ? <View style={[styles.footer, compact && { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14 }]}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>

@@ -17,7 +17,7 @@ import { useFestival } from '../../../core/hooks/useFestival';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../core/store/authStore';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
-import { showAdminIconRail } from '@/core/utils/adminNavigationLayout';
+import { adminNavigationMode } from '@/core/utils/adminNavigationLayout';
 
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
@@ -169,7 +169,8 @@ export default function ScheduleDashboard() {
     screenHeight,
     maxTouchPoints,
   );
-  const sidebarWidth = showAdminIconRail(width) ? 64 : 0;
+  const navigationMode = adminNavigationMode(width);
+  const sidebarWidth = navigationMode === 'desktop' ? 64 : navigationMode === 'tablet' ? 236 : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
   // Preserve phone cards in portrait and landscape; tablet and desktop widths use the reference table.

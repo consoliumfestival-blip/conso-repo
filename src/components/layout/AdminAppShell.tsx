@@ -32,7 +32,7 @@ import {
 import { useAuthStore } from "@/core/store/authStore";
 import { useCoreAppearance } from "@/core/contexts/CoreAppearanceContext";
 import { useSidebarAppearance } from "@/core/store/coreAppearanceStore";
-import { showAdminIconRail } from "@/core/utils/adminNavigationLayout";
+import { adminNavigationMode } from "@/core/utils/adminNavigationLayout";
 import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
 import { useFestival } from "@/core/hooks/useFestival";
 import { FEATURE_FLAGS } from "@/core/config/features";
@@ -274,14 +274,17 @@ function getTenantNavigation(settings: ReturnType<typeof useTenantFeatures>['set
 function DesktopSidebar({
   pathname,
   items,
+  layout = 'desktop',
 }: {
   pathname: string;
   items: NavItem[];
+  layout?: 'tablet' | 'desktop';
 }) {
   const router = useRouter();
   const { logout } = useAuthStore();
   const appearance = useCoreAppearance();
   const sidebarAppearance = useSidebarAppearance();
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { height } = useWindowDimensions();
   const [popup, setPopup] = useState<{ item: NavItem; top: number } | null>(null);
   const scrollOffset = React.useRef(0);
@@ -300,7 +303,7 @@ function DesktopSidebar({
   React.useEffect(() => { setPopup(null); }, [pathname]);
   const openPopup = (item: NavItem, index: number) => {
     cancelClose();
-    const popupHeight = 54 + (item.children?.length || 0) * 43;
+    const popupHeight = item.children?.length ? 45 + item.children.length * 43 : 38;
     setPopup({ item, top: Math.max(8, Math.min(52 + index * 38 - scrollOffset.current, height - popupHeight - 24)) });
   };
   const go = (path: string) => {
@@ -308,19 +311,19 @@ function DesktopSidebar({
     router.push(path as any);
   };
   const iconColor = sidebarAppearance === 'dark' ? coreColor('#D7E8E8', 'sidebarText') : CORE_PALETTES[appearance?.appearance.palette || 'teal'].primary;
+  const tablet = layout === 'tablet';
 
   return (
     <View
       className="no-print"
-      style={[styles.sidebar, sidebarAppearance === 'light' && styles.sidebarLight]}
+      {...(!tablet ? { onMouseEnter: cancelClose, onMouseLeave: scheduleClose } : {}) as any}
+      style={[tablet ? styles.tabletSidebar : styles.sidebar, !tablet && sidebarAppearance === 'light' && styles.sidebarLight]}
     >
-      <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}>
-        <ConsoliumLogo size={32} borderRadius={10} />
-      </Pressable>
+      {tablet ? <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.tabletBrand}><ConsoliumLogo size={32} borderRadius={10} /><Text numberOfLines={1} style={styles.tabletBrandText}>Consolium</Text></Pressable> : <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}><ConsoliumLogo size={32} borderRadius={10} /></Pressable>}
       <View style={{ flex: 1, minHeight: 0 }}>
         <ScrollView
           style={styles.sidebarScroll}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 4 }}
+          contentContainerStyle={tablet ? { paddingHorizontal: 8, paddingBottom: 4 } : { alignItems: 'center', paddingBottom: 4 }}
           showsVerticalScrollIndicator={false}
           onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; if (popup) setPopup(null); }}
           scrollEventThrottle={32}
@@ -328,6 +331,20 @@ function DesktopSidebar({
           {items.map((item, index) => {
             const active = item.match(pathname);
             const Icon = item.icon;
+            if (tablet) {
+              const expanded = openGroups[item.label] ?? active;
+              return <View key={item.label} style={styles.tabletNavGroup}>
+                <View style={[styles.tabletNavRow, active && styles.tabletNavRowActive]}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: active }} onPress={() => go(item.path)} style={styles.tabletNavMain}>
+                    <Icon size={16} color={active ? ui.colors.primaryText : ui.colors.textMuted} strokeWidth={2} />
+                    <Text numberOfLines={1} style={[styles.tabletNavLabel, active && styles.tabletNavLabelActive]}>{item.shortLabel || item.label}</Text>
+                    {item.label === 'Judge Management' && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
+                  </Pressable>
+                  {!!item.children?.length && <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${item.label} pages`} accessibilityState={{ expanded }} onPress={() => setOpenGroups(current => ({ ...current, [item.label]: !expanded }))} style={styles.tabletDisclosure}>{expanded ? <ChevronDown size={14} color={ui.colors.textMuted} /> : <ChevronRight size={14} color={ui.colors.textMuted} />}</Pressable>}
+                </View>
+                {!!item.children?.length && expanded && <View style={styles.tabletSubmenu}>{item.children.map(child => <Pressable key={child.label} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.tabletSubmenuLink, child.match(pathname) && styles.tabletSubmenuLinkActive]}><Text numberOfLines={1} style={[styles.tabletSubmenuText, child.match(pathname) && styles.tabletSubmenuTextActive]}>{child.label}</Text></Pressable>)}</View>}
+              </View>;
+            }
             return (
               <View key={item.label} style={styles.railRow}>
                 <Pressable
@@ -335,7 +352,6 @@ function DesktopSidebar({
                   accessibilityLabel={item.label}
                   accessibilityState={{ selected: active }}
                   onHoverIn={() => openPopup(item, index)}
-                  onHoverOut={scheduleClose}
                   onFocus={() => openPopup(item, index)}
                   onPress={() => go(item.path)}
                   style={[styles.railButton, active && (sidebarAppearance === 'dark' ? styles.railButtonActive : styles.railButtonActiveLight)]}
@@ -350,10 +366,10 @@ function DesktopSidebar({
           })}
         </ScrollView>
       </View>
-      {popup && <Pressable style={[styles.railPopup, { top: popup.top }]} onHoverIn={cancelClose} onHoverOut={scheduleClose}>
+      {popup && <View {...{ onMouseEnter: cancelClose } as any} style={[styles.railPopup, !popup.item.children?.length && styles.railTooltip, { top: popup.top }]}>
         <Text style={styles.railPopupTitle}>{popup.item.label}</Text>
-        {popup.item.children?.map((child) => <Pressable key={child.label} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
-      </Pressable>}
+        {popup.item.children?.map((child, index) => <Pressable key={child.label} accessibilityRole="button" accessibilityLabel={child.label} accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, index > 0 && styles.railPopupLinkDivider, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
+      </View>}
       <View style={styles.railFooter}>
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
@@ -591,8 +607,9 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const { settings: tenantFeatures } = useTenantFeatures(tenantId);
   const { width } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
-  const showSidebar = showAdminIconRail(width);
-  const isDesktop = showSidebar;
+  const navigationMode = adminNavigationMode(width);
+  const showSidebar = navigationMode !== 'phone';
+  const isDesktop = navigationMode === 'desktop';
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
@@ -612,6 +629,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         <DesktopSidebar
           pathname={pathname}
           items={visibleNavItems}
+          layout={navigationMode === 'tablet' ? 'tablet' : 'desktop'}
         />
       )}
       <View style={styles.shellMain}>
@@ -690,6 +708,22 @@ const styles = StyleSheet.create({
     zIndex: 30,
     overflow: 'visible',
   },
+  tabletSidebar: { width: 224, marginVertical: 8, marginLeft: 8, marginRight: 4, paddingVertical: 10, borderRadius: 16, borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), backgroundColor: coreColor('#FFFFFF', 'surface'), ...ui.shadow },
+  tabletBrand: { height: 46, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  tabletBrandText: { flex: 1, color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13 },
+  tabletNavGroup: { marginBottom: 3 },
+  tabletNavRow: { minHeight: 38, borderRadius: 9, flexDirection: 'row', alignItems: 'center' },
+  tabletNavRowActive: { backgroundColor: ui.colors.primarySoft },
+  tabletNavMain: { flex: 1, minWidth: 0, minHeight: 38, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  tabletNavLabel: { flex: 1, color: ui.colors.textMuted, fontFamily: 'Poppins_500Medium', fontSize: 10 },
+  tabletNavLabelActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
+  tabletBadge: { color: ui.colors.onPrimary, backgroundColor: ui.colors.dangerAction, overflow: 'hidden', borderRadius: 8, paddingHorizontal: 5, fontSize: 9 },
+  tabletDisclosure: { width: 34, height: 38, alignItems: 'center', justifyContent: 'center' },
+  tabletSubmenu: { marginLeft: 18, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: ui.colors.border, marginBottom: 4 },
+  tabletSubmenuLink: { minHeight: 30, paddingHorizontal: 8, justifyContent: 'center', borderRadius: 7 },
+  tabletSubmenuLinkActive: { backgroundColor: ui.colors.surfaceMuted },
+  tabletSubmenuText: { color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 9 },
+  tabletSubmenuTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
   sidebarLight: { backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), ...ui.shadow },
   railLogo: { width: 40, height: 40, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   railRow: { width: 40, height: 38, alignItems: 'center', justifyContent: 'center' },
@@ -701,8 +735,10 @@ const styles = StyleSheet.create({
   railDisclosure: { position: 'absolute', bottom: -2, right: -1, width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: coreColor('#17383D', 'sidebarSoft') },
   railDisclosureLight: { backgroundColor: coreColor('#E5F4F0', 'primarySoft') },
   railPopup: { position: 'absolute', left: 40, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
+  railTooltip: { minWidth: 0, maxWidth: 190, paddingVertical: 5, paddingHorizontal: 8 },
   railPopupTitle: { color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
   railPopupLink: { minHeight: 42, borderRadius: 9, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  railPopupLinkDivider: { borderTopWidth: 1, borderTopColor: coreColor('#E2E8E7', 'border') },
   railPopupLinkActive: { backgroundColor: ui.colors.primarySoft },
   railPopupLinkText: { color: ui.colors.text, fontFamily: 'Poppins_500Medium', fontSize: 12, flexShrink: 1 },
   railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },

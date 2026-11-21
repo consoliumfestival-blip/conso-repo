@@ -52,11 +52,19 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=fals
   const postponed = normalizedStatus !== 'ongoing' && normalizedStatus !== 'completed'
     && isPostponed;
   const lifecycleLabel = postponed ? 'Postponed' : getScheduleLifecycleLabel(status);
+  const lifecycleColor = postponed
+    ? '#EA580C'
+    : normalizedStatus === 'ongoing'
+      ? '#059669'
+      : normalizedStatus === 'completed'
+        ? '#7C3AED'
+        : '#2563EB';
   const checkInStatus = summary
     ? ((summary.active_count > 0 && summary.verified_count === summary.active_count) || isShuffleLocked
       ? 'Check-in complete'
       : `Check-in pending${summary.active_count > 0 ? ` · ${summary.verified_count}/${summary.active_count}` : ''}`)
     : null;
+  const checkInColor = checkInStatus === 'Check-in complete' ? '#16A34A' : '#EA580C';
 
   return (
     <View
@@ -64,8 +72,8 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=fals
       accessibilityLabel={`Status: ${lifecycleLabel}${checkInStatus ? `. ${checkInStatus}` : ''}`}
       className="items-start justify-center gap-0.5"
     >
-      <Text className={`font-poppins-bold text-[10px] ${postponed ? 'text-core-warning-amber-700' : 'text-ui-text'}`}>{lifecycleLabel}</Text>
-      {checkInStatus ? <Text className="font-poppins text-[9px] text-ui-text-muted">{checkInStatus}</Text> : null}
+      <Text style={{ color: lifecycleColor }} className="font-poppins-bold text-[10px]">{lifecycleLabel}</Text>
+      {checkInStatus ? <Text style={{ color: checkInColor }} className="font-poppins text-[9px]">{checkInStatus}</Text> : null}
     </View>
   );
 }
@@ -167,7 +175,7 @@ export default function ScheduleDashboard() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
   const [mobileActionMenuId, setMobileActionMenuId] = React.useState<string | null>(null);
-  const [postponedExpanded, setPostponedExpanded] = React.useState(true);
+  const [postponedExpanded, setPostponedExpanded] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState('All');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState('All');
@@ -1143,7 +1151,7 @@ export default function ScheduleDashboard() {
                 className="min-h-10 flex-row items-center justify-between border-b border-ui-border px-3 py-2 bg-core-surface-white"
               >
                 <View className="flex-row items-center gap-2">
-                  <Text className="font-poppins-bold text-xs text-core-warning-amber-700">Postponed</Text>
+                  <Text style={{ color: '#EA580C' }} className="font-poppins-bold text-xs">Postponed</Text>
                   <Text className="font-poppins text-[10px] text-ui-text-muted">{postponedSchedules.length} on this page</Text>
                 </View>
                 <View className="flex-row items-center gap-1">

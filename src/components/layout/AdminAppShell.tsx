@@ -367,7 +367,7 @@ function DesktopSidebar({
         </ScrollView>
       </View>
       {popup && <View {...{ onMouseEnter: cancelClose } as any} style={[styles.railPopup, !popup.item.children?.length && styles.railTooltip, { top: popup.top }]}>
-        <Text style={styles.railPopupTitle}>{popup.item.label}</Text>
+        <Text numberOfLines={popup.item.children?.length ? undefined : 1} style={[styles.railPopupTitle, !popup.item.children?.length && styles.railTooltipTitle]}>{popup.item.label}</Text>
         {popup.item.children?.map((child, index) => <Pressable key={child.label} accessibilityRole="button" accessibilityLabel={child.label} accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, index > 0 && styles.railPopupLinkDivider, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
       </View>}
       <View style={styles.railFooter}>
@@ -735,7 +735,8 @@ const styles = StyleSheet.create({
   railDisclosure: { position: 'absolute', bottom: -2, right: -1, width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: coreColor('#17383D', 'sidebarSoft') },
   railDisclosureLight: { backgroundColor: coreColor('#E5F4F0', 'primarySoft') },
   railPopup: { position: 'absolute', left: 40, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
-  railTooltip: { minWidth: 0, maxWidth: 190, paddingVertical: 5, paddingHorizontal: 8 },
+  railTooltip: { minWidth: 0, width: 'max-content' as any, maxWidth: 240, paddingVertical: 4, paddingHorizontal: 8 },
+  railTooltipTitle: { fontFamily: 'Poppins_500Medium', fontSize: 10, paddingHorizontal: 0, paddingVertical: 0 },
   railPopupTitle: { color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
   railPopupLink: { minHeight: 42, borderRadius: 9, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   railPopupLinkDivider: { borderTopWidth: 1, borderTopColor: coreColor('#E2E8E7', 'border') },

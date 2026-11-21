@@ -35,6 +35,7 @@ function categoryLabel(codes: string[] | null) {
 }
 
 type ProgramSort = 'default' | 'name_asc' | 'name_desc' | 'code_asc' | 'category_asc';
+type ProgramKind = 'all' | 'participant' | 'general_team';
 
 type PendingDeselect =
   | { kind: 'individual'; registrationId: string; participantName: string; participantIds: string[] }
@@ -93,7 +94,7 @@ function TeamProgramsContent() {
   const [programSort, setProgramSort] = useState<ProgramSort>('default');
   const [filterPicker, setFilterPicker] = useState<'category' | 'stage' | 'status' | 'sort' | null>(null);
   const [savingItemId, setSavingItemId] = useState<string | null>(null);
-  const [programKind, setProgramKind] = useState<'participant' | 'general_team'>('participant');
+  const [programKind, setProgramKind] = useState<ProgramKind>('all');
   const [activeIndividualProgram, setActiveIndividualProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [pendingCompletionProgram, setPendingCompletionProgram] = useState<TeamLeaderProgramOption | null>(null);
   const [completionError, setCompletionError] = useState('');
@@ -522,7 +523,7 @@ function TeamProgramsContent() {
     }
   };
 
-  const setKind = (kind: 'participant' | 'general_team') => {
+  const setKind = (kind: ProgramKind) => {
     setProgramKind(kind);
     setProgramPage(1);
     setProgramSearch('');
@@ -974,13 +975,13 @@ function TeamProgramsContent() {
           <View>
             <Text style={{ color: muted, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Festival · {context?.festival_name || context?.team_name || 'Team portal'}</Text>
             <Text style={{ color: ui.colors.text, fontSize: 26, fontWeight: '800', marginTop: 3 }}>Programs</Text>
-            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{programsQuery.isError && !programDataAvailable ? 'Programs unavailable' : programsQuery.isLoading ? 'Loading programs' : `${availableProgramCount} programs · ${activeProgramCount} ${programKind === 'participant' ? 'completed' : 'with team entries'}`}</Text>
+            <Text style={{ color: muted, fontSize: 12, marginTop: 3 }}>{programsQuery.isError && !programDataAvailable ? 'Programs unavailable' : programsQuery.isLoading ? 'Loading programs' : programKind === 'all' ? `${availableProgramCount} programs · ${programsQuery.data?.individual_completed_count ?? 0} completed · ${programsQuery.data?.group_entry_count ?? 0} group entries` : `${availableProgramCount} programs · ${activeProgramCount} ${programKind === 'participant' ? 'completed' : 'with team entries'}`}</Text>
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-            {(['participant', 'general_team'] as const).map((kind) => {
+            {(['all', 'participant', 'general_team'] as const).map((kind) => {
               const selected = programKind === kind;
               return <Pressable key={kind} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setKind(kind)} style={{ minHeight: isPhone ? 44 : 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: selected ? ui.colors.primary : border, backgroundColor: selected ? ui.colors.primary : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: selected ? ui.colors.onPrimary : ui.colors.text, fontSize: 12, fontWeight: '700' }}>{kind === 'participant' ? 'Individual' : 'Group items'}</Text>
+                <Text style={{ color: selected ? ui.colors.onPrimary : ui.colors.text, fontSize: 12, fontWeight: '700' }}>{kind === 'all' ? 'All' : kind === 'participant' ? 'Individual' : 'Group items'}</Text>
               </Pressable>;
             })}
           </View>
@@ -1012,7 +1013,7 @@ function TeamProgramsContent() {
 
           {programDataAvailable ? <View style={{ marginBottom: 12, padding: 15, borderRadius: isPhone ? 20 : 12, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{activeProgramCount} of {availableProgramCount} {programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}</Text>
+              <Text style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{programKind === 'all' ? `${programsQuery.data?.individual_completed_count ?? 0} individual completed · ${programsQuery.data?.group_entry_count ?? 0} group entries` : `${activeProgramCount} of ${availableProgramCount} ${programKind === 'participant' ? 'individual programs completed' : 'group programs have entries'}`}</Text>
               <Text style={{ color: ui.colors.primary, fontSize: 12, fontWeight: '700' }}>{progressPercent}%</Text>
             </View>
             <View style={{ height: 6, marginTop: 9, overflow: 'hidden', borderRadius: 99, backgroundColor: ui.colors.surfaceMuted }}><View style={{ width: `${progressPercent}%`, height: '100%', borderRadius: 99, backgroundColor: ui.colors.primary }} /></View>

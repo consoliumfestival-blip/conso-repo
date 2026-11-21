@@ -102,11 +102,13 @@ export interface TeamLeaderProgramsPage {
   has_previous: boolean;
   available_count: number;
   active_count: number;
+  individual_completed_count: number;
+  group_entry_count: number;
   category_codes: string[];
 }
 
 export interface TeamLeaderProgramsPageParams {
-  entryKind: 'participant' | 'general_team';
+  entryKind: 'all' | 'participant' | 'general_team';
   search: string;
   categoryCode: string;
   stageFilter: 'All stages' | 'On Stage' | 'Off Stage';

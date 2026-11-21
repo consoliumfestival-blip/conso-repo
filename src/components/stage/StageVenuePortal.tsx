@@ -1,3 +1,4 @@
+import { getStageCheckinProgress } from '../../core/utils/stageCheckinProgress';
 import { coreColor } from '@/constants/coreTheme';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import React from 'react';
@@ -119,14 +120,12 @@ function WorkflowBadges({ registrations, summary, status, isShuffleLocked }: { r
   const activeCount = summary?.active_count ?? active.length;
   const verifiedCount = summary?.verified_count ?? verified.length;
   const codedCount = summary?.coded_count ?? verified.filter((row) => !!row.code_letter).length;
-  const checkinDone = (activeCount > 0 && activeCount === verifiedCount) || isShuffleLocked;
-  const checkinPending = activeCount > verifiedCount;
-  const codesDone = (verifiedCount > 0 && verifiedCount === codedCount) || isShuffleLocked;
-  const codesPending = verifiedCount > codedCount;
+  const { checkinDone, checkinPending, codesDone, codesPending, attendanceLabel } = getStageCheckinProgress(activeCount, verifiedCount, codedCount, isShuffleLocked);
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {status ? <Badge label={getScheduleLifecycleLabel(status)} tone={normalizeScheduleLifecycleStatus(status) === 'completed' ? 'gray' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'green' : 'blue'} /> : null}
+      {status ? <Badge label={getScheduleLifecycleLabel(status)} tone={normalizeScheduleLifecycleStatus(status) === 'completed' ? 'green' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'green' : 'blue'} /> : null}
+      {checkinDone ? <Badge label={`Check-in Completed · ${attendanceLabel}`} tone="green" /> : null}
       {checkinDone && codesDone ? <Badge label="Ready to start" tone="green" /> : null}
       {!checkinDone && checkinPending ? <Badge label="Check-in Pending" tone="amber" /> : null}
       {!codesDone && codesPending ? <Badge label="Codes Pending" tone="gray" /> : null}
@@ -136,7 +135,7 @@ function WorkflowBadges({ registrations, summary, status, isShuffleLocked }: { r
 
 function Badge({ label, tone }: { label: string; tone: 'green' | 'amber' | 'blue' | 'gray' }) {
   const classes = {
-    green: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700',
+    green: 'bg-core-success-soft-green-100 border-core-success-soft-green-300 text-core-success-green-700',
     amber: 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700',
     blue: 'bg-core-info-soft-sky-50 border-core-info-soft-sky-200 text-core-info-sky-700',
     gray: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500',
@@ -259,10 +258,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
     const activeCount = summary?.active_count ?? rowRegs.length;
     const verifiedCount = summary?.verified_count ?? verified.length;
     const codedCount = summary?.coded_count ?? verified.filter((row) => !!row.code_letter).length;
-    const checkinDone = activeCount > 0 && activeCount === verifiedCount;
-    const checkinPending = activeCount > verifiedCount;
-    const codesDone = verifiedCount > 0 && verifiedCount === codedCount;
-    const codesPending = verifiedCount > codedCount;
+    const { checkinDone, checkinPending, codesDone, codesPending } = getStageCheckinProgress(activeCount, verifiedCount, codedCount, schedule.is_shuffle_locked);
     const categoryMatch = selectedCategory === 'All' || (schedule.category_codes ?? []).includes(selectedCategory);
     const textMatch = !text || [schedule.item_name_en, schedule.item_name_ml, schedule.item_code, ...(schedule.category_codes ?? [])]
       .some((value) => String(value ?? '').toLocaleLowerCase().includes(text));

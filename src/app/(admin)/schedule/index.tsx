@@ -27,6 +27,7 @@ import * as Device from 'expo-device';
 import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldShowTabletLandscapeScheduleCategory, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 import { stageManagementService } from '../../../services/stageManagementService';
+import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
 
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
@@ -57,7 +58,7 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=fals
     : normalizedStatus === 'ongoing'
       ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
       : normalizedStatus === 'completed'
-        ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200 text-core-text-slate-700'
+        ? 'bg-core-success-soft-green-100 border-core-success-soft-green-300 text-core-success-green-700'
         : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200 text-core-info-blue-700';
   const chipContainerSize = compact ? 'min-h-5 px-1.5' : 'min-h-6 px-2';
   const chipTextSize = compact ? 'text-[8px]' : 'text-[9px]';
@@ -68,12 +69,11 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=fals
     const { active_count: active, verified_count: verified, coded_count: coded,
       assigned_judges: totalExpected, submitted_judges: totalSubmitted,
       has_manual_result: hasManualSubmitted, has_published_result: hasInternalPublished } = summary;
-    const checkinDone = (active > 0 && verified === active) || isShuffleLocked;
-    const codesShuffled = (verified > 0 && coded === verified) || isShuffleLocked;
+    const { checkinDone, codesDone: codesShuffled, attendanceLabel } = getStageCheckinProgress(active, verified, coded, isShuffleLocked);
     const allMarksDone = totalExpected > 0 && totalSubmitted >= totalExpected;
 
     chips.push(checkinDone
-      ? { label: 'Check-in complete', tone: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700' }
+      ? { label: `Check-in completed · ${attendanceLabel}`, tone: 'bg-core-success-soft-green-100 border-core-success-soft-green-300 text-core-success-green-700' }
       : { label: `Check-in pending${active > 0 ? ` · ${verified}/${active}` : ''}`, tone: 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700' });
 
     if (codesShuffled) chips.push({ label: 'Codes shuffled', tone: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700' });
@@ -100,8 +100,8 @@ function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=fals
       accessibilityLabel={`Status: ${lifecycleLabel}. ${chips.map((chip) => chip.label).join('. ')}`}
       className="flex-row flex-wrap items-center gap-1"
     >
-      <View className={`flex-row items-center rounded-md border ${chipContainerSize} ${lifecycleTone.split(' ').slice(0, 2).join(' ')}`}>
-        <Text className={`font-poppins-bold ${chipTextSize} ${lifecycleTone.split(' ')[2]}`}>{lifecycleLabel}</Text>
+      <View className={`flex-row items-center rounded-md border ${chipContainerSize} ${lifecycleTone.split(' ').slice(0, 2).join(' ')}`} style={normalizedStatus === 'completed' ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' } : undefined}>
+        <Text className={`font-poppins-bold ${chipTextSize} ${lifecycleTone.split(' ')[2]}`} style={normalizedStatus === 'completed' ? { color: '#16A34A' } : undefined}>{lifecycleLabel}</Text>
       </View>
       {chips.map((chip) => (
         <View key={chip.label} className={`flex-row items-center rounded-md border ${chipContainerSize} ${chip.tone.split(' ').slice(0, 2).join(' ')}`}>

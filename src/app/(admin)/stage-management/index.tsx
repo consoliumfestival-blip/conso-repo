@@ -1,3 +1,4 @@
+import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
 import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { Animated, Pressable, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
@@ -43,15 +44,16 @@ function ScheduleWorkflowBadges({ registrations = [], summary, status, isShuffle
   const verifiedCount = summary?.verified_count ?? verifiedRegs.length;
   const codedCount = summary?.coded_count ?? verifiedRegs.filter((r: any) => r.code_letter !== null && r.code_letter !== undefined).length;
   
-  const checkinDone = (activeCount > 0 && verifiedCount === activeCount) || isShuffleLocked;
-  const checkinPending = activeCount > verifiedCount;
+  const { checkinDone, checkinPending, codesDone: codesShuffled, codesPending, attendanceLabel } = getStageCheckinProgress(activeCount, verifiedCount, codedCount, isShuffleLocked);
   
-  const codesShuffled = (verifiedCount > 0 && codedCount === verifiedCount) || isShuffleLocked;
-  const codesPending = verifiedCount > codedCount;
+
 
   const badges: { label: string; bg: string; text: string }[] = [];
 
   // Check-in status (Malayalam highlighted text as requested)
+  if (checkinDone) {
+    badges.push({ label: `Check-in Completed · ${attendanceLabel}`, bg: 'bg-core-success-soft-green-100 border border-core-success-soft-green-300', text: 'text-core-success-green-700' });
+  }
   if (checkinDone && codesShuffled) {
     badges.push({ label: 'Ready to start', bg: 'bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-200', text: 'text-core-success-emerald-700' });
   } else if (checkinPending) {
@@ -67,7 +69,7 @@ function ScheduleWorkflowBadges({ registrations = [], summary, status, isShuffle
 
   return (
     <View className="flex-row flex-wrap gap-1.5">
-      {status ? <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-core-surface-muted-slate-100 border-core-border-slate-200' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}><Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-core-text-slate-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-core-success-emerald-700' : 'text-core-info-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text></View> : null}
+      {status ? <View className={`h-6 flex-row items-center px-2 rounded-md self-start border ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'bg-core-success-soft-green-100 border-core-success-soft-green-300' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200' : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200'}`}><Text className={`font-poppins-bold text-[9px] ${normalizeScheduleLifecycleStatus(status) === 'completed' ? 'text-core-success-green-700' : normalizeScheduleLifecycleStatus(status) === 'ongoing' ? 'text-core-success-emerald-700' : 'text-core-info-blue-700'}`}>{getScheduleLifecycleLabel(status)}</Text></View> : null}
       {badges.map((badge) => (
         <View key={badge.label} className={`h-6 flex-row items-center px-2 rounded-md self-start ${badge.bg}`}>
           <Text className={`font-poppins-bold text-[9px] ${badge.text}`}>{badge.label}</Text>
@@ -257,11 +259,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
         const activeCount = summary?.active_count ?? scheduleRegs.length;
         const verifiedCount = summary?.verified_count ?? verifiedRegs.length;
         const codedCount = summary?.coded_count ?? verifiedRegs.filter((r: any) => r.code_letter !== null && r.code_letter !== undefined).length;
-        const checkinDone = activeCount > 0 && verifiedCount === activeCount;
-        const checkinPending = activeCount > verifiedCount;
-        
-        const codesShuffled = verifiedCount > 0 && codedCount === verifiedCount;
-        const codesPending = verifiedCount > codedCount;
+        const { checkinDone, checkinPending, codesDone: codesShuffled, codesPending } = getStageCheckinProgress(activeCount, verifiedCount, codedCount, schedule.is_shuffle_locked);
 
         if (['scheduled', 'ongoing', 'completed'].includes(selectedStatus)) {
           matchesStatus = lifecycleStatus === selectedStatus;

@@ -113,10 +113,10 @@ export default function TagInput({ label, value, onChange, availableVariables }:
 
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 4 },
-  label: { fontSize: 10, color: '#64748B', fontFamily: 'Inter, sans-serif', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
-  previewBox: { minHeight: 28, padding: '4px 8px', border: '1px solid #DDEAF1', borderRadius: 8, backgroundColor: '#F3F8FB', fontSize: 12, fontFamily: 'Inter, sans-serif', color: '#0F172A', wordBreak: 'break-word' },
-  chip: { display: 'inline-block', backgroundColor: '#DBEAFE', color: '#1D4ED8', borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 700, fontFamily: 'monospace', margin: '0 2px' },
-  input: { width: '100%', padding: '6px 8px', border: '1px solid #DDEAF1', borderRadius: 8, fontSize: 12, fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' },
+  label: { fontSize: 10, color: '#64748B', fontFamily: "Outfit_400Regular", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' },
+  previewBox: { minHeight: 28, padding: '4px 8px', border: '1px solid #DDEAF1', borderRadius: 8, backgroundColor: '#F3F8FB', fontSize: 12, fontFamily: "Outfit_400Regular", color: '#0F172A', wordBreak: 'break-word' },
+  chip: { display: 'inline-block', backgroundColor: '#DBEAFE', color: '#1D4ED8', borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 700, fontFamily: "Outfit_400Regular", margin: '0 2px' },
+  input: { width: '100%', padding: '6px 8px', border: '1px solid #DDEAF1', borderRadius: 8, fontSize: 12, fontFamily: "Outfit_400Regular", outline: 'none', boxSizing: 'border-box' },
   dropdown: { position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 9999, backgroundColor: '#FFFFFF', border: '1px solid #DDEAF1', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)', maxHeight: 160, overflowY: 'auto' },
-  dropdownItem: { display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontFamily: 'monospace', color: '#0F172A', transition: 'background 0.1s' },
+  dropdownItem: { display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, fontFamily: "Outfit_400Regular", color: '#0F172A', transition: 'background 0.1s' },
 };

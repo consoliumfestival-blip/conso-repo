@@ -33,7 +33,11 @@ export function useProtectedRoute() {
   const isPublicAuxiliaryPath = segments[0] === 'candidate' || segments[0] === 'unit-profile';
   const isPublicPath = segments[0] === '(public)' || isPublicAuxiliaryPath;
   const publicTenantId = isPublicPath ? (routeTenantId || tenant_id) : null;
-  const { settings: tenantFeatures, isLoading: tenantFeaturesLoading } = useTenantFeatures(tenant_id);
+  // Only admin and judge routes use private module flags here. Team Leader
+  // routes load their parent tenant's flags in their own layout; passing the
+  // team's child tenant ID to this RPC causes a legitimate 42501 denial.
+  const needsPrivateFeatures = !!user && (segments[0] === '(admin)' || segments[0] === 'judge' || pathname.startsWith('/team-leaders'));
+  const { settings: tenantFeatures, isLoading: tenantFeaturesLoading } = useTenantFeatures(needsPrivateFeatures ? tenant_id : null);
   const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(publicTenantId, true);
   const installedPortalMode = getInstalledPortalMode();
   const inTeamGroup = segments[0] === 'team';

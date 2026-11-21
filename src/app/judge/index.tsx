@@ -466,9 +466,9 @@ export default function JudgePortalLanding() {
                 <View style={{ width: 64, height: 64, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 32 }}>
                   <ConsoliumLogo size={64} borderRadius={16} />
                 </View>
-                <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 44, color: '#0F172A', lineHeight: 48 }}>Judging</Text>
-                <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 44, color: '#2563EB', lineHeight: 48 }}>System</Text>
-                <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 15, color: '#64748B', marginTop: 16, maxWidth: 300, lineHeight: 22 }}>
+                <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 44, color: '#0F172A', lineHeight: 48 }}>Judging</Text>
+                <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 44, color: '#2563EB', lineHeight: 48 }}>System</Text>
+                <Text style={{ fontFamily: "Outfit_400Regular", fontSize: 15, color: '#64748B', marginTop: 16, maxWidth: 300, lineHeight: 22 }}>
                   Enter your one-time access code to continue
                 </Text>
               </View>
@@ -513,9 +513,9 @@ export default function JudgePortalLanding() {
               <View style={{ width: 60, height: 60, backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#94A3B8', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 5, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
                 <ConsoliumLogo size={56} borderRadius={16} />
               </View>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 32, color: '#0F172A', lineHeight: 36, textAlign: 'center' }}>Judging</Text>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 32, color: '#2563EB', lineHeight: 36, textAlign: 'center' }}>System</Text>
-              <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: '#64748B', marginTop: 12, textAlign: 'center', paddingHorizontal: 20, lineHeight: 22 }}>
+              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 32, color: '#0F172A', lineHeight: 36, textAlign: 'center' }}>Judging</Text>
+              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 32, color: '#2563EB', lineHeight: 36, textAlign: 'center' }}>System</Text>
+              <Text style={{ fontFamily: "Outfit_400Regular", fontSize: 14, color: '#64748B', marginTop: 12, textAlign: 'center', paddingHorizontal: 20, lineHeight: 22 }}>
                 Enter your one-time access code{'\n'}to continue
               </Text>
             </View>

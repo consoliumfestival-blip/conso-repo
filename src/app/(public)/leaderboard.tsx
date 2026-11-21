@@ -1346,7 +1346,7 @@ const styles = StyleSheet.create({
     }),
   },
   navBarText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
   },
@@ -1379,7 +1379,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   heroTitle: {
-    fontFamily: Platform.OS === 'web' ? 'Georgia, serif' : 'serif',
+    fontFamily: Platform.OS === 'web' ? "Outfit_400Regular" : "Outfit_400Regular",
     color: '#FFFFFF',
     fontSize: 40,
     lineHeight: 48,
@@ -1401,7 +1401,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   kickerText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.85)',
     fontSize: 12.5,
   },
@@ -1429,7 +1429,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   liveStatusTitle: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 14.5,
     marginRight: 6,
@@ -1445,12 +1445,12 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   liveStatusLabelText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 13,
   },
   liveStatusValueText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 13,
   },
@@ -1487,7 +1487,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   sectionTitleLabel: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.9)',
     fontSize: 16,
     marginBottom: 16,
@@ -1553,7 +1553,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
   },
   quickNavTitleText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 12,
     textAlign: 'center',
@@ -1622,7 +1622,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   podiumNameText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 12,
     textAlign: 'center',
@@ -1632,7 +1632,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   podiumPointsText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FBBF24',
     fontSize: 14,
     marginTop: 2,
@@ -1817,7 +1817,7 @@ const styles = StyleSheet.create({
   },
   badge3DBronzeMobile: {},
   badge3DRankText: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
   },
@@ -1825,7 +1825,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   badge3DSuffixText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 9,
     top: -3,
@@ -1901,17 +1901,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backButtonText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.85)',
     fontSize: 11,
   },
   compactHeaderTitle: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 26,
   },
   compactHeaderSubtitle: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255,255,255,0.5)',
     fontSize: 12.5,
   },
@@ -1927,7 +1927,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   staffLoginText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 11.5,
   },
@@ -1955,7 +1955,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: '#FFFFFF',
     fontSize: 13.5,
     ...Platform.select({
@@ -1981,7 +1981,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   categoryText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 11,
   },
@@ -2012,7 +2012,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.18)',
   },
   tabText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.6)',
     fontSize: 11.5,
   },
@@ -2042,7 +2042,7 @@ const styles = StyleSheet.create({
   },
   listHeaderText: {
     width: 58,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 10.5,
     textTransform: 'uppercase',
@@ -2062,7 +2062,7 @@ const styles = StyleSheet.create({
   },
   rankNumber: {
     width: 36,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 18,
   },
@@ -2078,13 +2078,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rowName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 14,
   },
   rowSub: {
     marginTop: 2,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
   },
@@ -2093,13 +2093,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   rowPointsValue: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 18,
     lineHeight: 20,
   },
   rowPointsLabel: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 9,
     textTransform: 'uppercase',
@@ -2139,14 +2139,14 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   itemSectionTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
     lineHeight: 20,
   },
   itemSectionMeta: {
     marginTop: 3,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255,255,255,0.5)',
     fontSize: 11.5,
   },
@@ -2162,7 +2162,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   publishedPillText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 9.5,
     textTransform: 'uppercase',
@@ -2186,7 +2186,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   itemRankText: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13.5,
   },
   itemMain: {
@@ -2194,13 +2194,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   itemName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 13.5,
   },
   itemSub: {
     marginTop: 2,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
   },
@@ -2216,7 +2216,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   gradeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#3B82F6',
     fontSize: 10.5,
   },
@@ -2235,7 +2235,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   viewMoreText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 12.5,
   },
@@ -2252,14 +2252,14 @@ const styles = StyleSheet.create({
   },
   stateTitle: {
     marginTop: 12,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 16,
   },
   stateMessage: {
     marginTop: 8,
     maxWidth: 380,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255,255,255,0.5)',
     fontSize: 12.5,
     lineHeight: 20,
@@ -2274,13 +2274,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#EF4444',
     fontSize: 15,
   },
   errorMessage: {
     marginTop: 6,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: '#FCA5A5',
     fontSize: 12.5,
   },
@@ -2298,7 +2298,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   retryText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 11.5,
   },
@@ -2315,7 +2315,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   timelineDateText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 14.5,
   },
@@ -2352,7 +2352,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   timelineCardTimeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
     flex: 1,
@@ -2379,7 +2379,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139, 92, 246, 0.15)',
   },
   statusBadgeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 9,
     textTransform: 'uppercase',
@@ -2397,7 +2397,7 @@ const styles = StyleSheet.create({
     color: '#A78BFA',
   },
   timelineCardEventName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
     lineHeight: 21,
@@ -2416,7 +2416,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   timelineCardMetaBadgeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.5)',
     fontSize: 9.5,
   },
@@ -2427,7 +2427,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   timelineCardVenueText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FBBF24',
     fontSize: 11,
   },
@@ -2465,14 +2465,14 @@ const styles = StyleSheet.create({
   },
   teamPointBannerTitle: {
     color: 'rgba(255, 255, 255, 0.6)',
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   teamPointBannerValue: {
     color: '#FBBF24',
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 16,
     marginTop: 2,
   },

@@ -25,8 +25,8 @@ function Step({ number, title, children }: { number: string; title: string; chil
         <Text style={{ color: C.green, fontWeight: '800', fontSize: 13 }}>{number}</Text>
       </View>
       <View style={{ flex: 1, gap: 6 }}>
-        <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 14 }}>{title}</Text>
-        <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 19 }}>{children}</Text>
+        <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 14 }}>{title}</Text>
+        <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, lineHeight: 19 }}>{children}</Text>
       </View>
     </View>
   );
@@ -49,9 +49,9 @@ export default function TenantGuide() {
           <ArrowLeft size={19} color={C.text} />
         </TouchableOpacity>
 
-        <Text style={{ color: C.accent, fontFamily: 'Poppins_600SemiBold', fontSize: 11, letterSpacing: 1.5 }}>SUPERADMIN HELP</Text>
-        <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: compact ? 23 : 28, lineHeight: compact ? 30 : 36, marginTop: 4 }}>Create and activate a tenant</Text>
-        <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 18 }}>
+        <Text style={{ color: C.accent, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5 }}>SUPERADMIN HELP</Text>
+        <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: compact ? 23 : 28, lineHeight: compact ? 30 : 36, marginTop: 4 }}>Create and activate a tenant</Text>
+        <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 18 }}>
           A tenant account is linked to an organisation. Create the organisation first, then provision its admin account from Tenant Accounts.
         </Text>
 
@@ -73,8 +73,8 @@ export default function TenantGuide() {
         <View style={{ marginTop: 14, padding: 15, borderRadius: 12, backgroundColor: C.greenBg, borderWidth: 1, borderColor: `${C.green}55`, flexDirection: 'row', gap: 10 }}>
           <CheckCircle2 size={18} color={C.green} style={{ marginTop: 1 }} />
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={{ color: C.green, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>New tenants are enabled when provisioning completes</Text>
-            <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18 }}>
+            <Text style={{ color: C.green, fontFamily: "Outfit_700Bold", fontSize: 13 }}>New tenants are enabled when provisioning completes</Text>
+            <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 12, lineHeight: 18 }}>
               There is no separate activation step for a newly created tenant. Tenant Accounts should show it as Active after the account has been linked.
             </Text>
           </View>
@@ -83,8 +83,8 @@ export default function TenantGuide() {
         <View style={{ marginTop: 10, padding: 15, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, flexDirection: 'row', gap: 10 }}>
           <ShieldCheck size={18} color={C.accent} style={{ marginTop: 1 }} />
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Re-enable a disabled tenant</Text>
-            <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18 }}>
+            <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Re-enable a disabled tenant</Text>
+            <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, lineHeight: 18 }}>
               In Tenant Accounts, open the Disabled organisation and choose Re-enable Access, then confirm. This restores tenant access and preserves festival data/history. It does not create a missing admin account or reset its password.
             </Text>
           </View>
@@ -93,8 +93,8 @@ export default function TenantGuide() {
         <View style={{ marginTop: 10, padding: 15, borderRadius: 12, backgroundColor: C.warningBg, borderWidth: 1, borderColor: `${C.warning}55`, flexDirection: 'row', gap: 10 }}>
           <Info size={18} color={C.warning} style={{ marginTop: 1 }} />
           <View style={{ flex: 1, gap: 5 }}>
-            <Text style={{ color: C.warning, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>If Onboard is unavailable</Text>
-            <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18 }}>
+            <Text style={{ color: C.warning, fontFamily: "Outfit_700Bold", fontSize: 13 }}>If Onboard is unavailable</Text>
+            <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 12, lineHeight: 18 }}>
               {FEATURE_FLAGS.ENABLE_ONBOARDING
                 ? 'Tenant onboarding is enabled in this build. If Onboard is still unavailable for an organisation, refresh Tenant Accounts and check that the organisation has not already been linked to a tenant.'
                 : 'Tenant onboarding is disabled in this build. EXPO_PUBLIC_ENABLE_ONBOARDING defaults to off; the deployed app configuration must enable it for Onboard and credential-reset actions to appear.'}
@@ -108,14 +108,14 @@ export default function TenantGuide() {
             onPress={() => router.push('/(super)/organisations')}
             style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Open Organisation Hierarchy</Text>
+            <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 12 }}>Open Organisation Hierarchy</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             onPress={() => router.push('/(super)/tenants')}
             style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: C.green, backgroundColor: C.greenBg, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Text style={{ color: C.green, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Open Tenant Accounts</Text>
+            <Text style={{ color: C.green, fontFamily: "Outfit_700Bold", fontSize: 12 }}>Open Tenant Accounts</Text>
           </TouchableOpacity>
         </View>
       </View>

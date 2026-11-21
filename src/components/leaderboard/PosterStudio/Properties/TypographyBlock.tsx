@@ -118,6 +118,6 @@ const styles: Record<string, React.CSSProperties> = {
   toggleRow: { display: 'flex', gap: 8 },
   alignRow: { display: 'flex', gap: 4, marginTop: 4 },
   alignBtn: { flex: 1, height: 32, borderRadius: 6, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  smallLabel: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 3 },
-  select: { width: '100%', padding: '6px 8px', borderRadius: 8, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, backgroundColor: coreColor('#171717', 'surfaceStrong'), color: coreColor('#E2E8F0', 'text'), fontSize: 12, fontFamily: 'Inter, sans-serif', outline: 'none' },
+  smallLabel: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: "Outfit_400Regular", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: 3 },
+  select: { width: '100%', padding: '6px 8px', borderRadius: 8, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, backgroundColor: coreColor('#171717', 'surfaceStrong'), color: coreColor('#E2E8F0', 'text'), fontSize: 12, fontFamily: "Outfit_400Regular", outline: 'none' },
 };

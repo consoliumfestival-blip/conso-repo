@@ -100,7 +100,7 @@ export default function FontManagerPanel({ onClose, onUploadSuccess }: FontManag
 
 const styles: Record<string, React.CSSProperties> = {
   backdrop: { position: 'fixed', inset: 0, backgroundColor: coreAlpha(coreColor('#000000', 'surface'), 0.8), zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  modal: { backgroundColor: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: 'Inter, sans-serif' },
+  modal: { backgroundColor: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 12, padding: 24, width: 400, maxWidth: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', fontFamily: "Outfit_400Regular" },
   title: { fontSize: 16, fontWeight: 700, color: coreColor('#E2E8F0', 'text'), margin: '0 0 4px 0' },
   subtitle: { fontSize: 13, color: coreColor('#94A3B8', 'textSubtle'), margin: '0 0 20px 0' },
   error: { backgroundColor: coreColor('#451a1a', 'surfaceStrong'), color: coreColor('#fca5a5', 'danger'), padding: '8px 12px', borderRadius: 6, fontSize: 13, marginBottom: 16, border: `1px solid ${coreColor('#7f1d1d', 'border')}` },

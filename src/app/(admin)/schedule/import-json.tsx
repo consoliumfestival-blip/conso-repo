@@ -377,7 +377,7 @@ export default function ImportScheduleJson() {
               accept=".json" 
               onChange={handleFileUpload} 
               style={{
-                fontFamily: 'Poppins_600SemiBold',
+                fontFamily: "Outfit_700Bold",
                 backgroundColor: coreColor('#065F46', 'successAction'),
                 color: ui.colors.onPrimary,
                 padding: '10px 20px',

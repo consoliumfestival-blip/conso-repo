@@ -211,14 +211,14 @@ function MetricCard({ label, value, delta, trend, icon: Icon, iconBg, iconColor,
       style={[cardSurface, { backgroundColor: colors?.surface, borderColor: colors?.border, flex: 1, minWidth: 190, height: 102, padding: 15, overflow: 'hidden' }]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11.5 }}>{label}</Text>
+        <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 11.5 }}>{label}</Text>
         <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: iconBg, alignItems: 'center', justifyContent: 'center' }}>
           <Icon color={iconColor} size={19} strokeWidth={2.4} />
         </View>
       </View>
       <View style={{ marginTop: -4 }}>
-        <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 25, lineHeight: 29, letterSpacing: -0.6 }}>{value}</Text>
-        <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: trendColor, fontSize: 10.5, marginTop: 1 }}>
+        <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 25, lineHeight: 29, letterSpacing: -0.6 }}>{value}</Text>
+        <Text numberOfLines={1} style={{ fontFamily: "Outfit_700Bold", color: trendColor, fontSize: 10.5, marginTop: 1 }}>
           {trendPrefix} {delta}
         </Text>
       </View>
@@ -247,7 +247,7 @@ function SidebarItem({ label, icon: Icon, active, onPress }: NavigationItem) {
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
         <Icon color={active ? ui.colors.onPrimary : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.65)} size={16} strokeWidth={2.1} />
-        <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: active ? ui.colors.onPrimary : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.72), fontSize: 12.5, marginLeft: 10, flex: 1, letterSpacing: 0.3 }}>
+        <Text numberOfLines={1} style={{ fontFamily: "Outfit_700Bold", color: active ? ui.colors.onPrimary : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.72), fontSize: 12.5, marginLeft: 10, flex: 1, letterSpacing: 0.3 }}>
           {label}
         </Text>
       </View>
@@ -272,7 +272,7 @@ function ActionCard({ label, icon: Icon, visible, onPress }: ActionCardProps) {
       <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: colors?.primarySoft ?? ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center', marginRight: 11 }}>
         <Icon color={colors?.primaryText ?? EMERALD_DARK} size={19} strokeWidth={2.4} />
       </View>
-      <Text numberOfLines={2} style={{ flex: 1, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11.5, lineHeight: 15 }}>
+      <Text numberOfLines={2} style={{ flex: 1, fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 11.5, lineHeight: 15 }}>
         {label}
       </Text>
       <ChevronRight color={ui.colors.textSubtle} size={15} />
@@ -304,7 +304,7 @@ function InsightChip({
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: 'Poppins_700Bold', color: active ? EMERALD_DARK : MUTED, fontSize: 10.5 }}>
+      <Text style={{ fontFamily: "Outfit_700Bold", color: active ? EMERALD_DARK : MUTED, fontSize: 10.5 }}>
         {label}
       </Text>
     </TouchableOpacity>
@@ -315,14 +315,14 @@ function SectionHeader({ title, action, onAction }: { title: string; action?: st
   const colors = useCoreAppearance()?.colors;
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-      <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 14 }}>{title}</Text>
+      <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 14 }}>{title}</Text>
       {action && (
         <TouchableOpacity
           onPress={onAction}
           disabled={!onAction}
           style={{ height: 28, paddingHorizontal: 14, borderRadius: 999, backgroundColor: colors?.primarySoft ?? ui.colors.primarySoft, flexDirection: 'row', alignItems: 'center' }}
         >
-          <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor(EMERALD_DARK, 'primaryText'), fontSize: 10 }}>{action}</Text>
+          <Text style={{ fontFamily: "Outfit_700Bold", color: coreColor(EMERALD_DARK, 'primaryText'), fontSize: 10 }}>{action}</Text>
           <ChevronRight color={coreColor(EMERALD_DARK, 'primaryText')} size={13} />
         </TouchableOpacity>
       )}
@@ -337,7 +337,7 @@ function EmptyAnalytics({ title }: { title: string }) {
       <SectionHeader title={title} />
       <View style={{ flex: 1, borderRadius: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: BORDER, backgroundColor: coreColor('#EDF2F7', 'surface'), alignItems: 'center', justifyContent: 'center' }}>
         <BarChart3 color={coreColor("#CBD5E1", 'text')} size={34} />
-        <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 12, marginTop: 8 }}>No dashboard data yet</Text>
+        <Text style={{ fontFamily: "Outfit_700Bold", color: MUTED, fontSize: 12, marginTop: 8 }}>No dashboard data yet</Text>
       </View>
     </View>
   );
@@ -456,13 +456,13 @@ export default function AdminDashboardContent() {
                   <ShieldCheck color={coreColor(EMERALD_DARK, 'primaryText')} size={25} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor('#D1FAE5', 'success'), fontSize: 8, letterSpacing: 1.4, textTransform: 'uppercase' }}>
+                  <Text style={{ fontFamily: "Outfit_700Bold", color: coreColor('#D1FAE5', 'success'), fontSize: 8, letterSpacing: 1.4, textTransform: 'uppercase' }}>
                     {orgType} Portal
                   </Text>
-                  <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 18, lineHeight: 21, letterSpacing: 0.4 }}>
+                  <Text numberOfLines={1} style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary, fontSize: 18, lineHeight: 21, letterSpacing: 0.4 }}>
                     {orgName}
                   </Text>
-                  <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#D1FAE5', 'success'), fontSize: 10 }}>Manage your festival operations</Text>
+                  <Text style={{ fontFamily: "Outfit_400Regular", color: coreColor('#D1FAE5', 'success'), fontSize: 10 }}>Manage your festival operations</Text>
                 </View>
               </View>
             </View>
@@ -480,8 +480,8 @@ export default function AdminDashboardContent() {
                     <ShieldCheck color={ui.colors.onPrimary} size={16} />
                   </View>
                   <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 10 }}>{orgName}</Text>
-                    <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#CFFAFE', 'info'), fontSize: 9 }}>Festival Management System</Text>
+                    <Text numberOfLines={1} style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary, fontSize: 10 }}>{orgName}</Text>
+                    <Text style={{ fontFamily: "Outfit_400Regular", color: coreColor('#CFFAFE', 'info'), fontSize: 9 }}>Festival Management System</Text>
                   </View>
                 </View>
               </View>
@@ -519,7 +519,7 @@ export default function AdminDashboardContent() {
                     onChangeText={setSearchQuery}
                     placeholder="Search pages..."
                     placeholderTextColor={ui.colors.textSubtle}
-                    style={{ flex: 1, marginLeft: 10, fontFamily: 'Poppins_400Regular', color: NAVY, fontSize: 12, paddingVertical: 0 }}
+                    style={{ flex: 1, marginLeft: 10, fontFamily: "Outfit_400Regular", color: NAVY, fontSize: 12, paddingVertical: 0 }}
                   />
                 </View>
                 {searchResults.length > 0 && (
@@ -552,7 +552,7 @@ export default function AdminDashboardContent() {
                           style={{ paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', borderRadius: 8 }}
                         >
                           <Icon color={coreColor(EMERALD_DARK, 'primaryText')} size={15} />
-                          <Text style={{ marginLeft: 9, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 11 }}>
+                          <Text style={{ marginLeft: 9, fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 11 }}>
                             {item.label}
                           </Text>
                         </TouchableOpacity>
@@ -573,7 +573,7 @@ export default function AdminDashboardContent() {
                 <Bell color={NAVY} size={19} />
                 {unreadNotificationCount > 0 && (
                   <View style={{ position: 'absolute', top: -5, right: -5, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: EMERALD, alignItems: 'center', justifyContent: 'center' }}>
-                    <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary, fontSize: 8 }}>
+                    <Text style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary, fontSize: 8 }}>
                       {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
                     </Text>
                   </View>
@@ -585,8 +585,8 @@ export default function AdminDashboardContent() {
                 </View>
                 {isTablet && (
                   <View style={{ marginLeft: 10 }}>
-                    <Text numberOfLines={1} style={{ maxWidth: 140, fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 12 }}>{userName}</Text>
-                    <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>{roleLabel}</Text>
+                    <Text numberOfLines={1} style={{ maxWidth: 140, fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 12 }}>{userName}</Text>
+                    <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 10 }}>{roleLabel}</Text>
                   </View>
                 )}
                 {isTablet && <ChevronDown color={MUTED} size={15} style={{ marginLeft: 6 }} />}
@@ -607,8 +607,8 @@ export default function AdminDashboardContent() {
           >
             {!isTablet && (
               <View style={{ backgroundColor: SIDEBAR, borderRadius: 14, padding: 14, marginBottom: 12 }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', color: coreColor('#D1FAE5', 'success'), fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2 }}>{orgType} Portal</Text>
-                <Text style={{ fontFamily: 'Montserrat_700Bold', color: ui.colors.onPrimary, fontSize: 21 }}>{orgName}</Text>
+                <Text style={{ fontFamily: "Outfit_700Bold", color: coreColor('#D1FAE5', 'success'), fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.2 }}>{orgType} Portal</Text>
+                <Text style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary, fontSize: 21 }}>{orgName}</Text>
               </View>
             )}
 
@@ -632,8 +632,8 @@ export default function AdminDashboardContent() {
                     <Users color={coreColor(EMERALD_DARK, 'primaryText')} size={23} strokeWidth={2.4} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: isDesktop ? 19 : 18, lineHeight: 24 }}>Welcome back, {userName}!</Text>
-                    <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11.5, marginTop: 3 }}>Here is what is happening with your festival today.</Text>
+                    <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: isDesktop ? 19 : 18, lineHeight: 24 }}>Welcome back, {userName}!</Text>
+                    <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 11.5, marginTop: 3 }}>Here is what is happening with your festival today.</Text>
                   </View>
                 </View>
 
@@ -648,14 +648,14 @@ export default function AdminDashboardContent() {
                       style={{ minHeight: 40, paddingHorizontal: 13, borderWidth: 1, borderColor: dashboardColors.border, borderRadius: 9, backgroundColor: dashboardColors.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isRefetching ? 0.65 : 1 }}
                     >
                       {isRefetching ? <ActivityIndicator size="small" color={dashboardColors.primaryText} /> : <RefreshCw size={15} color={dashboardColors.primaryText} />}
-                      <Text style={{ color: dashboardColors.primaryText, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{isRefetching ? 'Updating…' : 'Update dashboard'}</Text>
+                      <Text style={{ color: dashboardColors.primaryText, fontFamily: "Outfit_700Bold", fontSize: 12 }}>{isRefetching ? 'Updating…' : 'Update dashboard'}</Text>
                     </TouchableOpacity>
                     <View accessibilityRole="text" accessibilityLiveRegion="polite" style={{ minHeight: 32, maxWidth: '100%', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: isError ? ui.colors.dangerSoft : dashboardColors.primarySoft, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: isError ? DANGER : SUCCESS }} />
-                      <Text style={{ flexShrink: 1, color: isError ? DANGER : dashboardColors.primaryText, fontFamily: 'Poppins_600SemiBold', fontSize: 10 }}>{isError ? 'Unable to sync' : 'Synced with Supabase'}</Text>
+                      <Text style={{ flexShrink: 1, color: isError ? DANGER : dashboardColors.primaryText, fontFamily: "Outfit_700Bold", fontSize: 10 }}>{isError ? 'Unable to sync' : 'Synced with Supabase'}</Text>
                     </View>
                   </View>
-                  <Text style={{ fontFamily: 'Poppins_400Regular', color: dashboardColors.textMuted, fontSize: 10 }}>Last updated: {updatedAt}</Text>
+                  <Text style={{ fontFamily: "Outfit_400Regular", color: dashboardColors.textMuted, fontSize: 10 }}>Last updated: {updatedAt}</Text>
                 </View>
               </View>
             </Animated.View>
@@ -669,8 +669,8 @@ export default function AdminDashboardContent() {
 
             <Animated.View entering={FadeInUp.duration(420).delay(280).springify()} style={{ marginBottom: 18 }}>
               <View style={{ paddingBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 14 }}>Quick Actions</Text>
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10.5 }}>Festival shortcuts</Text>
+                <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 14 }}>Quick Actions</Text>
+                <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 10.5 }}>Festival shortcuts</Text>
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, width: '100%' }}>
                 {actionItems.map((item) => (
@@ -700,8 +700,8 @@ export default function AdminDashboardContent() {
                   <ListFilter color={coreColor(EMERALD_DARK, 'primaryText')} size={18} />
                 </View>
                 <View>
-                  <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 13 }}>Festival insights</Text>
-                  <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 10 }}>Choose the analytics you want to focus on</Text>
+                  <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 13 }}>Festival insights</Text>
+                  <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 10 }}>Choose the analytics you want to focus on</Text>
                 </View>
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -750,8 +750,8 @@ export default function AdminDashboardContent() {
                         })()}
                       </Svg>
                       <View style={{ position: 'absolute', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 24 }}>{categoryTotal.toLocaleString()}</Text>
-                        <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11 }}>Participants</Text>
+                        <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 24 }}>{categoryTotal.toLocaleString()}</Text>
+                        <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 11 }}>Participants</Text>
                       </View>
                     </View>
 
@@ -762,9 +762,9 @@ export default function AdminDashboardContent() {
                           <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 6 }}>
                               <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryChartColors[index % categoryChartColors.length], marginRight: 10 }} />
-                              <Text style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, flexShrink: 1 }} numberOfLines={2}>{item.name}</Text>
+                              <Text style={{ fontFamily: "Outfit_700Bold", color: MUTED, fontSize: 11, flexShrink: 1 }} numberOfLines={2}>{item.name}</Text>
                             </View>
-                            <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 10 }}>
+                            <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 10 }}>
                               {item.count} ({pct}%)
                             </Text>
                           </View>
@@ -815,8 +815,8 @@ export default function AdminDashboardContent() {
                         })()}
                       </Svg>
                       <View style={{ position: 'absolute', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 24 }}>{unitTotal.toLocaleString()}</Text>
-                        <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11 }}>Total</Text>
+                        <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 24 }}>{unitTotal.toLocaleString()}</Text>
+                        <Text style={{ fontFamily: "Outfit_400Regular", color: MUTED, fontSize: 11 }}>Total</Text>
                       </View>
                     </View>
 
@@ -827,9 +827,9 @@ export default function AdminDashboardContent() {
                           <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 6 }}>
                               <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryChartColors[index % categoryChartColors.length], marginRight: 10 }} />
-                              <Text numberOfLines={2} style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, flexShrink: 1 }}>{item.name}</Text>
+                              <Text numberOfLines={2} style={{ fontFamily: "Outfit_700Bold", color: MUTED, fontSize: 11, flexShrink: 1 }}>{item.name}</Text>
                             </View>
-                            <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 10 }}>
+                            <Text style={{ fontFamily: "Outfit_700Bold", color: NAVY, fontSize: 10 }}>
                               {item.count} ({pct}%)
                             </Text>
                           </View>
@@ -845,7 +845,7 @@ export default function AdminDashboardContent() {
 
             </View>
 
-            <Text style={{ textAlign: 'center', fontFamily: 'Poppins_400Regular', color: ui.colors.textMuted, fontSize: 12.5, marginTop: 24, marginBottom: 24 }}>
+            <Text style={{ textAlign: 'center', fontFamily: "Outfit_400Regular", color: ui.colors.textMuted, fontSize: 12.5, marginTop: 24, marginBottom: 24 }}>
               © {new Date().getFullYear()} {orgName} Festival Management System. All rights reserved.
             </Text>
           </ScrollView>

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Crown, Trophy } from 'lucide-react-native';
 import { useAdminCategoryTrophy, useCategoryTrophyMode, usePublicCategoryTrophy } from '@/core/hooks/useCategoryTrophy';
+import { usePublicSnapshot } from '@/core/hooks/usePublicSnapshot';
 
 type Props = {
   tenantId?: string | null;
@@ -20,8 +21,10 @@ const colors = {
 };
 
 export function CategoryTrophyBoard({ tenantId, festivalId, audience }: Props) {
-  const mode = useCategoryTrophyMode(tenantId, festivalId);
-  const publicRows = usePublicCategoryTrophy(tenantId, festivalId, audience === 'public' && mode.data?.enabled === true && mode.data.public_visible === true);
+  const snapshot = usePublicSnapshot(tenantId, audience === 'public');
+  const publicRevision = audience === 'public' ? snapshot.data?.revision : undefined;
+  const mode = useCategoryTrophyMode(tenantId, festivalId, publicRevision);
+  const publicRows = usePublicCategoryTrophy(tenantId, festivalId, audience === 'public' && mode.data?.enabled === true && mode.data.public_visible === true, publicRevision);
   const adminRows = useAdminCategoryTrophy(tenantId, festivalId, audience === 'admin' && mode.data?.enabled === true);
   const loading = mode.isLoading || (audience === 'public' ? publicRows.isLoading : adminRows.isLoading);
   const error = mode.error || (audience === 'public' ? publicRows.error : adminRows.error);

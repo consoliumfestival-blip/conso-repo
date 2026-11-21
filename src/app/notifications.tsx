@@ -77,8 +77,8 @@ function NotificationsInbox() {
             <ArrowLeft size={20} color={palette.text} />
           </TouchableOpacity>
           <View>
-            <Text style={{ fontFamily: 'Montserrat_700Bold', fontSize: 24, color: palette.text, letterSpacing: -0.5 }}>Notifications</Text>
-            <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 12, color: palette.muted }}>Your recent alerts and updates</Text>
+            <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 24, color: palette.text, letterSpacing: -0.5 }}>Notifications</Text>
+            <Text style={{ fontFamily: "Outfit_400Regular", fontSize: 12, color: palette.muted }}>Your recent alerts and updates</Text>
           </View>
         </View>
       
@@ -97,8 +97,8 @@ function NotificationsInbox() {
               <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: palette.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 1, borderBottomWidth: 4, borderColor: palette.border }}>
                 <Bell size={32} color={palette.muted} />
               </View>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 18, color: palette.text }}>No notifications yet</Text>
-              <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: 14, color: palette.muted, marginTop: 8 }}>You&apos;re all caught up!</Text>
+              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 18, color: palette.text }}>No notifications yet</Text>
+              <Text style={{ fontFamily: "Outfit_400Regular", fontSize: 14, color: palette.muted, marginTop: 8 }}>You&apos;re all caught up!</Text>
             </View>
           ) : (
             notifications.map(item => {
@@ -140,15 +140,15 @@ function NotificationsInbox() {
                     
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                        <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: isDesktop ? 16 : 15, color: isUnread ? coreColor('#FFFFFF', 'onPrimary') : palette.muted, flex: 1, marginRight: 8, letterSpacing: -0.2 }}>
+                        <Text style={{ fontFamily: "Outfit_700Bold", fontSize: isDesktop ? 16 : 15, color: isUnread ? coreColor('#FFFFFF', 'onPrimary') : palette.muted, flex: 1, marginRight: 8, letterSpacing: -0.2 }}>
                           {notif.title}
                         </Text>
-                        <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 12 : 11, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.5) }}>
+                        <Text style={{ fontFamily: "Outfit_400Regular", fontSize: isDesktop ? 12 : 11, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.5) }}>
                           {new Date(notif.created_at).toLocaleString('en-US', { hour: 'numeric', minute: '2-digit' })}
                         </Text>
                       </View>
                       
-                      <Text style={{ fontFamily: 'Poppins_400Regular', fontSize: isDesktop ? 14 : 13, color: isUnread ? coreAlpha(coreColor('#ffffff', 'textMuted'), 0.85) : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4), lineHeight: isDesktop ? 22 : 20 }}>
+                      <Text style={{ fontFamily: "Outfit_400Regular", fontSize: isDesktop ? 14 : 13, color: isUnread ? coreAlpha(coreColor('#ffffff', 'textMuted'), 0.85) : coreAlpha(coreColor('#ffffff', 'textMuted'), 0.4), lineHeight: isDesktop ? 22 : 20 }}>
                         {notif.message}
                       </Text>
 
@@ -156,11 +156,11 @@ function NotificationsInbox() {
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                           {notif.priority !== 'NORMAL' && (
                             <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: priorityColor + '20' }}>
-                              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 10, color: priorityColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>{notif.priority}</Text>
+                              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 10, color: priorityColor, textTransform: 'uppercase', letterSpacing: 0.5 }}>{notif.priority}</Text>
                             </View>
                           )}
                           <View style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.06) }}>
-                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.6), textTransform: 'capitalize' }}>{notif.type}</Text>
+                            <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 10, color: coreAlpha(coreColor('#ffffff', 'textMuted'), 0.6), textTransform: 'capitalize' }}>{notif.type}</Text>
                           </View>
                         </View>
                         
@@ -178,7 +178,7 @@ function NotificationsInbox() {
                             }}
                           >
                             <Check size={14} color={coreColor("#FFF", 'onPrimary')} />
-                            <Text style={{ fontFamily: 'Poppins_600SemiBold', fontSize: isDesktop ? 12 : 11, color: coreColor('#FFF', 'onPrimary'), marginLeft: 6 }}>Mark Read</Text>
+                            <Text style={{ fontFamily: "Outfit_700Bold", fontSize: isDesktop ? 12 : 11, color: coreColor('#FFF', 'onPrimary'), marginLeft: 6 }}>Mark Read</Text>
                           </TouchableOpacity>
                         )}
                       </View>

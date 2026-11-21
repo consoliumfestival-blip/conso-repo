@@ -53,7 +53,7 @@ export default function ControlDock({
                 addLayer({
                   id: newId, type: 'text', version: '1.0', name: 'New Text', text: 'New Text',
                   x: 540 - 100, y: 540 - 20, width: 200, height: 40, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1,
-                  fontSize: 32, fontFamily: 'Poppins', fontWeight: 600, fill: '#000000', align: 'left', lineHeight: 1.2, letterSpacing: 0,
+                  fontSize: 32, fontFamily: "Outfit_400Regular", fontWeight: 600, fill: '#000000', align: 'left', lineHeight: 1.2, letterSpacing: 0,
                   zIndex: ls.length > 0 ? Math.max(...ls.map(l => l.zIndex)) + 1 : 1, isVisible: true, isLocked: false, lockProfile: 'editable',
                 });
                 useLayerStore.getState().setSelectedIds([newId]);

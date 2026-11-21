@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: colors.muted,
     fontSize: 14,
   },
@@ -402,15 +402,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   sectionTitle: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
     color: colors.text,
   },
   sectionSub: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     color: colors.muted,
   },
@@ -425,13 +425,13 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   paneTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
     color: colors.text,
     marginBottom: 6,
   },
   paneSub: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     color: colors.muted,
     marginBottom: 14,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: colors.muted,
     fontSize: 13,
   },
@@ -472,12 +472,12 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   itemTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
     color: colors.text,
   },
   itemMeta: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
     color: colors.muted,
   },
@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFDFE',
   },
   cardTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
     color: colors.text,
   },
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     height: 42,
     paddingHorizontal: 12,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
     color: colors.text,
     backgroundColor: '#FFFFFF',
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     backgroundColor: `${colors.teal}14`,
   },
   dimText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     color: colors.muted,
   },
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   uploadButtonText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
     color: '#FFFFFF',
   },
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   fieldLabel: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     color: colors.teal,
     letterSpacing: 1,
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     minWidth: 80,
   },
   cellLabel: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 10,
     color: colors.muted,
     marginBottom: 4,
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     height: 36,
     paddingHorizontal: 8,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
     color: colors.text,
   },
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   applyMappingsText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
     color: '#FFFFFF',
   },
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   noTemplateText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: colors.muted,
     fontSize: 13,
     textAlign: 'center',

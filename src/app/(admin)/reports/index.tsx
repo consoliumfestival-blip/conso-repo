@@ -36,10 +36,10 @@ const REPORT_OPTIONS: { value: ReportKind; label: string; detail: string }[] = [
   { value: 'chance_sheet', label: 'Chance sheet', detail: 'The existing printable judging sheet for one program.' },
 ];
 
-function Filter({ label, value, options, onChange, width }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; width: string }) {
+function Filter({ label, value, options, onChange, width, placeholder }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; width: '23%' | '48%' | '100%'; placeholder?: string }) {
   return <View style={{ flexBasis: width, flexGrow: 0, flexShrink: 1, minWidth: 170, gap: 7 }}>
     <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>{label.toUpperCase()}</Text>
-    <SsfSelectMenu value={value} options={options} onValueChange={onChange} accessibilityLabel={label} placeholder={`All ${label.toLowerCase()}`} width={200} searchable={options.length > 7} keepInViewport />
+    <SsfSelectMenu value={value} options={options} onValueChange={onChange} accessibilityLabel={label} placeholder={placeholder ?? `All ${label.toLowerCase()}`} width={200} searchable={options.length > 7} keepInViewport />
   </View>;
 }
 
@@ -50,8 +50,8 @@ export default function ReportsAndPrintouts() {
   const tenantId = useAuthStore((state) => state.tenant_id);
   const userId = useAuthStore((state) => state.user?.id);
   const { useActiveFestival, useItems } = useFestival();
-  const { data: festival, isLoading: festivalLoading } = useActiveFestival();
-  const { data: rawItems = [], isLoading: itemsLoading } = useItems(festival?.id);
+  const { data: festival, isLoading: festivalLoading, isError: festivalError, refetch: retryFestival } = useActiveFestival();
+  const { data: rawItems = [], isLoading: itemsLoading, isError: itemsError, refetch: retryItems } = useItems(festival?.id);
   const { data: festivalCategories = [] } = useFestivalCategories(festival?.id, true);
   const [report, setReport] = useState<ReportKind>('program_list');
   const [fileType, setFileType] = useState<'PDF' | 'CSV'>('PDF');
@@ -115,12 +115,31 @@ export default function ReportsAndPrintouts() {
   const needsSelectedItem = (report === 'program_list' && (fileType === 'PDF' || programScope === 'selected'))
     || report === 'team_items' || report === 'chance_sheet';
   const matchingSchedules = (scheduleQuery.data ?? []).filter((row: any) => reportItems.some((item) => item.id === row.item_id));
-  const canDownload = !!festival?.id && !busy && !festivalLoading && !itemsLoading && (!needsTeam || !!selectedTeam)
-    && (report !== 'chance_sheet' || !!tenantId)
-    && (!needsSelectedItem || !!selectedItem)
-    && (!scheduleReport || (report === 'blank_schedule'
-      ? reportItems.length > 0
-      : !scheduleQuery.isLoading && !scheduleQuery.isError && matchingSchedules.length > 0));
+  const downloadBlocker = (() => {
+    if (busy) return 'Preparing your report…';
+    if (!tenantId || !userId) return 'Sign in to an admin account to download reports.';
+    if (festivalLoading) return 'Loading the active festival…';
+    if (festivalError) return 'Could not load the active festival. Retry the request.';
+    if (!festival?.id) return 'No active festival is available for this account.';
+    if (itemsLoading) return 'Loading programs…';
+    if (itemsError) return 'Could not load programs. Retry the request.';
+    if (participantReport && (needsTeam || teamId !== 'All')) {
+      if (teamsQuery.isLoading) return 'Loading team options…';
+      if (teamsQuery.isError) return 'Could not load team options. Retry the request.';
+      if (!selectedTeam) return needsTeam ? 'Select a team for this report.' : 'Select an available team.';
+    }
+    if (needsSelectedItem && !selectedItem) return report === 'program_list' && fileType === 'CSV'
+      ? 'Select a program for the selected-program CSV.'
+      : 'Select a program for this PDF report.';
+    if (scheduleReport) {
+      if (report === 'blank_schedule') return reportItems.length ? null : 'No programs match these filters.';
+      if (scheduleQuery.isLoading) return 'Loading the schedule…';
+      if (scheduleQuery.isError) return 'Could not load the schedule. Retry the request.';
+      if (!matchingSchedules.length) return 'No scheduled programs match these filters.';
+    }
+    return null;
+  })();
+  const canDownload = !downloadBlocker;
 
   const download = async () => {
     setBusy(true);
@@ -284,13 +303,17 @@ export default function ReportsAndPrintouts() {
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', gap: 14 }}>
           <Filter width={filterWidth} label="Report" value={report} onChange={(value) => { setReport(value as ReportKind); if (value !== 'program_list') setFileType('PDF'); if (value === 'chance_sheet') setCategoryCode('All'); }} options={REPORT_OPTIONS.map(({ value, label }) => ({ value, label }))} />
           {report === 'program_list' ? <Filter width={filterWidth} label="File type" value={fileType} onChange={(value) => setFileType(value as 'PDF' | 'CSV')} options={reportFormatOptions} /> : null}
-          {report === 'program_list' ? <Filter width={filterWidth} label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} /> : null}
-          {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[{ value: 'All', label: 'All permitted teams' }, ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} /> : null}
+          {report === 'program_list' && fileType === 'CSV' ? <Filter width={filterWidth} label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} /> : null}
+          {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[...(needsTeam ? [] : [{ value: 'All', label: 'All permitted teams' }]), ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} placeholder={needsTeam ? 'Select a team' : undefined} /> : null}
           {report !== 'chance_sheet' ? <Filter width={filterWidth} label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); }} options={categoryOptions} /> : null}
-          <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={visibleProgramOptions} />
+          <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={needsSelectedItem ? visibleProgramOptions.filter((option) => option.value !== 'All') : visibleProgramOptions} placeholder={needsSelectedItem ? 'Select a program' : undefined} />
         </View>
         {((participantReport && teamsQuery.isLoading) || itemsLoading || festivalLoading || (scheduleReport && scheduleQuery.isLoading)) ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><ActivityIndicator size="small" color={ui.colors.primary} /><Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Loading report options…</Text></View> : null}
         {participantReport && teamsQuery.isError ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load team options. Retry before exporting a team report.</Text> : null}
+        {festivalError ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryFestival()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry active festival</Text></TouchableOpacity> : null}
+        {!festivalLoading && !festivalError && !festival?.id ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryFestival()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Check active festival again</Text></TouchableOpacity> : null}
+        {itemsError ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryItems()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry programs</Text></TouchableOpacity> : null}
+        {participantReport && teamsQuery.isError ? <TouchableOpacity accessibilityRole="button" onPress={() => void teamsQuery.refetch()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry teams</Text></TouchableOpacity> : null}
         {scheduleReport && scheduleQuery.isError ? <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}><Text accessibilityRole="alert" style={{ flex: 1, color: ui.colors.danger, fontSize: 12 }}>Could not load the schedule.</Text><TouchableOpacity accessibilityRole="button" onPress={() => void scheduleQuery.refetch()} style={{ paddingHorizontal: 12, paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry</Text></TouchableOpacity></View> : null}
         {errorMessage ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>{errorMessage}</Text> : null}
       </SsfCard>
@@ -305,6 +328,7 @@ export default function ReportsAndPrintouts() {
           {busy ? <ActivityIndicator size="small" color="#fff" /> : <Download size={16} color="#fff" />}
           <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>{busy ? 'Preparing report…' : 'Download report'}</Text>
         </TouchableOpacity>
+        {downloadBlocker ? <Text accessibilityRole="alert" style={{ color: ui.colors.textMuted, fontSize: 12, lineHeight: 17 }}>{downloadBlocker}</Text> : null}
       </SsfCard>
     </View>
 

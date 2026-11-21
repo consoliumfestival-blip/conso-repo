@@ -816,7 +816,7 @@ const inputStyle: React.CSSProperties = {
   border: `1px solid ${coreColor('#D8E0EA', 'border')}`,
   background: ui.colors.surface,
   color: ui.colors.text,
-  fontFamily: 'Poppins_400Regular',
+  fontFamily: "Outfit_400Regular",
   outline: 'none',
 };
 
@@ -827,7 +827,7 @@ const timeSelectStyle: React.CSSProperties = {
   border: `1px solid ${coreColor('#D8E0EA', 'border')}`,
   background: ui.colors.surface,
   color: ui.colors.text,
-  fontFamily: 'Poppins_400Regular',
+  fontFamily: "Outfit_400Regular",
   outline: 'none',
 };
 
@@ -839,5 +839,5 @@ const nativeInputStyle = {
   borderColor: ui.colors.border,
   backgroundColor: ui.colors.surface,
   color: ui.colors.text,
-  fontFamily: 'Poppins_400Regular',
+  fontFamily: "Outfit_400Regular",
 } as const;

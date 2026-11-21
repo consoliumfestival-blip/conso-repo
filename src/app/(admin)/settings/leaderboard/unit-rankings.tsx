@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
     marginTop: 10,
   },
@@ -240,12 +240,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
   },
   cardSubTitle: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   tableHeader: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   th: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
   },
@@ -303,33 +303,33 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: {
     color: coreColor(colors.navy, 'primaryText'),
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   unitName: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
   },
   unitMeta: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
   td: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
   },
   tdStrong: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
   },
   pointsValue: {
     color: coreColor(colors.blue, 'primaryText'),
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 18,
   },
   changePill: {
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   changePillText: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   mobileRowCard: {
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   mobileStat: {
     color: colors.muted,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   controlPanel: {
@@ -387,12 +387,12 @@ const styles = StyleSheet.create({
   },
   controlTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 18,
   },
   controlSub: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     marginTop: 2,
     marginBottom: 16,
@@ -410,12 +410,12 @@ const styles = StyleSheet.create({
   },
   controlLabel: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   controlHint: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
     marginTop: 1,
   },
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   },
   dropdownValue: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
     marginTop: 2,
   },
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   actionBlock: {
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 1.1,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   outlineAction: {
@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
   },
   outlineActionText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   summaryBlock: {
@@ -511,12 +511,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
   },
   summaryValue: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   infoStrip: {
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     color: coreColor('#0F5868', 'info'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     lineHeight: 18,
   },

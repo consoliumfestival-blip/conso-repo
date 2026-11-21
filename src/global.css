@@ -6,6 +6,31 @@
 @layer base {
 }
 
+/* Bundled UI typography; legacy faces remain available to exports/designs. */
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 100 400; font-display: swap; src: url('/fonts/Outfit_400Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_400Regular'; font-style: normal; font-weight: 100 400; font-display: swap; src: url('/fonts/Outfit_400Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_400Regular'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_400Regular'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_400Regular'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_500Medium'; font-style: normal; font-weight: 100 400; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_500Medium'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_500Medium'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_500Medium'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_600SemiBold'; font-style: normal; font-weight: 100 400; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_600SemiBold'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_600SemiBold'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_600SemiBold'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_700Bold'; font-style: normal; font-weight: 100 400; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_700Bold'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/Outfit_500Medium.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_700Bold'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/Outfit_600SemiBold.ttf') format('truetype'); }
+@font-face { font-family: 'Outfit_700Bold'; font-style: normal; font-weight: 700 900; font-display: swap; src: url('/fonts/Outfit_700Bold.ttf') format('truetype'); }
+
+/* React Native Web otherwise gives unstyled Text its own system font. */
+[class*="css-text-"]:not([class*="font-"]), [class*="css-textinput-"]:not([class*="font-"]) { font-family: 'Outfit', 'Noto Sans Malayalam', sans-serif; }
+
 @font-face {
   font-family: 'Inter Variable';
   font-style: normal;
@@ -99,7 +124,7 @@ html, body, #root, #__next {
   min-height: 0;
   overflow: hidden;
   background-color: #011635;
-  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: 'Outfit', 'Noto Sans Malayalam', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;

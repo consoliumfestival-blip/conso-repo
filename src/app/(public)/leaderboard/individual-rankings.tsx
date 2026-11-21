@@ -130,7 +130,7 @@ function RankBadge({ rank, accent, size = 'md' }: { rank: number; accent: string
         borderColor: accent, backgroundColor: `${accent}18`,
         alignItems: 'center', justifyContent: 'center' },
     ]}>
-      <Text style={{ fontFamily: 'Poppins_900Black', color: accent, fontSize: fs, lineHeight: fs + 2 }}>
+      <Text style={{ fontFamily: "Outfit_700Bold", color: accent, fontSize: fs, lineHeight: fs + 2 }}>
         {rank}
       </Text>
     </View>
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   backBtnText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.8)',
     fontSize: 11,
   },
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pageTitle: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 24,
     lineHeight: 30,
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   pageSubtitle: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.muted,
     fontSize: 12,
   },
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.text,
     fontSize: 13.5,
     ...Platform.select({ web: { outlineStyle: 'none' as any }, default: {} }),
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16,185,129,0.35)',
   },
   catChipText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
   },
@@ -634,12 +634,12 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   stateTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 16,
   },
   stateText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.muted,
     fontSize: 13,
     textAlign: 'center',
@@ -667,13 +667,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   mobileStatVal: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 18,
     lineHeight: 22,
   },
   mobileStatLabel: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.muted,
     fontSize: 10,
   },
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   mobileRowName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 14,
     lineHeight: 18,
@@ -723,18 +723,18 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   mobileChipText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.6)',
     fontSize: 9,
   },
   mobileRowSub: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.muted,
     fontSize: 11.5,
     flex: 1,
   },
   openProfileText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.green,
     fontSize: 10,
     marginTop: 2,
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   winBadgeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
   },
   mobileRowRight: {
@@ -760,12 +760,12 @@ const styles = StyleSheet.create({
     minWidth: 52,
   },
   mobilePoints: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 22,
     lineHeight: 26,
   },
   mobilePointsLabel: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.muted2,
     fontSize: 9,
     textTransform: 'uppercase',
@@ -791,7 +791,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   desktopHeadText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.4)',
     fontSize: 10.5,
     textTransform: 'uppercase',
@@ -827,12 +827,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   desktopName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 14.5,
   },
   desktopSub: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: P.muted,
     fontSize: 11.5,
     marginTop: 2,
@@ -842,7 +842,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   desktopChest: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.5)',
     fontSize: 12,
   },
@@ -855,7 +855,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   desktopWinVal: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 15,
     width: 20,
     textAlign: 'center',
@@ -865,12 +865,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   desktopPoints: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
     lineHeight: 24,
   },
   desktopPtsLabel: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.muted2,
     fontSize: 9,
     textTransform: 'uppercase',
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loadMoreText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: P.text,
     fontSize: 12.5,
   },

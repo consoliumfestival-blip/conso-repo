@@ -371,7 +371,7 @@ const ChestCard = ({
             padding: 18,
           }}
         >
-          <Text style={{ fontFamily: 'Poppins_700Bold', color: legacyCoreOutputColors.textMuted, fontSize: 12, textAlign: 'center' }}>
+          <Text style={{ fontFamily: "Outfit_700Bold", color: legacyCoreOutputColors.textMuted, fontSize: 12, textAlign: 'center' }}>
             {isPlainGroup ? 'GENERAL GROUP' : 'Upload an A6 PNG/JPG background template'}
           </Text>
         </View>
@@ -388,7 +388,7 @@ const ChestCard = ({
       >
         <Text
           style={{
-            fontFamily: 'Montserrat_700Bold',
+            fontFamily: "Outfit_700Bold",
             color: isPlainGroup ? legacyCoreOutputColors.primary : template.fields.chest.color || '#EAB308',
             fontSize: (template.fields.chest.fontSize ?? 38) * scale,
             lineHeight: (template.fields.chest.height - 2) * scale,
@@ -411,7 +411,7 @@ const ChestCard = ({
       >
         <Text
           style={{
-            fontFamily: 'Montserrat_300Light',
+            fontFamily: "Outfit_400Regular",
             color: isPlainGroup ? legacyCoreOutputColors.text : template.fields.name.color || legacyCoreOutputColors.surface,
             fontSize: (participant.entry_kind === 'general_team'
               ? Math.min(template.fields.name.fontSize ?? 16, template.fields.name.height / 2)
@@ -437,7 +437,7 @@ const ChestCard = ({
       >
         <Text
           style={{
-            fontFamily: 'Montserrat_300Light',
+            fontFamily: "Outfit_400Regular",
             color: isPlainGroup ? legacyCoreOutputColors.textMuted : template.fields.unit.color || legacyCoreOutputColors.surface,
             fontSize: (template.fields.unit.fontSize ?? 12) * scale,
             lineHeight: (template.fields.unit.height - 2) * scale,
@@ -1160,7 +1160,7 @@ export default function ChestCardsPage() {
               onChangeText={setSearchQuery}
               placeholder={cardMode === 'groups' ? 'Search group chest, program or team' : 'Search chest number, participant or organisation'}
               placeholderTextColor={ui.colors.textMuted}
-              style={{ flex: 1, height: 44, paddingHorizontal: 10, fontFamily: 'Poppins_400Regular', outlineStyle: 'none' as any }}
+              style={{ flex: 1, height: 44, paddingHorizontal: 10, fontFamily: "Outfit_400Regular", outlineStyle: 'none' as any }}
             />
           </View>
 

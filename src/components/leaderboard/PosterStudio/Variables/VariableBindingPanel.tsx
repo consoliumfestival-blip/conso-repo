@@ -125,7 +125,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   label: {
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: "Outfit_400Regular",
     fontWeight: 600,
     color: coreColor('#0284C7', 'info'),
   },
@@ -134,7 +134,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${coreColor('#CBD5E1', 'border')}`,
     borderRadius: 6,
     fontSize: 13,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   chip: {
     fontSize: 11,

@@ -410,13 +410,13 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     color: coreColor(colors.navy, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   headerSub: {
     fontSize: 12,
     color: colors.muted,
     marginTop: 2,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   closeBtn: {
     padding: 6,
@@ -439,14 +439,14 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 13,
     color: colors.red,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   fieldLabel: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 6,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     letterSpacing: 0.2,
   },
   imagePickerBox: {
@@ -474,7 +474,7 @@ const styles = StyleSheet.create({
   previewChangeText: {
     color: coreColor('#fff', 'onPrimary'),
     fontSize: 12,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   imagePlaceholder: {
     flex: 1,
@@ -485,18 +485,18 @@ const styles = StyleSheet.create({
   imagePlaceholderText: {
     fontSize: 13,
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   imagePlaceholderSub: {
     fontSize: 11,
     color: coreColor('#94A3B8', 'textSubtle'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   fileName: {
     fontSize: 11,
     color: colors.muted,
     marginTop: 4,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   input: {
     borderWidth: 1,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.text,
     backgroundColor: coreColor('#FFFFFF', 'surface'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   aspectRow: {
     flexDirection: 'row',
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   aspectBtnTextActive: {
     color: coreColor(colors.teal, 'primaryText'),
@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   aspectDims: {
     fontSize: 10,
     color: coreColor('#94A3B8', 'textSubtle'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     marginTop: 2,
   },
   flowSummary: {
@@ -558,13 +558,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     marginBottom: 4,
   },
   flowLine: {
     fontSize: 11,
     color: coreColor('#166534', 'success'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     lineHeight: 18,
   },
   btnPrimary: {
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
     color: coreColor('#FFFFFF', 'onPrimary'),
     fontSize: 14,
     fontWeight: '700',
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   btnGhost: {
     height: 44,
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
   btnGhostText: {
     color: colors.muted,
     fontSize: 13,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
   },
   // Progress card
   progressCard: {
@@ -604,13 +604,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     textAlign: 'center',
   },
   progressSub: {
     fontSize: 12,
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     textAlign: 'center',
   },
   progressBarTrack: {
@@ -635,12 +635,12 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '900',
     color: coreColor(colors.navy, 'primaryText'),
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
   },
   successSub: {
     fontSize: 13,
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -661,14 +661,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     letterSpacing: 1,
     textTransform: 'uppercase',
   },
   idValue: {
     fontSize: 11,
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     letterSpacing: 0.5,
   },
 });

@@ -161,6 +161,11 @@ export default function RootLayout() {
           Montserrat_300Light,
           Montserrat_700Bold,
           CooperBlack: require("../../fonts/CooperBlack-Std.otf"),
+          Outfit: require("../../public/fonts/Outfit_400Regular.ttf"),
+          Outfit_400Regular: require("../../public/fonts/Outfit_400Regular.ttf"),
+          Outfit_500Medium: require("../../public/fonts/Outfit_500Medium.ttf"),
+          Outfit_600SemiBold: require("../../public/fonts/Outfit_600SemiBold.ttf"),
+          Outfit_700Bold: require("../../public/fonts/Outfit_700Bold.ttf"),
         },
   );
 

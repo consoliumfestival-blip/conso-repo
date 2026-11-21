@@ -449,13 +449,13 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 18,
     lineHeight: 21,
   },
   brandYear: {
     color: coreColor('#9DEBFF', 'textMuted'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1.2,
@@ -482,12 +482,12 @@ const styles = StyleSheet.create({
   },
   navTextActive: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
   },
   navTextInactive: {
     color: coreColor('#9DEBFF', 'textMuted'),
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
     opacity: 0.85,
   },
@@ -515,17 +515,17 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   profileRole: {
     color: coreColor('#B6EFFF', 'textMuted'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
   },
   profileLogout: {
     color: coreColor('#9DEBFF', 'textMuted'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   mobileClose: {
@@ -570,14 +570,14 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 1.4,
   },
   pageTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_800ExtraBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 24,
     lineHeight: 30,
   },
@@ -605,12 +605,12 @@ const styles = StyleSheet.create({
   },
   liveText: {
     color: coreColor('#15803D', 'success'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   updatedText: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
   },
   previewButton: {
@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   },
   previewButtonText: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   metricsGrid: {
@@ -673,19 +673,19 @@ const styles = StyleSheet.create({
   metricLabel: {
     flex: 1,
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
   },
   metricValue: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
     lineHeight: 25,
   },
   metricSub: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
     marginTop: 1,
   },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
   },
   mobileNavText: {
     color: colors.muted,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   mobileNavTextActive: {

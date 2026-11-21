@@ -612,9 +612,6 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
         <link href="https://fonts.googleapis.com" rel="preconnect"/>
         <link crossOrigin="anonymous" href="https://fonts.gstatic.com" rel="preconnect"/>
-        <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;family=Handjet:wght@100..900&amp;display=swap" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css2?family=VT323&amp;display=swap" rel="stylesheet"/>
-        <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&amp;display=swap" rel="stylesheet"/>
         <style>{`
           .marquee-container { overflow: hidden; white-space: nowrap; }
           .marquee-content { display: inline-block; animation: marquee 30s linear infinite; }
@@ -624,8 +621,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
           .schedule-marquee-container:hover .schedule-marquee-track { animation-play-state: paused; }
           @keyframes schedule-marquee { 0% { transform: translateX(0); } 100% { transform: translateX(calc(-50% - 0.75rem)); } }
           .handjet-wrapper, .handjet-wrapper *:not(.material-symbols-outlined):not(.keep-font) {
-            font-family: "Handjet", sans-serif !important;
-            font-variation-settings: "ELSH" 2 !important;
+            font-family: "Outfit", "Noto Sans Malayalam", sans-serif !important;
           }
           @media (prefers-reduced-motion: no-preference) {
               .fade-in-up { opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease-out, transform 0.8s ease-out; }
@@ -790,8 +786,8 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
               
               <h1 className="font-display-xl-mobile md:font-display-xl text-display-xl-mobile md:text-display-xl glass-text mb-6 leading-tight font-bold">
                 <span style={{fontFamily: "Barabara, sans-serif"}} className="uppercase tracking-wide">CONSOLIUM</span><br />
-                Between <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"'VT323', monospace"}}>Pixels</span><br />
-                and <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"'VT323', monospace"}}>People</span>
+                Between <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"Outfit_400Regular"}}>Pixels</span><br />
+                and <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"Outfit_400Regular"}}>People</span>
               </h1>
               
               <p className="font-body-lg text-body-lg text-white/80 mb-10 max-w-2xl leading-relaxed">
@@ -835,8 +831,8 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
               
               <h1 className="text-[2.75rem] glass-text mb-4 leading-[1.1] font-bold">
                 <span style={{fontFamily: "Barabara, sans-serif"}} className="uppercase tracking-wide text-[2rem]">CONSOLIUM</span><br />
-                Between <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"'VT323', monospace"}}>Pixels</span><br />
-                and <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"'VT323', monospace"}}>People</span>
+                Between <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"Outfit_400Regular"}}>Pixels</span><br />
+                and <span className="text-[#009499] animate-subtle-motion drop-shadow-lg" style={{fontFamily:"Outfit_400Regular"}}>People</span>
               </h1>
               
               <p className="text-white/70 text-xs mb-10 max-w-[260px] leading-relaxed">

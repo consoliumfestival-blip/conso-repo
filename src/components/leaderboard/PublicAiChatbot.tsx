@@ -795,12 +795,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 14.5,
   },
   headerSubtitle: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.45)',
     fontSize: 10,
     marginTop: 0.5,
@@ -859,7 +859,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 2,
   },
   messageText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12.5,
     lineHeight: 18,
   },
@@ -870,7 +870,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
   },
   messageTime: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 8.5,
     alignSelf: 'flex-end',
@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   typingText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
   },
@@ -899,7 +899,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   errorText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: '#FCA5A5',
     fontSize: 11.5,
     flex: 1,
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
     height: 30,
   },
   chipText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.75)',
     fontSize: 10,
   },
@@ -946,7 +946,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   inlineChipText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 11,
   },
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: '#FFFFFF',
     fontSize: 12.5,
   },

@@ -504,12 +504,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
   },
   cardSubTitle: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
@@ -526,7 +526,7 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   searchBarContainer: {
@@ -547,7 +547,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: colors.text,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     fontSize: 13,
     padding: 0,
   },
@@ -581,7 +581,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   filterChipTextActive: {
@@ -599,13 +599,13 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
     marginTop: 10,
   },
   errorText: {
     color: ui.colors.destructive,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   tableHeader: {
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   },
   th: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     textTransform: 'uppercase',
   },
@@ -646,7 +646,7 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: {
     color: coreColor(colors.navy, 'primaryText'),
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   avatar: {
@@ -659,28 +659,28 @@ const styles = StyleSheet.create({
   },
   unitName: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
   },
   unitMeta: {
     color: colors.muted,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     fontSize: 12,
     marginTop: 1,
   },
   td: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
   },
   pointsValue: {
     color: coreColor(colors.blue, 'primaryText'),
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 18,
   },
   emptyGrades: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
   },
   gradesList: {
@@ -700,7 +700,7 @@ const styles = StyleSheet.create({
   },
   gradeText: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
     marginRight: 4,
   },
@@ -713,7 +713,7 @@ const styles = StyleSheet.create({
   },
   gradeCountText: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
   },
   placeRow: {
@@ -740,7 +740,7 @@ const styles = StyleSheet.create({
   },
   qualifiedBadgeText: {
     color: coreColor('#065F46', 'success'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   profileButton: {
@@ -760,7 +760,7 @@ const styles = StyleSheet.create({
   },
   profileButtonText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   mobileRowCard: {
@@ -786,12 +786,12 @@ const styles = StyleSheet.create({
   },
   mobileStat: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   gradesLabel: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
     textTransform: 'uppercase',
     marginBottom: 4,

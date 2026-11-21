@@ -52,6 +52,6 @@ const styles: Record<string, React.CSSProperties> = {
   text: {
     fontSize: '12px',
     fontWeight: 600,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
 };

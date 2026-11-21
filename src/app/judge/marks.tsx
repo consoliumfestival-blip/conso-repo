@@ -675,12 +675,12 @@ export default function JudgeMarksPage() {
                 >
                   <Text style={{
                     color: isCurrent ? '#FFF' : '#334155',
-                    fontFamily: isCurrent ? 'Poppins_900Black' : 'Poppins_700Bold',
+                    fontFamily: isCurrent ? "Outfit_700Bold" : "Outfit_700Bold",
                     fontSize: 14,
                   }}>
                     {reg.code_letter}
                   </Text>
-                  <Text style={{ color: isCurrent ? '#E2E8F0' : '#64748B', fontFamily: 'Poppins_600SemiBold', fontSize: 9, marginTop: 1 }}>
+                  <Text style={{ color: isCurrent ? '#E2E8F0' : '#64748B', fontFamily: "Outfit_700Bold", fontSize: 9, marginTop: 1 }}>
                     {reg.participants?.chest_number || 'No chest'}
                   </Text>
                   {isRegMarked && (

@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
   triggerText: {
     flex: 1,
     color: coreColor('#334155', 'text'),
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 14,
   },
   placeholderText: {
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surfaceMuted,
   },
   headerSelectorText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 14,
     color: ui.colors.text,
   },
@@ -431,7 +431,7 @@ const styles = StyleSheet.create({
   },
   selectorLabel: {
     marginBottom: 8,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     color: ui.colors.textMuted,
   },
@@ -461,13 +461,13 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.primary,
   },
   selectorCellText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
     color: ui.colors.text,
   },
   selectorCellTextSelected: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   weekRow: {
     flexDirection: 'row',
@@ -477,7 +477,7 @@ const styles = StyleSheet.create({
   dayLabel: {
     width: 36,
     textAlign: 'center',
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     color: ui.colors.textMuted,
   },
@@ -495,16 +495,16 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surfaceMuted,
   },
   dayText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 14,
     color: ui.colors.text,
   },
   dayTextSelected: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   dayTextToday: {
     color: ui.colors.primaryText,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
 });

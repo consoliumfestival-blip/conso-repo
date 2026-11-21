@@ -44,7 +44,7 @@ export function HeroSection() {
             className="mt-3 font-cooper"
             style={{
               color: '#FFFFFF',
-              fontFamily: 'CooperBlack',
+              fontFamily: "Outfit_700Bold",
               fontSize: isDesktop ? 82 : isTablet ? 76 : 52,
               lineHeight: isDesktop ? 84 : isTablet ? 80 : 56,
               textShadowColor: 'rgba(255,79,184,0.35)',

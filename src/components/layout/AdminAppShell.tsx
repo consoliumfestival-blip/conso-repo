@@ -503,7 +503,7 @@ function MobileMenuSheet({
                             onPress={() => navigate(child.path)}
                             style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: childActive ? ui.colors.primarySoft : 'transparent', borderRadius: 12, marginBottom: 4 }}
                           >
-                            <Text style={{ fontFamily: childActive ? 'Poppins_600SemiBold' : 'Poppins_500Medium', fontSize: 13, color: childActive ? ui.colors.primaryText : ui.colors.textMuted }}>
+                            <Text style={{ fontFamily: childActive ? "Outfit_700Bold" : "Outfit_500Medium", fontSize: 13, color: childActive ? ui.colors.primaryText : ui.colors.textMuted }}>
                               {child.label}
                             </Text>
                           </TouchableOpacity>
@@ -710,20 +710,20 @@ const styles = StyleSheet.create({
   },
   tabletSidebar: { width: 224, marginVertical: 8, marginLeft: 8, marginRight: 4, paddingVertical: 10, borderRadius: 16, borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), backgroundColor: coreColor('#FFFFFF', 'surface'), ...ui.shadow },
   tabletBrand: { height: 46, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  tabletBrandText: { flex: 1, color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13 },
+  tabletBrandText: { flex: 1, color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: 13 },
   tabletNavGroup: { marginBottom: 3 },
   tabletNavRow: { minHeight: 38, borderRadius: 9, flexDirection: 'row', alignItems: 'center' },
   tabletNavRowActive: { backgroundColor: ui.colors.primarySoft },
   tabletNavMain: { flex: 1, minWidth: 0, minHeight: 38, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', gap: 9 },
-  tabletNavLabel: { flex: 1, color: ui.colors.textMuted, fontFamily: 'Poppins_500Medium', fontSize: 10 },
-  tabletNavLabelActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
+  tabletNavLabel: { flex: 1, color: ui.colors.textMuted, fontFamily: "Outfit_500Medium", fontSize: 10 },
+  tabletNavLabelActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   tabletBadge: { color: ui.colors.onPrimary, backgroundColor: ui.colors.dangerAction, overflow: 'hidden', borderRadius: 8, paddingHorizontal: 5, fontSize: 9 },
   tabletDisclosure: { width: 34, height: 38, alignItems: 'center', justifyContent: 'center' },
   tabletSubmenu: { marginLeft: 18, paddingLeft: 8, borderLeftWidth: 1, borderLeftColor: ui.colors.border, marginBottom: 4 },
   tabletSubmenuLink: { minHeight: 30, paddingHorizontal: 8, justifyContent: 'center', borderRadius: 7 },
   tabletSubmenuLinkActive: { backgroundColor: ui.colors.surfaceMuted },
-  tabletSubmenuText: { color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 9 },
-  tabletSubmenuTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
+  tabletSubmenuText: { color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 9 },
+  tabletSubmenuTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   sidebarLight: { backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), ...ui.shadow },
   railLogo: { width: 40, height: 40, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   railRow: { width: 40, height: 38, alignItems: 'center', justifyContent: 'center' },
@@ -736,13 +736,13 @@ const styles = StyleSheet.create({
   railDisclosureLight: { backgroundColor: coreColor('#E5F4F0', 'primarySoft') },
   railPopup: { position: 'absolute', left: 40, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
   railTooltip: { minWidth: 0, width: 'max-content' as any, maxWidth: 240, paddingVertical: 4, paddingHorizontal: 8 },
-  railTooltipTitle: { fontFamily: 'Poppins_500Medium', fontSize: 10, paddingHorizontal: 0, paddingVertical: 0 },
-  railPopupTitle: { color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
+  railTooltipTitle: { fontFamily: "Outfit_500Medium", fontSize: 10, paddingHorizontal: 0, paddingVertical: 0 },
+  railPopupTitle: { color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
   railPopupLink: { minHeight: 42, borderRadius: 9, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   railPopupLinkDivider: { borderTopWidth: 1, borderTopColor: coreColor('#E2E8E7', 'border') },
   railPopupLinkActive: { backgroundColor: ui.colors.primarySoft },
-  railPopupLinkText: { color: ui.colors.text, fontFamily: 'Poppins_500Medium', fontSize: 12, flexShrink: 1 },
-  railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
+  railPopupLinkText: { color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 12, flexShrink: 1 },
+  railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   railFooter: { alignItems: 'center', gap: 2, paddingTop: 5, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
   railFooterButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   sidebarCollapsed: {
@@ -772,13 +772,13 @@ const styles = StyleSheet.create({
   },
   brandName: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 16,
     lineHeight: 20,
   },
   brandCaption: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 10,
   },
   sidebarToggle: {
@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
   },
   navCaption: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 9,
     letterSpacing: 0.2,
     paddingHorizontal: 12,
@@ -830,13 +830,13 @@ const styles = StyleSheet.create({
   },
   desktopNavLabel: {
     color: coreColor("#334155", 'text'),
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     flex: 1,
   },
   desktopNavLabelActive: {
     color: ui.colors.primaryText,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
   },
   desktopSubmenu: {
     marginLeft: 22,
@@ -858,12 +858,12 @@ const styles = StyleSheet.create({
   },
   desktopSubmenuLabel: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
   },
   desktopSubmenuLabelActive: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
   },
   sidebarFooter: {
     minHeight: 62,
@@ -891,12 +891,12 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   profileRole: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 9,
     textTransform: "capitalize",
   },
@@ -923,14 +923,14 @@ const styles = StyleSheet.create({
   },
   topbarEyebrow: {
     color: ui.colors.primaryText,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 9,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
   topbarTitle: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
     lineHeight: 26,
   },
@@ -966,7 +966,7 @@ const styles = StyleSheet.create({
   },
   onlineText: {
     color: ui.colors.success,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
   },
   mobileBarSafe: {
@@ -1004,7 +1004,7 @@ const styles = StyleSheet.create({
   },
   mobileTabLabel: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 9,
     marginTop: 1,
   },
@@ -1046,12 +1046,12 @@ const styles = StyleSheet.create({
   },
   sheetTitle: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 20,
   },
   sheetSubtitle: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 10,
   },
   sheetClose: {
@@ -1099,7 +1099,7 @@ const styles = StyleSheet.create({
   },
   menuTileLabel: {
     color: coreColor("#40516A", 'text'),
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
     textAlign: "center",
   },
@@ -1128,17 +1128,17 @@ const styles = StyleSheet.create({
   },
   sheetAvatarText: {
     color: ui.colors.info,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 17,
   },
   sheetProfileName: {
     color: ui.colors.text,
-    fontFamily: "Poppins_700Bold",
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   sheetProfileRole: {
     color: ui.colors.textMuted,
-    fontFamily: "Poppins_400Regular",
+    fontFamily: "Outfit_400Regular",
     fontSize: 10,
     textTransform: "capitalize",
   },

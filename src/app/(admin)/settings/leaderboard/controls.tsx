@@ -760,12 +760,12 @@ const styles = StyleSheet.create({
   },
   controlTitle: {
     color: colors.text,
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 18,
   },
   controlSub: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     marginTop: 2,
     marginBottom: 16,
@@ -839,7 +839,7 @@ const styles = StyleSheet.create({
   loadNoticeText: {
     flex: 1,
     color: colors.text,
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     fontSize: 12,
     lineHeight: 17,
   },
@@ -854,17 +854,17 @@ const styles = StyleSheet.create({
   },
   retryActionText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   controlLabel: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   controlHint: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
     marginTop: 1,
   },
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
   },
   dropdownValue: {
     color: colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
     marginTop: 2,
   },
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   publicLinkRow: {
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 9,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
   },
   copyLinkAction: {
@@ -928,7 +928,7 @@ const styles = StyleSheet.create({
   },
   copyLinkText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   actionBlock: {
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
   },
   blockTitle: {
     color: colors.muted,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 1.1,
@@ -961,7 +961,7 @@ const styles = StyleSheet.create({
   },
   primaryActionText: {
     color: ui.colors.onPrimary,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   outlineAction: {
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
   },
   outlineActionText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   summaryBlock: {
@@ -994,12 +994,12 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
   },
   summaryValue: {
     color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   previewContainer: {
@@ -1035,24 +1035,24 @@ const styles = StyleSheet.create({
   },
   previewRankText: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
   },
   previewOrgName: {
     color: colors.text,
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   previewPoints: {
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
   previewEmpty: {
     textAlign: 'center',
     padding: 22,
     color: colors.muted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
   },
   infoStrip: {
@@ -1079,7 +1079,7 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     color: coreColor(colors.teal, 'primaryText'),
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     fontSize: 12,
     lineHeight: 18,
   },

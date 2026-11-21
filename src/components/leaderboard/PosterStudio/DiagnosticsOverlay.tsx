@@ -59,7 +59,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: coreColor('#38BDF8', 'info'),
     padding: 12,
     borderRadius: 8,
-    fontFamily: 'monospace',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
     zIndex: 9999,
     boxShadow: '0 4px 12px rgba(0,0,0,0.5)',

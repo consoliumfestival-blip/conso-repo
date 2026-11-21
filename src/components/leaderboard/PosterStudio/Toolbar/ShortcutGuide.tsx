@@ -109,7 +109,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 6,
     padding: '4px 8px',
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: "Outfit_400Regular",
     fontWeight: 600,
     color: coreColor('#475569', 'text'),
   },

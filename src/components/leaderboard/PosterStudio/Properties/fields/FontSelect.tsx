@@ -254,7 +254,7 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
 const styles: Record<string, React.CSSProperties> = {
   container: { display: 'flex', flexDirection: 'column', gap: 6, width: '100%' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Inter, sans-serif', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
+  label: { fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: "Outfit_400Regular", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' },
   trigger: {
     display: 'flex',
     alignItems: 'center',
@@ -296,7 +296,7 @@ const styles: Record<string, React.CSSProperties> = {
     color: coreColor('#E2E8F0', 'text'),
     fontSize: 13,
     outline: 'none',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   scrollArea: {
     overflowY: 'auto',
@@ -342,7 +342,7 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center',
     color: coreColor('#64748B', 'textMuted'),
     fontSize: 13,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   manageBtn: { 
     fontSize: 10, 

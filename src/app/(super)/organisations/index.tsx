@@ -178,7 +178,7 @@ function AddOrgModal({
         >
           {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: 20 }}>
+            <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 20 }}>
               New Organisation
             </Text>
             <TouchableOpacity onPress={() => { reset(); onClose(); }} style={{ padding: 6 }}>
@@ -187,7 +187,7 @@ function AddOrgModal({
           </View>
 
           {/* Name input */}
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
             Name
           </Text>
           <TextInput
@@ -202,14 +202,14 @@ function AddOrgModal({
               borderWidth: 1,
               borderColor: C.border,
               padding: 14,
-              fontFamily: 'Poppins_400Regular',
+              fontFamily: "Outfit_400Regular",
               fontSize: 15,
               marginBottom: 20,
             }}
           />
 
           {/* Type selector */}
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
             Type
           </Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
@@ -231,7 +231,7 @@ function AddOrgModal({
                   }}
                 >
                   {cfg.icon}
-                  <Text style={{ color: active ? cfg.color : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, marginTop: 4 }}>
+                  <Text style={{ color: active ? cfg.color : C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, marginTop: 4 }}>
                     {cfg.label}
                   </Text>
                 </TouchableOpacity>
@@ -242,12 +242,12 @@ function AddOrgModal({
           {/* Parent selector (for sector/division) */}
           {orgType !== 'state' && (
             <>
-              <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+              <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
                 Parent {orgType === 'unit' ? 'Sector' : orgType === 'sector' ? 'Division' : orgType === 'division' ? 'District' : 'State'}
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                 {eligibleParents.length === 0 ? (
-                  <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 13, paddingVertical: 10 }}>
+                  <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 13, paddingVertical: 10 }}>
                     No eligible parent origin found. Create one first.
                   </Text>
                 ) : (
@@ -268,7 +268,7 @@ function AddOrgModal({
                             backgroundColor: active ? cfg.bg : C.bg,
                           }}
                         >
-                          <Text style={{ color: active ? cfg.color : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>
+                          <Text style={{ color: active ? cfg.color : C.muted, fontFamily: "Outfit_700Bold", fontSize: 12 }}>
                             {p.name}
                           </Text>
                         </TouchableOpacity>
@@ -295,7 +295,7 @@ function AddOrgModal({
             {createMutation.isPending ? (
               <ActivityIndicator color={C.bg} />
             ) : (
-              <Text style={{ color: C.bg, fontFamily: 'Poppins_900Black', fontSize: 15 }}>
+              <Text style={{ color: C.bg, fontFamily: "Outfit_700Bold", fontSize: 15 }}>
                 Create Organisation
               </Text>
             )}
@@ -422,10 +422,10 @@ export default function OrganisationsManager() {
               <ArrowLeft size={20} color={C.text} />
             </TouchableOpacity>
             <View>
-              <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
+              <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>
                 Global
               </Text>
-              <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: 22, lineHeight: 26 }}>
+              <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 22, lineHeight: 26 }}>
                 Hierarchy
               </Text>
             </View>
@@ -456,7 +456,7 @@ export default function OrganisationsManager() {
               }}
             >
               <Plus size={18} color={C.bg} />
-              <Text style={{ color: C.bg, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Add</Text>
+              <Text style={{ color: C.bg, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Add</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -481,7 +481,7 @@ export default function OrganisationsManager() {
                 }}
               >
                 {cfg.icon}
-                <Text style={{ color: cfg.color, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>
+                <Text style={{ color: cfg.color, fontFamily: "Outfit_700Bold", fontSize: 12 }}>
                   {counts[t]} {cfg.label}s
                 </Text>
               </View>
@@ -497,7 +497,7 @@ export default function OrganisationsManager() {
           { archived: true, label: `Archived (${archivedOrgs.length})` },
         ].map((tab) => (
           <TouchableOpacity key={tab.label} onPress={() => setShowArchived(tab.archived)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived === tab.archived ? (tab.archived ? C.purple : C.accent) : C.border, backgroundColor: showArchived === tab.archived ? (tab.archived ? C.purpleBg : C.accentBg) : 'transparent' }}>
-            <Text style={{ color: showArchived === tab.archived ? (tab.archived ? C.purple : C.accent) : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{tab.label}</Text>
+            <Text style={{ color: showArchived === tab.archived ? (tab.archived ? C.purple : C.accent) : C.muted, fontFamily: "Outfit_700Bold", fontSize: 12 }}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -529,7 +529,7 @@ export default function OrganisationsManager() {
                 backgroundColor: active ? (cfg?.bg ?? C.accentBg) : 'transparent',
               }}
             >
-              <Text style={{ color: active ? (cfg?.color ?? C.accent) : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>
+              <Text style={{ color: active ? (cfg?.color ?? C.accent) : C.muted, fontFamily: "Outfit_700Bold", fontSize: 12 }}>
                 {f === 'all' ? 'All' : cfg!.label + 's'}
               </Text>
             </TouchableOpacity>
@@ -546,7 +546,7 @@ export default function OrganisationsManager() {
             onChangeText={setSearchQuery}
             placeholder={rootScopeId ? `Search in ${orgs.find((o) => o.id === rootScopeId)?.name ?? 'tenant'} and children` : 'Search organisations and parents'}
             placeholderTextColor={C.muted}
-            style={{ flex: 1, color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, paddingVertical: 10, outlineStyle: 'none' as any } as any}
+            style={{ flex: 1, color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, paddingVertical: 10, outlineStyle: 'none' as any } as any}
             accessibilityLabel="Search organisations"
           />
           {!!searchQuery && <TouchableOpacity onPress={() => setSearchQuery('')} accessibilityLabel="Clear search"><X size={17} color={C.muted} /></TouchableOpacity>}
@@ -555,7 +555,7 @@ export default function OrganisationsManager() {
           {[{ id: null as string | null, name: 'All tenants' }, ...roots.map((root) => ({ id: root.id, name: root.name }))].map((root) => {
             const selected = rootScopeId === root.id;
             return <TouchableOpacity key={root.id ?? 'all'} onPress={() => setRootScopeId(root.id)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, borderColor: selected ? C.accent : C.border, backgroundColor: selected ? C.accentBg : C.surface }}>
-              <Text style={{ color: selected ? C.accent : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{root.name}</Text>
+              <Text style={{ color: selected ? C.accent : C.muted, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{root.name}</Text>
             </TouchableOpacity>;
           })}
         </ScrollView>}
@@ -569,7 +569,7 @@ export default function OrganisationsManager() {
         {loading ? (
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <ActivityIndicator color={C.accent} size="large" />
-            <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 14, marginTop: 12 }}>
+            <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 14, marginTop: 12 }}>
               Loading hierarchy…
             </Text>
           </View>
@@ -590,10 +590,10 @@ export default function OrganisationsManager() {
             >
               <Layers size={36} color={C.border} />
             </View>
-            <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 16, marginBottom: 6 }}>
+            <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 16, marginBottom: 6 }}>
               No organisations found
             </Text>
-            <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 13, textAlign: 'center' }}>
+            <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 13, textAlign: 'center' }}>
               {showArchived ? 'Archived organisations will appear here.' : 'Tap the "Add" button to create your first organisational unit.'}
             </Text>
           </Animated.View>
@@ -642,7 +642,7 @@ export default function OrganisationsManager() {
                   </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
+                    <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 15 }}>
                       {org.name}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3, gap: 6 }}>
@@ -654,16 +654,16 @@ export default function OrganisationsManager() {
                           backgroundColor: cfg.bg,
                         }}
                       >
-                        <Text style={{ color: cfg.color, fontFamily: 'Poppins_700Bold', fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' }}>
+                        <Text style={{ color: cfg.color, fontFamily: "Outfit_700Bold", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' }}>
                           {cfg.label}
                         </Text>
                       </View>
                       {depth > 0 || (org.parent_id && parentMap[org.parent_id]) ? (
-                        <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12 }}>
+                        <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12 }}>
                           {path}
                         </Text>
                       ) : null}
-                      {contextOnly && <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 9, marginTop: 3 }}>PARENT</Text>}
+                      {contextOnly && <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 9, marginTop: 3 }}>PARENT</Text>}
                     </View>
                   </View>
 

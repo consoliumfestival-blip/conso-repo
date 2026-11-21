@@ -1090,7 +1090,7 @@ function formatRelativeTime(date: Date): string {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  root: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: coreColor('#0f0f0f', 'surfaceStrong'), fontFamily: 'Inter, sans-serif' },
+  root: { display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: coreColor('#0f0f0f', 'surfaceStrong'), fontFamily: "Outfit_400Regular" },
   offlineBanner: { backgroundColor: coreColor('#FEF3C7', 'warningSoft'), color: coreColor('#92400E', 'warning'), padding: '8px 16px', fontSize: 13, fontWeight: 600, textAlign: 'center' },
   draftBanner: { backgroundColor: coreColor('#1E3A8A', 'infoAction'), color: coreColor('#DBEAFE', 'infoSoft'), padding: '10px 16px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   draftActions: { display: 'flex', gap: 8 },
@@ -1104,7 +1104,7 @@ const styles: Record<string, React.CSSProperties> = {
   topbarRight: { display: 'flex', alignItems: 'center', gap: 6 },
   studioTitle: { fontSize: 15, fontWeight: 800, color: coreColor('#E2E8F0', 'text'), letterSpacing: '0.02em' },
   templateName: { fontSize: 12, color: coreColor('#94A3B8', 'textSubtle'), backgroundColor: coreAlpha(coreColor('#ffffff', 'overlay'), 0.08), padding: '4px 10px', borderRadius: 6, fontWeight: 500 },
-  saveStatus: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'monospace' },
+  saveStatus: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: "Outfit_400Regular" },
   // Professional tool buttons
   topBtn: { padding: '6px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: coreColor('#CBD5E1', 'text'), touchAction: 'manipulation', whiteSpace: 'nowrap', transition: 'all 0.12s' },
   toolGroup: { display: 'flex', alignItems: 'center', gap: 2 },

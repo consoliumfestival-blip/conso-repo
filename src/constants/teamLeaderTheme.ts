@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 import { ui as shared } from './designSystem';
 
-/** Use each device's native UI font, including SF Pro on Apple devices. */
+/** Outfit is bundled on web and loaded at startup on native. */
 export const TEAM_FONT_FAMILY = Platform.OS === 'web'
-  ? 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif'
-  : Platform.OS === 'ios' ? 'System' : undefined;
+  ? 'Outfit, "Noto Sans Malayalam", sans-serif'
+  : 'Outfit_400Regular';
 
 /** Team accents follow the team identity returned by the assigned portal context. */
 export const TEAM_ACCENT_PALETTES = {

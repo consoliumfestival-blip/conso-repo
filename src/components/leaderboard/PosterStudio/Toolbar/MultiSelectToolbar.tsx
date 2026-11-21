@@ -164,7 +164,7 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 1000,
     userSelect: 'none',
   },
-  label: { fontSize: 12, fontWeight: 600, color: '#94A3B8', fontFamily: 'Inter, sans-serif', marginRight: 8, letterSpacing: '0.05em' },
+  label: { fontSize: 12, fontWeight: 600, color: '#94A3B8', fontFamily: "Outfit_400Regular", marginRight: 8, letterSpacing: '0.05em' },
   btn: { width: 36, height: 36, borderRadius: 8, border: 'none', backgroundColor: 'rgba(255,255,255,0.1)', cursor: 'pointer', color: '#FFFFFF', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background-color 0.15s' },
   divider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.15)', margin: '0 8px' },
 };

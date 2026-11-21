@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   centerText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 13,
     marginTop: 12,
@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   topBackText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.76)',
     fontSize: 12.5,
   },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 28,
   },
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   subtitle: {
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 14,
   },
@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tabText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: palette.muted,
     fontSize: 13,
   },
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   itemMetaText: {
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 12,
   },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   statusBadgeText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
     textTransform: 'uppercase',
   },
@@ -423,12 +423,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   emptyStateText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 18,
   },
   emptyStateSub: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 13,
     textAlign: 'center',
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(59, 130, 246, 0.15)',
   },
   infoBannerText: {
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     color: palette.blue,
     fontSize: 12,
     flex: 1,

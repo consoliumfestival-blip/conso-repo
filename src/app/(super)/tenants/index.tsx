@@ -294,17 +294,17 @@ function DetailModal({ visible, onClose, onComplete, org }: {
                 {cfg.icon}
               </View>
               <View>
-                <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: 18 }}>{org.name}</Text>
+                <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 18 }}>{org.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                   {isDisabled ? (
                     <>
                       <ShieldAlert size={12} color={C.danger} />
-                      <Text style={{ color: C.danger, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>Disabled Tenant</Text>
+                      <Text style={{ color: C.danger, fontFamily: "Outfit_700Bold", fontSize: 11 }}>Disabled Tenant</Text>
                     </>
                   ) : (
                     <>
                       <ShieldCheck size={12} color={C.green} />
-                      <Text style={{ color: C.green, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>Active Tenant</Text>
+                      <Text style={{ color: C.green, fontFamily: "Outfit_700Bold", fontSize: 11 }}>Active Tenant</Text>
                     </>
                   )}
                 </View>
@@ -315,10 +315,10 @@ function DetailModal({ visible, onClose, onComplete, org }: {
             </TouchableOpacity>
           </View>
 
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, marginBottom: 8 }}>TENANT NAME</Text>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, marginBottom: 8 }}>TENANT NAME</Text>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             <TextInput accessibilityLabel="Tenant name" value={tenantName} onChangeText={setTenantName} editable={!busy && !!org.tenant_name} maxLength={160} style={{ flex: 1, minHeight: 44, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, color: C.text, backgroundColor: C.bg }} />
-            <TouchableOpacity accessibilityRole="button" onPress={saveTenantName} disabled={busy || !org.tenant_name || tenantName.trim() === originalTenantName} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 10, backgroundColor: C.green, opacity: busy || !org.tenant_name || tenantName.trim() === originalTenantName ? 0.5 : 1 }}><Text style={{ color: C.bg, fontFamily: 'Poppins_700Bold' }}>Save</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={saveTenantName} disabled={busy || !org.tenant_name || tenantName.trim() === originalTenantName} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 16, borderRadius: 10, backgroundColor: C.green, opacity: busy || !org.tenant_name || tenantName.trim() === originalTenantName ? 0.5 : 1 }}><Text style={{ color: C.bg, fontFamily: "Outfit_700Bold" }}>Save</Text></TouchableOpacity>
           </View>
           {!!nameError && <Text accessibilityRole="alert" style={{ color: C.danger, marginBottom: 8 }}>{nameError}</Text>}
 
@@ -326,21 +326,21 @@ function DetailModal({ visible, onClose, onComplete, org }: {
             onClose();
             router.push({ pathname: '/(super)/tenant-settings', params: { tenant_id: org.tenant_id, tenant_name: org.tenant_name ?? org.name } });
           }} style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: C.accent + '55', backgroundColor: C.accentBg, marginBottom: 18 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Layers size={17} color={C.accent} /><View><Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Open tenant control center</Text><Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 10 }}>Portals, names, chest numbers and audit</Text></View></View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><Layers size={17} color={C.accent} /><View><Text style={{ color: C.accent, fontFamily: "Outfit_700Bold", fontSize: 12 }}>Open tenant control center</Text><Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 10 }}>Portals, names, chest numbers and audit</Text></View></View>
             <ChevronRight size={17} color={C.accent} />
           </TouchableOpacity>}
 
           {/* Type badge */}
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
             <View style={{ backgroundColor: cfg.bg, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, borderWidth: 1, borderColor: cfg.color + '40' }}>
-              <Text style={{ color: cfg.color, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{cfg.label}</Text>
+              <Text style={{ color: cfg.color, fontFamily: "Outfit_700Bold", fontSize: 12 }}>{cfg.label}</Text>
             </View>
           </View>
 
           {/* Tenant ID */}
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Tenant ID</Text>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Tenant ID</Text>
           <View style={{ backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ color: C.accent, fontFamily: 'Poppins_400Regular', fontSize: 13, flex: 1, letterSpacing: 0.5 }}>
+            <Text style={{ color: C.accent, fontFamily: "Outfit_400Regular", fontSize: 13, flex: 1, letterSpacing: 0.5 }}>
               {org.tenant_id ?? '—'}
             </Text>
             {org.tenant_id && (
@@ -351,21 +351,21 @@ function DetailModal({ visible, onClose, onComplete, org }: {
           </View>
 
           {/* Email */}
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Admin Email</Text>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Admin Email</Text>
           <View style={{ backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Mail size={16} color={C.muted} />
-            <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 15, flex: 1 }}>
+            <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 15, flex: 1 }}>
               {org.admin_email ?? '—'}
             </Text>
           </View>
 
           {/* Reset Password */}
-            <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+            <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
               Admin Password
             </Text>
             <View style={{ backgroundColor: C.bg, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, marginBottom: 24, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <KeyRound size={16} color={C.muted} />
-              <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 15, flex: 1 }}>
+              <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 15, flex: 1 }}>
                 ••••••••
               </Text>
               {FEATURE_FLAGS.ENABLE_ONBOARDING ? (
@@ -373,7 +373,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
                   <RefreshCw size={18} color={C.muted} />
                 </TouchableOpacity>
               ) : (
-                <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11 }}>
+                <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 11 }}>
                   Unavailable
                 </Text>
               )}
@@ -383,15 +383,15 @@ function DetailModal({ visible, onClose, onComplete, org }: {
           <View style={{ backgroundColor: C.purpleBg, borderRadius: 14, padding: 14, borderWidth: 1, borderColor: C.purple + '45', marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: C.purple, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Leaderboard Agent Prompt</Text>
-                <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 3 }}>
+                <Text style={{ color: C.purple, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Leaderboard Agent Prompt</Text>
+                <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 11, marginTop: 3 }}>
                   Default tenant-specific contract · UI editable · backend locked
                 </Text>
               </View>
               {promptText && !isDisabled && (
                 <TouchableOpacity onPress={handleCopyPrompt} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: copiedPrompt ? C.greenBg : C.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: copiedPrompt ? C.green + '60' : C.purple + '55' }}>
                   <Copy size={14} color={copiedPrompt ? C.green : C.purple} />
-                  <Text style={{ color: copiedPrompt ? C.green : C.purple, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{copiedPrompt ? 'Copied' : 'Copy Prompt'}</Text>
+                  <Text style={{ color: copiedPrompt ? C.green : C.purple, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{copiedPrompt ? 'Copied' : 'Copy Prompt'}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -400,16 +400,16 @@ function DetailModal({ visible, onClose, onComplete, org }: {
             ) : promptText ? (
               <>
                 <TouchableOpacity onPress={() => setShowPrompt((value) => !value)} style={{ marginTop: 10 }}>
-                  <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{showPrompt ? 'Hide prompt' : 'View prompt'}</Text>
+                  <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{showPrompt ? 'Hide prompt' : 'View prompt'}</Text>
                 </TouchableOpacity>
                 {showPrompt && (
                   <ScrollView style={{ maxHeight: 190, marginTop: 10, backgroundColor: C.bg, borderRadius: 10, padding: 10 }}>
-                    <Text selectable style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 16 }}>{promptText}</Text>
+                    <Text selectable style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 10, lineHeight: 16 }}>{promptText}</Text>
                   </ScrollView>
                 )}
               </>
             ) : (
-              <Text style={{ color: isDisabled ? C.danger : C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 10 }}>
+              <Text style={{ color: isDisabled ? C.danger : C.muted, fontFamily: "Outfit_400Regular", fontSize: 11, marginTop: 10 }}>
                 {isDisabled ? 'Prompt access is revoked with this tenant.' : promptQuery.error ? 'Prompt contract is not available until the database migration is applied.' : 'Prompt not generated yet.'}
               </Text>
             )}
@@ -423,7 +423,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: copied ? C.greenBg : C.accentBg, padding: 13, borderRadius: 12, borderWidth: 1, borderColor: copied ? C.green + '50' : C.accent + '50' }}
             >
               <Copy size={16} color={copied ? C.green : C.accent} />
-              <Text style={{ color: copied ? C.green : C.accent, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>
+              <Text style={{ color: copied ? C.green : C.accent, fontFamily: "Outfit_700Bold", fontSize: 13 }}>
                 {copied ? 'Copied!' : 'Copy Credentials'}
               </Text>
             </TouchableOpacity>
@@ -435,7 +435,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: C.purpleBg, padding: 13, borderRadius: 12, borderWidth: 1, borderColor: C.purple + '50' }}
               >
                 <ExternalLink size={16} color={C.purple} />
-                <Text style={{ color: C.purple, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Open Login</Text>
+                <Text style={{ color: C.purple, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Open Login</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -462,7 +462,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
             ) : (
               <>
                 <ShieldAlert size={16} color={isDisabled ? C.green : C.danger} />
-                <Text style={{ color: isDisabled ? C.green : C.danger, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>
+                <Text style={{ color: isDisabled ? C.green : C.danger, fontFamily: "Outfit_700Bold", fontSize: 13 }}>
                   {isDisabled ? 'Re-enable Access' : 'Disable Access'}
                 </Text>
               </>
@@ -472,7 +472,7 @@ function DetailModal({ visible, onClose, onComplete, org }: {
           {/* Warning */}
           <View style={{ backgroundColor: coreAlpha(coreColor('#fbbf24', 'overlay'), 0.08), borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.accent + '30', flexDirection: 'row', gap: 8 }}>
             <Info size={16} color={C.accent} style={{ marginTop: 1 }} />
-            <Text style={{ color: C.accent, fontFamily: 'Poppins_400Regular', fontSize: 12, flex: 1 }}>
+            <Text style={{ color: C.accent, fontFamily: "Outfit_400Regular", fontSize: 12, flex: 1 }}>
               Use &quot;Open Login&quot; in a new tab to test without losing your superadmin session.
             </Text>
           </View>
@@ -539,10 +539,10 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
       return (
         <View style={{ alignItems: 'center', paddingVertical: 8, marginBottom: 16 }}>
           <ActivityIndicator color={C.accent} />
-          <Text style={{ color: C.text, fontFamily: 'Poppins_600SemiBold', fontSize: 13, marginTop: 10 }}>
+          <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 13, marginTop: 10 }}>
             Creating account and linking organisation…
           </Text>
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, marginTop: 4 }}>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, marginTop: 4 }}>
             Account is only usable after linking completes.
           </Text>
         </View>
@@ -551,12 +551,12 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
     if (phase === 'success') {
       return (
         <View style={{ backgroundColor: C.greenBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.green + '40', marginBottom: 16 }}>
-          <Text style={{ color: C.green, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Completed — account linked</Text>
+          <Text style={{ color: C.green, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Completed — account linked</Text>
           {tempPassword ? (
             <View>
-              <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, marginTop: 8, lineHeight: 20 }}>
-                Login identifier: <Text style={{ fontFamily: 'Poppins_700Bold', color: C.accent }}>{loginIdentifier}</Text>{'\n'}
-                Temporary password (shown once): <Text style={{ fontFamily: 'Poppins_700Bold', color: C.accent }}>{tempPassword}</Text>{'\n'}
+              <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, marginTop: 8, lineHeight: 20 }}>
+                Login identifier: <Text style={{ fontFamily: "Outfit_700Bold", color: C.accent }}>{loginIdentifier}</Text>{'\n'}
+                Temporary password (shown once): <Text style={{ fontFamily: "Outfit_700Bold", color: C.accent }}>{tempPassword}</Text>{'\n'}
                 <Text style={{ color: C.muted, fontSize: 12 }}>Please deliver it securely. It is not stored anywhere.</Text>
               </Text>
               <TouchableOpacity
@@ -567,11 +567,11 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
                 }}
                 style={{ marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 9, backgroundColor: C.greenBg, borderWidth: 1, borderColor: C.green + '50' }}
               >
-                <Text style={{ color: C.green, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Copy credentials</Text>
+                <Text style={{ color: C.green, fontFamily: "Outfit_700Bold", fontSize: 12 }}>Copy credentials</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, marginTop: 8 }}>
+            <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, marginTop: 8 }}>
               The account was created previously for this organisation and is already linked.
             </Text>
           )}
@@ -581,11 +581,11 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
     if (phase === 'failed') {
       return (
         <View style={{ backgroundColor: C.dangerBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.danger + '40', marginBottom: 16 }}>
-          <Text style={{ color: C.danger, fontFamily: 'Poppins_700Bold', fontSize: 13 }}>Failed safely</Text>
-          <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, marginTop: 6, lineHeight: 19 }}>
+          <Text style={{ color: C.danger, fontFamily: "Outfit_700Bold", fontSize: 13 }}>Failed safely</Text>
+          <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, marginTop: 6, lineHeight: 19 }}>
             {errorMsg || 'The provisioning operation failed. No account was left behind — retry below.'}
           </Text>
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, marginTop: 6 }}>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, marginTop: 6 }}>
             Retrying continues the same safe operation — it will not create a duplicate account.
           </Text>
         </View>
@@ -603,24 +603,24 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
             <View>
-              <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: 20 }}>Onboard Tenant</Text>
-              <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 13 }}>
+              <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 20 }}>Onboard Tenant</Text>
+              <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 13 }}>
                 {org.name} ({getOrgConfig(org.org_type).label})
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={{ padding: 6 }}><X size={22} color={C.muted} /></TouchableOpacity>
           </View>
 
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Admin Email</Text>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Admin Email</Text>
           <TextInput
             value={email} onChangeText={setEmail}
             placeholder="e.g. admin@unit.com" placeholderTextColor={C.muted}
             autoCapitalize="none" keyboardType="email-address"
             editable={phase !== 'provisioning'}
-            style={{ backgroundColor: C.bg, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, fontFamily: 'Poppins_400Regular', fontSize: 15, marginBottom: 20 }}
+            style={{ backgroundColor: C.bg, color: C.text, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14, fontFamily: "Outfit_400Regular", fontSize: 15, marginBottom: 20 }}
           />
 
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Festival Template</Text>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Festival Template</Text>
           <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
             {([
               { value: 'sahithyolsav', label: 'Standard Festival' },
@@ -632,13 +632,13 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
                 disabled={phase === 'provisioning'}
                 style={{ flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: festivalTemplate === option.value ? C.green : C.border, backgroundColor: festivalTemplate === option.value ? C.greenBg : C.bg }}
               >
-                <Text style={{ color: festivalTemplate === option.value ? C.green : C.text, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>{option.label}</Text>
+                <Text style={{ color: festivalTemplate === option.value ? C.green : C.text, fontFamily: "Outfit_700Bold", fontSize: 12 }}>{option.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
 
-          <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, marginBottom: 20, lineHeight: 18 }}>
+          <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, marginBottom: 20, lineHeight: 18 }}>
             A temporary password is generated by the server and shown once after linking. It is never stored in the database.
           </Text>
 
@@ -648,14 +648,14 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
             {phase === 'failed' && (
               <TouchableOpacity onPress={handleSave} disabled={provisionMutation.isPending}
                 style={{ flex: 1, backgroundColor: C.accentBg, padding: 16, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: C.accent + '50' }}>
-                <Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Retry</Text>
+                <Text style={{ color: C.accent, fontFamily: "Outfit_700Bold", fontSize: 15 }}>Retry</Text>
               </TouchableOpacity>
             )}
             {phase !== 'success' && (
               <TouchableOpacity onPress={handleSave} disabled={provisionMutation.isPending || phase === 'provisioning'}
                 style={{ flex: 1, backgroundColor: provisionMutation.isPending ? C.border : C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
                 {provisionMutation.isPending ? <ActivityIndicator color={C.text} /> : (
-                  <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>
+                  <Text style={{ color: '#FFFFFF', fontFamily: "Outfit_700Bold", fontSize: 15 }}>
                     {phase === 'failed' ? 'Retry Creation' : 'Create Tenant Account'}
                   </Text>
                 )}
@@ -664,7 +664,7 @@ function OnboardModal({ visible, onClose, onComplete, org, provisionMutation }: 
             {phase === 'success' && (
               <TouchableOpacity onPress={() => { onComplete(); onClose(); }}
                 style={{ flex: 1, backgroundColor: C.green, padding: 16, borderRadius: 14, alignItems: 'center' }}>
-                <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Done</Text>
+                <Text style={{ color: '#FFFFFF', fontFamily: "Outfit_700Bold", fontSize: 15 }}>Done</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -730,12 +730,12 @@ export default function TenantsManager() {
             >
               <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: cfg.bg, alignItems: 'center', justifyContent: 'center' }}>{cfg.icon}</View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text numberOfLines={1} style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 15 }}>{org.name}</Text>
-                <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 2 }}>
+                <Text numberOfLines={1} style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 15 }}>{org.name}</Text>
+                <Text numberOfLines={1} style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 11, marginTop: 2 }}>
                   {cfg.label}{org.admin_email ? ` · ${org.admin_email}` : ''}
                 </Text>
-                {depth > 0 ? <Text numberOfLines={1} style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: 2 }}>{path}</Text> : null}
-                {contextOnly ? <Text style={{ color: C.muted, fontFamily: 'Poppins_700Bold', fontSize: 9, marginTop: 2 }}>PARENT · OPEN TO SEE MATCHES</Text> : null}
+                {depth > 0 ? <Text numberOfLines={1} style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 10, marginTop: 2 }}>{path}</Text> : null}
+                {contextOnly ? <Text style={{ color: C.muted, fontFamily: "Outfit_700Bold", fontSize: 9, marginTop: 2 }}>PARENT · OPEN TO SEE MATCHES</Text> : null}
               </View>
             </TouchableOpacity>
 
@@ -743,20 +743,20 @@ export default function TenantsManager() {
               <TouchableOpacity onPress={rowAction} style={{ paddingHorizontal: 8, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', gap: 7 }} accessibilityLabel={`Open ${org.name} tenant details`}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDisabled ? C.dangerBg : C.greenBg, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
                   {isDisabled ? <ShieldAlert size={12} color={C.danger} /> : <ShieldCheck size={12} color={C.green} />}
-                  <Text style={{ color: isDisabled ? C.danger : C.green, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{isDisabled ? 'Disabled' : 'Active'}</Text>
+                  <Text style={{ color: isDisabled ? C.danger : C.green, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{isDisabled ? 'Disabled' : 'Active'}</Text>
                 </View>
                 <ChevronRight size={16} color={C.muted} />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity onPress={rowAction} disabled={!onboardingAllowed} style={{ marginRight: 14, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: C.border, flexDirection: 'row', alignItems: 'center', gap: 5 }} accessibilityLabel={`Onboard ${org.name}`}>
                 <ShieldAlert size={12} color={C.danger} />
-                <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{onboardingAllowed ? 'Onboard' : 'Unavailable'}</Text>
+                <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{onboardingAllowed ? 'Onboard' : 'Unavailable'}</Text>
               </TouchableOpacity>
             )}
 
             {childCount > 0 ? (
               <TouchableOpacity onPress={() => toggleGroup(org.id)} accessibilityRole="button" accessibilityLabel={`${collapsed ? 'Expand' : 'Collapse'} ${org.name} group`} accessibilityState={{ expanded: !collapsed }} style={{ minHeight: 52, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 7, borderLeftWidth: 1, borderLeftColor: C.border }}>
-                <Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{childCount} {childCount === 1 ? 'child' : 'children'}</Text>
+                <Text style={{ color: C.accent, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{childCount} {childCount === 1 ? 'child' : 'children'}</Text>
                 {collapsed ? <ChevronRight size={16} color={C.muted} /> : <ChevronDown size={16} color={C.muted} />}
               </TouchableOpacity>
             ) : null}
@@ -784,8 +784,8 @@ export default function TenantsManager() {
                   <ArrowLeft size={20} color={C.text} />
                 </TouchableOpacity>
                 <View>
-                  <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Access Control</Text>
-                  <Text style={{ color: C.text, fontFamily: 'Poppins_900Black', fontSize: 22, lineHeight: 26 }}>Tenant Accounts</Text>
+                  <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Access Control</Text>
+                  <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 22, lineHeight: 26 }}>Tenant Accounts</Text>
                 </View>
               </View>
               <TouchableOpacity onPress={fetchOrgs} style={{ padding: 10, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border }}>
@@ -793,7 +793,7 @@ export default function TenantsManager() {
               </TouchableOpacity>
             </View>
             <View style={{ marginTop: 20, backgroundColor: C.surface, padding: 16, borderRadius: 10, borderWidth: 1, borderColor: C.border }}>
-              <Text style={{ color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, lineHeight: 20 }}>
+              <Text style={{ color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, lineHeight: 20 }}>
                 Tap <Text style={{ color: C.green }}>Active Tenant</Text> cards to view credentials. Tap <Text style={{ color: C.danger }}>Onboard</Text> to give an organisation portal access.
               </Text>
             </View>
@@ -811,7 +811,7 @@ export default function TenantsManager() {
                     borderColor: active ? (cfg?.color ?? C.accent) : C.border,
                     backgroundColor: active ? (cfg?.bg ?? C.accentBg) : C.surface,
                   }}>
-                    <Text style={{ color: active ? (cfg?.color ?? C.accent) : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 12, textTransform: 'capitalize' }}>{f}</Text>
+                    <Text style={{ color: active ? (cfg?.color ?? C.accent) : C.muted, fontFamily: "Outfit_700Bold", fontSize: 12, textTransform: 'capitalize' }}>{f}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -826,7 +826,7 @@ export default function TenantsManager() {
                 onChangeText={setSearchQuery}
                 placeholder={rootScopeId ? `Search in ${orgs.find((o) => o.id === rootScopeId)?.name ?? 'tenant'} and children` : 'Search tenants, organisations or admin email'}
                 placeholderTextColor={C.muted}
-                style={{ flex: 1, color: C.text, fontFamily: 'Poppins_400Regular', fontSize: 13, paddingVertical: 10, outlineStyle: 'none' as any } as any}
+                style={{ flex: 1, color: C.text, fontFamily: "Outfit_400Regular", fontSize: 13, paddingVertical: 10, outlineStyle: 'none' as any } as any}
                 accessibilityLabel="Search tenant accounts"
               />
               {!!searchQuery && <TouchableOpacity onPress={() => setSearchQuery('')} accessibilityLabel="Clear search"><X size={17} color={C.muted} /></TouchableOpacity>}
@@ -835,7 +835,7 @@ export default function TenantsManager() {
               {[{ id: null as string | null, name: 'All tenants' }, ...roots.map((root) => ({ id: root.id, name: root.name }))].map((root) => {
                 const selected = rootScopeId === root.id;
                 return <TouchableOpacity key={root.id ?? 'all'} onPress={() => setRootScopeId(root.id)} style={{ paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, borderColor: selected ? C.accent : C.border, backgroundColor: selected ? C.accentBg : C.surface }}>
-                  <Text style={{ color: selected ? C.accent : C.muted, fontFamily: 'Poppins_700Bold', fontSize: 11 }}>{root.name}</Text>
+                  <Text style={{ color: selected ? C.accent : C.muted, fontFamily: "Outfit_700Bold", fontSize: 11 }}>{root.name}</Text>
                 </TouchableOpacity>;
               })}
             </ScrollView>}
@@ -848,17 +848,17 @@ export default function TenantsManager() {
             ) : isError ? (
               <View style={{ marginTop: 24, padding: 18, borderRadius: 14, borderWidth: 1, borderColor: C.danger, backgroundColor: C.surface, alignItems: 'center', gap: 10 }}>
                 <ShieldAlert size={24} color={C.danger} />
-                <Text style={{ color: C.text, fontFamily: 'Poppins_700Bold', fontSize: 14, textAlign: 'center' }}>Could not load tenant hierarchy</Text>
-                <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', fontSize: 12, textAlign: 'center' }}>{error instanceof Error ? error.message : 'Check your connection and try again.'}</Text>
+                <Text style={{ color: C.text, fontFamily: "Outfit_700Bold", fontSize: 14, textAlign: 'center' }}>Could not load tenant hierarchy</Text>
+                <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", fontSize: 12, textAlign: 'center' }}>{error instanceof Error ? error.message : 'Check your connection and try again.'}</Text>
                 <TouchableOpacity onPress={fetchOrgs} accessibilityRole="button" style={{ marginTop: 2, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: C.accentBg, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
                   <RefreshCw size={14} color={C.accent} />
-                  <Text style={{ color: C.accent, fontFamily: 'Poppins_700Bold', fontSize: 12 }}>Try again</Text>
+                  <Text style={{ color: C.accent, fontFamily: "Outfit_700Bold", fontSize: 12 }}>Try again</Text>
                 </TouchableOpacity>
               </View>
             ) : visibleRows.length === 0 ? (
               <View style={{ alignItems: 'center', marginTop: 40 }}>
                 <Users size={48} color={C.border} />
-                <Text style={{ color: C.muted, fontFamily: 'Poppins_400Regular', marginTop: 16 }}>No organisations found.</Text>
+                <Text style={{ color: C.muted, fontFamily: "Outfit_400Regular", marginTop: 16 }}>No organisations found.</Text>
               </View>
             ) : hierarchy.map((node) => renderNode(node))}
           </View>

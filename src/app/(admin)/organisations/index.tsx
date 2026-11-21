@@ -225,8 +225,8 @@ export default function SubOrganisationsManager() {
                   <ArrowLeft size={20} color={ui.colors.text} />
                 </TouchableOpacity>
                 <View>
-                  <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Hierarchy Management</Text>
-                  <Text style={{ color: ui.colors.text, fontFamily: 'Poppins_900Black', fontSize: 22, lineHeight: 26 }}>Teams</Text>
+                  <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Hierarchy Management</Text>
+                  <Text style={{ color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: 22, lineHeight: 26 }}>Teams</Text>
                 </View>
               </View>
               {FEATURE_FLAGS.ENABLE_ONBOARDING ? (
@@ -238,7 +238,7 @@ export default function SubOrganisationsManager() {
                 />
               ) : (
                 <View style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: coreColor('#FDE68A', 'border'), backgroundColor: coreColor('#FFFBEB', 'warningSoft') }}>
-                  <Text style={{ fontFamily: 'Poppins_500Medium', fontSize: 12, color: coreColor('#92400E', 'warning') }}>Onboarding temporarily unavailable</Text>
+                  <Text style={{ fontFamily: "Outfit_500Medium", fontSize: 12, color: coreColor('#92400E', 'warning') }}>Onboarding temporarily unavailable</Text>
                 </View>
               )}
             </View>
@@ -246,10 +246,10 @@ export default function SubOrganisationsManager() {
 
           <View style={{ paddingHorizontal: 20, flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             <TouchableOpacity onPress={() => setShowArchived(false)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: !showArchived ? coreColor('#0F766E', 'border') : ui.colors.border, backgroundColor: !showArchived ? ui.colors.successSoft : ui.colors.surface }}>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: !showArchived ? coreColor('#0F766E', 'primaryText') : ui.colors.textMuted }}>Active ({orgs.length})</Text>
+              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 12, color: !showArchived ? coreColor('#0F766E', 'primaryText') : ui.colors.textMuted }}>Active ({orgs.length})</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowArchived(true)} style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: showArchived ? coreColor('#B45309', 'border') : ui.colors.border, backgroundColor: showArchived ? coreColor('#FFFBEB', 'warningSoft') : ui.colors.surface }}>
-              <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 12, color: showArchived ? coreColor('#B45309', 'warning') : ui.colors.textMuted }}>Archived ({archivedOrgs.length})</Text>
+              <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 12, color: showArchived ? coreColor('#B45309', 'warning') : ui.colors.textMuted }}>Archived ({archivedOrgs.length})</Text>
             </TouchableOpacity>
           </View>
 
@@ -259,29 +259,29 @@ export default function SubOrganisationsManager() {
             ) : (showArchived ? archivedChildOrganisationsError : childOrganisationsError) ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.8 }}>
                 <Building2 size={48} color={coreColor("#DC2626", 'danger')} />
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: coreColor('#DC2626', 'danger'), marginTop: 16, textAlign: 'center' }}>
+                <Text style={{ fontFamily: "Outfit_400Regular", color: coreColor('#DC2626', 'danger'), marginTop: 16, textAlign: 'center' }}>
                   Unable to load teams. Check your connection and try again.
                 </Text>
                 <TouchableOpacity
                   onPress={() => showArchived ? refetchArchivedChildOrganisations() : refetchChildOrganisations()}
                   style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'primary') }}
                 >
-                  <Text style={{ fontFamily: 'Poppins_700Bold', color: ui.colors.onPrimary }}>Retry</Text>
+                  <Text style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary }}>Retry</Text>
                 </TouchableOpacity>
               </View>
             ) : listedOrgs.length === 0 ? (
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, opacity: 0.5 }}>
                 <Building2 size={48} color={ui.colors.textMuted} />
-                <Text style={{ fontFamily: 'Poppins_400Regular', color: ui.colors.textMuted, marginTop: 16 }}>{showArchived ? 'No archived teams.' : 'No teams found.'}</Text>
+                <Text style={{ fontFamily: "Outfit_400Regular", color: ui.colors.textMuted, marginTop: 16 }}>{showArchived ? 'No archived teams.' : 'No teams found.'}</Text>
               </View>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
                 <View style={{ minWidth: 800, flex: 1, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 14, overflow: 'hidden' }}>
                   <View style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: coreColor('#F1F5F9', 'surface'), borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
-                    <Text style={{ flex: 1.6, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Team</Text>
-                    <Text style={{ flex: 1.5, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Login Username</Text>
-                    <Text style={{ width: 100, fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Type</Text>
-                    <Text style={{ width: 160, textAlign: 'right', fontFamily: 'Poppins_700Bold', fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Actions</Text>
+                    <Text style={{ flex: 1.6, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Team</Text>
+                    <Text style={{ flex: 1.5, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Login Username</Text>
+                    <Text style={{ width: 100, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Type</Text>
+                    <Text style={{ width: 160, textAlign: 'right', fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Actions</Text>
                   </View>
 
                   {listedOrgs.map((org: any) => (
@@ -290,15 +290,15 @@ export default function SubOrganisationsManager() {
                         <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
                           <Building2 size={15} color={coreColor("#0F766E", 'primaryText')} />
                         </View>
-                        <Text numberOfLines={1} style={{ flex: 1, fontFamily: 'Poppins_700Bold', fontSize: 13, color: ui.colors.text }}>{org.name}</Text>
+                        <Text numberOfLines={1} style={{ flex: 1, fontFamily: "Outfit_700Bold", fontSize: 13, color: ui.colors.text }}>{org.name}</Text>
                       </View>
                       <View style={{ flex: 1.5, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
                         <User size={13} color={coreColor("#0F766E", 'primaryText')} />
-                        <Text numberOfLines={1} style={{ marginLeft: 7, fontFamily: 'Poppins_400Regular', fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
+                        <Text numberOfLines={1} style={{ marginLeft: 7, fontFamily: "Outfit_400Regular", fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
                       </View>
                       <View style={{ width: 100, alignItems: 'flex-start' }}>
                         <View style={{ backgroundColor: coreColor('#F1F5F9', 'surface'), borderWidth: 1, borderColor: coreColor('#E2E8F0', 'border'), paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontFamily: 'Poppins_700Bold', fontSize: 9, color: coreColor('#0F766E', 'primaryText'), textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
+                          <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 9, color: coreColor('#0F766E', 'primaryText'), textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
                         </View>
                       </View>
                       <View style={{ width: 160, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
@@ -346,9 +346,9 @@ export default function SubOrganisationsManager() {
       <Modal visible={modalVisible} transparent animationType={isPhone ? 'slide' : 'fade'} onRequestClose={() => !isCreating && setModalVisible(false)}>
         <View style={{ flex: 1, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: isPhone ? 'flex-end' : 'center', alignItems: 'center', padding: isPhone ? 0 : 24 }}>
           <View style={{ width: isPhone ? width : Math.min(width - 48, 640), maxHeight: height - (isPhone ? 24 : 48), backgroundColor: ui.colors.surface, borderTopLeftRadius: isPhone ? 24 : 16, borderTopRightRadius: isPhone ? 24 : 16, borderBottomLeftRadius: isPhone ? 0 : 16, borderBottomRightRadius: isPhone ? 0 : 16, padding: isPhone ? 20 : 24, paddingBottom: isPhone && Platform.OS === 'ios' ? 40 : isPhone ? 24 : 24 }}>
-            <Text style={{ fontFamily: 'Poppins_900Black', fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Team</Text>
+            <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 20, color: ui.colors.text, marginBottom: 20 }}>Create Team</Text>
             
-            <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 13, marginBottom: 16 }}>
+            <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 13, marginBottom: 16 }}>
               Enter the team name and an admin username. A secure admin account and credentials are generated by the server and shown once after linking completes.
             </Text>
 
@@ -369,10 +369,10 @@ export default function SubOrganisationsManager() {
               autoCapitalize="none"
               style={{ marginBottom: 4 }}
             />
-            <Text style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 11, marginBottom: 16 }}>Use 3–40 lowercase letters, numbers or underscores.</Text>
+            <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 11, marginBottom: 16 }}>Use 3–40 lowercase letters, numbers or underscores.</Text>
 
             {errorMsg ? (
-              <Text style={{ color: coreColor('#DC2626', 'danger'), fontFamily: 'Poppins_400Regular', marginBottom: 16, fontSize: 13 }}>⚠️ {errorMsg}</Text>
+              <Text style={{ color: coreColor('#DC2626', 'danger'), fontFamily: "Outfit_400Regular", marginBottom: 16, fontSize: 13 }}>⚠️ {errorMsg}</Text>
             ) : null}
 
             <View style={{ flexDirection: 'row', gap: 12 }}>

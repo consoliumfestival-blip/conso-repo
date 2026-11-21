@@ -364,7 +364,7 @@ export default function ImportUpperPrimaryDataset() {
               accept=".json" 
               onChange={handleFileUpload} 
               style={{
-                fontFamily: 'Poppins_600SemiBold',
+                fontFamily: "Outfit_700Bold",
                 backgroundColor: ui.colors.infoAction,
                 color: ui.colors.onPrimary,
                 padding: '10px 20px',

@@ -94,14 +94,14 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: coreColor('#0F172A', 'overlay'),
     marginBottom: 12,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   message: {
     fontSize: 14,
     color: coreColor('#475569', 'text'),
     marginBottom: 24,
     lineHeight: 1.5,
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   actions: {
     display: 'flex',
@@ -117,7 +117,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   secondaryBtn: {
     padding: '10px 16px',
@@ -128,7 +128,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 14,
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: "Outfit_400Regular",
   },
   errorText: {
     backgroundColor: coreColor('#FEF2F2', 'dangerSoft'),
@@ -137,7 +137,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     fontSize: 12,
     overflowX: 'auto',
-    fontFamily: 'monospace',
+    fontFamily: "Outfit_400Regular",
     border: `1px solid ${coreColor('#FECACA', 'border')}`,
   },
 };

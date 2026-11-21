@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   triggerText: {
     color: ui.colors.text,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 10,
   },
   menu: {
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   itemText: {
     flex: 1,
     color: ui.colors.text,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
   },
   itemTextTablet: {

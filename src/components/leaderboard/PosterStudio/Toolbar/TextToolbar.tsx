@@ -87,7 +87,7 @@ export default function TextToolbar({ onOpenProperties }: TextToolbarProps = {})
         onClick={() => commit({ fontWeight: layer.fontWeight === 700 ? 400 : 700 })}
         title="Bold"
       >
-        <strong style={{ fontFamily: 'serif', fontSize: 16 }}>B</strong>
+        <strong style={{ fontFamily: "Outfit_400Regular", fontSize: 16 }}>B</strong>
       </button>
 
       {/* 5. Alignment Cycle */}

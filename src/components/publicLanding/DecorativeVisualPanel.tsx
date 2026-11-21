@@ -58,7 +58,7 @@ export function DecorativeVisualPanel() {
             className="font-cooper"
             style={{
               color: '#FFFFFF',
-              fontFamily: 'CooperBlack',
+              fontFamily: "Outfit_700Bold",
               fontSize: isDesktop ? 52 : 42,
               lineHeight: isDesktop ? 54 : 44,
             }}

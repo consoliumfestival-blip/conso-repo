@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   centerText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 13,
     marginTop: 12,
@@ -397,13 +397,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 22,
     textAlign: 'center',
   },
   emptyMessage: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 13.5,
     lineHeight: 22,
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   backButtonText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 12.5,
   },
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   topBackText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.76)',
     fontSize: 12.5,
   },
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   },
   avatarInitials: {
     color: '#D1FAE5',
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     fontSize: 42,
     letterSpacing: 1,
   },
@@ -503,13 +503,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   publicPillText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 9.5,
     textTransform: 'uppercase',
   },
   name: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 34,
     lineHeight: 40,
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   metaPillText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 10,
     textTransform: 'uppercase',
@@ -555,14 +555,14 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   metaPillGreenText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFDF00',
     fontSize: 10,
     textTransform: 'uppercase',
     flexShrink: 1,
   },
   bio: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14.5,
     lineHeight: 22,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
     maxWidth: 760,
   },
   bioMuted: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 13.5,
     lineHeight: 20,
@@ -604,13 +604,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statValue: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 22,
     lineHeight: 26,
   },
   statLabel: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
     marginTop: 2,
@@ -640,12 +640,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   sectionTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
   },
   emptySectionText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 12.5,
     padding: 18,
@@ -674,12 +674,12 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   itemName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 13.5,
   },
   itemMeta: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
     marginTop: 2,
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rankText: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFDF00',
     fontSize: 13.5,
   },
@@ -712,13 +712,13 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   pointsValue: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#10B981',
     fontSize: 18,
     lineHeight: 20,
   },
   pointsLabel: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.3)',
     fontSize: 9,
     textTransform: 'uppercase',

@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   triggerText: {
     flex: 1,
     color: coreColor('#334155', 'text'),
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   triggerTextActive: {
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingVertical: 0,
     color: ui.colors.text,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
     outlineStyle: 'none',
   },
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     textAlign: 'center',
     color: ui.colors.textMuted,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 11,
   },
   item: {
@@ -340,12 +340,12 @@ const styles = StyleSheet.create({
   itemText: {
     flex: 1,
     color: ui.colors.text,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 12,
   },
   itemTextSelected: {
     color: ui.colors.primaryText,
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   },
   itemTextDisabled: {
     color: ui.colors.textSubtle,

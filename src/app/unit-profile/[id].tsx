@@ -401,7 +401,7 @@ export default function PublicUnitProfileScreen() {
                               y={p.labelY}
                               fill={activeChartPoint === i ? "#F97316" : "rgba(255,255,255,0.8)"}
                               fontSize={activeChartPoint === i ? "10" : "9"}
-                              fontFamily={activeChartPoint === i ? "Poppins_700Bold" : "Poppins_500Medium"}
+                              fontFamily={activeChartPoint === i ? "Outfit_700Bold" : "Outfit_500Medium"}
                               textAnchor="middle"
                               alignmentBaseline="middle"
                             >
@@ -416,7 +416,7 @@ export default function PublicUnitProfileScreen() {
                               <SvgText
                                 fill="#030E21"
                                 fontSize="10"
-                                fontFamily="Poppins_700Bold"
+                                fontFamily="Outfit_700Bold"
                                 textAnchor="middle"
                                 alignmentBaseline="middle"
                               >
@@ -592,7 +592,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   centerText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.6)',
     fontSize: 13,
     marginTop: 12,
@@ -607,13 +607,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 22,
     textAlign: 'center',
   },
   emptyMessage: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 13.5,
     lineHeight: 22,
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   backButtonText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 12.5,
   },
@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   topBackText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255,255,255,0.76)',
     fontSize: 12.5,
   },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pdfButtonText: {
-    fontFamily: 'Poppins_600SemiBold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 12,
     color: '#FFFFFF',
   },
@@ -719,12 +719,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   publicPillText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 9.5,
     textTransform: 'uppercase',
   },
   name: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 34,
     lineHeight: 40,
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   metaPillGreenText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFDF00',
     fontSize: 10,
     textTransform: 'uppercase',
@@ -787,13 +787,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   statValue: {
-    fontFamily: 'Poppins_900Black',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 22,
     lineHeight: 26,
   },
   statLabel: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 11.5,
     marginTop: 2,
@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   sectionTitle: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 15,
   },
@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   emptySectionText: {
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     color: 'rgba(255, 255, 255, 0.5)',
     fontSize: 12.5,
     padding: 18,
@@ -861,7 +861,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   partName: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: '#FFFFFF',
     fontSize: 14,
   },
@@ -872,13 +872,13 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   partMetaText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.4)',
     fontSize: 11,
     textTransform: 'uppercase',
   },
   partDot: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     color: 'rgba(255, 255, 255, 0.2)',
     fontSize: 11,
   },
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   partStatusText: {
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
   filterSection: {
@@ -915,7 +915,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     marginLeft: 10,
-    fontFamily: 'Poppins_400Regular',
+    fontFamily: "Outfit_400Regular",
     fontSize: 13,
     color: '#FFFFFF',
     outlineStyle: 'none',
@@ -936,12 +936,12 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
   },
   categoryPillText: {
-    fontFamily: 'Poppins_500Medium',
+    fontFamily: "Outfit_500Medium",
     fontSize: 12,
     color: 'rgba(255,255,255,0.6)',
   },
   categoryPillTextActive: {
     color: '#3B82F6',
-    fontFamily: 'Poppins_700Bold',
+    fontFamily: "Outfit_700Bold",
   }
 });

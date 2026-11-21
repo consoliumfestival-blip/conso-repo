@@ -1,21 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { categoryTrophyService } from '@/services/categoryTrophyService';
 
-export const useCategoryTrophyMode = (tenantId?: string | null, festivalId?: string | null) => useQuery({
-  queryKey: ['category-trophy-mode', tenantId, festivalId],
+export const useCategoryTrophyMode = (tenantId?: string | null, festivalId?: string | null, publicRevision?: string | null) => useQuery({
+  queryKey: ['category-trophy-mode', tenantId, festivalId, publicRevision],
   queryFn: () => categoryTrophyService.getMode(tenantId!, festivalId!),
   enabled: !!tenantId && !!festivalId,
   staleTime: 0,
-  refetchInterval: 15_000,
-  refetchIntervalInBackground: false,
+  refetchInterval: false,
+  placeholderData: (previous, priorQuery) => priorQuery?.queryKey[1] === tenantId && priorQuery?.queryKey[2] === festivalId ? previous : undefined,
 });
 
-export const usePublicCategoryTrophy = (tenantId?: string | null, festivalId?: string | null, enabled = true) => useQuery({
-  queryKey: ['category-trophy-public', tenantId, festivalId],
+export const usePublicCategoryTrophy = (tenantId?: string | null, festivalId?: string | null, enabled = true, publicRevision?: string | null) => useQuery({
+  queryKey: ['category-trophy-public', tenantId, festivalId, publicRevision],
   queryFn: () => categoryTrophyService.listPublic(tenantId!, festivalId!),
   enabled: enabled && !!tenantId && !!festivalId,
   staleTime: 10_000,
-  refetchInterval: 15_000,
+  refetchInterval: false,
+  placeholderData: (previous, priorQuery) => priorQuery?.queryKey[1] === tenantId && priorQuery?.queryKey[2] === festivalId ? previous : undefined,
 });
 
 export const useAdminCategoryTrophy = (tenantId?: string | null, festivalId?: string | null, enabled = true) => useQuery({

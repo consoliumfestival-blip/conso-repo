@@ -778,27 +778,29 @@ export default function AdminDashboardContent() {
               ))}
 
               {insightView !== 'categories' && (data?.unitGraph && data.unitGraph.length > 0 ? (
-                <Animated.View entering={FadeInUp.duration(460).delay(430).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'organisations' ? 1.45 : 1, minWidth: 340, minHeight: 222, padding: 16 }]}>
+                <Animated.View entering={FadeInUp.duration(460).delay(430).springify()} className="panel-card" style={[panelSurface, { backgroundColor: dashboardColors.surface, borderColor: dashboardColors.border, flex: insightView === 'organisations' ? 1.45 : 1, minWidth: 0, minHeight: 222, padding: 16 }]}>
                   <SectionHeader title="Participants by Team" action="View Details" onAction={() => router.push('/(admin)/organisations' as any)} />
-                  <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                    <View style={{ width: 148, height: 148, alignItems: 'center', justifyContent: 'center', marginRight: 18 }}>
-                      <Svg width={148} height={148} viewBox="0 0 148 148">
-                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="12" fill="none" />
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 16, paddingTop: 12 }}>
+                    <View style={{ width: 156, height: 156, alignItems: 'center', justifyContent: 'center' }}>
+                      <Svg width={156} height={156} viewBox="0 0 148 148">
+                        <Circle cx="74" cy="74" r="58" stroke={coreColor('#F1F5F9', 'surfaceStrong')} strokeWidth="16" fill="none" />
                         {(() => {
                           const radius = 58;
                           const circumference = 2 * Math.PI * radius;
                           let offset = 0;
                           return data.unitGraph.slice(0, 7).map((item, index) => {
                             const segment = unitTotal > 0 ? item.count / unitTotal : 0;
-                            const dash = `${segment * circumference} ${circumference}`;
+                            const length = segment * circumference;
+                            const gap = data.unitGraph.length > 1 && length > 6 ? 3 : 0;
+                            const dash = `${Math.max(0, length - gap)} ${circumference}`;
                             const circle = (
                               <Circle
                                 key={item.id ?? item.name}
                                 cx="74"
                                 cy="74"
                                 r={radius}
-                                stroke={categoryColors[(index + 3) % categoryColors.length]}
-                                strokeWidth="12"
+                                stroke={categoryChartColors[index % categoryChartColors.length]}
+                                strokeWidth="16"
                                 fill="none"
                                 strokeDasharray={dash}
                                 strokeDashoffset={-offset}
@@ -813,21 +815,21 @@ export default function AdminDashboardContent() {
                         })()}
                       </Svg>
                       <View style={{ position: 'absolute', alignItems: 'center' }}>
-                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 22 }}>{unitTotal.toLocaleString()}</Text>
+                        <Text style={{ fontFamily: 'Montserrat_700Bold', color: NAVY, fontSize: 24 }}>{unitTotal.toLocaleString()}</Text>
                         <Text style={{ fontFamily: 'Poppins_400Regular', color: MUTED, fontSize: 11 }}>Total</Text>
                       </View>
                     </View>
 
-                    <View style={{ flex: 1, gap: 9 }}>
+                    <View style={{ flex: 1, minWidth: 150, gap: 10 }}>
                       {data.unitGraph.slice(0, 7).map((item, index) => {
                         const pct = unitTotal > 0 ? ((item.count / unitTotal) * 100).toFixed(1) : '0.0';
                         return (
                           <View key={item.id ?? item.name} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryColors[(index + 3) % categoryColors.length], marginRight: 10 }} />
-                              <Text numberOfLines={1} style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 10, flex: 1 }}>{item.name}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: 6 }}>
+                              <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: categoryChartColors[index % categoryChartColors.length], marginRight: 10 }} />
+                              <Text numberOfLines={2} style={{ fontFamily: 'Poppins_700Bold', color: MUTED, fontSize: 11, flexShrink: 1 }}>{item.name}</Text>
                             </View>
-                            <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 10, marginLeft: 4 }}>
+                            <Text style={{ fontFamily: 'Poppins_700Bold', color: NAVY, fontSize: 10 }}>
                               {item.count} ({pct}%)
                             </Text>
                           </View>

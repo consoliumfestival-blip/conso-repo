@@ -5,9 +5,11 @@ import { CORE_PALETTES, CoreMode, CorePalette, DEFAULT_CORE_APPEARANCE } from '@
 import { ui } from '@/constants/designSystem';
 import { useCoreAppearance } from '@/core/contexts/CoreAppearanceContext';
 import { SsfCard } from '@/components/ui/SsfCard';
+import { setSidebarAppearance, useSidebarAppearance } from '@/core/store/coreAppearanceStore';
 
 export default function AppearanceSettings() {
   const theme = useCoreAppearance();
+  const sidebarStyle = useSidebarAppearance();
   if (Platform.OS !== 'web') return <View style={{ padding: 16 }}><Text>Appearance settings are available in the web app.</Text></View>;
   if (!theme) return null;
   const { appearance, setAppearance, colors, isDark, saveError } = theme;
@@ -19,6 +21,13 @@ export default function AppearanceSettings() {
         {([{ mode: 'light', label: 'Light', icon: Sun }, { mode: 'dark', label: 'Dark', icon: Moon }, { mode: 'system', label: 'System', icon: Monitor }] as const).map(({ mode, label, icon: Icon }) => <Pressable key={mode} accessibilityRole="radio" aria-checked={appearance.mode === mode} accessibilityState={{ checked: appearance.mode === mode }} onPress={() => setAppearance({ ...appearance, mode: mode as CoreMode })} style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 11, borderWidth: 1, borderColor: appearance.mode === mode ? colors.primaryText : colors.border, backgroundColor: appearance.mode === mode ? colors.primarySoft : colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon size={17} color={appearance.mode === mode ? colors.primaryText : colors.textMuted} /><Text style={{ color: appearance.mode === mode ? colors.primaryText : colors.text, fontWeight: '600' }}>{label}</Text></Pressable>)}
       </View>
       <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 10 }}>Dark mode uses one common Black palette. System follows your device setting.</Text>
+    </SsfCard>
+    <SsfCard>
+      <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 5 }}>Sidebar style</Text>
+      <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 12 }}>Changes the navigation rail only.</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {([{ value: 'dark', label: 'Dark', icon: Moon }, { value: 'light', label: 'Light', icon: Sun }] as const).map(({ value, label, icon: Icon }) => <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: sidebarStyle === value }} onPress={() => setSidebarAppearance(value)} style={{ minHeight: 44, paddingHorizontal: 16, borderRadius: 11, borderWidth: 1, borderColor: sidebarStyle === value ? colors.primaryText : colors.border, backgroundColor: sidebarStyle === value ? colors.primarySoft : colors.surface, flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon size={17} color={sidebarStyle === value ? colors.primaryText : colors.textMuted} /><Text style={{ color: sidebarStyle === value ? colors.primaryText : colors.text, fontWeight: '600' }}>{label}</Text></Pressable>)}
+      </View>
     </SsfCard>
     <SsfCard>
       <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 5 }}>Light palette</Text>
@@ -35,6 +44,6 @@ export default function AppearanceSettings() {
     </SsfCard>
     <SsfCard><Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 12 }}>Preview</Text><View style={{ backgroundColor: colors.background, padding: 14, borderRadius: 12, borderWidth: 1, borderColor: colors.border, gap: 12 }}><Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>Festival overview</Text><Text style={{ color: colors.textMuted, fontSize: 13 }}>Clear text, soft surfaces, and a subtle glass finish.</Text><View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}><View style={{ backgroundColor: colors.primary, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10 }}><Text style={{ color: colors.onPrimary, fontWeight: '700' }}>Primary action</Text></View><View style={{ backgroundColor: colors.successSoft, borderRadius: 9, paddingHorizontal: 12, justifyContent: 'center' }}><Text style={{ color: colors.success }}>Completed</Text></View></View></View></SsfCard>
     {saveError && <Text accessibilityRole="alert" style={{ color: colors.warning, fontSize: 12 }}>{saveError}</Text>}
-    <Pressable accessibilityRole="button" onPress={() => setAppearance(DEFAULT_CORE_APPEARANCE)} style={{ alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border, borderRadius: ui.radius.md, justifyContent: 'center' }}><Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Reset appearance</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => { setAppearance(DEFAULT_CORE_APPEARANCE); setSidebarAppearance('dark'); }} style={{ alignSelf: 'flex-start', minHeight: 44, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border, borderRadius: ui.radius.md, justifyContent: 'center' }}><Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Reset appearance</Text></Pressable>
   </ScrollView>;
 }

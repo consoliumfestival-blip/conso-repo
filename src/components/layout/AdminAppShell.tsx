@@ -1,4 +1,4 @@
-import { coreColor } from '@/constants/coreTheme';
+import { CORE_PALETTES, coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useMemo, useState } from "react";
 import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
@@ -31,6 +31,8 @@ import {
 
 import { useAuthStore } from "@/core/store/authStore";
 import { useCoreAppearance } from "@/core/contexts/CoreAppearanceContext";
+import { useSidebarAppearance } from "@/core/store/coreAppearanceStore";
+import { showAdminIconRail } from "@/core/utils/adminNavigationLayout";
 import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
 import { useFestival } from "@/core/hooks/useFestival";
 import { FEATURE_FLAGS } from "@/core/config/features";
@@ -279,6 +281,7 @@ function DesktopSidebar({
   const router = useRouter();
   const { logout } = useAuthStore();
   const appearance = useCoreAppearance();
+  const sidebarAppearance = useSidebarAppearance();
   const { height } = useWindowDimensions();
   const [popup, setPopup] = useState<{ item: NavItem; top: number } | null>(null);
   const scrollOffset = React.useRef(0);
@@ -298,26 +301,26 @@ function DesktopSidebar({
   const openPopup = (item: NavItem, index: number) => {
     cancelClose();
     const popupHeight = 54 + (item.children?.length || 0) * 43;
-    setPopup({ item, top: Math.max(8, Math.min(76 + index * 54 - scrollOffset.current, height - popupHeight - 12)) });
+    setPopup({ item, top: Math.max(8, Math.min(52 + index * 38 - scrollOffset.current, height - popupHeight - 24)) });
   };
   const go = (path: string) => {
     setPopup(null);
     router.push(path as any);
   };
-  const iconColor = coreColor('#D7E8E8', 'sidebarText');
+  const iconColor = sidebarAppearance === 'dark' ? coreColor('#D7E8E8', 'sidebarText') : CORE_PALETTES[appearance?.appearance.palette || 'teal'].primary;
 
   return (
     <View
       className="no-print"
-      style={styles.sidebar}
+      style={[styles.sidebar, sidebarAppearance === 'light' && styles.sidebarLight]}
     >
       <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}>
-        <ConsoliumLogo size={38} borderRadius={12} />
+        <ConsoliumLogo size={32} borderRadius={10} />
       </Pressable>
       <View style={{ flex: 1, minHeight: 0 }}>
         <ScrollView
           style={styles.sidebarScroll}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 12 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 4 }}
           showsVerticalScrollIndicator={false}
           onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; if (popup) setPopup(null); }}
           scrollEventThrottle={32}
@@ -335,13 +338,13 @@ function DesktopSidebar({
                   onHoverOut={scheduleClose}
                   onFocus={() => openPopup(item, index)}
                   onPress={() => go(item.path)}
-                  style={[styles.railButton, active && styles.railButtonActive]}
+                  style={[styles.railButton, active && (sidebarAppearance === 'dark' ? styles.railButtonActive : styles.railButtonActiveLight)]}
                 >
-                  <Icon size={21} color={iconColor} strokeWidth={active ? 2.4 : 1.9} />
+                  <Icon size={17} color={iconColor} strokeWidth={active ? 2.4 : 1.9} />
                   {active && <View style={styles.railActiveBar} />}
                   {item.label === 'Judge Management' && pendingCount > 0 && <View style={styles.railBadge} />}
                 </Pressable>
-                {item.children?.length ? <Pressable accessibilityRole="button" accessibilityLabel={`Show ${item.label} pages`} accessibilityState={{ expanded: popup?.item.label === item.label }} onPress={() => popup?.item.label === item.label ? setPopup(null) : openPopup(item, index)} style={styles.railDisclosure}><ChevronRight size={13} color={iconColor} /></Pressable> : null}
+                {item.children?.length ? <Pressable accessibilityRole="button" accessibilityLabel={`Show ${item.label} pages`} accessibilityState={{ expanded: popup?.item.label === item.label }} onHoverIn={() => openPopup(item, index)} onFocus={() => openPopup(item, index)} onPress={() => popup?.item.label === item.label ? setPopup(null) : openPopup(item, index)} style={[styles.railDisclosure, sidebarAppearance === 'light' && styles.railDisclosureLight]}><ChevronRight size={11} color={iconColor} /></Pressable> : null}
               </View>
             );
           })}
@@ -352,9 +355,9 @@ function DesktopSidebar({
         {popup.item.children?.map((child) => <Pressable key={child.label} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
       </Pressable>}
       <View style={styles.railFooter}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={20} color={iconColor} /></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}</Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={20} color={iconColor} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={17} color={iconColor} /></Pressable>
       </View>
     </View>
   );
@@ -586,11 +589,10 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const { settings: tenantFeatures } = useTenantFeatures(tenantId);
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isDesktop = width >= 900;
-  // Keep a fixed rail on desktop and large tablets; short landscape phones use the touch menu.
-  const showSidebar = width >= 900 || (width >= 600 && height >= 600);
+  const showSidebar = showAdminIconRail(width);
+  const isDesktop = showSidebar;
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
@@ -677,31 +679,35 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 82 : 72,
   },
   sidebar: {
-    width: 72,
-    minHeight: "100%",
+    width: 48,
     backgroundColor: coreColor('#102A2E', 'sidebar'),
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 12,
+    margin: 8,
+    borderRadius: 18,
+    paddingHorizontal: 3,
+    paddingTop: 7,
+    paddingBottom: 7,
     justifyContent: "space-between",
     zIndex: 30,
     overflow: 'visible',
   },
-  railLogo: { width: 48, height: 52, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  railRow: { width: 56, height: 54, alignItems: 'center', justifyContent: 'center' },
-  railButton: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  sidebarLight: { backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), ...ui.shadow },
+  railLogo: { width: 40, height: 40, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  railRow: { width: 40, height: 38, alignItems: 'center', justifyContent: 'center' },
+  railButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   railButtonActive: { backgroundColor: coreColor('#17383D', 'sidebarSoft') },
+  railButtonActiveLight: { backgroundColor: coreColor('#E5F4F0', 'primarySoft') },
   railActiveBar: { position: 'absolute', left: -4, width: 3, height: 24, borderRadius: 3, backgroundColor: coreColor('#54D9B5', 'primary') },
   railBadge: { position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF776F' },
-  railDisclosure: { position: 'absolute', bottom: -2, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: coreColor('#17383D', 'sidebarSoft') },
-  railPopup: { position: 'absolute', left: 72, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
+  railDisclosure: { position: 'absolute', bottom: -2, right: -1, width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: coreColor('#17383D', 'sidebarSoft') },
+  railDisclosureLight: { backgroundColor: coreColor('#E5F4F0', 'primarySoft') },
+  railPopup: { position: 'absolute', left: 40, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
   railPopupTitle: { color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
   railPopupLink: { minHeight: 42, borderRadius: 9, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
   railPopupLinkActive: { backgroundColor: ui.colors.primarySoft },
   railPopupLinkText: { color: ui.colors.text, fontFamily: 'Poppins_500Medium', fontSize: 12, flexShrink: 1 },
   railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
-  railFooter: { alignItems: 'center', gap: 3, paddingTop: 10, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
-  railFooterButton: { width: 48, height: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  railFooter: { alignItems: 'center', gap: 2, paddingTop: 5, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
+  railFooterButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   sidebarCollapsed: {
     width: 68,
     paddingHorizontal: 8,

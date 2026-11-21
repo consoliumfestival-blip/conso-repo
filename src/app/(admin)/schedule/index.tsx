@@ -8,7 +8,7 @@ import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 
 import { useSchedule } from '../../../core/hooks/useSchedule';
-import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronLeft, ChevronRight, Download, FileText, Share2, Copy, MessageCircle } from 'lucide-react-native';
+import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, FileText, Share2, Copy, MessageCircle } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
 import { chanceSheetService } from '../../../services/chanceSheetService';
@@ -24,7 +24,7 @@ import type { AdminSchedulePdfMode } from '../../../services/schedulePdfService'
 import { isGroupCompetition } from '../../../core/utils/groupParticipation';
 import { ScheduleLifecycleActions } from '../../../components/schedule/ScheduleLifecycleActions';
 import * as Device from 'expo-device';
-import { getCompactScheduleActionOrientation, getScheduleActionRows, shouldShowTabletLandscapeScheduleCategory, shouldUseTabletScheduleTable, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
+import { getCompactScheduleActionOrientation, getScheduleActionRows, showScheduleCardActions } from '../../../core/utils/scheduleTabletLayout';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 import { stageManagementService } from '../../../services/stageManagementService';
 import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
@@ -45,71 +45,44 @@ const schedulePdfExportOptions: { id: SchedulePdfExportOption; label: string; de
   { id: 'chance-sheet', label: 'Chance Sheet', description: 'Choose one item and create its printable chance sheet.' },
 ];
 
-function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false,compact=false}: {
+function ScheduleWorkflowBadges({status,summary,isShuffleLocked,isPostponed=false}: {
  status?: string | null; summary?: ScheduleWorkflowSummary; isShuffleLocked?: boolean;
- isPostponed?: boolean; compact?: boolean;
+ isPostponed?: boolean;
 }) {
   const normalizedStatus = normalizeScheduleLifecycleStatus(status);
   const postponed = normalizedStatus !== 'ongoing' && normalizedStatus !== 'completed'
     && isPostponed;
   const lifecycleLabel = postponed ? 'Postponed' : getScheduleLifecycleLabel(status);
-  const lifecycleTone = postponed
-    ? 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700'
+  const lifecycleColor = postponed
+    ? '#EA580C'
     : normalizedStatus === 'ongoing'
-      ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
+      ? '#059669'
       : normalizedStatus === 'completed'
-        ? 'bg-core-success-soft-green-100 border-core-success-soft-green-300 text-core-success-green-700'
-        : 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200 text-core-info-blue-700';
-  const chipContainerSize = compact ? 'min-h-5 px-1.5' : 'min-h-6 px-2';
-  const chipTextSize = compact ? 'text-[8px]' : 'text-[9px]';
-  const chips: { label: string; tone: string }[] = [];
-
-  if (!summary) chips.push({ label: 'Workflow unavailable', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
-  else {
-    const { active_count: active, verified_count: verified, coded_count: coded,
-      assigned_judges: totalExpected, submitted_judges: totalSubmitted,
-      has_manual_result: hasManualSubmitted, has_published_result: hasInternalPublished } = summary;
-    const { checkinDone, codesDone: codesShuffled, attendanceLabel } = getStageCheckinProgress(active, verified, coded, isShuffleLocked);
-    const allMarksDone = totalExpected > 0 && totalSubmitted >= totalExpected;
-
-    chips.push(checkinDone
-      ? { label: `Check-in completed · ${attendanceLabel}`, tone: 'bg-core-success-soft-green-100 border-core-success-soft-green-300 text-core-success-green-700' }
-      : { label: `Check-in pending${active > 0 ? ` · ${verified}/${active}` : ''}`, tone: 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700' });
-
-    if (codesShuffled) chips.push({ label: 'Codes shuffled', tone: 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700' });
-    else if (verified > coded) chips.push({ label: 'Codes pending', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
-
-    if (totalExpected > 0) chips.push({
-      label: `Marks ${totalSubmitted}/${totalExpected}`,
-      tone: allMarksDone
-        ? 'bg-core-success-soft-emerald-50 border-core-success-soft-emerald-200 text-core-success-emerald-700'
-        : totalSubmitted > 0
-          ? 'bg-core-warning-soft-amber-100 border-core-warning-soft-amber-200 text-core-warning-amber-700'
-          : 'bg-core-surface-muted-slate-100 border-core-border-slate-200 text-core-text-muted-slate-500',
-    });
-    if (hasManualSubmitted) chips.push({ label: 'Marks submitted manually', tone: 'bg-core-success-soft-green-100 border-core-success-soft-green-200 text-core-success-green-700' });
-    if (hasInternalPublished) chips.push({ label: 'Published', tone: 'bg-core-info-soft-blue-100 border-core-info-soft-blue-200 text-core-info-blue-700' });
-    if (!active && !totalExpected && !hasManualSubmitted && !hasInternalPublished) {
-      chips.push({ label: 'No entries', tone: 'bg-core-surface-muted-gray-100 border-core-border-gray-200 text-core-text-muted-gray-500' });
-    }
-  }
+        ? '#16A34A'
+        : '#2563EB';
+  const progress = summary ? getStageCheckinProgress(summary.active_count, summary.verified_count, summary.coded_count, isShuffleLocked) : null;
+  const checkInStatus = summary && progress
+    ? (progress.checkinDone
+      ? `Check-in completed · ${progress.attendanceLabel}`
+      : `Check-in pending${summary.active_count > 0 ? ` · ${summary.verified_count}/${summary.active_count}` : ''}`)
+    : null;
+  const checkInColor = progress?.checkinDone ? '#16A34A' : '#EA580C';
 
   return (
     <View
       accessible
-      accessibilityLabel={`Status: ${lifecycleLabel}. ${chips.map((chip) => chip.label).join('. ')}`}
-      className="flex-row flex-wrap items-center gap-1"
+      accessibilityLabel={`Status: ${lifecycleLabel}${checkInStatus ? `. ${checkInStatus}` : ''}`}
+      className="items-start justify-center gap-0.5"
     >
-      <View className={`flex-row items-center rounded-md border ${chipContainerSize} ${lifecycleTone.split(' ').slice(0, 2).join(' ')}`} style={normalizedStatus === 'completed' ? { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' } : undefined}>
-        <Text className={`font-poppins-bold ${chipTextSize} ${lifecycleTone.split(' ')[2]}`} style={normalizedStatus === 'completed' ? { color: '#16A34A' } : undefined}>{lifecycleLabel}</Text>
-      </View>
-      {chips.map((chip) => (
-        <View key={chip.label} className={`flex-row items-center rounded-md border ${chipContainerSize} ${chip.tone.split(' ').slice(0, 2).join(' ')}`}>
-          <Text className={`font-poppins-bold ${chipTextSize} ${chip.tone.split(' ')[2]}`}>{chip.label}</Text>
-        </View>
-      ))}
+      <Text style={{ color: lifecycleColor }} className="font-poppins-bold text-[10px]">{lifecycleLabel}</Text>
+      {checkInStatus ? <Text style={{ color: checkInColor }} className="font-poppins text-[9px]">{checkInStatus}</Text> : null}
     </View>
   );
+}
+
+function isPostponedSchedule(schedule: any): boolean {
+  const status = normalizeScheduleLifecycleStatus(schedule.status);
+  return schedule.is_postponed === true && status !== 'ongoing' && status !== 'completed';
 }
 
 const SCHEDULE_WORKFLOW_ACTIONS = [
@@ -192,25 +165,19 @@ export default function ScheduleDashboard() {
     screenHeight,
     maxTouchPoints,
   );
-  const isTabletScheduleTable = tabletScheduleOrientation !== null
-    && shouldUseTabletScheduleTable(
-      Device.deviceType === Device.DeviceType.TABLET || maxTouchPoints > 0,
-      width,
-    );
-  const showTabletLandscapeScheduleCategory = shouldShowTabletLandscapeScheduleCategory(
-    isTabletScheduleTable,
-    tabletScheduleOrientation,
-  );
   const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
-  // Smaller tablets use the compact card layout; wider tablets retain the row table.
-  // Phones and compact pointer windows keep their existing card layout.
-  const isCompactScheduleLayout = width < 1400 && !isTabletScheduleTable;
+  // Preserve phone cards in portrait and landscape; tablet and desktop widths use the reference table.
+  const isCompactScheduleLayout = width < 600
+    || Device.deviceType === Device.DeviceType.PHONE
+    || (maxTouchPoints > 0 && Math.min(screenWidth, screenHeight) < 600);
+  const isCompactScheduleTable = width < 1200;
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
   const [mobileActionMenuId, setMobileActionMenuId] = React.useState<string | null>(null);
+  const [postponedExpanded, setPostponedExpanded] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState('All');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
   const [selectedVenue, setSelectedVenue] = React.useState('All');
@@ -360,7 +327,6 @@ export default function ScheduleDashboard() {
     if (!shareSchedule || !shareStageUrl) return '';
     const itemName = shareSchedule.items?.item_name_en
       || shareSchedule.items?.item_name_ml
-      || shareSchedule.items?.item_code
       || 'Unnamed item';
     const categoryCodes = Array.isArray(shareSchedule.items?.category_codes)
       ? shareSchedule.items.category_codes
@@ -456,7 +422,7 @@ export default function ScheduleDashboard() {
       const name = item.item_name_en || item.item_name_ml || 'Unnamed item';
       uniqueItems.set(item.id, {
         id: item.id,
-        label: item.item_code ? `${item.item_code} · ${name}` : name,
+        label: name,
       });
     });
     return [
@@ -485,6 +451,18 @@ export default function ScheduleDashboard() {
   ];
 
   const filteredSchedules = isSearchDebouncing ? [] : schedules;
+  const postponedSchedules = React.useMemo(
+    () => filteredSchedules.filter(isPostponedSchedule),
+    [filteredSchedules],
+  );
+  const regularSchedules = React.useMemo(
+    () => filteredSchedules.filter((schedule: any) => !isPostponedSchedule(schedule)),
+    [filteredSchedules],
+  );
+  const tableSchedules = React.useMemo(
+    () => [...postponedSchedules, ...regularSchedules],
+    [postponedSchedules, regularSchedules],
+  );
   const displayedFilteredCount = isSearchDebouncing ? 0 : totalFilteredSchedules;
   const pageCount = Math.max(1, Math.ceil(displayedFilteredCount / pageSize));
   React.useEffect(() => {
@@ -736,7 +714,10 @@ export default function ScheduleDashboard() {
       <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
         <View className="mb-4">
         <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
-        <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{isSearchDebouncing ? 'Updating results…' : totalFilteredSchedules === 0 ? '0 schedules' : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}</Text>
+        <Text className="text-xs font-poppins text-ssf-text-muted mt-1">
+          {isSearchDebouncing ? 'Updating results…' : totalFilteredSchedules === 0 ? '0 schedules' : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}
+          {' · '}{venues.length} venues{' · '}{totalSchedules} scheduled events
+        </Text>
       </View>
 
       {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
@@ -752,36 +733,6 @@ export default function ScheduleDashboard() {
         >
           {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
           <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View className="flex-row flex-wrap gap-3 mb-6">
-        <TouchableOpacity
-          className="flex-1 min-w-[140px] bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
-          onPress={() => router.push('/(admin)/schedule/venues')}
-          accessibilityRole="button"
-          accessibilityLabel="Manage venues"
-          accessibilityHint="Opens venue management"
-        >
-          <View>
-            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{venues.length}</Text>
-            <Text className="font-poppins text-core-success-emerald-800 text-xs">Venues</Text>
-          </View>
-          <MapPin color={coreColor("#047857", 'success')} size={22} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          className="flex-1 min-w-[140px] bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-300 p-4 rounded-xl flex-row items-center justify-between"
-          onPress={() => router.push('/(admin)/schedule/create')}
-          accessibilityRole="button"
-          accessibilityLabel="Manage scheduled events"
-          accessibilityHint="Opens schedule creation"
-        >
-          <View>
-            <Text className="font-poppins-black text-core-success-emerald-950 text-lg">{totalSchedules}</Text>
-            <Text className="font-poppins text-core-success-emerald-800 text-xs">Scheduled Events</Text>
-          </View>
-          <Calendar color={coreColor("#047857", 'success')} size={22} />
         </TouchableOpacity>
       </View>
 
@@ -1109,9 +1060,18 @@ export default function ScheduleDashboard() {
         </View>
       )}
 
-      <View className="flex-row justify-between items-center mb-4 flex-wrap gap-y-2">
-        <Text className="font-poppins-bold text-lg text-ssf-text">Upcoming Schedule</Text>
-        <View className="flex-row gap-x-2">
+      <View className="flex-row justify-end items-center mb-3 flex-wrap gap-2">
+        <TouchableOpacity
+          className="min-h-9 flex-row items-center gap-x-1 bg-core-surface-white px-3 py-2 rounded-lg border border-ui-border"
+          onPress={() => router.push('/(admin)/schedule/venues')}
+          accessibilityRole="button"
+          accessibilityLabel="Manage venues"
+          accessibilityHint="Opens venue management"
+        >
+          <MapPin size={14} color={coreColor('#0F766E', 'primaryText')} />
+          <Text className="font-poppins-bold text-xs text-ui-text">Venues</Text>
+        </TouchableOpacity>
+        <View className="flex-row flex-wrap gap-2">
           <TouchableOpacity
             className="flex-row items-center gap-x-1 bg-core-info-soft-blue-50 px-3 py-2 rounded-lg border border-core-info-soft-blue-100"
             onPress={() => router.push('/(admin)/schedule/import-json' as any)}
@@ -1177,36 +1137,45 @@ export default function ScheduleDashboard() {
       ) : (
         !isCompactScheduleLayout ? (
         <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
-            <View className={`${isTabletScheduleTable ? 'min-h-11 px-2 py-2' : 'h-11 px-4'} flex-row items-center bg-ui-muted border-b border-ui-border`}>
-              <Text style={{ flex: isTabletScheduleTable ? 1.1 : 1.25, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Event</Text>
-              {!isTabletScheduleTable && <Text style={{ flex: 0.9 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>}
-              <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
-              <Text style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Status</Text>
+            <View className={`${isCompactScheduleTable ? 'min-h-10 px-2 py-2' : 'h-10 px-3'} flex-row items-center bg-ui-muted border-b border-ui-border`}>
+              <Text style={{ flex: 1.15, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Competition</Text>
+              <Text style={{ flex: 0.95, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
+              <Text style={{ flex: 1, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
+              <Text style={{ flex: 1, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Status</Text>
               <Text style={{ flex: 2.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
             </View>
-            {filteredSchedules.map((schedule: any) => (
-              <View key={schedule.id} className={`${isTabletScheduleTable ? 'min-h-16 px-2 py-2' : 'min-h-16 px-3 py-2'} flex-row items-center border-b border-ui-border bg-core-surface-white`}>
-                <View style={{ flex: isTabletScheduleTable ? 1.1 : 1.25, minWidth: 0 }} className="pr-2">
-                  <Text className="font-poppins-bold text-xs text-ui-text" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
-                  <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5" numberOfLines={1}>
-                    {isTabletScheduleTable
-                      ? schedule.venues?.name || 'Unknown Venue'
-                      : schedule.items?.item_name_ml || schedule.items?.item_code || '—'}
-                  </Text>
-                  {showTabletLandscapeScheduleCategory && Array.isArray(schedule.items?.category_codes) && schedule.items.category_codes.length > 0 && (
-                    <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-0.5" numberOfLines={1}>
-                      {schedule.items.category_codes.join(', ')}
-                    </Text>
-                  )}
+            {postponedSchedules.length > 0 && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`${postponedExpanded ? 'Collapse' : 'Expand'} postponed schedules`}
+                accessibilityState={{ expanded: postponedExpanded }}
+                onPress={() => setPostponedExpanded((expanded) => !expanded)}
+                className="min-h-10 flex-row items-center justify-between border-b border-ui-border px-3 py-2 bg-core-surface-white"
+              >
+                <View className="flex-row items-center gap-2">
+                  <Text style={{ color: '#EA580C' }} className="font-poppins-bold text-xs">Postponed</Text>
+                  <Text className="font-poppins text-[10px] text-ui-text-muted">{postponedSchedules.length} on this page</Text>
                 </View>
-                {!isTabletScheduleTable && <View style={{ flex: 0.9 }} className="pr-3 items-start">
-                  <View className="bg-core-success-soft-emerald-50 border border-core-success-soft-emerald-100 px-2 py-1 rounded-lg">
-                    <Text className="font-poppins-bold text-[9px] text-core-success-emerald-700" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
-                  </View>
-                  {!!schedule.items?.category_codes?.length && (
-                    <Text className="font-poppins-bold text-[9px] text-core-primary-text-teal-700 mt-1">{(schedule.items.category_codes as string[]).join(', ')}</Text>
-                  )}
-                </View>}
+                <View className="flex-row items-center gap-1">
+                  <Text className="font-poppins-bold text-[10px] text-ui-text-muted">{postponedExpanded ? 'Hide' : 'Show'}</Text>
+                  {postponedExpanded ? <ChevronUp size={14} color={ui.colors.textMuted} /> : <ChevronDown size={14} color={ui.colors.textMuted} />}
+                </View>
+              </TouchableOpacity>
+            )}
+            {tableSchedules.map((schedule: any) => (
+              isPostponedSchedule(schedule) && !postponedExpanded ? null : (
+              <View key={schedule.id} className={`${isCompactScheduleTable ? 'min-h-12 px-2 py-1.5' : 'min-h-12 px-3 py-1.5'} flex-row items-center border-b border-ui-border bg-core-surface-white`}>
+                <View style={{ flex: 1.15, minWidth: 0 }} className="pr-2">
+                  <Text className="font-poppins-bold text-xs text-ui-text" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
+                </View>
+                <View style={{ flex: 0.95, minWidth: 0 }} className="pr-2">
+                  <Text className="font-poppins text-[10px] text-ui-text" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
+                  <Text className="font-poppins text-[9px] text-ui-text-muted mt-0.5" numberOfLines={1}>
+                    {Array.isArray(schedule.items?.category_codes) && schedule.items.category_codes.length > 0
+                      ? schedule.items.category_codes.join(', ')
+                      : '—'}
+                  </Text>
+                </View>
                 <View style={{ flex: 1, minWidth: 0 }} className="pr-2">
                   <View className="flex-row items-center">
                     <Calendar size={12} color={ui.colors.textMuted} />
@@ -1219,29 +1188,23 @@ export default function ScheduleDashboard() {
                     </Text>
                   </View>
                 </View>
-                <View style={{ flex: isTabletScheduleTable ? 1 : 1.4, minWidth: 0 }} className="pr-2">
-                  <TouchableOpacity
-                    accessibilityRole="button"
-                    accessibilityLabel={`${schedule.is_public_visible !== false ? 'Hide' : 'Show'} ${schedule.items?.item_name_en || 'event'} on public schedule`}
-                    disabled={!!updatingVisibilityId}
-                    onPress={() => togglePublicVisibility(schedule)}
-                    className="self-start border border-ui-border rounded-md px-2 py-1 mb-1 bg-core-surface-white"
-                  >
-                    <Text className="font-poppins-bold text-[9px] text-ui-text">
-                      {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
-                    </Text>
-                  </TouchableOpacity>
+                <View style={{ flex: 1, minWidth: 0 }} className="pr-2">
                   <ScheduleWorkflowBadges
                     status={schedule.status}
                     summary={workflowMap.get(schedule.id)}
                     isShuffleLocked={schedule.is_shuffle_locked}
                     isPostponed={schedule.is_postponed === true}
-                    compact={isTabletScheduleTable}
                   />
                 </View>
-                <View style={isTabletScheduleTable
-                  ? { flex: 2.4, minWidth: 0, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4, rowGap: 4 }
-                  : { flex: 2.4, flexWrap: 'nowrap', alignItems: 'center', justifyContent: 'flex-end', columnGap: 4 }} className="flex-row">
+                <View style={{
+                  flex: 2.4,
+                  minWidth: 0,
+                  flexWrap: isCompactScheduleTable ? 'wrap' : 'nowrap',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  columnGap: 4,
+                  rowGap: 4,
+                }} className="flex-row">
                   {[
                     { label: 'Check-in', path: 'checkin' },
                     { label: 'Codes', path: 'code-letter' },
@@ -1250,6 +1213,8 @@ export default function ScheduleDashboard() {
                   ].map((action) => (
                     <TouchableOpacity
                       key={action.path}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${action.label} for ${schedule.items?.item_name_en || 'event'}`}
                       onPress={() => router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
                       className={`h-8 px-2 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
                     >
@@ -1288,12 +1253,20 @@ export default function ScheduleDashboard() {
                       scheduleName={schedule.items?.item_name_en || 'Event'}
                       status={schedule.status}
                       isPostponed={schedule.is_postponed === true}
+                      additionalItems={[{
+                        label: updatingVisibilityId === schedule.id
+                          ? 'Saving public visibility…'
+                          : schedule.is_public_visible !== false ? 'Hide from public schedule' : 'Show on public schedule',
+                        disabled: !!updatingVisibilityId,
+                        onPress: () => { void togglePublicVisibility(schedule); },
+                      }]}
                       onPostponedChange={(nextValue, expectedValue) => setSchedulePostponed({ scheduleId: schedule.id, isPostponed: nextValue, expectedIsPostponed: expectedValue })}
                       onStatusChange={(status, expectedStatus) => setScheduleStatus({ id: schedule.id, status, expectedStatus })}
                     />
                   </View>
                 </View>
               </View>
+              )
             ))}
         </View>
         ) : (
@@ -1401,7 +1374,6 @@ export default function ScheduleDashboard() {
                   summary={workflowMap.get(schedule.id)}
                   isShuffleLocked={schedule.is_shuffle_locked}
                   isPostponed={schedule.is_postponed === true}
-                  compact
                 />
               </>
             );
@@ -1610,7 +1582,7 @@ export default function ScheduleDashboard() {
                   >
                     <FileText size={17} color={ui.colors.primaryText} />
                     <View className="flex-1">
-                      <Text className="font-poppins-bold text-xs text-ui-text">{item.item_code ? `${item.item_code} · ` : ''}{itemName}</Text>
+                      <Text className="font-poppins-bold text-xs text-ui-text">{itemName}</Text>
                       <Text className="font-poppins text-[10px] text-ui-text-muted mt-0.5">{categories || 'No category'} · {isGroupCompetition(item) ? 'Group' : 'Individual'}</Text>
                     </View>
                     {isExportingSchedule ? <Text className="font-poppins-bold text-[10px] text-ui-text-muted">Preparing…</Text> : <Download size={15} color={ui.colors.textMuted} />}

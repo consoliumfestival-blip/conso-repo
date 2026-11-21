@@ -99,7 +99,7 @@ export default function CreateSchedule() {
   };
 
   const handleSave = async () => {
-    if (!itemId || !venueId || !startDate || !startTimeStr || !endDate || !endTimeStr) {
+    if (!itemId || !startDate || !startTimeStr || !endDate || !endTimeStr) {
       return showAlert('Error', 'Please fill all fields');
     }
 
@@ -139,7 +139,7 @@ export default function CreateSchedule() {
       }
       await createSchedule({
         item_id: itemId,
-        venue_id: venueId,
+        venue_id: venueId || null,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         status: 'scheduled',
@@ -204,15 +204,15 @@ export default function CreateSchedule() {
         </View>
 
         <View style={{ zIndex: 90 }}>
-          <Text className="font-poppins text-ssf-text-muted mb-2">Select Venue *</Text>
+          <Text className="font-poppins text-ssf-text-muted mb-2">Select Venue (Optional)</Text>
           <SsfSelectMenu
             value={venueId}
             onValueChange={setVenueId}
-            placeholder="-- Choose a Venue --"
-            options={venues.map((v: any) => ({
+            placeholder="-- Unassigned --"
+            options={[{ label: 'Unassigned', value: '' }, ...venues.map((v: any) => ({
               label: `${v.name} ${v.capacity ? `(Cap: ${v.capacity})` : ''}`,
               value: v.id
-            }))}
+            }))]}
           />
         </View>
 

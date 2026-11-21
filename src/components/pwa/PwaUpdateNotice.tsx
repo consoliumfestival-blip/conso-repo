@@ -1,20 +1,27 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Modal, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { Check, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react-native';
+import Constants from 'expo-constants';
 import { ui } from '@/constants/designSystem';
 
 type UpdateState = 'hidden' | 'available' | 'updating' | 'updated';
 type UpdateNotes = { summary: string; details: string[] };
 const UPDATED_SESSION_KEY = 'consolium_pwa_update_requested';
 const UPDATE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+const CURRENT_BUILD_COMMIT = typeof process.env.EXPO_PUBLIC_BUILD_COMMIT === 'string'
+  ? process.env.EXPO_PUBLIC_BUILD_COMMIT
+  : typeof Constants.expoConfig?.extra?.buildCommit === 'string'
+    ? Constants.expoConfig.extra.buildCommit
+  : '';
+const BUILD_COMMIT_PATTERN = /^[a-f0-9]{40}$/i;
 const FALLBACK_UPDATE_NOTES: UpdateNotes = {
-  summary: 'The latest app changes are ready. Expand to see the release notes before updating.',
+  summary: 'A new app update is ready.',
   details: [],
 };
 
-async function fetchUpdateNotes(): Promise<UpdateNotes> {
+async function fetchUpdateNotes(fromCommit: string): Promise<UpdateNotes> {
   try {
-    const response = await fetch(`${window.location.origin}/app-update-notes.json`, {
+    const response = await fetch(`${window.location.origin}/api/app-update-notes?from=${encodeURIComponent(fromCommit)}`, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache' },
     });
@@ -30,6 +37,20 @@ async function fetchUpdateNotes(): Promise<UpdateNotes> {
   }
 }
 
+async function fetchLatestBuildCommit(): Promise<string> {
+  try {
+    const response = await fetch(`${window.location.origin}/app-build-info.json`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache' },
+    });
+    if (!response.ok) return '';
+    const value = await response.json() as { commit?: unknown };
+    return typeof value.commit === 'string' && BUILD_COMMIT_PATTERN.test(value.commit) ? value.commit : '';
+  } catch {
+    return '';
+  }
+}
+
 function currentAppAssets(doc: Document): string[] {
   const scripts = Array.from(doc.querySelectorAll<HTMLScriptElement>('script[src]'))
     .map((script) => script.getAttribute('src') || '');
@@ -42,12 +63,7 @@ function currentAppAssets(doc: Document): string[] {
     .sort();
 }
 
-function isInstalledWebApp(): boolean {
-  return window.matchMedia?.('(display-mode: standalone)').matches === true
-    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
-
-/** Offers a manual reload only when an installed web app is serving an older Expo bundle. */
+/** Offers a manual reload when the website or installed web app is serving an older Expo bundle. */
 export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset = 16 }: { accentColor?: string; bottomOffset?: number }) {
   const [state, setState] = useState<UpdateState>('hidden');
   const [confirmingUpdate, setConfirmingUpdate] = useState(false);
@@ -56,7 +72,7 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
   const pulse = useRef(new Animated.Value(1)).current;
 
   const checkForUpdate = useCallback(async () => {
-    if (Platform.OS !== 'web' || !isInstalledWebApp() || document.visibilityState === 'hidden') return;
+    if (Platform.OS !== 'web' || document.visibilityState === 'hidden') return;
     try {
       const response = await fetch(`${window.location.origin}/`, {
         cache: 'no-store',
@@ -68,13 +84,18 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
       const currentAssets = currentAppAssets(document);
       const remoteAssets = currentAppAssets(remoteDocument);
       if (!currentAssets.length || !remoteAssets.length) return;
-      const hasUpdate = currentAssets.join('|') !== remoteAssets.join('|');
+      const latestBuildCommit = await fetchLatestBuildCommit();
+      const hasCommitUpdate = BUILD_COMMIT_PATTERN.test(CURRENT_BUILD_COMMIT)
+        && BUILD_COMMIT_PATTERN.test(latestBuildCommit)
+        && CURRENT_BUILD_COMMIT.toLowerCase() !== latestBuildCommit.toLowerCase();
+      const hasUpdate = currentAssets.join('|') !== remoteAssets.join('|') || hasCommitUpdate;
       if (!hasUpdate && sessionStorage.getItem(UPDATED_SESSION_KEY) === '1') {
         sessionStorage.removeItem(UPDATED_SESSION_KEY);
         setState('updated');
         window.setTimeout(() => setState('hidden'), 2600);
       } else if (hasUpdate) {
-        setUpdateNotes(await fetchUpdateNotes());
+        const currentCommit = BUILD_COMMIT_PATTERN.test(CURRENT_BUILD_COMMIT) ? CURRENT_BUILD_COMMIT : '';
+        setUpdateNotes(currentCommit ? await fetchUpdateNotes(currentCommit) : FALLBACK_UPDATE_NOTES);
         setState('available');
       }
     } catch {
@@ -130,7 +151,7 @@ export function PwaUpdateNotice({ accentColor = ui.colors.primary, bottomOffset 
         accessibilityLabel={label}
         accessibilityHint={complete ? 'The installed app has reloaded.' : 'Reloads the app to use the latest deployed version.'}
         disabled={busy || complete || !navigator.onLine}
-        onPress={() => { setShowUpdateDetails(false); setConfirmingUpdate(true); }}
+        onPress={() => { setShowUpdateDetails(true); setConfirmingUpdate(true); }}
         style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: complete ? '#A7F3D0' : '#99D8CC', backgroundColor: complete ? '#ECFDF5' : '#FFFFFF', shadowColor: '#0F172A', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}
       >
         {busy ? <ActivityIndicator size="small" color={accentColor} /> : complete ? <Check size={16} color="#047857" /> : (

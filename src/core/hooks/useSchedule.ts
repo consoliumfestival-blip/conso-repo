@@ -84,6 +84,16 @@ export const useSchedule = (options?: {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
   });
 
+  const updateScheduleAssignmentMutation = useMutation({
+    mutationFn: ({ scheduleId, venueId, updateSubstages, substageConfig }: {
+      scheduleId: string;
+      venueId: string | null;
+      updateSubstages: boolean;
+      substageConfig: unknown;
+    }) => scheduleService.updateScheduleAssignment<any>(scheduleId, venueId, updateSubstages, substageConfig),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['schedules', tenant_id] }),
+  });
+
   const setScheduleStatusMutation = useMutation({
     mutationFn: ({ id, status, expectedStatus }: { id: string; status: 'scheduled' | 'ongoing' | 'completed'; expectedStatus: string | null | undefined }) =>
       scheduleLifecycleService.setStatus(id, status, expectedStatus),
@@ -130,6 +140,7 @@ export const useSchedule = (options?: {
     isCreatingSchedules: createSchedulesMutation.isPending,
     updateSchedule: updateScheduleMutation.mutateAsync,
     isUpdatingSchedule: updateScheduleMutation.isPending,
+    updateScheduleAssignment: updateScheduleAssignmentMutation.mutateAsync,
     setScheduleStatus: setScheduleStatusMutation.mutateAsync,
     isSettingScheduleStatus: setScheduleStatusMutation.isPending,
     setSchedulePostponed: setSchedulePostponedMutation.mutateAsync,

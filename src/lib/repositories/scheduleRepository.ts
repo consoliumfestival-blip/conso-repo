@@ -33,6 +33,10 @@ export const scheduleRepository = {
     return databaseProvider.updateSchedule<T>(id, payload);
   },
 
+  updateScheduleAssignment<T>(scheduleId: string, venueId: string | null, updateSubstages: boolean, substageConfig: unknown) {
+    return databaseProvider.updateScheduleAssignment<T>(scheduleId, venueId, updateSubstages, substageConfig);
+  },
+
   deleteSchedule(id: string) {
     return databaseProvider.deleteSchedule(id);
   },

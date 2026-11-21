@@ -63,6 +63,13 @@ export const scheduleService = {
     return data;
   },
 
+  async updateScheduleAssignment<T>(scheduleId: string, venueId: string | null, updateSubstages: boolean, substageConfig: unknown): Promise<T> {
+    const { data, error } = await scheduleRepository.updateScheduleAssignment<T>(scheduleId, venueId, updateSubstages, substageConfig);
+    throwIfError(error);
+    if (!data) throw new Error('Schedule not returned after assignment update');
+    return data;
+  },
+
   async deleteSchedule(id: string): Promise<void> {
     const { error } = await scheduleRepository.deleteSchedule(id);
     throwIfError(error);

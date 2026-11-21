@@ -741,6 +741,17 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     return { data: (data as T) ?? null, error: normalizeError(error) };
   }
 
+  async updateScheduleAssignment<T>(scheduleId: string, venueId: string | null, updateSubstages: boolean, substageConfig: unknown): Promise<QueryResult<T>> {
+    const { data, error } = await supabase.rpc('update_schedule_assignment_scoped', {
+      p_schedule_id: scheduleId,
+      p_venue_id: venueId,
+      p_update_substages: updateSubstages,
+      p_substage_config: substageConfig,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    return { data: (row as T) ?? null, error: normalizeError(error) };
+  }
+
   async deleteSchedule(id: string): Promise<QueryResult<void>> {
     const { data, error } = await supabase.rpc('safe_delete_schedule', {
       p_schedule_id: id,

@@ -118,4 +118,11 @@ export const scheduleOverviewService = {
   if (error) throw error;
   return (data ?? []) as string[];
  },
+ async venueConflictCount(tenantId: string, festivalId: string, venueId: string, startTime: string, endTime: string, excludeScheduleId: string): Promise<number> {
+  const { count, error } = await supabase.from('schedules').select('id', { count: 'exact', head: true })
+   .eq('tenant_id', tenantId).eq('festival_id', festivalId).eq('venue_id', venueId)
+   .lt('start_time', endTime).gt('end_time', startTime).neq('id', excludeScheduleId);
+  if (error) throw error;
+  return Number(count ?? 0);
+ },
 };

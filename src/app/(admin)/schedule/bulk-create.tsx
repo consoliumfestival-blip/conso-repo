@@ -257,7 +257,7 @@ export default function BulkCreateSchedule() {
 
   const preview = React.useMemo<PreviewRow[]>(() => {
     const startDateTime = toDateTime(date, startTime);
-    if (!date || !startDateTime || !venueId) return [];
+    if (!date || !startDateTime) return [];
     let cursor = startDateTime;
     const buffer = Math.max(0, Number(bufferMinutes) || 0);
     const validBreaks = breaks
@@ -285,7 +285,7 @@ export default function BulkCreateSchedule() {
 
       const duplicate = schedules.some((schedule: any) => schedule.item_id === item.id);
       const conflict = schedules.some((schedule: any) => {
-        if (schedule.venue_id !== venueId) return false;
+        if (!venueId || schedule.venue_id !== venueId) return false;
         const existingStart = new Date(schedule.start_time).getTime();
         const existingEnd = new Date(schedule.end_time).getTime();
         return start.getTime() < existingEnd && existingStart < end.getTime();
@@ -363,8 +363,8 @@ export default function BulkCreateSchedule() {
   };
 
   const handleCreateAll = async () => {
-    if (!festival?.id || !venueId || !date || !to24Hour(startTime) || preview.length === 0) {
-      showMessage('Missing details', 'Select items, stage, date, and a complete start time (hour, minute, and AM/PM).');
+    if (!festival?.id || !date || !to24Hour(startTime) || preview.length === 0) {
+      showMessage('Missing details', 'Select items, date, and a complete start time (hour, minute, and AM/PM).');
       return;
     }
     if (hasInvalidBreaks || hasOverlappingBreaks) {
@@ -392,7 +392,7 @@ export default function BulkCreateSchedule() {
       const payloads = preview.map((row) => ({
           festival_id: festival.id,
           item_id: row.item.id,
-          venue_id: venueId,
+          venue_id: venueId || null,
           start_time: row.start.toISOString(),
           end_time: row.end.toISOString(),
           status: 'scheduled',
@@ -447,7 +447,7 @@ export default function BulkCreateSchedule() {
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-4 mb-4">
         <View className="flex-row flex-wrap gap-3">
           <View className="min-w-[210px] flex-1">
-            <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted mb-1.5">Stage</Text>
+            <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted mb-1.5">Stage (Optional)</Text>
             <SsfSelectMenu
               value={venueId}
               onValueChange={setVenueId}
@@ -455,7 +455,7 @@ export default function BulkCreateSchedule() {
               searchable
               searchPlaceholder="Search stage..."
               options={[
-                { label: 'Choose stage', value: '' },
+                { label: 'Unassigned', value: '' },
                 ...stageOptions,
               ]}
             />
@@ -785,7 +785,7 @@ export default function BulkCreateSchedule() {
           label={isSaving ? 'Creating...' : `Create ${selectedItems.length} Schedules`}
           icon={isSaving ? undefined : <WandSparkles size={15} color={ui.colors.onPrimary} />}
           onPress={handleCreateAll}
-          disabled={isSaving || selectedItems.length === 0 || !venueId || !to24Hour(startTime) || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks}
+          disabled={isSaving || selectedItems.length === 0 || !to24Hour(startTime) || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks}
         />
       </View>
     </ScrollView>

@@ -98,6 +98,7 @@ export interface DatabaseProvider {
   createSchedule<T>(payload: Record<string, unknown>): Promise<QueryResult<T>>;
   createSchedules<T>(festivalId: string, payloads: Record<string, unknown>[]): Promise<ListResult<T>>;
   updateSchedule<T>(id: string, payload: Record<string, unknown>): Promise<QueryResult<T>>;
+  updateScheduleAssignment<T>(scheduleId: string, venueId: string | null, updateSubstages: boolean, substageConfig: unknown): Promise<QueryResult<T>>;
   deleteSchedule(id: string): Promise<QueryResult<void>>;
 
   // Code Letter Management Methods

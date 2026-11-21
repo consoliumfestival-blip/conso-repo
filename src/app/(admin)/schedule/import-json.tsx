@@ -69,7 +69,6 @@ export default function ImportScheduleJson() {
       
       parsed.forEach((s: any, idx: number) => {
         if (!s.item_code) errors.push(`Row ${idx + 1}: Missing item_code`);
-        if (!s.venue) errors.push(`Row ${idx + 1}: Missing venue name`);
         if (!s.date) errors.push(`Row ${idx + 1}: Missing date`);
         if (!s.start_time || !s.end_time) errors.push(`Row ${idx + 1}: Missing start/end time`);
         
@@ -158,8 +157,9 @@ export default function ImportScheduleJson() {
           errors.push(`Row ${idx + 1}: Category "${s.category}" mismatch for item [${s.item_code}] (Supports: ${catCodes.join(', ')})`);
         }
 
-        const venue = venues.find(v => v.name.toLowerCase().trim() === s.venue.toLowerCase().trim());
-        if (!venue) {
+        const venueName = String(s.venue ?? '').trim();
+        const venue = venueName ? venues.find(v => v.name.toLowerCase().trim() === venueName.toLowerCase()) : null;
+        if (venueName && !venue) {
           errors.push(`Row ${idx + 1}: Venue "${s.venue}" does not exist. Create venue "${s.venue}" first.`);
           return;
         }
@@ -182,7 +182,7 @@ export default function ImportScheduleJson() {
 
         // Check against existing schedules
         existingSch.forEach((dbSch: any) => {
-          if (dbSch.venue_id === venue.id) {
+          if (venue && dbSch.venue_id === venue.id) {
             const dbStart = new Date(dbSch.start_time).getTime();
             const dbEnd = new Date(dbSch.end_time).getTime();
 
@@ -267,11 +267,12 @@ export default function ImportScheduleJson() {
       };
       const payloads = scheduleData.map((row: any, index: number) => {
         const item = itemByCode.get(String(row.item_code).trim().toLowerCase());
-        const venueId = venueByName.get(String(row.venue).trim().toLowerCase());
-        if (!item || !venueId) throw new Error(`Row ${index + 1}: item or venue could not be resolved.`);
+        const venueName = String(row.venue ?? '').trim();
+        const venueId = venueName ? venueByName.get(venueName.toLowerCase()) : null;
+        if (!item || (venueName && !venueId)) throw new Error(`Row ${index + 1}: item or venue could not be resolved.`);
         return {
           item_id: item.id,
-          venue_id: venueId,
+          venue_id: venueId ?? null,
           start_time: toIso(row.date, row.start_time),
           end_time: toIso(row.date, row.end_time),
           status: row.status || 'scheduled',

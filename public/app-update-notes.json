@@ -1,8 +1,0 @@
-{
-  "summary": "You can now review what changed before installing an app update.",
-  "details": [
-    "The update window shows a short summary first, with an option to expand it.",
-    "Expanded details explain the changes included in the release.",
-    "The update reloads the app. Save or submit unfinished work before updating."
-  ]
-}

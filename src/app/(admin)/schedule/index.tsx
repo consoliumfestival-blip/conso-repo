@@ -14,7 +14,7 @@ import { participantService } from '../../../services/participantService';
 import { chanceSheetService } from '../../../services/chanceSheetService';
 
 import { useFestival } from '../../../core/hooks/useFestival';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../../core/store/authStore';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
 
@@ -28,6 +28,8 @@ import { getCompactScheduleActionOrientation, getScheduleActionRows, showSchedul
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../../../core/utils/scheduleLifecycle';
 import { stageManagementService } from '../../../services/stageManagementService';
 import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
+import { SubstageEditor } from '@/components/schedule/SubstageEditor';
+import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
@@ -146,6 +148,7 @@ export default function ScheduleDashboard() {
   const { data: festival, isLoading: isLoadingFest } = useActiveFestival();
   const { data: activeItems = [], isLoading: isLoadingItems } = useItems(festival?.id);
   const { tenant_id, user } = useAuthStore();
+  const queryClient = useQueryClient();
   const isFocused = useIsFocused();
   const { width, height } = useWindowDimensions();
   const isMobile = width < 768;
@@ -241,7 +244,7 @@ export default function ScheduleDashboard() {
         .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
     });
   }, [activeItems, chanceSheetScheduledItemIds, chanceSheetSearchQuery]);
-  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, setSchedulePostponed, updateSchedule } = useSchedule({
+  const { schedules, totalSchedules, totalFilteredSchedules, hasScheduleData, isLoadingSchedules, isErrorSchedules, refetchSchedules, venues, isLoadingVenues, deleteSchedule, setScheduleStatus, setSchedulePostponed, updateSchedule, updateScheduleAssignment } = useSchedule({
     overviewPage: {
       search: debouncedSearchQuery,
       itemId: selectedItem === 'All' ? null : selectedItem,
@@ -271,6 +274,13 @@ export default function ScheduleDashboard() {
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
+  const [assignmentSchedule, setAssignmentSchedule] = React.useState<any | null>(null);
+  const [assignmentVenueId, setAssignmentVenueId] = React.useState('');
+  const [assignmentVenueSearch, setAssignmentVenueSearch] = React.useState('');
+  const [assignmentVenuePickerOpen, setAssignmentVenuePickerOpen] = React.useState(false);
+  const [assignmentSubstages, setAssignmentSubstages] = React.useState<ScheduleSubstage[]>([]);
+  const [assignmentSubstagesChanged, setAssignmentSubstagesChanged] = React.useState(false);
+  const [isSavingAssignment, setIsSavingAssignment] = React.useState(false);
   const [shareSchedule, setShareSchedule] = React.useState<any | null>(null);
   const [shareStageUrl, setShareStageUrl] = React.useState<string | null>(null);
   const [shareError, setShareError] = React.useState<string | null>(null);
@@ -278,6 +288,117 @@ export default function ScheduleDashboard() {
   const [isLoadingShareDetails, setIsLoadingShareDetails] = React.useState(false);
   const [isCopyingShareDetails, setIsCopyingShareDetails] = React.useState(false);
   const shareRequestId = React.useRef(0);
+
+  const assignmentItem = (activeItems as any[]).find((item) => item.id === assignmentSchedule?.item_id);
+  const canEditAssignmentSubstages = supportsSubstages(assignmentItem);
+  const assignmentSubstagesQuery = useQuery({
+    queryKey: ['stage-admin-substages', assignmentSchedule?.id],
+    queryFn: () => stageManagementService.getScheduleSubstages(assignmentSchedule!.id),
+    enabled: !!assignmentSchedule?.id && canEditAssignmentSubstages,
+    retry: false,
+  });
+  const assignmentVenueConflictQuery = useQuery({
+    queryKey: ['schedule-venue-conflict', tenant_id, festival?.id, assignmentSchedule?.id, assignmentVenueId],
+    queryFn: () => scheduleOverviewService.venueConflictCount(
+      tenant_id!, festival!.id, assignmentVenueId, assignmentSchedule!.start_time,
+      assignmentSchedule!.end_time, assignmentSchedule!.id,
+    ),
+    enabled: !!assignmentSchedule?.id && !!assignmentVenueId
+      && assignmentVenueId !== (assignmentSchedule?.venue_id || assignmentSchedule?.venues?.id || '')
+      && !!tenant_id && !!festival?.id,
+    retry: false,
+  });
+  React.useEffect(() => {
+    if (!assignmentSubstagesQuery.data) return;
+    setAssignmentSubstages(assignmentSubstagesQuery.data);
+    setAssignmentSubstagesChanged(false);
+  }, [assignmentSubstagesQuery.data]);
+
+  const openScheduleAssignment = (schedule: any) => {
+    if (schedule.is_shuffle_locked) {
+      if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
+      else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
+      return;
+    }
+    setAssignmentVenueId(schedule.venue_id || schedule.venues?.id || '');
+    setAssignmentVenueSearch('');
+    setAssignmentVenuePickerOpen(false);
+    setAssignmentSubstagesChanged(false);
+    setAssignmentSubstages([]);
+    setAssignmentSchedule(schedule);
+  };
+
+  const closeScheduleAssignment = () => {
+    if (isSavingAssignment) return;
+    setAssignmentSchedule(null);
+    setAssignmentSubstagesChanged(false);
+  };
+
+  const confirmVenueConflict = (count: number) => new Promise<boolean>((resolve) => {
+    const message = `This venue overlaps ${count} existing schedule${count === 1 ? '' : 's'} at this time. Continue?`;
+    if (Platform.OS === 'web') {
+      resolve(window.confirm(message));
+      return;
+    }
+    Alert.alert('Venue conflict', message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Continue', onPress: () => resolve(true) },
+    ]);
+  });
+
+  const saveScheduleAssignment = async () => {
+    if (!assignmentSchedule || isSavingAssignment) return;
+    if (assignmentSubstagesQuery.isLoading || assignmentVenueConflictQuery.isLoading) return;
+    if (assignmentSubstagesChanged && assignmentSubstagesQuery.isError) {
+      const message = 'Sub-stage settings could not be loaded. Retry before saving them.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Unable to save', message);
+      return;
+    }
+    if (assignmentVenueConflictQuery.isError) {
+      const message = 'Venue conflict check could not be completed. Retry before saving.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Unable to save', message);
+      return;
+    }
+    if (assignmentSubstagesChanged && canEditAssignmentSubstages) {
+      const validationError = validateSubstages(assignmentSubstages);
+      if (validationError) {
+        if (Platform.OS === 'web') window.alert(validationError);
+        else Alert.alert('Invalid sub-stages', validationError);
+        return;
+      }
+    }
+    if (assignmentVenueConflictQuery.data && !await confirmVenueConflict(assignmentVenueConflictQuery.data)) return;
+
+    const nextVenueId = assignmentVenueId || null;
+    const currentVenueId = assignmentSchedule.venue_id || assignmentSchedule.venues?.id || null;
+    const updateSubstages = assignmentSubstagesChanged && canEditAssignmentSubstages;
+    if (nextVenueId === currentVenueId && !updateSubstages) {
+      setAssignmentSchedule(null);
+      return;
+    }
+
+    setIsSavingAssignment(true);
+    try {
+      await updateScheduleAssignment({
+        scheduleId: assignmentSchedule.id,
+        venueId: nextVenueId,
+        updateSubstages,
+        substageConfig: updateSubstages ? normalizedSubstages(assignmentSubstages) : null,
+      });
+      if (updateSubstages) {
+        await queryClient.invalidateQueries({ queryKey: ['stage-admin-substages', assignmentSchedule.id] });
+      }
+      setAssignmentSchedule(null);
+    } catch (error: any) {
+      const message = error?.message || 'Unable to update this schedule.';
+      if (Platform.OS === 'web') window.alert(message);
+      else Alert.alert('Update failed', message);
+    } finally {
+      setIsSavingAssignment(false);
+    }
+  };
 
   const openScheduleShare = async (schedule: any) => {
     const requestId = ++shareRequestId.current;
@@ -290,7 +411,7 @@ export default function ScheduleDashboard() {
     const venueId = schedule.venue_id || schedule.venues?.id;
     const festivalId = schedule.festival_id || festival?.id;
     if (!venueId || !festivalId) {
-      setShareError('This schedule does not have an assigned venue or festival.');
+      setShareError(!venueId ? 'Assign a venue before sharing stage details.' : 'Festival details are unavailable for this schedule.');
       setIsLoadingShareDetails(false);
       return;
     }
@@ -1139,7 +1260,7 @@ export default function ScheduleDashboard() {
         <View className="w-full bg-core-surface-white border border-ui-border rounded-xl overflow-hidden">
             <View className={`${isCompactScheduleTable ? 'min-h-10 px-2 py-2' : 'h-10 px-3'} flex-row items-center bg-ui-muted border-b border-ui-border`}>
               <Text style={{ flex: 1.15, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Competition</Text>
-              <Text style={{ flex: 0.95, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
+              <Text style={{ flex: 0.95, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Stage</Text>
               <Text style={{ flex: 1, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
               <Text style={{ flex: 1, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Status</Text>
               <Text style={{ flex: 2.4, minWidth: 0 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
@@ -1167,14 +1288,21 @@ export default function ScheduleDashboard() {
               <View key={schedule.id} className={`${isCompactScheduleTable ? 'min-h-12 px-2 py-1.5' : 'min-h-12 px-3 py-1.5'} flex-row items-center border-b border-ui-border bg-core-surface-white`}>
                 <View style={{ flex: 1.15, minWidth: 0 }} className="pr-2">
                   <Text className="font-poppins-bold text-xs text-ui-text" numberOfLines={1}>{schedule.items?.item_name_en || 'Unknown Event'}</Text>
-                </View>
-                <View style={{ flex: 0.95, minWidth: 0 }} className="pr-2">
-                  <Text className="font-poppins text-[10px] text-ui-text" numberOfLines={1}>{schedule.venues?.name || 'Unknown Venue'}</Text>
                   <Text className="font-poppins text-[9px] text-ui-text-muted mt-0.5" numberOfLines={1}>
                     {Array.isArray(schedule.items?.category_codes) && schedule.items.category_codes.length > 0
                       ? schedule.items.category_codes.join(', ')
                       : '—'}
                   </Text>
+                </View>
+                <View style={{ flex: 0.95, minWidth: 0 }} className="pr-2">
+                  <View className="flex-row items-center gap-1">
+                    <Text className="font-poppins text-[10px] text-ui-text flex-1" numberOfLines={1}>{schedule.venues?.name || 'Not assigned'}</Text>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Assign venue and stages for ${schedule.items?.item_name_en || 'event'}`}
+                      disabled={!!schedule.is_shuffle_locked} onPress={() => openScheduleAssignment(schedule)}
+                      className={`h-7 w-7 rounded-md border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}>
+                      <MapPin size={13} color={ui.colors.primaryText} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }} className="pr-2">
                   <View className="flex-row items-center">
@@ -1325,13 +1453,14 @@ export default function ScheduleDashboard() {
             const scheduleDetails = (
               <>
                 <View style={tabletScheduleOrientation ? { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 5 } : undefined}>
-                  <View className={tabletScheduleOrientation ? undefined : 'mt-1.5 self-start'}>
-                    <View className="bg-core-success-soft-green-100 px-2 py-1 rounded">
-                      <Text numberOfLines={1} className="font-poppins-bold text-[10px] text-core-success-green-800">
-                        {schedule.venues?.name || 'Unknown Venue'}
-                        {!tabletScheduleOrientation && scheduleCategoryCodes.length ? ` / ${scheduleCategoryCodes.join(', ')}` : ''}
-                      </Text>
-                    </View>
+                  <View className={`${tabletScheduleOrientation ? '' : 'mt-1.5'} flex-row items-center gap-1`}>
+                    <Text numberOfLines={1} className="font-poppins text-[10px] text-ssf-text-muted">{schedule.venues?.name || 'Not assigned'}</Text>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Assign venue and stages for ${scheduleName}`}
+                      disabled={!!schedule.is_shuffle_locked}
+                      onPress={(event) => { event.stopPropagation(); openScheduleAssignment(schedule); }}
+                      className={`h-7 w-7 rounded-md border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}>
+                      <MapPin size={13} color={ui.colors.primaryText} />
+                    </TouchableOpacity>
                   </View>
                   <TouchableOpacity
                     accessibilityRole="button"
@@ -1347,15 +1476,6 @@ export default function ScheduleDashboard() {
                       {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
                     </Text>
                   </TouchableOpacity>
-                  {tabletScheduleOrientation && scheduleCategoryCodes.length > 0 && (
-                    <View className="mt-1.5 flex-row flex-wrap gap-1">
-                      {scheduleCategoryCodes.map((code: string) => (
-                        <View key={code} className="bg-ssf-primary/10 border border-ssf-primary/20 px-2 py-0.5 rounded-full">
-                          <Text className="font-poppins-bold text-[10px] text-ui-primary-text">{code}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
                 </View>
                 <View className={`${tabletScheduleOrientation ? 'mb-1.5 mt-1' : 'mb-2'} flex-row flex-wrap items-center gap-x-3 gap-y-1`}>
                   <View className="flex-row items-center gap-x-1">
@@ -1397,6 +1517,7 @@ export default function ScheduleDashboard() {
                 <View className="mb-1.5 flex-row justify-between items-start">
                   <View className="flex-1 min-w-0 mr-2">
                     <Text className={`font-poppins-bold ${tabletScheduleOrientation ? 'text-[13px]' : 'text-[14px]'}`} numberOfLines={1}>{scheduleName}</Text>
+                    {!!scheduleCategoryCodes.length && <Text className="font-poppins text-[10px] text-ssf-text-muted mt-0.5" numberOfLines={1}>{scheduleCategoryCodes.join(', ')}</Text>}
                     {false && schedule.items?.item_name_ml ? (
                       <Text className="font-poppins text-[10px] text-ssf-text-muted" numberOfLines={1}>{schedule.items.item_name_ml}</Text>
                     ) : null}
@@ -1622,6 +1743,95 @@ export default function ScheduleDashboard() {
             </View>
           </View>
         </View>
+      </Modal>
+      <Modal transparent visible={!!assignmentSchedule} animationType="fade" onRequestClose={closeScheduleAssignment}>
+        <Pressable onPress={closeScheduleAssignment} className="flex-1 bg-black/40 items-center justify-center px-4 py-6">
+          <Pressable onPress={(event) => event.stopPropagation()} className="w-full max-w-xl max-h-full bg-core-surface-white border border-ui-border rounded-xl p-4">
+            <View className="flex-row items-start justify-between gap-3 mb-3">
+              <View className="flex-1">
+                <Text className="font-poppins-bold text-base text-ui-text">Venue and stage assignment</Text>
+                <Text className="font-poppins text-xs text-ui-text-muted mt-1">{assignmentSchedule?.items?.item_name_en || 'Schedule'}</Text>
+              </View>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close venue and stage assignment" disabled={isSavingAssignment}
+                onPress={closeScheduleAssignment} className="h-9 w-9 items-center justify-center rounded-lg border border-ui-border">
+                <X size={16} color={ui.colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: Math.min(height * 0.65, 560) }} keyboardShouldPersistTaps="handled">
+              <Text className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted mb-1.5">Venue / Stage</Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose venue or stage" accessibilityState={{ expanded: assignmentVenuePickerOpen }}
+                onPress={() => setAssignmentVenuePickerOpen((open) => !open)} className="h-10 flex-row items-center justify-between rounded-lg border border-ui-border bg-core-surface-white px-3">
+                <Text className="flex-1 font-poppins text-xs text-ui-text" numberOfLines={1}>
+                  {venues.find((venue: any) => venue.id === assignmentVenueId)?.name || 'Unassigned'}
+                </Text>
+                <ChevronDown size={15} color={ui.colors.textMuted} />
+              </TouchableOpacity>
+              {assignmentVenuePickerOpen && (
+                <View className="mt-2 overflow-hidden rounded-lg border border-ui-border">
+                  <View className="h-10 flex-row items-center border-b border-ui-border px-3">
+                    <Search size={14} color={ui.colors.textMuted} />
+                    <TextInput value={assignmentVenueSearch} onChangeText={setAssignmentVenueSearch} placeholder="Search venue or stage..."
+                      placeholderTextColor={ui.colors.textMuted} accessibilityLabel="Search venues and stages"
+                      className="h-10 flex-1 ml-2 font-poppins text-xs text-ui-text outline-none" />
+                  </View>
+                  <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={{ maxHeight: 220 }}>
+                    {[{ id: '', name: 'Unassigned' }, ...venues.filter((venue: any) => String(venue.name ?? '').toLowerCase().includes(assignmentVenueSearch.trim().toLowerCase()))].map((venue: any) => (
+                      <TouchableOpacity key={venue.id || 'unassigned'} accessibilityRole="button" accessibilityState={{ selected: assignmentVenueId === venue.id }}
+                        onPress={() => { setAssignmentVenueId(venue.id); setAssignmentVenueSearch(''); setAssignmentVenuePickerOpen(false); }}
+                        className={`min-h-10 justify-center border-b border-ui-border px-3 ${assignmentVenueId === venue.id ? 'bg-ui-muted' : 'bg-core-surface-white'}`}>
+                        <Text className="font-poppins text-xs text-ui-text">{venue.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {!venues.some((venue: any) => String(venue.name ?? '').toLowerCase().includes(assignmentVenueSearch.trim().toLowerCase())) && assignmentVenueSearch.trim() !== '' && (
+                      <Text className="px-3 py-3 font-poppins text-xs text-ui-text-muted">No venues match this search.</Text>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+              {assignmentVenueId && assignmentVenueConflictQuery.isLoading && (
+                <View className="flex-row items-center gap-2 mt-2"><ActivityIndicator size="small" color={ui.colors.primaryText} /><Text className="font-poppins text-xs text-ui-text-muted">Checking venue availability…</Text></View>
+              )}
+              {!!assignmentVenueConflictQuery.data && assignmentVenueConflictQuery.data > 0 && (
+                <Text className="font-poppins text-xs text-core-danger-red-700 mt-2">
+                  This venue has {assignmentVenueConflictQuery.data} overlapping schedule{assignmentVenueConflictQuery.data === 1 ? '' : 's'}. Saving will ask you to confirm.
+                </Text>
+              )}
+              {assignmentVenueConflictQuery.isError && (
+                <View className="mt-2 flex-row items-center justify-between gap-2 rounded-lg border border-ui-border p-2">
+                  <Text className="flex-1 font-poppins text-xs text-core-danger-red-700">Venue conflict check failed.</Text>
+                  <TouchableOpacity accessibilityRole="button" onPress={() => void assignmentVenueConflictQuery.refetch()}><Text className="font-poppins-bold text-xs text-ui-primary-text">Retry</Text></TouchableOpacity>
+                </View>
+              )}
+              {canEditAssignmentSubstages && (
+                <View className="mt-4">
+                  {assignmentSubstagesQuery.isLoading || isLoadingItems ? (
+                    <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" color={ui.colors.primaryText} /><Text className="font-poppins text-xs text-ui-text-muted">Loading stage settings…</Text></View>
+                  ) : assignmentSubstagesQuery.isError ? (
+                    <View className="rounded-lg border border-ui-border p-3">
+                      <Text className="font-poppins text-xs text-core-danger-red-700">Sub-stage settings could not be loaded.</Text>
+                      <TouchableOpacity accessibilityRole="button" onPress={() => void assignmentSubstagesQuery.refetch()} className="mt-2 self-start"><Text className="font-poppins-bold text-xs text-ui-primary-text">Retry</Text></TouchableOpacity>
+                    </View>
+                  ) : (
+                    <SubstageEditor stages={assignmentSubstages} onChange={(next) => { setAssignmentSubstages(next); setAssignmentSubstagesChanged(true); }} />
+                  )}
+                </View>
+              )}
+              {!canEditAssignmentSubstages && !isLoadingItems && assignmentSchedule && (
+                <Text className="font-poppins text-xs text-ui-text-muted mt-4">Sub-stage settings are not used for this competition.</Text>
+              )}
+            </ScrollView>
+            <View className="flex-row justify-end gap-2 mt-4">
+              <TouchableOpacity accessibilityRole="button" disabled={isSavingAssignment} onPress={closeScheduleAssignment} className="h-10 px-4 justify-center rounded-lg border border-ui-border">
+                <Text className="font-poppins-bold text-xs text-ui-text">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: isSavingAssignment || assignmentSubstagesQuery.isLoading || assignmentVenueConflictQuery.isLoading, busy: isSavingAssignment }}
+                disabled={isSavingAssignment || assignmentSubstagesQuery.isLoading || assignmentVenueConflictQuery.isLoading || (canEditAssignmentSubstages && isLoadingItems)}
+                onPress={() => void saveScheduleAssignment()} className="h-10 px-4 justify-center rounded-lg bg-ui-primary">
+                <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isSavingAssignment ? 'Saving…' : 'Save assignment'}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </>
   );

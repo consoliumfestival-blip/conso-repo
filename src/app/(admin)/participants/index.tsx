@@ -19,6 +19,7 @@ import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
 import { ParticipantExportModal, ParticipantExportKind, ExportChoice } from '@/components/participants/ParticipantExportModal';
+import { AdminBulkAddParticipantsModal } from '@/components/participants/AdminBulkAddParticipantsModal';
 import type { ExportAssignment, ExportItem, ExportParticipant, ExportSort } from '@/services/participantExportService';
 
 type CompactFilterProps = {
@@ -62,9 +63,11 @@ export default function ParticipantsList() {
   const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
-  // The admin sidebar leaves room for three cards only on wider desktops.
-  const isDesktopTable = width >= 1200;
+  const [cardAreaWidth, setCardAreaWidth] = useState(0);
+  const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const isCardLayout = width >= 768;
+  // Base the card count on the actual content area left beside the admin navigation.
+  const cardColumns = Math.max(1, Math.floor((cardAreaWidth + 10) / 330));
   const isNarrowPhone = width < 600;
   const competitionFilterWidth = isNarrowPhone ? Math.max(180, Math.min(280, width - 48)) : 280;
   const phoneFilterWidth = isNarrowPhone ? Math.max(120, Math.min(152, Math.floor((width - 72) / 2))) : undefined;
@@ -223,6 +226,7 @@ export default function ParticipantsList() {
     setIsExportOpen(false);
     setDeleteTarget(null);
     setProgramsTarget(null);
+    setIsBulkAddOpen(false);
     setSelectionScope(currentSelectionScope);
   }, [currentSelectionScope, selectionScope]);
   useEffect(() => {
@@ -502,6 +506,10 @@ export default function ParticipantsList() {
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-10 w-10 bg-core-surface-white border border-ssf-border rounded-lg items-center justify-center">
             <Upload size={17} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center gap-x-1.5">
+            <UserPlus size={16} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add Multiple</Text>
+          </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center justify-center gap-x-1.5">
             <UserPlus size={17} color={coreColor("white", 'onPrimary')} />
             <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Add New</Text>
@@ -627,7 +635,7 @@ export default function ParticipantsList() {
       <SsfCard className={isCardLayout ? 'mb-4 p-0' : 'mb-4 p-0 overflow-hidden'} style={isCardLayout ? { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0 } : undefined}>
         {isLoadingList || isLoadingItems ? (
           <View className="p-4">
-            <SsfTableSkeleton rows={7} columns={6} compact={!isDesktopTable} />
+          <SsfTableSkeleton rows={7} columns={6} compact={width < 1200} />
           </View>
         ) : listError ? (
           <View className="items-center justify-center py-10 px-4">
@@ -639,12 +647,12 @@ export default function ParticipantsList() {
             <Text className="text-ssf-text-muted font-poppins mb-4">No participants found.</Text>
           </View>
         ) : isCardLayout ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 }}>
+          <View onLayout={(event) => setCardAreaWidth(event.nativeEvent.layout.width)} style={{ flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 }}>
             {filteredParticipants.map((p: any) => {
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
               return (
-                <View key={p.id} style={{ width: isDesktopTable ? '33.333%' as const : '50%' as const, padding: 5 }}>
+                <View key={p.id} style={{ width: `${100 / cardColumns}%`, padding: 5 }}>
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`${selectMode ? 'Select' : 'Open'} ${p.name}`}
@@ -673,15 +681,18 @@ export default function ParticipantsList() {
                         <Text className="font-poppins-bold text-[10px] text-core-success-emerald-700">Public profile</Text>
                       </TouchableOpacity>}
                     </View>
-                    {!selectMode && <View style={{ marginTop: 8, flexDirection: 'row', gap: 7 }}>
+                    {!selectMode && <View style={{ marginTop: 8, flexDirection: 'row', gap: 5 }}>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Edit ${p.name}`} disabled={!!p.is_locked} onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#93C5FD', backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', opacity: p.is_locked ? 0.45 : 1 }}>
-                        <Text style={{ color: '#1D4ED8', fontSize: 11, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
+                        <Text numberOfLines={1} style={{ color: '#1D4ED8', fontSize: 10, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Delete ${p.name}`} onPress={(event) => { event.stopPropagation(); setDeleteError(null); setDeleteTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>Delete</Text>
+                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>Delete</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Details for ${p.name}`} onPress={(event) => { event.stopPropagation(); router.push(`/(admin)/participants/${p.id}`); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ color: ui.colors.text, fontSize: 10, fontWeight: '700' }}>Details</Text>
                       </TouchableOpacity>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Programs for ${p.name}`} onPress={(event) => { event.stopPropagation(); setProgramsTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#86EFAC', backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ color: '#15803D', fontSize: 11, fontWeight: '700' }}>Programs</Text>
+                        <Text style={{ color: '#15803D', fontSize: 10, fontWeight: '700' }}>Programs</Text>
                       </TouchableOpacity>
                     </View>}
                   </TouchableOpacity>
@@ -815,6 +826,23 @@ export default function ParticipantsList() {
         onSortChange={setExportSort}
         onClose={() => setIsExportOpen(false)}
         onDownload={runExport}
+      />
+      <AdminBulkAddParticipantsModal
+        visible={isBulkAddOpen}
+        tenantId={tenantId}
+        festivalId={activeFestival?.id}
+        festivalTemplate={activeFestival?.festival_template}
+        festivalLevel={activeFestival?.level}
+        chestNumberTemplate={activeFestival?.chest_number_template}
+        genderMode={activeFestival?.gender_mode}
+        onClose={() => setIsBulkAddOpen(false)}
+        onCreated={(count) => {
+          void queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] });
+          void queryClient.invalidateQueries({ queryKey: ['participants', 'admin-categories'] });
+          void queryClient.invalidateQueries({ queryKey: ['chest-number-order'] });
+          if (Platform.OS === 'web') window.alert(`${count} participant${count === 1 ? '' : 's'} added.`);
+          else Alert.alert('Participants added', `${count} participant${count === 1 ? '' : 's'} added.`);
+        }}
       />
     </ScrollView>
   );

@@ -503,6 +503,29 @@ export const participantService = {
     return data as T;
   },
 
+  async createParticipantsWithChestNumbers(input: {
+    tenant_id: string;
+    festival_id: string;
+    organisation_id: string;
+    category_code: string;
+    gender: 'boys' | 'girls';
+    names: string[];
+  }): Promise<number> {
+    const { data, error } = await supabase.rpc('admin_bulk_create_participants', {
+      p_tenant_id: input.tenant_id,
+      p_festival_id: input.festival_id,
+      p_organisation_id: input.organisation_id,
+      p_category_code: input.category_code,
+      p_gender: input.gender,
+      p_names: input.names,
+    });
+    throwIfError(error);
+    if (typeof data !== 'number' || data !== input.names.length) {
+      throw new Error('The participant batch was not fully confirmed by the server. Refresh the list before retrying.');
+    }
+    return data;
+  },
+
   async createParticipants<T>(payloads: Record<string, unknown>[]): Promise<T[]> {
     if (payloads.length === 0) return [];
     const { data, error } = await participantRepository.createParticipants<T>(payloads);

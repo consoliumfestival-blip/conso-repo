@@ -14,7 +14,7 @@ import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
-import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, GitCompare, RotateCcw, Trophy } from 'lucide-react-native';
+import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, RotateCcw } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
@@ -65,6 +65,9 @@ export default function ParticipantsList() {
   // The admin sidebar leaves room for three cards only on wider desktops.
   const isDesktopTable = width >= 1200;
   const isCardLayout = width >= 768;
+  const isNarrowPhone = width < 600;
+  const competitionFilterWidth = isNarrowPhone ? Math.max(180, Math.min(280, width - 48)) : 280;
+  const phoneFilterWidth = isNarrowPhone ? Math.max(120, Math.min(152, Math.floor((width - 72) / 2))) : undefined;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: festivalLoading, isError: festivalError } = useActiveFestival();
   useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true);
@@ -469,90 +472,67 @@ export default function ParticipantsList() {
   return (
     <ScrollView className="flex-1 bg-ssf-bg py-6 px-4" stickyHeaderIndices={[1]}>
       {/* Header */}
-      <View className="flex-row justify-between items-center mb-4">
-        <View>
+      <View className={`${width < 640 ? 'flex-col' : 'flex-row'} justify-between items-start gap-3 mb-4`}>
+        <View className="shrink-0">
           <Text className="text-3xl font-poppins-black text-ssf-text">Participants</Text>
           <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexShrink: 1, marginLeft: 12 }}
-          contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingRight: 2 }}
-        >
-          <TouchableOpacity onPress={() => router.push('/(admin)/participants/chest-numbers')} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1">
-            <Text className="font-poppins-bold text-ui-primary-text text-xs hidden sm:flex">Numbers</Text>
+        <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center">
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Print participant cards"
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
+            className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center"
           >
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">🪪 Cards</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push('/(admin)/participants/manage-units' as any)}
-            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-1"
-          >
-            <GitCompare size={14} color={coreColor("#1B6B3A", 'primaryText')} />
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Reassign</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
             disabled={isExporting || isLoadingList || isLoadingItems || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`px-3 py-2 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-2 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
+            className={`h-10 px-2.5 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
           >
-            <FileDown size={16} color={ui.colors.onPrimary} />
-            <Text className="font-poppins-bold text-xs text-core-on-primary-white">Export</Text>
+            <FileDown size={15} color={ui.colors.onPrimary} />
+            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(admin)/participants/import')} className="p-2 bg-core-surface-white border border-ssf-border rounded-lg">
-            <Upload size={20} color={coreColor("#1B6B3A", 'primaryText')} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-10 w-10 bg-core-surface-white border border-ssf-border rounded-lg items-center justify-center">
+            <Upload size={17} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => router.push('/(admin)/participants/programs' as any)}
-            className="p-2 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center gap-x-2"
-            accessibilityRole="button"
-            accessibilityLabel="Manage programs"
-          >
-            <Trophy size={16} color={coreColor("#1B6B3A", 'primaryText')} />
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Programs</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center justify-center gap-x-1.5">
+            <UserPlus size={17} color={coreColor("white", 'onPrimary')} />
+            <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Add New</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/(admin)/participants/add')} className="p-2 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center gap-x-2">
-            <UserPlus size={20} color={coreColor("white", 'onPrimary')} />
-            <Text className="font-poppins-bold text-core-on-primary-white text-xs hidden sm:flex">Add New</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </View>
       </View>
 
       {/* Sticky Filters & Search */}
       <View className="bg-ui-bg pb-4 z-10">
-        <View className="bg-core-surface-white border border-ui-border rounded-xl p-3">
-        <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-4 h-11">
+        <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-3 h-11">
           <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
           <TextInput
             className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
+            accessibilityLabel="Search participants by name or chest number"
             placeholder="Search by name or chest number..."
             value={searchQuery}
             onChangeText={(value) => { setPage(0); setSearchQuery(value); }}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => { setPage(0); setSearchQuery(''); }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear participant search" onPress={() => { setPage(0); setSearchQuery(''); }} className="h-9 w-9 items-center justify-center">
               <X size={16} color={coreColor("#9CA3AF", 'textMuted')} />
             </TouchableOpacity>
           )}
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10 }}
-        >
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingTop: 10 }}>
           <CompactFilter
             label="Competition"
             items={competitionOptions}
             selectedValue={selectedCompetition}
             onSelect={selectCompetition}
-            width={280}
+            width={competitionFilterWidth}
             searchable
             autoFocusSearch={false}
             keepInViewport
@@ -562,7 +542,7 @@ export default function ParticipantsList() {
             items={categories}
             selectedValue={selectedCategory}
             onSelect={(value) => { setPage(0); setSelectedCategory(value); }}
-            width={148}
+            width={phoneFilterWidth ?? 148}
             searchable={false}
           />
           {!isCollegeFest && categoryQuery.isLoading && (
@@ -586,14 +566,14 @@ export default function ParticipantsList() {
             items={statuses}
             selectedValue={selectedStatus}
             onSelect={(value) => { setPage(0); setSelectedStatus(value); }}
-            width={142}
+            width={phoneFilterWidth ?? 142}
           />
           <CompactFilter
             label="Gender"
             items={genders}
             selectedValue={selectedGender}
             onSelect={(value) => { setPage(0); setSelectedGender(value); }}
-            width={132}
+            width={phoneFilterWidth ?? 132}
           />
           {hasActiveFilters && (
             <TouchableOpacity
@@ -609,7 +589,6 @@ export default function ParticipantsList() {
               {listError ? 'Participants unavailable' : `${resultCount} results`}
             </Text>
           </View>
-        </ScrollView>
         </View>
       </View>
 
@@ -665,29 +644,28 @@ export default function ParticipantsList() {
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
               return (
-                <View key={p.id} style={{ width: isDesktopTable ? '33.333%' as const : '50%' as const, padding: 6 }}>
+                <View key={p.id} style={{ width: isDesktopTable ? '33.333%' as const : '50%' as const, padding: 5 }}>
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`${selectMode ? 'Select' : 'Open'} ${p.name}`}
                     activeOpacity={0.86}
                     onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id); }}
-                    style={{ minHeight: 205, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 3 }, elevation: 2 }}
+                    style={{ minHeight: 168, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                       {selectMode && <View style={{ paddingTop: 2 }}>{isSelected ? <CheckSquare size={18} color={ui.colors.primary} /> : <Square size={18} color={ui.colors.textSubtle} />}</View>}
                       <View style={{ flex: 1, minWidth: 0 }}>
                         <Text numberOfLines={2} style={{ color: ui.colors.text, fontSize: 14, fontWeight: '700' }}>{p.name || 'Participant'}</Text>
-                        <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 3 }}>{p.chest_number ? `#${p.chest_number}` : 'No chest number'}</Text>
+                        <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 2 }}>{p.chest_number ? `#${p.chest_number}` : 'No chest number'}</Text>
                       </View>
                       {!selectMode && <ChevronRight size={17} color={ui.colors.textSubtle} />}
                     </View>
-                    <View style={{ marginTop: 14, gap: 5 }}>
-                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Category  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.category_code || '—'}</Text></Text>
+                    <View style={{ marginTop: 8, gap: 4 }}>
+                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Category  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.category_code || '—'}</Text><Text style={{ color: ui.colors.textMuted }}> · Gender  </Text><Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.gender || '—'}</Text></Text>
                       <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Team  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.organisations?.name || '—'}</Text></Text>
-                      <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 11 }}>Gender  <Text style={{ color: ui.colors.text, fontWeight: '600' }}>{p.gender || '—'}</Text></Text>
                     </View>
-                    <View style={{ marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Change status for ${p.name}`} disabled={selectMode} onPress={(event) => { event.stopPropagation(); promptStatusChange(p); }} style={{ maxWidth: '60%' }} className={`px-2.5 py-1 rounded-full border ${statColor.bg} ${statColor.border}`}>
                         <Text numberOfLines={1} className={`font-poppins-bold text-[9px] uppercase ${statColor.text}`}>{p.status || 'Pending'}</Text>
                       </TouchableOpacity>
@@ -695,7 +673,7 @@ export default function ParticipantsList() {
                         <Text className="font-poppins-bold text-[10px] text-core-success-emerald-700">Public profile</Text>
                       </TouchableOpacity>}
                     </View>
-                    {!selectMode && <View style={{ marginTop: 13, flexDirection: 'row', gap: 7 }}>
+                    {!selectMode && <View style={{ marginTop: 8, flexDirection: 'row', gap: 7 }}>
                       <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Edit ${p.name}`} disabled={!!p.is_locked} onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#93C5FD', backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', opacity: p.is_locked ? 0.45 : 1 }}>
                         <Text style={{ color: '#1D4ED8', fontSize: 11, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
                       </TouchableOpacity>

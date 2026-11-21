@@ -8,15 +8,17 @@ import {
   Bell,
   Building2,
   CalendarDays,
-  ClipboardList,
   ChevronDown,
   ChevronRight,
-  Home,
+  LayoutDashboard,
+  ListMusic,
+  Globe2,
+  Moon,
+  Sun,
+  Palette,
   LogOut,
   Menu,
   Megaphone,
-  PanelLeftClose,
-  PanelLeftOpen,
   PanelsTopLeft,
   Printer,
   Scale,
@@ -28,6 +30,7 @@ import {
 } from "lucide-react-native";
 
 import { useAuthStore } from "@/core/store/authStore";
+import { useCoreAppearance } from "@/core/contexts/CoreAppearanceContext";
 import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
 import { useFestival } from "@/core/hooks/useFestival";
 import { FEATURE_FLAGS } from "@/core/config/features";
@@ -64,7 +67,7 @@ const navItems: NavItem[] = [
     label: "Dashboard",
     shortLabel: "Home",
     path: "/(admin)",
-    icon: Home,
+    icon: LayoutDashboard,
     match: (path) => path === "/" || path === "/(admin)" || path === "/admin",
   },
   {
@@ -76,7 +79,7 @@ const navItems: NavItem[] = [
   {
     label: "Programs",
     path: "/(admin)/participants/programs",
-    icon: ClipboardList,
+    icon: ListMusic,
     match: (path) => path.includes("/participants/programs"),
   },
   {
@@ -122,7 +125,7 @@ const navItems: NavItem[] = [
   {
     label: "Portals",
     path: "/(admin)/team-leaders",
-    icon: Users,
+    icon: Globe2,
     match: (path) => path.includes("/team-leaders") || path.includes("/settings/team-leader-portal") || path.includes("/smart-announcer") || path.includes("/festival-viewer"),
     children: [
       { label: "Team Leader Management", path: "/(admin)/team-leaders", match: (path) => path.includes("/team-leaders") || path.includes("/settings/team-leader-portal") },
@@ -269,197 +272,89 @@ function getTenantNavigation(settings: ReturnType<typeof useTenantFeatures>['set
 function DesktopSidebar({
   pathname,
   items,
-  collapsed,
-  onToggle,
-  festivalName,
-  tabletWidth,
 }: {
   pathname: string;
   items: NavItem[];
-  collapsed: boolean;
-  onToggle: () => void;
-  festivalName: string;
-  tabletWidth?: number;
 }) {
   const router = useRouter();
-  const { user, role, logout } = useAuthStore();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const { logout } = useAuthStore();
+  const appearance = useCoreAppearance();
+  const { height } = useWindowDimensions();
+  const [popup, setPopup] = useState<{ item: NavItem; top: number } | null>(null);
+  const scrollOffset = React.useRef(0);
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const { pendingCount } = useJudgeApprovalStore();
+
+  const cancelClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setPopup(null), 160);
+  };
+  React.useEffect(() => () => cancelClose(), []);
+  React.useEffect(() => { setPopup(null); }, [pathname]);
+  const openPopup = (item: NavItem, index: number) => {
+    cancelClose();
+    const popupHeight = 54 + (item.children?.length || 0) * 43;
+    setPopup({ item, top: Math.max(8, Math.min(76 + index * 54 - scrollOffset.current, height - popupHeight - 12)) });
+  };
+  const go = (path: string) => {
+    setPopup(null);
+    router.push(path as any);
+  };
+  const iconColor = coreColor('#D7E8E8', 'sidebarText');
 
   return (
     <View
       className="no-print"
-      {...{ dataSet: { coreGlass: 'navigation' } } as any}
-      style={[styles.sidebar, tabletWidth ? { width: tabletWidth } : null, collapsed && styles.sidebarCollapsed]}
+      style={styles.sidebar}
     >
+      <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}>
+        <ConsoliumLogo size={38} borderRadius={12} />
+      </Pressable>
       <View style={{ flex: 1, minHeight: 0 }}>
-        <View style={[styles.brand, collapsed && styles.brandCollapsed]}>
-          <View style={styles.brandMark}>
-            <ConsoliumLogo size={42} borderRadius={13} />
-          </View>
-          {!collapsed && (
-            <View style={{ flex: 1 }}>
-              <Text style={styles.brandName} numberOfLines={1}>
-                {festivalName}
-              </Text>
-              <Text style={styles.brandCaption}>Festival workspace</Text>
-            </View>
-          )}
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={
-              collapsed ? "Expand sidebar" : "Collapse sidebar"
-            }
-            onPress={onToggle}
-            style={[
-              styles.sidebarToggle,
-              collapsed && styles.sidebarToggleCollapsed,
-            ]}
-          >
-            {collapsed ? (
-              <PanelLeftOpen size={18} color={ui.colors.textMuted} />
-            ) : (
-              <PanelLeftClose size={18} color={ui.colors.textMuted} />
-            )}
-          </TouchableOpacity>
-        </View>
-
-        {!collapsed && <Text style={styles.navCaption}>Platform</Text>}
         <ScrollView
           style={styles.sidebarScroll}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 12 }}
           showsVerticalScrollIndicator={false}
+          onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; if (popup) setPopup(null); }}
+          scrollEventThrottle={32}
         >
-          {items.map((item) => {
+          {items.map((item, index) => {
             const active = item.match(pathname);
             const Icon = item.icon;
-            const expanded = item.children
-              ? (openGroups[item.label] ?? active)
-              : false;
             return (
-              <View key={item.label}>
-                <TouchableOpacity
+              <View key={item.label} style={styles.railRow}>
+                <Pressable
                   accessibilityRole="button"
-                  accessibilityState={{
-                    selected: active,
-                    expanded: item.children ? expanded : undefined,
-                  }}
-                  activeOpacity={0.76}
-                  onPress={() => {
-                    if (item.children) {
-                      if (collapsed) onToggle();
-                      setOpenGroups((current) => ({
-                        ...current,
-                        [item.label]: item.label === 'Portals' && collapsed ? true : !expanded,
-                      }));
-                    } else {
-                      router.push(item.path as any);
-                    }
-                  }}
-                  style={[
-                    styles.desktopNavItem,
-                    collapsed && styles.desktopNavItemCollapsed,
-                    active &&
-                      (!item.children || collapsed) &&
-                      styles.desktopNavItemActive,
-                  ]}
+                  accessibilityLabel={item.label}
+                  accessibilityState={{ selected: active }}
+                  onHoverIn={() => openPopup(item, index)}
+                  onHoverOut={scheduleClose}
+                  onFocus={() => openPopup(item, index)}
+                  onPress={() => go(item.path)}
+                  style={[styles.railButton, active && styles.railButtonActive]}
                 >
-                  <Icon
-                    size={18}
-                    color={active ? ui.colors.primaryText : ui.colors.textMuted}
-                    strokeWidth={active ? 2.35 : 2}
-                  />
-                  {!collapsed && (
-                    <View className="flex-row items-center flex-1">
-                      <Text
-                        style={[
-                          styles.desktopNavLabel,
-                          active && styles.desktopNavLabelActive,
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                      {item.label === "Judge Management" &&
-                        pendingCount > 0 && (
-                          <View className="bg-core-danger-action-red-500 rounded-full w-5 h-5 items-center justify-center ml-auto mr-1">
-                            <Text className="text-core-on-primary-white text-[10px] font-bold">
-                              {pendingCount}
-                            </Text>
-                          </View>
-                        )}
-                    </View>
-                  )}
-                  {!collapsed && item.children ? (
-                    expanded ? (
-                      <ChevronDown size={15} color={ui.colors.textMuted} />
-                    ) : (
-                      <ChevronRight size={15} color={ui.colors.textMuted} />
-                    )
-                  ) : null}
-                </TouchableOpacity>
-                {!collapsed && item.children && expanded && (
-                  <View style={styles.desktopSubmenu}>
-                    {item.children.map((child) => {
-                      const childActive = child.match(pathname);
-                      return (
-                        <TouchableOpacity
-                          key={child.label}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected: childActive }}
-                          onPress={() => router.push(child.path as any)}
-                          style={[
-                            styles.desktopSubmenuItem,
-                            childActive && styles.desktopSubmenuItemActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.desktopSubmenuLabel,
-                              childActive && styles.desktopSubmenuLabelActive,
-                            ]}
-                          >
-                            {child.label}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                )}
+                  <Icon size={21} color={iconColor} strokeWidth={active ? 2.4 : 1.9} />
+                  {active && <View style={styles.railActiveBar} />}
+                  {item.label === 'Judge Management' && pendingCount > 0 && <View style={styles.railBadge} />}
+                </Pressable>
+                {item.children?.length ? <Pressable accessibilityRole="button" accessibilityLabel={`Show ${item.label} pages`} accessibilityState={{ expanded: popup?.item.label === item.label }} onPress={() => popup?.item.label === item.label ? setPopup(null) : openPopup(item, index)} style={styles.railDisclosure}><ChevronRight size={13} color={iconColor} /></Pressable> : null}
               </View>
             );
           })}
         </ScrollView>
       </View>
-
-      <View
-        style={[
-          styles.sidebarFooter,
-          collapsed && styles.sidebarFooterCollapsed,
-        ]}
-      >
-        <View style={styles.avatar}>
-          <ConsoliumLogo size={36} borderRadius={18} />
-        </View>
-        {!collapsed && (
-          <>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text numberOfLines={1} style={styles.profileName}>
-                {user?.user_metadata?.full_name ||
-                  user?.email?.split("@")[0] ||
-                  "Festival Admin"}
-              </Text>
-              <Text style={styles.profileRole}>{role || "admin"}</Text>
-            </View>
-            <TouchableOpacity
-              accessibilityLabel="Sign out"
-              accessibilityRole="button"
-              onPress={logout}
-              style={styles.logoutButton}
-            >
-              <LogOut size={17} color={ui.colors.textMuted} />
-            </TouchableOpacity>
-          </>
-        )}
+      {popup && <Pressable style={[styles.railPopup, { top: popup.top }]} onHoverIn={cancelClose} onHoverOut={scheduleClose}>
+        <Text style={styles.railPopupTitle}>{popup.item.label}</Text>
+        {popup.item.children?.map((child) => <Pressable key={child.label} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
+      </Pressable>}
+      <View style={styles.railFooter}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={20} color={iconColor} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={20} color={iconColor} /> : <Moon size={20} color={iconColor} />}</Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={20} color={iconColor} /></Pressable>
       </View>
     </View>
   );
@@ -479,7 +374,7 @@ function MobileMenuSheet({
   const router = useRouter();
   const { user, role } = useAuthStore();
   const { pendingCount } = useJudgeApprovalStore();
-  const [portalsOpen, setPortalsOpen] = useState<boolean | null>(null);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const navigate = (path: string) => {
     onClose();
@@ -520,8 +415,7 @@ function MobileMenuSheet({
               const active = item.match(pathname);
               const Icon = item.icon;
               const hasChildren = !!item.children;
-              // Portals expands in place; existing groups retain their navigation behavior.
-              const expanded = hasChildren && (item.label === 'Portals' ? (portalsOpen ?? active) : active);
+              const expanded = hasChildren && (openGroup === item.label || (openGroup === null && active));
 
               if (!hasChildren) {
                 return (
@@ -553,9 +447,9 @@ function MobileMenuSheet({
                     activeOpacity={0.8}
                     accessibilityRole="button"
                     accessibilityLabel={item.label}
-                    accessibilityState={{ selected: active, expanded: item.label === 'Portals' ? expanded : undefined }}
-                    onPress={() => item.label === 'Portals' ? setPortalsOpen(!expanded) : navigate(item.path)}
-                    style={[styles.menuTile, active && styles.menuTileActive, { width: '100%', flexDirection: 'row', alignItems: 'center', minHeight: 70, justifyContent: 'flex-start', paddingHorizontal: 20 }]}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => navigate(item.path)}
+                    style={[styles.menuTile, active && styles.menuTileActive, { width: '100%', flexDirection: 'row', alignItems: 'center', minHeight: 70, justifyContent: 'flex-start', paddingLeft: 20, paddingRight: 64 }]}
                   >
                     <View
                       style={[styles.menuIcon, active && styles.menuIconActive, { marginBottom: 0, marginRight: 16 }]}
@@ -575,7 +469,9 @@ function MobileMenuSheet({
                     >
                       {item.label}
                     </Text>
-                    {item.label === 'Portals' && expanded ? <ChevronDown size={18} color={ui.colors.textMuted} /> : <ChevronRight size={18} color={ui.colors.textMuted} />}
+                  </TouchableOpacity>
+                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${item.label} pages`} accessibilityState={{ expanded }} onPress={() => setOpenGroup(expanded ? '' : item.label)} style={{ position: 'absolute', right: 12, top: 10, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
+                    {expanded ? <ChevronDown size={18} color={ui.colors.textMuted} /> : <ChevronRight size={18} color={ui.colors.textMuted} />}
                   </TouchableOpacity>
                   
                   {expanded && (
@@ -692,11 +588,9 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const { settings: tenantFeatures } = useTenantFeatures(tenantId);
   const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isDesktop = width >= 900;
-  // Tablets use the full navigation rail; short landscape phone windows keep phone navigation.
+  // Keep a fixed rail on desktop and large tablets; short landscape phones use the touch menu.
   const showSidebar = width >= 900 || (width >= 600 && height >= 600);
-  const tabletSidebarWidth = width < 900 ? (width < 720 ? 220 : 240) : undefined;
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
   const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
@@ -709,12 +603,6 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
     return applyPortalPwaMetadata(pathname === '/team-leaders' ? 'team-management' : 'admin');
   }, [pathname]);
 
-  if (pathname.includes("/settings/leaderboard/poster-studio")) {
-    return (
-      <View style={{ flex: 1, backgroundColor: coreColor("#09090b", 'surfaceStrong') }}>{children}</View>
-    );
-  }
-
   return (
     <View style={styles.shell}>
       <JudgeApprovalToast />
@@ -722,10 +610,6 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         <DesktopSidebar
           pathname={pathname}
           items={visibleNavItems}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((current) => !current)}
-          festivalName={festivalName}
-          tabletWidth={tabletSidebarWidth}
         />
       )}
       <View style={styles.shellMain}>
@@ -793,16 +677,31 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 82 : 72,
   },
   sidebar: {
-    width: 264,
+    width: 72,
     minHeight: "100%",
-    backgroundColor: coreColor("#FBFBFC", 'surface'),
-    borderRightWidth: 1,
-    borderRightColor: ui.colors.border,
-    paddingHorizontal: 12,
-    paddingTop: 18,
-    paddingBottom: 14,
+    backgroundColor: coreColor('#102A2E', 'sidebar'),
+    paddingHorizontal: 8,
+    paddingTop: 12,
+    paddingBottom: 12,
     justifyContent: "space-between",
+    zIndex: 30,
+    overflow: 'visible',
   },
+  railLogo: { width: 48, height: 52, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  railRow: { width: 56, height: 54, alignItems: 'center', justifyContent: 'center' },
+  railButton: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  railButtonActive: { backgroundColor: coreColor('#17383D', 'sidebarSoft') },
+  railActiveBar: { position: 'absolute', left: -4, width: 3, height: 24, borderRadius: 3, backgroundColor: coreColor('#54D9B5', 'primary') },
+  railBadge: { position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF776F' },
+  railDisclosure: { position: 'absolute', bottom: -2, right: 0, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: coreColor('#17383D', 'sidebarSoft') },
+  railPopup: { position: 'absolute', left: 72, minWidth: 232, maxWidth: 290, padding: 12, borderRadius: 14, backgroundColor: coreColor('#FFFFFF', 'surface'), borderWidth: 1, borderColor: coreColor('#D6E3E3', 'border'), ...ui.shadow },
+  railPopupTitle: { color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 13, paddingHorizontal: 8, paddingVertical: 7 },
+  railPopupLink: { minHeight: 42, borderRadius: 9, paddingHorizontal: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6 },
+  railPopupLinkActive: { backgroundColor: ui.colors.primarySoft },
+  railPopupLinkText: { color: ui.colors.text, fontFamily: 'Poppins_500Medium', fontSize: 12, flexShrink: 1 },
+  railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: 'Poppins_700Bold' },
+  railFooter: { alignItems: 'center', gap: 3, paddingTop: 10, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
+  railFooterButton: { width: 48, height: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   sidebarCollapsed: {
     width: 68,
     paddingHorizontal: 8,

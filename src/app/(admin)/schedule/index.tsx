@@ -165,7 +165,7 @@ export default function ScheduleDashboard() {
     screenHeight,
     maxTouchPoints,
   );
-  const sidebarWidth = width >= 900 ? 264 : width >= 600 && height >= 600 ? (width < 720 ? 220 : 240) : 0;
+  const sidebarWidth = width >= 900 || (width >= 600 && height >= 600) ? 72 : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
   // Preserve phone cards in portrait and landscape; tablet and desktop widths use the reference table.

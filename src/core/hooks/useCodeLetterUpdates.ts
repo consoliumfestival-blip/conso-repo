@@ -42,7 +42,7 @@ function listen(topic: string, listener: () => void, skipInitialSubscriptionRefr
   };
 }
 
-export function useCodeLetterUpdates(topic: string | null | undefined, onChange: () => void | Promise<unknown>, labelTopic?: string | null, skipInitialSubscriptionRefresh = false) {
+export function useCodeLetterUpdates(topic: string | null | undefined, onChange: () => void | Promise<unknown>, labelTopic?: string | null, skipInitialSubscriptionRefresh = false, refreshOnResume = true) {
   const callback = useRef(onChange);
   callback.current = onChange;
   useEffect(() => {
@@ -53,14 +53,14 @@ export function useCodeLetterUpdates(topic: string | null | undefined, onChange:
     // Consumers may opt into a dedicated hint topic without adding a second
     // subscription or changing the default topic used by existing pages.
     const stop = listen(labelTopic ?? `code-letters:${topic}`, refresh, skipInitialSubscriptionRefresh);
-    const appState = Platform.OS !== 'web'
+    const appState = refreshOnResume && Platform.OS !== 'web'
       ? AppState.addEventListener('change', (state) => { if (state === 'active') refresh(); }) : undefined;
     const visibility = () => { if (document.visibilityState === 'visible') refresh(); };
-    if (Platform.OS === 'web' && typeof document !== 'undefined') document.addEventListener('visibilitychange', visibility);
+    if (refreshOnResume && Platform.OS === 'web' && typeof document !== 'undefined') document.addEventListener('visibilitychange', visibility);
     return () => {
       stop();
       appState?.remove();
       if (Platform.OS === 'web' && typeof document !== 'undefined') document.removeEventListener('visibilitychange', visibility);
     };
-  }, [topic, labelTopic, skipInitialSubscriptionRefresh]);
+  }, [topic, labelTopic, skipInitialSubscriptionRefresh, refreshOnResume]);
 }

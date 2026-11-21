@@ -88,7 +88,7 @@ export function useTenantFeatures(tenantId?: string | null, publicOnly = false) 
     queryKey: ['tenant-features', publicOnly ? 'public' : 'admin', tenantId],
     enabled: !!tenantId && !(publicOnly && Platform.OS === 'web'),
     staleTime: 10_000,
-    refetchInterval: publicOnly ? 10_000 : 15_000,
+    refetchInterval: publicOnly ? 10_000 : false,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(

@@ -157,7 +157,7 @@ export default function ProgramsScreen() {
   useCodeLetterUpdates(festival?.id ? `festival:${festival.id}` : null, () => Promise.all([
     invalidateCodeLetters(queryClient, { festivalId: festival?.id }),
     queryClient.invalidateQueries({ queryKey: ['program-detail', visibilityTenantId, festival?.id] }),
-  ]));
+  ]), undefined, true, false);
   const refreshPrograms = async () => {
     await pageQuery.refetch();
     if (detailItemId && shouldLoadProgramDetail) await detailQuery.refetch();
@@ -481,7 +481,7 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {pageQuery.isFetching || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ gap: 12, alignItems: 'flex-start' }} className="mt-3 flex-row flex-wrap">{programCards.map(card => {
+      {pageQuery.isLoading || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'individual' ? 'individual' : 'group'} programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ gap: 12, alignItems: 'flex-start' }} className="mt-3 flex-row flex-wrap">{programCards.map(card => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.over_limit_teams;
         return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className={`rounded-xl border border-ui-border bg-core-surface-white shadow-sm ${isPhone ? 'p-3' : 'p-2.5'}`}>

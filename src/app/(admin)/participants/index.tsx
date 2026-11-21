@@ -70,7 +70,7 @@ export default function ParticipantsList() {
   const phoneFilterWidth = isNarrowPhone ? Math.max(120, Math.min(152, Math.floor((width - 72) / 2))) : undefined;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: festivalLoading, isError: festivalError } = useActiveFestival();
-  useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true);
+  useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true, false);
   const isCollegeFest = activeFestival?.festival_template === 'college_fest';
   const { data: festivalCategories = [] } = useFestivalCategories(isCollegeFest ? activeFestival?.id : undefined, true);
   const { useItems } = useFestival();

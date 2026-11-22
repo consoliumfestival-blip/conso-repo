@@ -604,6 +604,8 @@ function TabletFloatingBar({
     return child ? { ...child, shortLabel, icon } : null;
   };
   const results = childItem("Leaderboard Management", "Item Results", "Results", ClipboardList);
+  const teamStanding = childItem("Leaderboard Management", "Unit Rankings", "Team Standing", BarChart3);
+  const reports = directItem("Reports & printouts", "Reports");
   const quickItems: (NavItem | null)[] = isLandscape
     ? [
         directItem("Dashboard", "Home"),
@@ -611,8 +613,9 @@ function TabletFloatingBar({
         directItem("Programs", "Programs"),
         directItem("Schedules", "Schedule"),
         directItem("Stage Management", "Stage"),
-        directItem("Judge Management", "Judges"),
+        reports,
         results,
+        teamStanding,
       ]
     : [
         directItem("Dashboard", "Home"),
@@ -620,13 +623,9 @@ function TabletFloatingBar({
         directItem("Programs", "Programs"),
         directItem("Schedules", "Schedule"),
         results,
+        teamStanding,
+        reports,
       ];
-
-  if (isLandscape && width >= 1000) {
-    quickItems.push(
-      childItem("Portals", "Team Leader Management", "Team Leads", UserRoundCog),
-    );
-  }
 
   const visibleItems = quickItems.filter((item): item is NavItem => item !== null);
 

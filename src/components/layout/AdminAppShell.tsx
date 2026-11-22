@@ -6,6 +6,19 @@ import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Toucha
 import { usePathname, useRouter } from "expo-router";
 import {
   BadgePlus,
+  BarChart3,
+  SlidersHorizontal,
+  ClipboardList,
+  Medal,
+  Image,
+  Images,
+  UserRoundCog,
+  Mic,
+  Eye,
+  Calendar,
+  ListChecks,
+  Calculator,
+  KeyRound,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -20,6 +33,8 @@ import {
   Menu,
   Megaphone,
   PanelsTopLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   Printer,
   Scale,
   Settings,
@@ -262,6 +277,7 @@ function DesktopSidebar({
   const appearance = useCoreAppearance();
   const sidebarAppearance = useSidebarAppearance();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [tabletExpanded, setTabletExpanded] = useState(false);
   const { height } = useWindowDimensions();
   const [popup, setPopup] = useState<{ item: NavItem; top: number } | null>(null);
   const scrollOffset = React.useRef(0);
@@ -293,14 +309,14 @@ function DesktopSidebar({
   return (
     <View
       className="no-print"
-      {...(!tablet ? { onMouseEnter: cancelClose, onMouseLeave: scheduleClose } : {}) as any}
-      style={[tablet ? styles.tabletSidebar : styles.sidebar, !tablet && sidebarAppearance === 'light' && styles.sidebarLight]}
+      {...(tablet ? { onMouseEnter: () => setTabletExpanded(true), onMouseLeave: () => setTabletExpanded(false) } : { onMouseEnter: cancelClose, onMouseLeave: scheduleClose }) as any}
+      style={[tablet ? styles.tabletSidebar : styles.sidebar, tablet && !tabletExpanded && styles.tabletSidebarCompact, !tablet && sidebarAppearance === 'light' && styles.sidebarLight]}
     >
-      {tablet ? <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.tabletBrand}><ConsoliumLogo size={32} borderRadius={10} /><Text numberOfLines={1} style={styles.tabletBrandText}>Consolium</Text></Pressable> : <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}><ConsoliumLogo size={32} borderRadius={10} /></Pressable>}
+      {tablet ? <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={[styles.tabletBrand, !tabletExpanded && styles.tabletBrandCompact]}><ConsoliumLogo size={32} borderRadius={10} />{tabletExpanded && <Text numberOfLines={1} style={styles.tabletBrandText}>Consolium</Text>}</Pressable> : <Pressable accessibilityRole="button" accessibilityLabel="Consolium dashboard" onPress={() => go('/(admin)')} style={styles.railLogo}><ConsoliumLogo size={32} borderRadius={10} /></Pressable>}
       <View style={{ flex: 1, minHeight: 0 }}>
         <ScrollView
           style={styles.sidebarScroll}
-          contentContainerStyle={tablet ? { paddingHorizontal: 8, paddingBottom: 4 } : { alignItems: 'center', paddingBottom: 4 }}
+          contentContainerStyle={tablet ? { paddingHorizontal: tabletExpanded ? 8 : 2, paddingBottom: 4 } : { alignItems: 'center', paddingBottom: 4 }}
           showsVerticalScrollIndicator={false}
           onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; if (popup) setPopup(null); }}
           scrollEventThrottle={32}
@@ -314,12 +330,12 @@ function DesktopSidebar({
                 <View style={[styles.tabletNavRow, active && styles.tabletNavRowActive]}>
                   <Pressable accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: active }} onPress={() => go(item.path)} style={styles.tabletNavMain}>
                     <Icon size={16} color={active ? ui.colors.primaryText : ui.colors.textMuted} strokeWidth={2} />
-                    <Text numberOfLines={1} style={[styles.tabletNavLabel, active && styles.tabletNavLabelActive]}>{item.shortLabel || item.label}</Text>
+                    {tabletExpanded && <Text numberOfLines={1} style={[styles.tabletNavLabel, active && styles.tabletNavLabelActive]}>{item.shortLabel || item.label}</Text>}
                     {item.label === 'Judge Management' && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
                   </Pressable>
-                  {!!item.children?.length && <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${item.label} pages`} accessibilityState={{ expanded }} onPress={() => setOpenGroups(current => ({ ...current, [item.label]: !expanded }))} style={styles.tabletDisclosure}>{expanded ? <ChevronDown size={14} color={ui.colors.textMuted} /> : <ChevronRight size={14} color={ui.colors.textMuted} />}</Pressable>}
+                  {tabletExpanded && !!item.children?.length && <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${item.label} pages`} accessibilityState={{ expanded }} onPress={() => setOpenGroups(current => ({ ...current, [item.label]: !expanded }))} style={styles.tabletDisclosure}>{expanded ? <ChevronDown size={14} color={ui.colors.textMuted} /> : <ChevronRight size={14} color={ui.colors.textMuted} />}</Pressable>}
                 </View>
-                {!!item.children?.length && expanded && <View style={styles.tabletSubmenu}>{item.children.map(child => <Pressable key={child.label} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.tabletSubmenuLink, child.match(pathname) && styles.tabletSubmenuLinkActive]}><Text numberOfLines={1} style={[styles.tabletSubmenuText, child.match(pathname) && styles.tabletSubmenuTextActive]}>{child.label}</Text></Pressable>)}</View>}
+                {tabletExpanded && !!item.children?.length && expanded && <View style={styles.tabletSubmenu}>{item.children.map(child => <Pressable key={child.label} {...{ dataSet: { tabletSubmenuLink: "true" } } as any} accessibilityRole="button" accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.tabletSubmenuLink, child.match(pathname) && styles.tabletSubmenuLinkActive]}><Text numberOfLines={1} style={[styles.tabletSubmenuText, child.match(pathname) && styles.tabletSubmenuTextActive]}>{child.label}</Text></Pressable>)}</View>}
               </View>;
             }
             return (
@@ -347,7 +363,8 @@ function DesktopSidebar({
         <Text numberOfLines={popup.item.children?.length ? undefined : 1} style={[styles.railPopupTitle, !popup.item.children?.length && styles.railTooltipTitle]}>{popup.item.label}</Text>
         {popup.item.children?.map((child, index) => <Pressable key={child.label} accessibilityRole="button" accessibilityLabel={child.label} accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, index > 0 && styles.railPopupLinkDivider, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
       </View>}
-      <View style={[styles.railFooter, tablet && styles.tabletFooter]}>
+      <View style={[styles.railFooter, tablet && styles.tabletFooter, tablet && !tabletExpanded && styles.tabletFooterCompact]}>
+        {tablet && <Pressable accessibilityRole="button" accessibilityLabel={tabletExpanded ? "Collapse sidebar" : "Expand sidebar"} accessibilityState={{ expanded: tabletExpanded }} onPress={() => setTabletExpanded(value => !value)} style={styles.railFooterButton}>{tabletExpanded ? <PanelLeftClose size={17} color={iconColor} /> : <PanelLeftOpen size={17} color={iconColor} />}</Pressable>}
         {onBottomNavigation && <Pressable accessibilityRole="button" accessibilityLabel="Switch to bottom navigation" onPress={onBottomNavigation} style={styles.railFooterButton}><Menu size={17} color={iconColor} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
@@ -358,7 +375,81 @@ function DesktopSidebar({
   );
 }
 
-function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
+function MobileMenuSheet(props: { visible: boolean; onClose: () => void; pathname: string; items: NavItem[]; onSidebar: () => void }) {
+  const { width } = useWindowDimensions();
+  return isAdminTablet(width) ? <TabletMenuSheet {...props} /> : <PhoneMenuSheet {...props} />;
+}
+
+function TabletMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
+  visible: boolean; onClose: () => void; pathname: string; items: NavItem[]; onSidebar: () => void;
+}) {
+  const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const { pendingCount } = useJudgeApprovalStore();
+  const [position, setPosition] = useState<'left' | 'center' | 'right'>(() => {
+    if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return 'center';
+    try { const saved = localStorage.getItem('admin-tablet-menu-position-v1'); return saved === 'left' || saved === 'right' ? saved : 'center'; } catch { return 'center'; }
+  });
+  const positionChanged = React.useRef(false);
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    void AsyncStorage.getItem('admin-tablet-menu-position-v1').then(value => {
+      if (active && !positionChanged.current && (value === 'left' || value === 'center' || value === 'right')) setPosition(value);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const choosePosition = (value: 'left' | 'center' | 'right') => {
+    positionChanged.current = true; setPosition(value);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try { localStorage.setItem('admin-tablet-menu-position-v1', value); } catch { /* Keep the current session preference. */ }
+    } else if (Platform.OS !== 'web') void AsyncStorage.setItem('admin-tablet-menu-position-v1', value).catch(() => {});
+  };
+  const iconByLabel: Record<string, IconType> = {
+    'Team Leader Management': UserRoundCog, 'Smart Announcer': Mic, 'Festival Viewer': Eye,
+    'Unit Rankings': BarChart3, 'Leaderboard Controls': SlidersHorizontal,
+    'Item Results': ClipboardList, 'Individual Rankings': Medal, 'Poster Studio': Image,
+    'Media Center': Images, 'Festival Calendar': Calendar, 'Item Activation': ListChecks,
+    'Points & Grading': Calculator, 'Scoring Rules': Scale, 'Appearance': Palette,
+    'AI Settings & API Keys': KeyRound,
+  };
+  const entries = items.flatMap(item => item.children?.length
+    ? item.children.map(child => ({ ...child, icon: iconByLabel[child.label] || item.icon, badge: false }))
+    : [{ label: item.label, path: item.path, match: item.match, icon: item.icon, badge: item.label === 'Judge Management' }]);
+  const windowSize = Math.max(0, Math.min(620, width - 24, height - 24));
+  const columns = Math.max(1, Math.min(7, Math.floor((windowSize - 28 + 8) / 72)));
+  const tileWidth = Math.max(44, Math.floor((windowSize - 28 - (columns - 1) * 8) / columns));
+  const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <View style={[styles.modalRoot, { alignItems: position === 'left' ? 'flex-start' : position === 'right' ? 'flex-end' : 'center', padding: 12 }]}>
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
+      <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.sheet, styles.tabletFloatingSheet, { width: windowSize, height: windowSize, maxHeight: height - 24 }]}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>Menu</Text>
+          <View style={styles.positionControls}>{(['left', 'center', 'right'] as const).map(value => <Pressable key={value} accessibilityRole="button" accessibilityLabel={`Place menu ${value}`} accessibilityState={{ selected: position === value }} onPress={() => choosePosition(value)} style={[styles.positionButton, position === value && styles.positionButtonActive]}><Text style={[styles.positionButtonText, position === value && styles.menuEntryTextActive]}>{value === 'left' ? 'L' : value === 'right' ? 'R' : 'C'}</Text></Pressable>)}</View>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close menu" onPress={onClose} style={styles.sheetClose}><X size={20} color={ui.colors.textMuted} /></TouchableOpacity>
+        </View>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.menuSections}>
+          <View style={styles.menuEntries}>
+            {entries.map(entry => {
+              const active = entry.match(pathname);
+              const Icon = entry.icon;
+              return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: tileWidth, minHeight: 72 }, active && styles.menuEntryActive]}>
+                <Icon size={20} color={active ? ui.colors.primaryText : ui.colors.textMuted} />
+                <Text style={[styles.menuEntryText, active && styles.menuEntryTextActive]} numberOfLines={3}>{entry.label}</Text>
+                {entry.badge && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
+              </TouchableOpacity>;
+            })}
+          </View>
+        </ScrollView>
+        <View style={styles.menuFooter}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Switch to sidebar navigation" onPress={() => { onClose(); onSidebar(); }} style={styles.navigationToggle}><PanelsTopLeft size={16} color={ui.colors.primaryText} /><Text style={styles.navigationToggleText}>Switch to sidebar</Text></TouchableOpacity></View>
+      </SafeAreaView>
+    </View>
+  </Modal>;
+}
+
+function PhoneMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   visible: boolean; onClose: () => void; pathname: string; items: NavItem[]; onSidebar: () => void;
 }) {
   const router = useRouter();
@@ -591,6 +682,9 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   tabletSidebar: { width: 224, marginVertical: 8, marginLeft: 8, marginRight: 4, paddingVertical: 10, borderRadius: 16, borderWidth: 1, borderColor: coreColor('#D9E4E2', 'border'), backgroundColor: coreColor('#FFFFFF', 'surface'), ...ui.shadow },
+  tabletSidebarCompact: { width: 52, paddingVertical: 10 },
+  tabletBrandCompact: { paddingHorizontal: 0, justifyContent: 'center' },
+  tabletFooterCompact: { flexDirection: 'column', paddingHorizontal: 0 },
   tabletBrand: { height: 46, paddingHorizontal: 12, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 9 },
   tabletBrandText: { flex: 1, color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: 13 },
   tabletNavGroup: { marginBottom: 3 },
@@ -626,7 +720,7 @@ const styles = StyleSheet.create({
   railPopupLinkText: { color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 12, flexShrink: 1 },
   railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   railFooter: { alignItems: 'center', gap: 2, paddingTop: 5, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
-  tabletFooter: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 4 },
+  tabletFooter: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 4, borderTopWidth: 0 },
   railFooterButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   sidebarCollapsed: {
     width: 68,
@@ -850,6 +944,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
+  tabletFloatingSheet: { borderRadius: 20, ...ui.shadow },
+  positionControls: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto', marginRight: 8 },
+  positionButton: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  positionButtonActive: { backgroundColor: ui.colors.primarySoft },
+  positionButtonText: { color: ui.colors.textMuted, fontFamily: 'Outfit_700Bold', fontSize: 12 },
   sheetHandle: {
     width: 58,
     height: 6,
@@ -894,8 +993,8 @@ const styles = StyleSheet.create({
   menuSection: { marginBottom: 10 },
   menuSectionTitle: { color: ui.colors.textMuted, fontFamily: "Outfit_700Bold", fontSize: 12, marginBottom: 5, paddingHorizontal: 4 },
   menuEntries: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  menuEntry: { minHeight: 70, alignItems: "center", justifyContent: "center", padding: 5, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface, gap: 5 },
-  menuEntryActive: { backgroundColor: ui.colors.primarySoft, borderColor: ui.colors.primary },
+  menuEntry: { minHeight: 72, alignItems: "center", justifyContent: "center", padding: 5, borderRadius: 10, backgroundColor: ui.colors.surface, gap: 5 },
+  menuEntryActive: { backgroundColor: ui.colors.primarySoft },
   menuEntryText: { color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 11, textAlign: "center" },
   menuEntryTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   menuFooter: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: ui.colors.border },

@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     fontFamily: "Outfit_400Regular",
     fontSize: 12,
     outlineStyle: 'none',
-  },
+  } as any,
   emptyText: {
     paddingHorizontal: 14,
     paddingVertical: 18,

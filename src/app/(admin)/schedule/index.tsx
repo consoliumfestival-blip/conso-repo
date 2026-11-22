@@ -842,29 +842,29 @@ export default function ScheduleDashboard() {
   return (
     <>
       <ScrollView className="flex-1 bg-ssf-bg py-6 px-4">
-        <View className="mb-4">
-        <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
-        <Text className="text-xs font-poppins text-ssf-text-muted mt-1">
-          {isSearchDebouncing ? 'Updating results…' : totalFilteredSchedules === 0 ? '0 schedules' : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}
-          {' · '}{venues.length} venues{' · '}{totalSchedules} scheduled events
-        </Text>
-      </View>
+        <View className="mb-4 flex-row flex-wrap items-start justify-between gap-3">
+          <View className="min-w-[220px] flex-1">
+            <Text className="text-3xl font-poppins-black text-ssf-text">Schedules</Text>
+            <Text className="text-xs font-poppins text-ssf-text-muted mt-1">
+              {isSearchDebouncing ? 'Updating results…' : totalFilteredSchedules === 0 ? '0 schedules' : `Showing ${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, totalFilteredSchedules)} of ${totalFilteredSchedules}`}
+              {' · '}{venues.length} venues{' · '}{totalSchedules} scheduled events
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setSchedulePdfExportOpen(true)}
+            disabled={isExportingSchedule}
+            accessibilityRole="button"
+            accessibilityLabel="Export schedule PDF"
+            accessibilityState={{ disabled: isExportingSchedule, busy: isExportingSchedule }}
+            className={`min-h-10 flex-row items-center gap-2 rounded-lg px-4 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100' : 'bg-ui-primary'}`}
+          >
+            {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
+            <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
+          </TouchableOpacity>
+        </View>
 
       {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
       {availableDatesQuery.isError && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Available schedule dates could not be loaded.</Text><SsfButton label="Retry dates" size="sm" variant="outline" onPress={()=>{void availableDatesQuery.refetch();}} /></View>}
-      <View className="flex-row justify-end mb-5">
-        <TouchableOpacity
-          onPress={() => setSchedulePdfExportOpen(true)}
-          disabled={isExportingSchedule}
-          accessibilityRole="button"
-          accessibilityLabel="Export schedule PDF"
-          accessibilityState={{ disabled: isExportingSchedule, busy: isExportingSchedule }}
-          className={`min-h-10 flex-row items-center gap-2 rounded-lg px-4 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100' : 'bg-ui-primary'}`}
-        >
-          {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
-          <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
-        </TouchableOpacity>
-      </View>
 
       {false && (<>
       {/* Judges quick card */}
@@ -902,7 +902,7 @@ export default function ScheduleDashboard() {
       </View>
 
       {isMobile || !isMobile ? (
-        <View className="bg-core-surface-white border border-ui-border rounded-xl p-3 mb-6">
+        <View className="mb-6">
           <View className="flex-row flex-wrap items-center gap-2">
             <SsfSelectMenu
               value={selectedItem}

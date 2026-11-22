@@ -548,6 +548,21 @@ export default function ParticipantDetails() {
     <Modal visible transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
       <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={{ width: Math.min(1000, width - 24), height: Math.min(900, height - 24), maxHeight: '96%', borderRadius: 18, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
+      <View style={{ minHeight: 56, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: ui.colors.border, backgroundColor: ui.colors.surface }}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Back to participants"
+          onPress={goBack}
+          style={{ minWidth: 64, minHeight: 40, paddingHorizontal: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface }}
+        >
+          <ArrowLeft size={17} color={ui.colors.text} />
+          <Text style={{ color: ui.colors.text, fontFamily: 'Poppins_600SemiBold', fontSize: 12 }}>Back</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ color: ui.colors.text, fontFamily: 'Poppins_700Bold', fontSize: 15 }}>Participant profile</Text>
+          <Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontFamily: 'Poppins_400Regular', fontSize: 11 }}>{participant.name}</Text>
+        </View>
+      </View>
       <ScrollView
       style={{ flex: 1, backgroundColor: ui.colors.background }}
       contentContainerStyle={{
@@ -558,21 +573,6 @@ export default function ParticipantDetails() {
         paddingBottom: isDesktopProfile ? 18 : 28,
       }}
     >
-      {!isDesktopProfile && (
-        <View className="mb-3 flex-row items-center">
-          <TouchableOpacity
-            onPress={goBack}
-            className="mr-3 h-10 w-10 items-center justify-center rounded-xl border border-core-border-slate-200 bg-core-surface-white"
-          >
-            <ArrowLeft size={19} color={ui.colors.text} />
-          </TouchableOpacity>
-          <View className="flex-1">
-            <Text className="text-lg font-poppins-black text-ssf-text">Participant profile</Text>
-            <Text className="text-[10px] font-poppins text-ssf-text-muted">Identity, eligibility and registrations</Text>
-          </View>
-        </View>
-      )}
-
       {participant.is_terminated && (
         <View className="bg-core-warning-soft-amber-100 border border-core-warning-soft-amber-300 rounded-xl p-4 mb-4 flex-row items-center gap-x-3">
           <AlertTriangle size={24} color={coreColor("#D97706", 'warning')} />

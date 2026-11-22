@@ -1,6 +1,7 @@
 import { CORE_PALETTES, coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useMemo, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import {
@@ -249,10 +250,12 @@ function DesktopSidebar({
   pathname,
   items,
   layout = 'desktop',
+  onBottomNavigation,
 }: {
   pathname: string;
   items: NavItem[];
   layout?: 'tablet' | 'desktop';
+  onBottomNavigation?: () => void;
 }) {
   const router = useRouter();
   const { logout, user } = useAuthStore();
@@ -345,6 +348,7 @@ function DesktopSidebar({
         {popup.item.children?.map((child, index) => <Pressable key={child.label} accessibilityRole="button" accessibilityLabel={child.label} accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, index > 0 && styles.railPopupLinkDivider, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
       </View>}
       <View style={styles.railFooter}>
+        {onBottomNavigation && <Pressable accessibilityRole="button" accessibilityLabel="Switch to bottom navigation" onPress={onBottomNavigation} style={styles.railFooterButton}><Menu size={17} color={iconColor} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={17} color={iconColor} /></Pressable>
@@ -354,160 +358,46 @@ function DesktopSidebar({
   );
 }
 
-function MobileMenuSheet({
-  visible,
-  onClose,
-  pathname,
-  items,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  pathname: string;
-  items: NavItem[];
+function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
+  visible: boolean; onClose: () => void; pathname: string; items: NavItem[]; onSidebar: () => void;
 }) {
   const router = useRouter();
-  const { user, role } = useAuthStore();
+  const { width, height } = useWindowDimensions();
   const { pendingCount } = useJudgeApprovalStore();
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
-
-  const navigate = (path: string) => {
-    onClose();
-    setTimeout(() => router.push(path as any), 150);
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalRoot}>
-        <Pressable style={styles.scrim} onPress={onClose} />
-        <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={styles.sheet}>
-          <View style={styles.sheetHandle} />
-          <View style={styles.sheetHeader}>
-            <View>
-              <Text style={styles.sheetTitle}>Menu</Text>
-              <Text style={styles.sheetSubtitle}>Festival workspace</Text>
-            </View>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Close menu"
-              onPress={onClose}
-              style={styles.sheetClose}
-            >
-              <X size={20} color={ui.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.menuGrid}
-          >
-            {items.map((item) => {
-              const active = item.match(pathname);
-              const Icon = item.icon;
-              const hasChildren = !!item.children;
-              const expanded = hasChildren && (openGroup === item.label || (openGroup === null && active));
-
-              if (!hasChildren) {
-                return (
-                  <TouchableOpacity
-                    key={item.label}
-                    activeOpacity={0.8}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.label}
-                    accessibilityState={{ selected: active }}
-                    onPress={() => navigate(item.path)}
-                    style={[styles.menuTile, active && styles.menuTileActive]}
-                  >
-                    <View style={[styles.menuIcon, active && styles.menuIconActive]}>
-                      <Icon size={22} color={active ? ui.colors.info : coreColor("#52647C", 'text')} strokeWidth={2} />
-                      {item.label === "Judge Management" && pendingCount > 0 && (
-                        <View className="absolute -top-1 -right-1 bg-core-danger-action-red-500 rounded-full w-4 h-4 items-center justify-center border border-core-border-white">
-                          <Text className="text-core-on-primary-white text-[9px] font-bold">{pendingCount}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.menuTileLabel, active && styles.menuTileLabelActive]}>{item.label}</Text>
-                  </TouchableOpacity>
-                );
-              }
-
-              return (
-                <View key={item.label} style={{ width: '100%' }}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.label}
-                    accessibilityState={{ selected: active }}
-                    onPress={() => navigate(item.path)}
-                    style={[styles.menuTile, active && styles.menuTileActive, { width: '100%', flexDirection: 'row', alignItems: 'center', minHeight: 70, justifyContent: 'flex-start', paddingLeft: 20, paddingRight: 64 }]}
-                  >
-                    <View
-                      style={[styles.menuIcon, active && styles.menuIconActive, { marginBottom: 0, marginRight: 16 }]}
-                    >
-                      <Icon
-                        size={22}
-                        color={active ? ui.colors.info : coreColor("#52647C", 'text')}
-                        strokeWidth={2}
-                      />
-                    </View>
-                    <Text
-                      style={[
-                        styles.menuTileLabel,
-                        active && styles.menuTileLabelActive,
-                        { flex: 1, textAlign: 'left' }
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${expanded ? 'Hide' : 'Show'} ${item.label} pages`} accessibilityState={{ expanded }} onPress={() => setOpenGroup(expanded ? '' : item.label)} style={{ position: 'absolute', right: 12, top: 10, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}>
-                    {expanded ? <ChevronDown size={18} color={ui.colors.textMuted} /> : <ChevronRight size={18} color={ui.colors.textMuted} />}
-                  </TouchableOpacity>
-                  
-                  {expanded && (
-                    <View style={{ marginLeft: 56, marginTop: -8, marginBottom: 16 }}>
-                      {item.children!.map(child => {
-                        const childActive = child.match(pathname);
-                        return (
-                          <TouchableOpacity 
-                            key={child.label}
-                            onPress={() => navigate(child.path)}
-                            style={{ paddingVertical: 12, paddingHorizontal: 16, backgroundColor: childActive ? ui.colors.primarySoft : 'transparent', borderRadius: 12, marginBottom: 4 }}
-                          >
-                            <Text style={{ fontFamily: childActive ? "Outfit_700Bold" : "Outfit_500Medium", fontSize: 13, color: childActive ? ui.colors.primaryText : ui.colors.textMuted }}>
-                              {child.label}
-                            </Text>
-                          </TouchableOpacity>
-                        )
-                      })}
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </ScrollView>
-
-          <View style={styles.sheetProfile}>
-            <View style={styles.sheetAvatar}>
-              <ConsoliumLogo size={36} borderRadius={18} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={1} style={styles.sheetProfileName}>
-                {user?.user_metadata?.full_name ||
-                  user?.email?.split("@")[0] ||
-                  "Festival Admin"}
-              </Text>
-              <Text style={styles.sheetProfileRole}>{role || "admin"}</Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </View>
-    </Modal>
-  );
+  const columns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+  const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
+  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <View style={styles.modalRoot}>
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
+      <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.sheet, { height: height * 0.8 }]}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>Menu</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close menu" onPress={onClose} style={styles.sheetClose}><X size={20} color={ui.colors.textMuted} /></TouchableOpacity>
+        </View>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.menuSections}>
+          {items.map(item => {
+            const Icon = item.icon;
+            const entries = item.children?.length ? item.children : [{ label: item.label, path: item.path, match: item.match }];
+            return <View key={item.label} style={styles.menuSection}>
+              {item.children?.length ? <Text style={styles.menuSectionTitle}>{item.label}</Text> : null}
+              <View style={styles.menuEntries}>
+                {entries.map(entry => {
+                  const active = entry.match(pathname);
+                  return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: `${100 / columns}%` }, active && styles.menuEntryActive]}>
+                    {!item.children?.length && <Icon size={16} color={active ? ui.colors.primaryText : ui.colors.textMuted} />}
+                    <Text style={[styles.menuEntryText, active && styles.menuEntryTextActive]} numberOfLines={2}>{entry.label}</Text>
+                    {item.label === 'Judge Management' && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
+                  </TouchableOpacity>;
+                })}
+              </View>
+            </View>;
+          })}
+        </ScrollView>
+        <View style={styles.menuFooter}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Switch to sidebar navigation" onPress={() => { onClose(); onSidebar(); }} style={styles.navigationToggle}><PanelsTopLeft size={16} color={ui.colors.primaryText} /><Text style={styles.navigationToggleText}>Switch to sidebar</Text></TouchableOpacity></View>
+      </SafeAreaView>
+    </View>
+  </Modal>;
 }
 
 function MobileBottomBar({
@@ -520,7 +410,7 @@ function MobileBottomBar({
   items: NavItem[];
 }) {
   const router = useRouter();
-  const primaryItems = items.slice(0, 3);
+  const primaryItems = items.slice(0, 4);
 
   return (
     <SafeAreaView {...{ dataSet: { coreGlass: 'navigation' } } as any} className="no-print" style={styles.mobileBarSafe}>
@@ -583,7 +473,29 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const { width } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigationMode = adminNavigationMode(width);
-  const showSidebar = navigationMode !== 'phone';
+  const [mobilePreference, setMobilePreference] = useState<'bottom' | 'sidebar'>(() => {
+    if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return 'bottom';
+    try { return localStorage.getItem('admin-navigation-mode-v1') === 'sidebar' ? 'sidebar' : 'bottom'; } catch { return 'bottom'; }
+  });
+  const preferenceChanged = React.useRef(false);
+  React.useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let active = true;
+    void AsyncStorage.getItem('admin-navigation-mode-v1').then(value => {
+      if (active && !preferenceChanged.current && (value === 'sidebar' || value === 'bottom')) setMobilePreference(value);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+  const setMobileNavigation = (value: 'bottom' | 'sidebar') => {
+    preferenceChanged.current = true;
+    setMobilePreference(value);
+    if (Platform.OS === 'web' && typeof localStorage !== 'undefined') {
+      try { localStorage.setItem('admin-navigation-mode-v1', value); } catch { /* Keep the session preference. */ }
+    } else if (Platform.OS !== 'web') {
+      void AsyncStorage.setItem('admin-navigation-mode-v1', value).catch(() => {});
+    }
+  };
+  const showSidebar = navigationMode === 'desktop' || mobilePreference === 'sidebar';
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
 
   React.useEffect(() => {
@@ -598,7 +510,8 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         <DesktopSidebar
           pathname={pathname}
           items={visibleNavItems}
-          layout={navigationMode === 'tablet' ? 'tablet' : 'desktop'}
+          layout={navigationMode === 'desktop' ? 'desktop' : 'tablet'}
+          onBottomNavigation={navigationMode === 'desktop' ? undefined : () => setMobileNavigation('bottom')}
         />
       )}
       <View style={styles.shellMain}>
@@ -621,6 +534,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
             pathname={pathname}
             onClose={() => setMenuOpen(false)}
             items={visibleNavItems}
+            onSidebar={() => setMobileNavigation('sidebar')}
           />
         </>
       )}
@@ -956,6 +870,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  menuSections: { paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 20 },
+  menuSection: { marginBottom: 10 },
+  menuSectionTitle: { color: ui.colors.textMuted, fontFamily: "Outfit_700Bold", fontSize: 12, marginBottom: 5, paddingHorizontal: 4 },
+  menuEntries: { flexDirection: "row", flexWrap: "wrap" },
+  menuEntry: { minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 9, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, backgroundColor: ui.colors.surface, gap: 7 },
+  menuEntryActive: { backgroundColor: ui.colors.primarySoft, borderColor: ui.colors.primary },
+  menuEntryText: { flex: 1, color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 12 },
+  menuEntryTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
+  menuFooter: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: ui.colors.border },
+  navigationToggle: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border },
+  navigationToggleText: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold", fontSize: 12 },
   menuGrid: {
     padding: 16,
     flexDirection: "row",

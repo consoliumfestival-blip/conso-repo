@@ -30,7 +30,8 @@ export function SsfSheet({
 }: SsfSheetProps) {
   const { width, height } = useWindowDimensions();
   const compact = compactDialog && presentation === 'dialog';
-  const sheetWidth = presentation === 'dialog' ? Math.min(compact ? 680 : 720, width - (compact ? 24 : 48)) : width < 640 ? width : Math.min(520, width * 0.42);
+  const desktopDense = compact && width >= 1200;
+  const sheetWidth = presentation === 'dialog' ? Math.min(desktopDense ? 540 : compact ? 680 : 720, width - (compact ? 24 : 48)) : width < 640 ? width : Math.min(520, width * 0.42);
 
   return (
     <Modal
@@ -51,8 +52,8 @@ export function SsfSheet({
           onPress={onClose}
         />
 
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(620, height - 24) : '88%', maxHeight: 840, borderRadius: compact ? 14 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
-          <View style={[styles.header, compact && { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 }]}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(desktopDense ? 500 : 620, height - 24) : '88%', maxHeight: desktopDense ? 540 : 840, borderRadius: compact ? 14 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
+          <View style={[styles.header, compact && { paddingHorizontal: desktopDense ? 12 : 18, paddingTop: desktopDense ? 10 : 16, paddingBottom: desktopDense ? 8 : 12 }]}>
             <View style={styles.headerCopy}>
               <Text className={`font-poppins-bold ${compact ? 'text-base' : 'text-xl'} text-ssf-text`}>{title}</Text>
               {description ? (
@@ -74,14 +75,14 @@ export function SsfSheet({
 
           <ScrollView
             style={styles.content}
-            contentContainerStyle={[styles.contentContainer, compact && { paddingHorizontal: 18, paddingVertical: 16 }]}
+            contentContainerStyle={[styles.contentContainer, compact && { paddingHorizontal: desktopDense ? 12 : 18, paddingVertical: desktopDense ? 10 : 16 }]}
             keyboardShouldPersistTaps={keyboardShouldPersistTaps}
             showsVerticalScrollIndicator={false}
           >
             {children}
           </ScrollView>
 
-          {footer ? <View style={[styles.footer, compact && { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 18, paddingTop: 12, paddingBottom: 14 }]}>{footer}</View> : null}
+          {footer ? <View style={[styles.footer, compact && { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: desktopDense ? 12 : 18, paddingTop: desktopDense ? 8 : 12, paddingBottom: desktopDense ? 10 : 14 }]}>{footer}</View> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>

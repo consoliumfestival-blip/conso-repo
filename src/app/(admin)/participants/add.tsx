@@ -267,11 +267,11 @@ export default function AddParticipant() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           pointerEvents="box-none"
         >
-          <View style={[styles.dialog, { width: dialogWidth, maxHeight: '90%' }]}>
-            <View style={styles.header}>
+          <View style={[styles.dialog, { width: dialogWidth, maxHeight: compactViewport ? height - 16 : '90%' }]}>
+            <View style={[styles.header, compactViewport && styles.headerCompact]}>
               <View style={styles.headerText}>
-                <Text className="font-poppins-bold text-lg text-ssf-text">Add Participant</Text>
-                <Text className="mt-0.5 font-poppins text-xs text-ssf-text-muted">Enter the participant details.</Text>
+                <Text className={`font-poppins-bold ${compactViewport ? 'text-base' : 'text-lg'} text-ssf-text`}>Add Participant</Text>
+                <Text className="mt-0.5 font-poppins text-[11px] text-ssf-text-muted">Enter the participant details.</Text>
               </View>
               <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.closeButton}>
                 <X size={18} color={ui.colors.text} />
@@ -280,16 +280,16 @@ export default function AddParticipant() {
 
             <ScrollView
               style={styles.formScroll}
-              contentContainerStyle={styles.formContent}
-              scrollEnabled={compactViewport}
+              contentContainerStyle={[styles.formContent, compactViewport && styles.formContentCompact]}
+              scrollEnabled={false}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <View style={[styles.formRow, !compactViewport && styles.formRowWide]}>
-                <Field label="Full Name" required>
+              <View style={[styles.formRow, width >= 640 && styles.formRowWide, compactViewport && styles.formRowCompact]}>
+                <Field label="Full Name" required dense={compactViewport}>
                   <TextInput
                     accessibilityLabel="Full Name"
-                    className="h-10 rounded-lg border border-ssf-border bg-white px-3 font-poppins text-sm text-ssf-text"
+                    className={`${compactViewport && width >= 640 ? 'h-9 text-xs px-2.5' : 'h-10 text-sm px-3'} rounded-lg border border-ssf-border bg-white font-poppins text-ssf-text`}
                     placeholder="Enter full name"
                     placeholderTextColor={ui.colors.textSubtle}
                     value={name}
@@ -299,13 +299,13 @@ export default function AddParticipant() {
                   />
                 </Field>
 
-                <Field label="Date of Birth" optional>
+                <Field label="Date of Birth" optional dense={compactViewport}>
                   {Platform.OS === 'web' ? (
-                    <SsfDatePicker value={dob} onValueChange={setDob} style={{ width: '100%', height: 40 }} />
+                    <SsfDatePicker value={dob} onValueChange={setDob} style={{ width: '100%', height: compactViewport && width >= 640 ? 36 : 40 }} />
                   ) : (
                     <TextInput
                       accessibilityLabel="Date of Birth (optional)"
-                      className="h-10 rounded-lg border border-ssf-border bg-white px-3 font-poppins text-sm text-ssf-text"
+                      className={`${compactViewport && width >= 640 ? 'h-9 text-xs px-2.5' : 'h-10 text-sm px-3'} rounded-lg border border-ssf-border bg-white font-poppins text-ssf-text`}
                       placeholder="YYYY-MM-DD (optional)"
                       placeholderTextColor={ui.colors.textSubtle}
                       value={dob}
@@ -317,8 +317,8 @@ export default function AddParticipant() {
                 </Field>
               </View>
 
-              <View style={[styles.formRow, !compactViewport && styles.formRowWide]}>
-                <Field label="Category" required>
+              <View style={[styles.formRow, width >= 640 && styles.formRowWide, compactViewport && styles.formRowCompact]}>
+                <Field label="Category" required dense={compactViewport}>
                   {categoriesLoading && isCollegeFest ? (
                     <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading categories…</Text></View>
                   ) : categoriesError && isCollegeFest ? (
@@ -332,11 +332,12 @@ export default function AddParticipant() {
                       accessibilityLabel="Category (required)"
                       searchable={categoryOptions.length > 7}
                       searchPlaceholder="Search categories..."
+                      compact={compactViewport}
                     />
                   )}
                 </Field>
 
-                <Field label="Organisation" required>
+                <Field label="Organisation" required dense={compactViewport}>
                   {isFormLoading ? (
                     <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading organisations…</Text></View>
                   ) : organisationsLoadError ? (
@@ -358,13 +359,14 @@ export default function AddParticipant() {
                       accessibilityLabel="Organisation (required)"
                       searchable={organisationOptions.length > 7}
                       searchPlaceholder="Search organisations..."
+                      compact={compactViewport}
                     />
                   )}
                 </Field>
               </View>
 
               {!isGenderFixedByFestival && (
-                <Field label="Gender" required>
+                <Field label="Gender" required dense={compactViewport}>
                   <View style={styles.genderRow}>
                     {(['boys', 'girls'] as const).map(option => {
                       const selected = gender === option;
@@ -385,7 +387,7 @@ export default function AddParticipant() {
               )}
             </ScrollView>
 
-            <View style={styles.footer}>
+            <View style={[styles.footer, compactViewport && styles.footerCompact]}>
               <TouchableOpacity accessibilityRole="button" onPress={close} disabled={loading} style={styles.cancelButton}>
                 <Text className="font-poppins-bold text-sm text-ssf-text">Cancel</Text>
               </TouchableOpacity>
@@ -413,15 +415,17 @@ function Field({
   required,
   optional,
   children,
+  dense = false,
 }: {
   label: string;
   required?: boolean;
   optional?: boolean;
   children: React.ReactNode;
+  dense?: boolean;
 }) {
   return (
-    <View style={styles.field}>
-      <Text className="font-poppins-semibold text-xs text-ssf-text">
+    <View style={dense ? styles.fieldDense : styles.field}>
+      <Text className={`font-poppins-semibold ${dense ? 'text-[11px]' : 'text-xs'} text-ssf-text`}>
         {label}{' '}
         {required ? <Text className="text-red-600">*</Text> : null}
         {optional ? <Text className="font-poppins text-ssf-text-muted">(Optional)</Text> : null}
@@ -457,6 +461,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  headerCompact: { minHeight: 50, paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   headerText: { flex: 1 },
   closeButton: {
     width: 34,
@@ -468,9 +473,12 @@ const styles = StyleSheet.create({
   },
   formScroll: { flexShrink: 1 },
   formContent: { gap: 12, paddingHorizontal: 18, paddingVertical: 14 },
+  formContentCompact: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
   formRow: { gap: 12 },
   formRowWide: { flexDirection: 'row' },
+  formRowCompact: { gap: 8 },
   field: { flex: 1, minWidth: 0, gap: 6 },
+  fieldDense: { flex: 1, minWidth: 0, gap: 4 },
   loadingRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8 },
   genderRow: { flexDirection: 'row', gap: 8 },
   genderOption: {
@@ -498,6 +506,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  footerCompact: { minHeight: 56, paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
   cancelButton: {
     minHeight: 40,
     paddingHorizontal: 14,

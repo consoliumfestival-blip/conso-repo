@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCodeLetterUpdates } from '../../../core/hooks/useCodeLetterUpdates';
 import { AdminParticipantFilters, loadAdminParticipantCategories, loadAdminParticipantPage, loadAllAdminParticipants, loadAdminExportTeams, loadAdminExportRegistrations, loadAdminTeamExportRegistrations, loadAdminExportGroupMembers, loadAdminExportPeople } from '../../../services/adminParticipantListService';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
 import { Modal } from '@/components/ui/CoreModal';
 import { participantService } from '@/services/participantService';
 import { supabase } from '@/core/config/supabase';
@@ -14,7 +14,7 @@ import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
-import { ChevronRight, Upload, CheckSquare, Square, X, Search, CheckCircle, Trash2, RotateCcw, Hash, CreditCard, Download, UsersRound, UserRoundPlus } from 'lucide-react-native';
+import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, RotateCcw } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
@@ -64,11 +64,19 @@ export default function ParticipantsList() {
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
+  const isCompactParticipantLayout = width < 1200;
   const isCardLayout = width >= 768;
   const cardColumns = width >= 1440 ? 4 : width >= 1100 ? 3 : width >= 820 ? 2 : 1;
-  const isNarrowPhone = width < 600;
-  const competitionFilterWidth = isNarrowPhone ? Math.max(180, Math.min(280, width - 48)) : 280;
-  const phoneFilterWidth = isNarrowPhone ? Math.max(120, Math.min(152, Math.floor((width - 72) / 2))) : undefined;
+  const competitionFilterWidth = width < 640
+    ? Math.max(180, width - 24)
+    : width < 1200
+      ? Math.floor((width - 52) / 3)
+      : 280;
+  const phoneFilterWidth = width < 640
+    ? Math.max(120, Math.floor((width - 32) / 2))
+    : width < 1200
+      ? Math.floor((width - 52) / 3)
+      : undefined;
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: festivalLoading, isError: festivalError } = useActiveFestival();
   useCodeLetterUpdates(activeFestival?.id ? `festival:${activeFestival.id}` : null, () => queryClient.invalidateQueries({ queryKey: ['participants', 'admin-page'] }), undefined, true, false);
@@ -472,54 +480,56 @@ export default function ParticipantsList() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-ssf-bg py-4 px-3" stickyHeaderIndices={[1]}>
+    <ScrollView
+      className="flex-1 bg-ssf-bg"
+      style={{ paddingTop: isCompactParticipantLayout ? 12 : 24, paddingBottom: isCompactParticipantLayout ? 12 : 24, paddingHorizontal: width < 640 ? 12 : width < 1200 ? 18 : 16 }}
+      stickyHeaderIndices={[1]}
+    >
       {/* Header */}
-      <View className={`${width < 640 ? 'flex-col' : 'flex-row'} justify-between items-start gap-2.5 mb-3`}>
+      <View className={`${width < 640 ? 'flex-col' : 'flex-row'} justify-between items-start ${isCompactParticipantLayout ? 'gap-2 mb-2' : 'gap-3 mb-4'}`}>
         <View className="shrink-0">
-          <Text className="text-2xl font-poppins-black text-ssf-text">Participants</Text>
-          <Text className="text-xs font-poppins text-ssf-text-muted mt-0.5">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
+          <Text className={`${width < 640 ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ssf-text`}>Participants</Text>
+          <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1">
-            <Hash size={14} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Numbers</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center">
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Print participant cards"
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1"
+            className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center"
           >
-            <CreditCard size={14} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Cards</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-xs">Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
             disabled={isExporting || isLoadingList || isLoadingItems || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`h-9 px-2 bg-ssf-primary/10 border border-ssf-primary/30 rounded-md flex-row items-center gap-x-1 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
+            className={`h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
           >
-            <Download size={14} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Export</Text>
+            <FileDown size={15} color={ui.colors.onPrimary} />
+            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-9 w-9 bg-core-surface-white border border-ssf-primary/20 rounded-md items-center justify-center">
-            <Upload size={15} color={coreColor("#1B6B3A", 'primaryText')} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-10 w-10 bg-core-surface-white border border-ssf-border rounded-lg items-center justify-center">
+            <Upload size={17} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1">
-            <UsersRound size={15} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add Multiple</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center gap-x-1.5">
+            <UserPlus size={16} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add Multiple</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-9 px-2.5 bg-ssf-primary border border-ssf-primary/70 rounded-md flex-row items-center justify-center gap-x-1">
-            <UserRoundPlus size={15} color={coreColor("white", 'onPrimary')} />
-            <Text className="font-poppins-bold text-core-on-primary-white text-[11px]">Add New</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center justify-center gap-x-1.5">
+            <UserPlus size={17} color={coreColor('#FFFFFF', 'onPrimary')} />
+            <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Add New</Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Sticky Filters & Search */}
-      <View className="bg-ui-bg pb-4 z-10">
-        <View className="flex-row items-center bg-core-surface-white border border-ui-border rounded-xl px-3 h-11">
+      <View className={`bg-ui-bg z-10 ${isCompactParticipantLayout ? 'pb-2' : 'pb-4'}`}>
+        <View className={`flex-row items-center bg-core-surface-white border border-ui-border px-3 ${isCompactParticipantLayout ? 'h-10 rounded-lg' : 'h-11 rounded-xl'}`}>
           <Search size={18} color={coreColor("#9CA3AF", 'textMuted')} />
           <TextInput
             className="flex-1 ml-2 font-poppins text-ssf-text outline-none"
@@ -534,7 +544,7 @@ export default function ParticipantsList() {
             </TouchableOpacity>
           )}
         </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingTop: 10 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: width < 640 ? 6 : 8, paddingTop: width < 640 ? 8 : 10 }}>
           <CompactFilter
             label="Competition"
             items={competitionOptions}
@@ -601,7 +611,7 @@ export default function ParticipantsList() {
       </View>
 
       {/* Bulk action bar */}
-      <View className="flex-row items-center justify-between mb-4 mt-2">
+      <View className={`flex-row items-center justify-between ${isCompactParticipantLayout ? 'mb-2 mt-1' : 'mb-4 mt-2'}`}>
         {!selectMode ? (
           <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-2 px-3 py-2 bg-core-surface-white border border-ssf-border rounded-lg">
             <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
@@ -774,6 +784,7 @@ export default function ParticipantsList() {
       )}
       <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => { if (!isDeleting) setDeleteTarget(null); }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close delete confirmation" disabled={isDeleting} onPress={() => setDeleteTarget(null)} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }} />
           <View style={{ width: '100%', maxWidth: 380, borderRadius: 14, padding: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
             <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={19} color="#DC2626" /></View>
             <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800', marginTop: 11 }}>Delete participant?</Text>
@@ -787,19 +798,20 @@ export default function ParticipantsList() {
         </View>
       </Modal>
       <Modal visible={!!programsTarget} transparent animationType="fade" onRequestClose={() => setProgramsTarget(null)}>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
-          <View style={{ width: '100%', maxWidth: 620, maxHeight: '85%', borderRadius: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }}>
-            <View style={{ padding: 18, borderBottomWidth: 1, borderBottomColor: ui.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 18, fontWeight: '800' }}>Programs</Text><Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 3 }}>{programsTarget?.name}</Text></View>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close programs" onPress={() => setProgramsTarget(null)} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}><X size={19} color={ui.colors.text} /></TouchableOpacity>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: width >= 1200 ? 12 : 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close programs" onPress={() => setProgramsTarget(null)} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }} />
+          <View style={{ width: '100%', maxWidth: width >= 1200 ? 520 : 620, maxHeight: width >= 1200 ? '70%' : '85%', borderRadius: width >= 1200 ? 14 : 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }}>
+            <View style={{ padding: width >= 1200 ? 12 : 18, borderBottomWidth: 1, borderBottomColor: ui.colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <View style={{ flex: 1, minWidth: 0 }}><Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: width >= 1200 ? 15 : 18, fontWeight: '800' }}>Programs</Text><Text numberOfLines={1} style={{ color: ui.colors.textMuted, fontSize: width >= 1200 ? 10 : 12, marginTop: 2 }}>{programsTarget?.name}</Text></View>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close programs" onPress={() => setProgramsTarget(null)} style={{ width: width >= 1200 ? 34 : 40, height: width >= 1200 ? 34 : 40, alignItems: 'center', justifyContent: 'center' }}><X size={width >= 1200 ? 16 : 19} color={ui.colors.text} /></TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 16, gap: 10 }}>
+            <ScrollView contentContainerStyle={{ padding: width >= 1200 ? 10 : 16, gap: width >= 1200 ? 6 : 10 }}>
               {programsQuery.isLoading ? <ActivityIndicator color={ui.colors.primary} /> : programsQuery.isError ? <View><Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load programs.</Text><TouchableOpacity accessibilityRole="button" onPress={() => void programsQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center' }}><Text style={{ color: ui.colors.primary, fontWeight: '700' }}>Retry</Text></TouchableOpacity></View> : programsQuery.data?.length ? programsQuery.data.map((registration: any) => {
                 const result = (publishedResultsQuery.data ?? []).find((row) => row.registration_id === registration.id);
-                return <View key={registration.id} style={{ padding: 13, borderRadius: 11, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceMuted }}>
-                  <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>{registration.items?.item_name_en || registration.items?.item_name_ml || 'Program'}</Text>
-                  <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>{[registration.items?.item_code, registration.status].filter(Boolean).join(' · ')}</Text>
-                  {publishedResultsQuery.isLoading ? <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 7 }}>Loading result…</Text> : publishedResultsQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 11, marginTop: 7 }}>Result unavailable. Retry below.</Text> : result ? <Text style={{ color: ui.colors.primaryText, fontSize: 12, fontWeight: '700', marginTop: 7 }}>{[result.rank != null ? `Rank ${result.rank}` : null, result.grade ? `Grade ${result.grade}` : null, result.points_awarded != null ? `${result.points_awarded} points` : null].filter(Boolean).join(' · ') || 'Result published'}</Text> : <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 7 }}>No published result yet</Text>}
+                return <View key={registration.id} style={{ padding: width >= 1200 ? 8 : 13, borderRadius: 11, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surfaceMuted }}>
+                  <Text style={{ color: ui.colors.text, fontSize: width >= 1200 ? 11 : 13, fontWeight: '700' }}>{registration.items?.item_name_en || registration.items?.item_name_ml || 'Program'}</Text>
+                  <Text style={{ color: ui.colors.textMuted, fontSize: width >= 1200 ? 9 : 11, marginTop: 2 }}>{[registration.items?.item_code, registration.status].filter(Boolean).join(' · ')}</Text>
+                  {publishedResultsQuery.isLoading ? <Text style={{ color: ui.colors.textMuted, fontSize: 10, marginTop: 4 }}>Loading result…</Text> : publishedResultsQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 10, marginTop: 4 }}>Result unavailable. Retry below.</Text> : result ? <Text style={{ color: ui.colors.primaryText, fontSize: width >= 1200 ? 10 : 12, fontWeight: '700', marginTop: 4 }}>{[result.rank != null ? `Rank ${result.rank}` : null, result.grade ? `Grade ${result.grade}` : null, result.points_awarded != null ? `${result.points_awarded} points` : null].filter(Boolean).join(' · ') || 'Result published'}</Text> : <Text style={{ color: ui.colors.textMuted, fontSize: 10, marginTop: 4 }}>No published result yet</Text>}
                 </View>;
               }) : <Text style={{ color: ui.colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 24 }}>No programs assigned yet</Text>}
               {publishedResultsQuery.isError && <TouchableOpacity accessibilityRole="button" onPress={() => void publishedResultsQuery.refetch()} style={{ minHeight: 40, justifyContent: 'center', alignItems: 'center' }}><Text style={{ color: ui.colors.primary, fontWeight: '700' }}>Retry results</Text></TouchableOpacity>}

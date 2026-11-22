@@ -327,3 +327,6 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
 /* Pointer focus should not draw a black browser outline on tablet submenu links. */
 [data-tablet-submenu-link="true"]:focus:not(:focus-visible) { outline: none; }
 [data-tablet-submenu-link="true"]:focus-visible { outline: 2px solid var(--core-primary, #0F766E); outline-offset: -2px; }
+
+/* Keep the tablet menu background visible while softening the page behind it. */
+[data-tablet-menu-scrim="true"] { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }

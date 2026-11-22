@@ -387,8 +387,8 @@ function TabletMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   const { width, height } = useWindowDimensions();
   const { pendingCount } = useJudgeApprovalStore();
   const [position, setPosition] = useState<'left' | 'center' | 'right'>(() => {
-    if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return 'center';
-    try { const saved = localStorage.getItem('admin-tablet-menu-position-v1'); return saved === 'left' || saved === 'right' ? saved : 'center'; } catch { return 'center'; }
+    if (Platform.OS !== 'web' || typeof localStorage === 'undefined') return 'left';
+    try { const saved = localStorage.getItem('admin-tablet-menu-position-v1'); return saved === 'center' || saved === 'right' ? saved : 'left'; } catch { return 'left'; }
   });
   const positionChanged = React.useRef(false);
   React.useEffect(() => {
@@ -422,8 +422,8 @@ function TabletMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={[styles.modalRoot, { alignItems: position === 'left' ? 'flex-start' : position === 'right' ? 'flex-end' : 'center', padding: 12 }]}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
-      <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.sheet, styles.tabletFloatingSheet, { width: windowSize, height: windowSize, maxHeight: height - 24 }]}>
+      <Pressable {...{ dataSet: { tabletMenuScrim: "true" } } as any} style={styles.tabletMenuScrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
+      <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.sheet, styles.tabletFloatingSheet, { width: windowSize, height: Math.min(Math.round(windowSize * 0.60), height - 24), maxHeight: height - 24 }]}>
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetTitle}>Menu</Text>
@@ -435,8 +435,8 @@ function TabletMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
             {entries.map(entry => {
               const active = entry.match(pathname);
               const Icon = entry.icon;
-              return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: tileWidth, minHeight: 72 }, active && styles.menuEntryActive]}>
-                <Icon size={20} color={active ? ui.colors.primaryText : ui.colors.textMuted} />
+              return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: tileWidth, minHeight: 56 }, active && styles.menuEntryActive]}>
+                <Icon size={16} color={active ? ui.colors.primaryText : ui.colors.textMuted} />
                 <Text style={[styles.menuEntryText, active && styles.menuEntryTextActive]} numberOfLines={3}>{entry.label}</Text>
                 {entry.badge && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
               </TouchableOpacity>;
@@ -944,6 +944,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
+  tabletMenuScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15, 23, 42, 0.12)" },
   tabletFloatingSheet: { borderRadius: 20, ...ui.shadow },
   positionControls: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto', marginRight: 8 },
   positionButton: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

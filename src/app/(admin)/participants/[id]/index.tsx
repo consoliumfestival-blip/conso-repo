@@ -535,6 +535,7 @@ export default function ParticipantDetails() {
     }
   };
   const statColor = getStatusColor(participant.status);
+  const isDeleteConfirmation = /delete/i.test(actionModal.title);
   const avatarInitials = (participant.name || 'Participant')
     .trim()
     .split(/\s+/)
@@ -744,31 +745,25 @@ export default function ParticipantDetails() {
           <SsfSheet
             visible={isEditing}
             onClose={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
-            presentation={width >= 768 ? 'dialog' : 'sheet'}
+            presentation="dialog"
             compactDialog
             title="Edit profile"
             description="Update participant details and public profile settings."
             footer={
               <>
-                {width >= 768 && <SsfButton
+                <SsfButton
                   label="Cancel"
                   size="sm"
                   variant="outline"
                   onPress={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
                   disabled={isUpdatingParticipant}
-                />}
+                />
                 <SsfButton
                   label={isUpdatingParticipant ? 'Saving...' : 'Save changes'}
-                  size={width >= 768 ? 'sm' : 'md'}
+                  size="sm"
                   onPress={handleSave}
                   disabled={isUpdatingParticipant || (isCollegeFest && categoriesLoading)}
                 />
-                {width < 768 && <SsfButton
-                  label="Close"
-                  variant="outline"
-                  onPress={() => { setIsEditing(false); if (open === 'edit') router.back(); }}
-                  disabled={isUpdatingParticipant}
-                />}
               </>
             }
           >
@@ -1142,7 +1137,8 @@ export default function ParticipantDetails() {
       {/* Action Modal */}
       {actionModal.visible && (
         <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: coreAlpha(coreColor('#000000', 'overlay'), 0.6), justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: 20 }}>
-          <View style={{ backgroundColor: ui.colors.surface, borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, zIndex: 10000, elevation: 10 }}>
+          <View style={{ backgroundColor: ui.colors.surface, borderColor: ui.colors.border, borderWidth: 1, borderRadius: isDeleteConfirmation ? 14 : 16, width: '100%', maxWidth: isDeleteConfirmation ? 380 : 400, padding: isDeleteConfirmation ? 18 : 24, zIndex: 10000, elevation: 10 }}>
+            {isDeleteConfirmation && <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}><Trash2 size={19} color="#DC2626" /></View>}
             <Text className="font-poppins-bold text-lg mb-2 text-ssf-text">{actionModal.title}</Text>
             {!!actionModal.message && <Text className="font-poppins text-sm text-ssf-text-muted mb-4">{actionModal.message}</Text>}
             

@@ -772,12 +772,12 @@ export default function ParticipantsList() {
       )}
       <Modal visible={!!deleteTarget} transparent animationType="fade" onRequestClose={() => { if (!isDeleting) setDeleteTarget(null); }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 16, backgroundColor: 'rgba(15,23,42,0.62)' }}>
-          <View style={{ width: '100%', maxWidth: 420, borderRadius: 18, padding: 22, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border }}>
-            <View style={{ width: 44, height: 44, borderRadius: 13, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={22} color="#DC2626" /></View>
-            <Text style={{ color: ui.colors.text, fontSize: 19, fontWeight: '800', marginTop: 14 }}>Delete participant?</Text>
-            <Text style={{ color: ui.colors.textMuted, fontSize: 13, lineHeight: 20, marginTop: 7 }}>{deleteTarget?.name} will be permanently deleted. Participants with competition registrations cannot be deleted.</Text>
+          <View style={{ width: '100%', maxWidth: 380, borderRadius: 14, padding: 18, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
+            <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={19} color="#DC2626" /></View>
+            <Text style={{ color: ui.colors.text, fontSize: 17, fontWeight: '800', marginTop: 11 }}>Delete participant?</Text>
+            <Text style={{ color: ui.colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 6 }}>{deleteTarget?.name} will be permanently deleted. Participants with competition registrations cannot be deleted.</Text>
             {!!deleteError && <Text accessibilityRole="alert" style={{ color: '#B91C1C', fontSize: 12, marginTop: 10 }}>{deleteError}</Text>}
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <TouchableOpacity accessibilityRole="button" disabled={isDeleting} onPress={() => setDeleteTarget(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: ui.colors.text, fontWeight: '700' }}>Cancel</Text></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" disabled={isDeleting} onPress={async () => { if (!deleteTarget) return; try { setDeleteError(null); await deleteParticipant(deleteTarget.id); setDeleteTarget(null); } catch (error: any) { setDeleteError(error?.message || 'Could not delete this participant.'); } }} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', opacity: isDeleting ? 0.65 : 1 }}><Text style={{ color: '#FFFFFF', fontWeight: '800' }}>{isDeleting ? 'Deleting…' : 'Delete'}</Text></TouchableOpacity>
             </View>

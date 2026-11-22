@@ -97,7 +97,7 @@ function validateSelectedCategory(category: string, dob: string, festivalYear: n
 
 export default function AddParticipant() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { tenant_id: tenantId } = useAuthStore();
   const { useActiveFestival } = useFestival();
   const { data: activeFestival, isLoading: isFestivalLoading } = useActiveFestival();
@@ -252,7 +252,8 @@ export default function AddParticipant() {
     }
   };
 
-  const dialogWidth = width < 640 ? Math.max(280, width - 24) : Math.min(480, width - 48);
+  const dialogWidth = width < 640 ? Math.max(280, width - 24) : Math.min(680, width - 48);
+  const compactViewport = width < 640 || height < 620;
   const isFormLoading = isFestivalLoading || isOrganisationsLoading;
   const categoryUnavailable = isCollegeFest && (categoriesLoading || !!categoriesError || availableCollegeCategories.length === 0);
   const organisationUnavailable = !isFormLoading && !organisationsLoadError && availableOrganisations.length === 0;
@@ -280,86 +281,87 @@ export default function AddParticipant() {
             <ScrollView
               style={styles.formScroll}
               contentContainerStyle={styles.formContent}
+              scrollEnabled={compactViewport}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              <Field label="Full Name" required>
-                <TextInput
-                  accessibilityLabel="Full Name"
-                  className="h-10 rounded-lg border border-ssf-border bg-white px-3 font-poppins text-sm text-ssf-text"
-                  placeholder="Enter full name"
-                  placeholderTextColor={ui.colors.textSubtle}
-                  value={name}
-                  onChangeText={setName}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                />
-              </Field>
-
-              <Field label="Date of Birth" optional>
-                {Platform.OS === 'web' ? (
-                  <SsfDatePicker
-                    value={dob}
-                    onValueChange={setDob}
-                    style={{ width: '100%', height: 40 }}
-                  />
-                ) : (
+              <View style={[styles.formRow, !compactViewport && styles.formRowWide]}>
+                <Field label="Full Name" required>
                   <TextInput
-                    accessibilityLabel="Date of Birth (optional)"
+                    accessibilityLabel="Full Name"
                     className="h-10 rounded-lg border border-ssf-border bg-white px-3 font-poppins text-sm text-ssf-text"
-                    placeholder="YYYY-MM-DD (optional)"
+                    placeholder="Enter full name"
                     placeholderTextColor={ui.colors.textSubtle}
-                    value={dob}
-                    onChangeText={text => setDob(formatDOBInput(text))}
-                    keyboardType="number-pad"
-                    maxLength={10}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    returnKeyType="next"
                   />
-                )}
-              </Field>
+                </Field>
 
-              <Field label="Category" required>
-                {categoriesLoading && isCollegeFest ? (
-                  <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading categories…</Text></View>
-                ) : categoriesError && isCollegeFest ? (
-                  <Text className="font-poppins text-xs text-red-600">Unable to load active categories.</Text>
-                ) : (
-                  <SsfSelectMenu
-                    value={selectedCategory}
-                    options={categoryOptions}
-                    onValueChange={setSelectedCategory}
-                    placeholder="Select category"
-                    accessibilityLabel="Category (required)"
-                    searchable={categoryOptions.length > 7}
-                    searchPlaceholder="Search categories..."
-                  />
-                )}
-              </Field>
+                <Field label="Date of Birth" optional>
+                  {Platform.OS === 'web' ? (
+                    <SsfDatePicker value={dob} onValueChange={setDob} style={{ width: '100%', height: 40 }} />
+                  ) : (
+                    <TextInput
+                      accessibilityLabel="Date of Birth (optional)"
+                      className="h-10 rounded-lg border border-ssf-border bg-white px-3 font-poppins text-sm text-ssf-text"
+                      placeholder="YYYY-MM-DD (optional)"
+                      placeholderTextColor={ui.colors.textSubtle}
+                      value={dob}
+                      onChangeText={text => setDob(formatDOBInput(text))}
+                      keyboardType="number-pad"
+                      maxLength={10}
+                    />
+                  )}
+                </Field>
+              </View>
 
-              <Field label="Organisation" required>
-                {isFormLoading ? (
-                  <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading organisations…</Text></View>
-                ) : organisationsLoadError ? (
-                  <Text className="font-poppins text-xs text-red-600">Could not load organisations: {organisationsLoadError}</Text>
-                ) : !activeFestival ? (
-                  <Text className="font-poppins text-xs text-ssf-text-muted">Activate a festival before adding participants.</Text>
-                ) : organisationUnavailable ? (
-                  <Text className="font-poppins text-xs text-red-600">
-                    {organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division')
-                      ? `No subordinate organisations found for this ${festivalLevel}.`
-                      : 'No organisations found. Please set up the hierarchy first.'}
-                  </Text>
-                ) : (
-                  <SsfSelectMenu
-                    value={selectedOrgId}
-                    options={organisationOptions}
-                    onValueChange={setSelectedOrgId}
-                    placeholder="Select organisation"
-                    accessibilityLabel="Organisation (required)"
-                    searchable={organisationOptions.length > 7}
-                    searchPlaceholder="Search organisations..."
-                  />
-                )}
-              </Field>
+              <View style={[styles.formRow, !compactViewport && styles.formRowWide]}>
+                <Field label="Category" required>
+                  {categoriesLoading && isCollegeFest ? (
+                    <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading categories…</Text></View>
+                  ) : categoriesError && isCollegeFest ? (
+                    <Text className="font-poppins text-xs text-red-600">Unable to load active categories.</Text>
+                  ) : (
+                    <SsfSelectMenu
+                      value={selectedCategory}
+                      options={categoryOptions}
+                      onValueChange={setSelectedCategory}
+                      placeholder="Select category"
+                      accessibilityLabel="Category (required)"
+                      searchable={categoryOptions.length > 7}
+                      searchPlaceholder="Search categories..."
+                    />
+                  )}
+                </Field>
+
+                <Field label="Organisation" required>
+                  {isFormLoading ? (
+                    <View style={styles.loadingRow}><ActivityIndicator size="small" color={ui.colors.primary} /><Text className="font-poppins text-xs text-ssf-text-muted">Loading organisations…</Text></View>
+                  ) : organisationsLoadError ? (
+                    <Text className="font-poppins text-xs text-red-600">Could not load organisations: {organisationsLoadError}</Text>
+                  ) : !activeFestival ? (
+                    <Text className="font-poppins text-xs text-ssf-text-muted">Activate a festival before adding participants.</Text>
+                  ) : organisationUnavailable ? (
+                    <Text className="font-poppins text-xs text-red-600">
+                      {organisations.length > 0 && (festivalLevel === 'sector' || festivalLevel === 'division')
+                        ? `No subordinate organisations found for this ${festivalLevel}.`
+                        : 'No organisations found. Please set up the hierarchy first.'}
+                    </Text>
+                  ) : (
+                    <SsfSelectMenu
+                      value={selectedOrgId}
+                      options={organisationOptions}
+                      onValueChange={setSelectedOrgId}
+                      placeholder="Select organisation"
+                      accessibilityLabel="Organisation (required)"
+                      searchable={organisationOptions.length > 7}
+                      searchPlaceholder="Search organisations..."
+                    />
+                  )}
+                </Field>
+              </View>
 
               {!isGenderFixedByFestival && (
                 <Field label="Gender" required>
@@ -465,8 +467,10 @@ const styles = StyleSheet.create({
     backgroundColor: ui.colors.surfaceMuted,
   },
   formScroll: { flexShrink: 1 },
-  formContent: { gap: 14, paddingHorizontal: 16, paddingVertical: 16 },
-  field: { gap: 6 },
+  formContent: { gap: 12, paddingHorizontal: 18, paddingVertical: 14 },
+  formRow: { gap: 12 },
+  formRowWide: { flexDirection: 'row' },
+  field: { flex: 1, minWidth: 0, gap: 6 },
   loadingRow: { minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 8 },
   genderRow: { flexDirection: 'row', gap: 8 },
   genderOption: {

@@ -25,6 +25,7 @@ export function AdminBulkAddParticipantsModal({
   visible, tenantId, festivalId, festivalTemplate, festivalLevel, chestNumberTemplate, genderMode, onClose, onCreated,
 }: Props) {
   const { width, height } = useWindowDimensions();
+  const compactViewport = width < 640 || height < 620;
   const categoriesQuery = useFestivalCategories(festivalId ?? undefined, false);
   const [organisations, setOrganisations] = useState<OrganisationOption[]>([]);
   const [organisationsLoading, setOrganisationsLoading] = useState(false);
@@ -97,38 +98,41 @@ export function AdminBulkAddParticipantsModal({
     } finally { setSaving(false); }
   };
 
-  const modalWidth = Math.min(680, width - 28);
+  const modalWidth = width < 640 ? Math.max(280, width - 24) : Math.min(720, width - 48);
+  const fieldWidth = compactViewport ? modalWidth - 36 : Math.max(120, (modalWidth - 56) / 2);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={close} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 14 }}>
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={{ width: modalWidth, maxHeight: Math.min(height - 28, 820), backgroundColor: ui.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
-          <View style={{ paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: ui.colors.border, flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+          <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={{ width: modalWidth, maxHeight: Math.min(height - 28, 820), backgroundColor: ui.colors.surface, borderRadius: 16, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: ui.colors.border, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ui.colors.primarySoft, alignItems: 'center', justifyContent: 'center' }}><Users size={20} color={ui.colors.primaryText} /></View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ color: ui.colors.text, fontSize: 20, fontWeight: '800' }}>Add multiple participants</Text>
-              <Text style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 3 }}>Select a team and category, then enter one name per line.</Text>
+              <Text style={{ color: ui.colors.text, fontSize: 18, fontWeight: '800' }}>Add multiple participants</Text>
+              <Text style={{ color: ui.colors.textMuted, fontSize: 12, marginTop: 2 }}>Select a team and category, then enter one name per line.</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close add multiple participants" disabled={saving} onPress={close} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}><X size={20} color={ui.colors.textMuted} /></TouchableOpacity>
           </View>
 
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 18, gap: 14 }}>
-            <View>
-              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>Team</Text>
-              {organisationsLoading ? <ActivityIndicator color={ui.colors.primary} /> : organisationError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{organisationError}</Text> : (
-                <SsfSelectMenu value={teamId} onValueChange={setTeamId} options={teamOptions} placeholder="Select a team" searchable width={modalWidth - 40} />
-              )}
-              {!organisationsLoading && !organisationError && teamOptions.length === 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>No teams available for this festival.</Text>}
-            </View>
-            <View>
-              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>Category</Text>
-              {categoriesQuery.isLoading ? <ActivityIndicator color={ui.colors.primary} /> : categoriesQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load festival categories.</Text> : (
-                <SsfSelectMenu value={category} onValueChange={setCategory} options={categoryOptions} placeholder="Select a category" searchable width={modalWidth - 40} />
-              )}
-              {!categoriesQuery.isLoading && !categoriesQuery.isError && categoryOptions.length === 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>Add an active festival category before using bulk add.</Text>}
+          <ScrollView keyboardShouldPersistTaps="handled" scrollEnabled={compactViewport} contentContainerStyle={{ paddingHorizontal: 18, paddingVertical: 14, gap: 12 }}>
+            <View style={{ flexDirection: compactViewport ? 'column' : 'row', gap: 12 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 5 }}>Team</Text>
+                {organisationsLoading ? <ActivityIndicator color={ui.colors.primary} /> : organisationError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>{organisationError}</Text> : (
+                  <SsfSelectMenu value={teamId} onValueChange={setTeamId} options={teamOptions} placeholder="Select a team" searchable width={fieldWidth} />
+                )}
+                {!organisationsLoading && !organisationError && teamOptions.length === 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>No teams available for this festival.</Text>}
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 5 }}>Category</Text>
+                {categoriesQuery.isLoading ? <ActivityIndicator color={ui.colors.primary} /> : categoriesQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load festival categories.</Text> : (
+                  <SsfSelectMenu value={category} onValueChange={setCategory} options={categoryOptions} placeholder="Select a category" searchable width={fieldWidth} />
+                )}
+                {!categoriesQuery.isLoading && !categoriesQuery.isError && categoryOptions.length === 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>Add an active festival category before using bulk add.</Text>}
+              </View>
             </View>
             {effectiveGenderMode === 'both' && <View>
-              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>Gender</Text>
-              <SsfSelectMenu value={gender} onValueChange={(value) => setGender(value as 'boys' | 'girls')} options={[{ label: 'Boys', value: 'boys' }, { label: 'Girls', value: 'girls' }]} width={modalWidth - 40} />
+              <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 5 }}>Gender</Text>
+              <SsfSelectMenu value={gender} onValueChange={(value) => setGender(value as 'boys' | 'girls')} options={[{ label: 'Boys', value: 'boys' }, { label: 'Girls', value: 'girls' }]} width={modalWidth - 36} />
             </View>}
             <View>
               <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700', marginBottom: 6 }}>Participants</Text>
@@ -140,13 +144,13 @@ export function AdminBulkAddParticipantsModal({
                 multiline
                 textAlignVertical="top"
                 editable={!saving}
-                style={{ minHeight: Math.min(150, height * 0.22), maxHeight: 190, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: ui.colors.border, color: ui.colors.text, backgroundColor: ui.colors.surface, fontSize: 14, outlineStyle: 'none' as any }}
+                style={{ minHeight: Math.min(128, height * 0.2), maxHeight: 170, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: ui.colors.border, color: ui.colors.text, backgroundColor: ui.colors.surface, fontSize: 14, outlineStyle: 'none' as any }}
               />
             <Text style={{ color: ui.colors.textMuted, fontSize: 11, marginTop: 4 }}>Blank lines are ignored. Names must be unique within this batch; the whole batch saves together.</Text>
             </View>
             {!!error && <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>{error}</Text>}
           </ScrollView>
-          <View style={{ paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: ui.colors.border, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+          <View style={{ paddingHorizontal: 18, paddingVertical: 10, borderTopWidth: 1, borderTopColor: ui.colors.border, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
             <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={close} style={{ minHeight: 42, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border }}><Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 12 }}>Cancel</Text></TouchableOpacity>
             <TouchableOpacity accessibilityRole="button" disabled={saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0} onPress={save} style={{ minHeight: 42, minWidth: 138, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: ui.colors.primary, opacity: saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0 ? 0.6 : 1 }}>
               {saving ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontWeight: '700', fontSize: 12 }}>Add participants</Text>}

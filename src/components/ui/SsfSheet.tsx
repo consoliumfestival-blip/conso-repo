@@ -30,7 +30,7 @@ export function SsfSheet({
 }: SsfSheetProps) {
   const { width, height } = useWindowDimensions();
   const compact = compactDialog && presentation === 'dialog';
-  const sheetWidth = presentation === 'dialog' ? Math.min(compact ? 680 : 720, width - 48) : width < 640 ? width : Math.min(520, width * 0.42);
+  const sheetWidth = presentation === 'dialog' ? Math.min(compact ? 680 : 720, width - (compact ? 24 : 48)) : width < 640 ? width : Math.min(520, width * 0.42);
 
   return (
     <Modal
@@ -41,7 +41,7 @@ export function SsfSheet({
       statusBarTranslucent
     >
       <KeyboardAvoidingView
-        style={[styles.root, presentation === 'dialog' && { justifyContent: 'center', alignItems: 'center', padding: 24 }]}
+        style={[styles.root, presentation === 'dialog' && { justifyContent: 'center', alignItems: 'center', padding: compact ? 12 : 24 }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <Pressable
@@ -51,7 +51,7 @@ export function SsfSheet({
           onPress={onClose}
         />
 
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(720, height - 32) : '88%', maxHeight: 840, borderRadius: compact ? 12 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(720, height - 24) : '88%', maxHeight: 840, borderRadius: compact ? 14 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
           <View style={[styles.header, compact && { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 }]}>
             <View style={styles.headerCopy}>
               <Text className={`font-poppins-bold ${compact ? 'text-base' : 'text-xl'} text-ssf-text`}>{title}</Text>

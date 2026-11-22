@@ -14,7 +14,7 @@ import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../core/hooks/useFestivalCategories';
-import { UserPlus, ChevronRight, Upload, CheckSquare, Square, X, Search, FileDown, CheckCircle, Trash2, RotateCcw } from 'lucide-react-native';
+import { ChevronRight, Upload, CheckSquare, Square, X, Search, CheckCircle, Trash2, RotateCcw, Hash, CreditCard, Download, UsersRound, UserRoundPlus } from 'lucide-react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfTableSkeleton } from '../../../components/ui/SsfSkeleton';
@@ -472,45 +472,47 @@ export default function ParticipantsList() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-ssf-bg py-6 px-4" stickyHeaderIndices={[1]}>
+    <ScrollView className="flex-1 bg-ssf-bg py-4 px-3" stickyHeaderIndices={[1]}>
       {/* Header */}
-      <View className={`${width < 640 ? 'flex-col' : 'flex-row'} justify-between items-start gap-3 mb-4`}>
+      <View className={`${width < 640 ? 'flex-col' : 'flex-row'} justify-between items-start gap-2.5 mb-3`}>
         <View className="shrink-0">
-          <Text className="text-3xl font-poppins-black text-ssf-text">Participants</Text>
-          <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
+          <Text className="text-2xl font-poppins-black text-ssf-text">Participants</Text>
+          <Text className="text-xs font-poppins text-ssf-text-muted mt-0.5">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center">
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Numbers</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1">
+            <Hash size={14} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Print participant cards"
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center"
+            className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1"
           >
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Cards</Text>
+            <CreditCard size={14} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
             disabled={isExporting || isLoadingList || isLoadingItems || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`h-10 px-2.5 bg-ui-primary border border-ui-primary rounded-lg flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
+            className={`h-9 px-2 bg-ssf-primary/10 border border-ssf-primary/30 rounded-md flex-row items-center gap-x-1 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
           >
-            <FileDown size={15} color={ui.colors.onPrimary} />
-            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Export</Text>
+            <Download size={14} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-10 w-10 bg-core-surface-white border border-ssf-border rounded-lg items-center justify-center">
-            <Upload size={17} color={coreColor("#1B6B3A", 'primaryText')} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-9 w-9 bg-core-surface-white border border-ssf-primary/20 rounded-md items-center justify-center">
+            <Upload size={15} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-10 px-2.5 bg-core-surface-white border border-ssf-border rounded-lg flex-row items-center justify-center gap-x-1.5">
-            <UserPlus size={16} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add Multiple</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-9 px-2 bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1">
+            <UsersRound size={15} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add Multiple</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center justify-center gap-x-1.5">
-            <UserPlus size={17} color={coreColor("white", 'onPrimary')} />
-            <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Add New</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-9 px-2.5 bg-ssf-primary border border-ssf-primary/70 rounded-md flex-row items-center justify-center gap-x-1">
+            <UserRoundPlus size={15} color={coreColor("white", 'onPrimary')} />
+            <Text className="font-poppins-bold text-core-on-primary-white text-[11px]">Add New</Text>
           </TouchableOpacity>
         </View>
       </View>

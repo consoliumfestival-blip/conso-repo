@@ -32,7 +32,7 @@ import {
 import { useAuthStore } from "@/core/store/authStore";
 import { useCoreAppearance } from "@/core/contexts/CoreAppearanceContext";
 import { useSidebarAppearance } from "@/core/store/coreAppearanceStore";
-import { adminNavigationMode } from "@/core/utils/adminNavigationLayout";
+import { adminNavigationMode, isAdminTablet, splitMenuSections } from "@/core/utils/adminNavigationLayout";
 import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
 import { FEATURE_FLAGS } from "@/core/config/features";
 import { ui } from "@/constants/designSystem";
@@ -364,8 +364,10 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const { pendingCount } = useJudgeApprovalStore();
-  const columns = width >= 700 ? 5 : width >= 440 ? 4 : 3;
-  const tileSize = Math.min(100, Math.max(70, Math.floor((width - 28 - (columns - 1) * 8) / columns)));
+  const tablet = isAdminTablet(width);
+  const panelWidth = tablet ? Math.max(0, (width - 28 - 17) / 2) : width - 28;
+  const columns = tablet ? Math.max(1, Math.min(5, Math.floor((panelWidth + 8) / 78))) : width >= 700 ? 5 : width >= 440 ? 4 : 3;
+  const tileSize = Math.min(100, Math.max(tablet ? 44 : 70, Math.floor((panelWidth - (columns - 1) * 8) / columns)));
   const sections: { key: string; title?: string; entries: { label: string; path: string; match: NavItem['match']; icon: IconType; badge?: boolean }[] }[] = [];
   for (const item of items) {
     if (item.children?.length) {
@@ -377,6 +379,7 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
       group.entries.push({ label: item.label, path: item.path, match: item.match, icon: item.icon, badge: item.label === 'Judge Management' });
     }
   }
+  const groups = tablet ? splitMenuSections(sections, columns) : [sections];
   const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modalRoot}>
@@ -388,7 +391,9 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close menu" onPress={onClose} style={styles.sheetClose}><X size={20} color={ui.colors.textMuted} /></TouchableOpacity>
         </View>
         <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.menuSections}>
-          {sections.map(section => <View key={section.key} style={styles.menuSection}>
+          <View style={tablet ? styles.tabletMenuColumns : undefined}>
+          {groups.map((group, index) => <View key={index} style={tablet ? [styles.tabletMenuColumn, index === 1 && styles.tabletMenuDivider] : undefined}>
+          {group.map(section => <View key={section.key} style={styles.menuSection}>
             {section.title && <Text style={styles.menuSectionTitle}>{section.title}</Text>}
             <View style={styles.menuEntries}>
               {section.entries.map(entry => {
@@ -402,6 +407,8 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
               })}
             </View>
           </View>)}
+          </View>)}
+          </View>
         </ScrollView>
         <View style={styles.menuFooter}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Switch to sidebar navigation" onPress={() => { onClose(); onSidebar(); }} style={styles.navigationToggle}><PanelsTopLeft size={16} color={ui.colors.primaryText} /><Text style={styles.navigationToggleText}>Switch to sidebar</Text></TouchableOpacity></View>
       </SafeAreaView>
@@ -880,6 +887,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  tabletMenuColumns: { flexDirection: "row", alignItems: "flex-start" },
+  tabletMenuColumn: { flex: 1, minWidth: 0 },
+  tabletMenuDivider: { borderLeftWidth: 1, borderLeftColor: ui.colors.border, marginLeft: 8, paddingLeft: 8 },
   menuSections: { paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 20 },
   menuSection: { marginBottom: 10 },
   menuSectionTitle: { color: ui.colors.textMuted, fontFamily: "Outfit_700Bold", fontSize: 12, marginBottom: 5, paddingHorizontal: 4 },

@@ -1,16 +1,21 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from "@/constants/designSystem";
-import React, { useMemo, useState } from 'react';
+import React, { useContext, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
   CheckCircle2,
+  ChevronDown,
   Eye,
   EyeOff,
+  LayoutGrid,
   RefreshCw,
   Search,
+  Table2,
   X,
 } from 'lucide-react-native';
+import { SsfSelectMenu, type SsfSelectOption } from '@/components/ui/SsfSelectMenu';
+import { ItemResultsViewContext } from '@/core/contexts/itemResultsViewContext';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategories';
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
@@ -107,7 +112,9 @@ export default function ItemResultsPage() {
   const [resultTypeFilter, setResultTypeFilter] = useState<'all' | 'individual' | 'group'>('all');
   const [resultStatusFilter, setResultStatusFilter] = useState<'all' | 'unpublished' | ResultStatus>('all');
   const [previewGroup, setPreviewGroup] = useState<ItemGroup | null>(null);
+  const { view: resultView, setView: setResultView } = useContext(ItemResultsViewContext);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  React.useEffect(() => setExpandedItemId(null), [resultView]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -138,6 +145,23 @@ export default function ItemResultsPage() {
     () => ['all', ...festivalCategories.map((category) => category.code.toLowerCase())],
     [festivalCategories],
   );
+  const categorySelectOptions = useMemo<SsfSelectOption[]>(() => categoryOptions.map((code) => ({
+    value: code,
+    label: code === 'all' ? 'All Categories' : code.toUpperCase(),
+  })), [categoryOptions]);
+  const typeSelectOptions: SsfSelectOption[] = [
+    { value: 'all', label: 'All Types' },
+    { value: 'individual', label: 'Individual' },
+    { value: 'group', label: 'Group' },
+  ];
+  const statusSelectOptions: SsfSelectOption[] = [
+    { value: 'all', label: 'All Status' },
+    { value: 'published', label: 'Public' },
+    { value: 'unpublished', label: 'Not Public' },
+    { value: 'ready', label: 'Ready' },
+    { value: 'draft', label: 'Draft' },
+    { value: 'hidden', label: 'Hidden' },
+  ];
 
   const itemDetailsMap = useMemo(() => new Map(festivalItems.map((item) => [item.id, item])), [festivalItems]);
 
@@ -210,6 +234,27 @@ export default function ItemResultsPage() {
     }
   };
 
+  const renderItemActions = (group: ItemGroup, isAllPublic: boolean, isAllPublicHidden: boolean) => (
+    <View style={styles.itemGroupActions}>
+      <TouchableOpacity onPress={() => setPreviewGroup(group)} style={styles.bulkActionBtn} accessibilityRole="button" accessibilityLabel={`Preview ${group.item_name}`}>
+        <Eye size={14} color={coreColor(colors.navy, 'primaryText')} />
+        <Text style={styles.bulkActionBtnText}>Preview</Text>
+      </TouchableOpacity>
+      {!isAllPublic && (
+        <TouchableOpacity onPress={() => handleItemBulkAction(group, 'published')} style={[styles.bulkActionBtn, styles.publicAction]}>
+          <CheckCircle2 size={14} color={coreColor('#15803D', 'success')} />
+          <Text style={[styles.bulkActionBtnText, { color: coreColor('#15803D', 'success') }]}>Show</Text>
+        </TouchableOpacity>
+      )}
+      {!isAllPublicHidden && (
+        <TouchableOpacity onPress={() => handleItemBulkAction(group, 'hidden')} style={[styles.bulkActionBtn, styles.hideAction]}>
+          <EyeOff size={14} color={ui.colors.danger} />
+          <Text style={[styles.bulkActionBtnText, { color: ui.colors.danger }]}>Hide</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.tableCard}>
       {/* Header */}
@@ -245,52 +290,21 @@ export default function ItemResultsPage() {
 
       {/* Filters */}
       <View style={styles.resultFilters}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-          <View style={styles.chipRow}>
-            {/* Categories */}
-            {categoryOptions.map(cat => (
-              <TouchableOpacity
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={[styles.filterChip, selectedCategory === cat && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, selectedCategory === cat && styles.filterChipTextActive]}>
-                  {cat === 'all' ? 'All Categories' : cat.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.filterDivider} />
-
-            {/* Type filter */}
-            {(['all', 'individual', 'group'] as const).map(t => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setResultTypeFilter(t)}
-                style={[styles.filterChip, resultTypeFilter === t && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, resultTypeFilter === t && styles.filterChipTextActive]}>
-                  {t === 'all' ? 'All Types' : t === 'individual' ? '👤 Individual' : '👥 Group'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            <View style={styles.filterDivider} />
-
-            {/* Status filter */}
-            {(['all', 'published', 'unpublished', 'ready', 'draft', 'hidden'] as const).map(s => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setResultStatusFilter(s)}
-                style={[styles.filterChip, resultStatusFilter === s && styles.filterChipActive]}
-              >
-                <Text style={[styles.filterChipText, resultStatusFilter === s && styles.filterChipTextActive]}>
-                  {s === 'all' ? 'All Status' : s === 'unpublished' ? '🔒 Not Public' : s === 'published' ? '🌐 Public' : STATUS_CONFIG[s as ResultStatus]?.label ?? s}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        <View style={styles.filterSelectRow}>
+          <SsfSelectMenu value={selectedCategory} options={categorySelectOptions} onValueChange={setSelectedCategory} accessibilityLabel="Category filter" compact keepInViewport style={styles.filterSelect} />
+          <SsfSelectMenu value={resultTypeFilter} options={typeSelectOptions} onValueChange={(value) => setResultTypeFilter(value as typeof resultTypeFilter)} accessibilityLabel="Result type filter" compact keepInViewport style={styles.filterSelect} />
+          <SsfSelectMenu value={resultStatusFilter} options={statusSelectOptions} onValueChange={(value) => setResultStatusFilter(value as typeof resultStatusFilter)} accessibilityLabel="Result status filter" compact keepInViewport style={styles.filterSelect} />
+        </View>
+        <View style={styles.viewSwitcher} accessibilityRole="tablist">
+          <TouchableOpacity onPress={() => setResultView('cards')} style={[styles.viewButton, resultView === 'cards' && styles.viewButtonActive]} accessibilityRole="tab" accessibilityState={{ selected: resultView === 'cards' }}>
+            <LayoutGrid size={14} color={resultView === 'cards' ? ui.colors.onPrimary : colors.muted} />
+            <Text style={[styles.viewButtonText, resultView === 'cards' && styles.viewButtonTextActive]}>Cards</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setResultView('table')} style={[styles.viewButton, resultView === 'table' && styles.viewButtonActive]} accessibilityRole="tab" accessibilityState={{ selected: resultView === 'table' }}>
+            <Table2 size={14} color={resultView === 'table' ? ui.colors.onPrimary : colors.muted} />
+            <Text style={[styles.viewButtonText, resultView === 'table' && styles.viewButtonTextActive]}>Table</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Item Groups */}
@@ -308,21 +322,80 @@ export default function ItemResultsPage() {
         <View style={styles.loadingBox}>
           <Text style={styles.loadingText}>No results found for selected filters.</Text>
         </View>
+      ) : resultView === 'table' ? (
+        <ScrollView horizontal style={styles.tableScroll} contentContainerStyle={styles.tableScrollContent}>
+          <View style={styles.resultsTable}>
+            {groupedResults.map(group => {
+              const isAllPublic = itemStats[group.item_id]?.all_public === true;
+              const isAllPublicHidden = itemStats[group.item_id]?.all_hidden === true;
+              const expanded = expandedItemId === group.item_id;
+              return (
+                <React.Fragment key={group.item_id}>
+                  <View style={styles.tableItemHeading}>
+                    <TouchableOpacity
+                      style={styles.tableItemToggle}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded }}
+                      accessibilityLabel={`${group.item_name_ml || group.item_name}, ${group.results.length} results`}
+                      onPress={() => setExpandedItemId(expanded ? null : group.item_id)}
+                    >
+                      <Text style={styles.itemGroupTitle} numberOfLines={1}>{group.item_name_ml || group.item_name}</Text>
+                      {!!itemDetailsMap.get(group.item_id)?.item_code && <Text style={styles.tableItemCode}>{itemDetailsMap.get(group.item_id)?.item_code}</Text>}
+                      <Text style={styles.tableItemCount}>{group.results.length} results</Text>
+                      <ChevronDown size={15} color={colors.muted} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
+                    </TouchableOpacity>
+                  </View>
+                  {expanded && <>
+                    <View style={styles.expandedActionRow}>{renderItemActions(group, isAllPublic, isAllPublicHidden)}</View>
+                    <View style={styles.resultsTableHeader}>
+                      <Text style={[styles.tableHeading, styles.rankColumn]}>Rank</Text>
+                      <Text style={[styles.tableHeading, styles.participantColumn]}>Participant</Text>
+                      <Text style={[styles.tableHeading, styles.organisationColumn]}>Organisation</Text>
+                      <Text style={[styles.tableHeading, styles.gradeColumn]}>Grade</Text>
+                      <Text style={[styles.tableHeading, styles.pointsColumn]}>Points</Text>
+                      <Text style={[styles.tableHeading, styles.statusColumn]}>Status</Text>
+                      <Text style={[styles.tableHeading, styles.rowActionsColumn]}>Actions</Text>
+                    </View>
+                    {[...group.results].sort((a, b) => (a.rank || 99) - (b.rank || 99)).map((result) => {
+                    const status = (result.result_status ?? 'draft') as ResultStatus;
+                    return (
+                      <View key={result.result_id} style={styles.resultsTableRow}>
+                        <Text style={[styles.tableCell, styles.rankColumn]}>{result.rank ? `#${result.rank}` : '—'}</Text>
+                        <View style={styles.participantColumn}>
+                          <Text style={styles.tableParticipantName} numberOfLines={1}>{status === 'published' && result.participant_name ? result.participant_name : result.chest_number ? `Chest #${result.chest_number}` : '?'}</Text>
+                        </View>
+                        <Text style={[styles.tableCell, styles.organisationColumn]} numberOfLines={1}>{result.organisation_name || '—'}</Text>
+                        <Text style={[styles.tableCell, styles.gradeColumn]}>{result.grade || '—'}</Text>
+                        <Text style={[styles.tableCell, styles.pointsColumn]}>{result.points_awarded} pts</Text>
+                        <View style={styles.statusColumn}><ResultStatusBadge status={status} /><PublicVisibilityBadge visible={result.public_visible === true} /></View>
+                        <View style={[styles.rowActionsColumn, styles.resultRowActions]}>
+                          {result.public_visible !== true && <TouchableOpacity onPress={() => handleSingleVisibility(result.result_id, 'published')} style={[styles.nestedActionBtn, { backgroundColor: ui.colors.successSoft }]} accessibilityRole="button" accessibilityLabel="Show result publicly"><CheckCircle2 size={14} color={coreColor('#15803D', 'success')} /></TouchableOpacity>}
+                          {status !== 'ready' && status !== 'published' && <TouchableOpacity onPress={() => handleSingleVisibility(result.result_id, 'ready')} style={[styles.nestedActionBtn, { backgroundColor: ui.colors.infoSoft }]} accessibilityRole="button" accessibilityLabel="Mark result ready"><Eye size={14} color={ui.colors.info} /></TouchableOpacity>}
+                          {result.public_visible === true && <TouchableOpacity onPress={() => handleSingleVisibility(result.result_id, 'hidden')} style={[styles.nestedActionBtn, { backgroundColor: ui.colors.dangerSoft }]} accessibilityRole="button" accessibilityLabel="Hide result publicly"><EyeOff size={14} color={ui.colors.danger} /></TouchableOpacity>}
+                        </View>
+                      </View>
+                    );
+                  })}
+                  </>}
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </ScrollView>
       ) : (
-        <ScrollView style={styles.rowsScrollContainer}>
+        <View style={styles.cardsList}>
           {groupedResults.map(group => {
             const isAllPublic = itemStats[group.item_id]?.all_public === true;
             const isAllPublicHidden = itemStats[group.item_id]?.all_hidden === true;
-            const expanded = expandedItemId === group.item_id;
 
             return (
               <View key={group.item_id} style={styles.itemGroupCard}>
                 <TouchableOpacity
                   style={styles.itemGroupHeader}
                   accessibilityRole="button"
-                  accessibilityState={{ expanded }}
+                  accessibilityState={{ expanded: expandedItemId === group.item_id }}
                   accessibilityLabel={`${group.item_name_ml || group.item_name}, ${group.results.length} results`}
-                  onPress={() => setExpandedItemId(expanded ? null : group.item_id)}
+                  onPress={() => setExpandedItemId(expandedItemId === group.item_id ? null : group.item_id)}
                 >
                   <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     {publicOrderMap.has(group.item_id) && (
@@ -338,32 +411,11 @@ export default function ItemResultsPage() {
                       )}
                   </View>
                   <Text style={styles.itemGroupCount}>{group.results.length}</Text>
-                  <Text style={styles.itemGroupCount}>{expanded ? '▲' : '▼'}</Text>
+                  <ChevronDown size={15} color={colors.muted} style={{ transform: [{ rotate: expandedItemId === group.item_id ? '180deg' : '0deg' }] }} />
                 </TouchableOpacity>
-
-                {expanded && <>
-                  <View style={styles.itemGroupActions}>
-                    <TouchableOpacity onPress={() => setPreviewGroup(group)} style={styles.bulkActionBtn}>
-                      <Eye size={16} color={coreColor(colors.navy, 'primaryText')} />
-                      <Text style={styles.bulkActionBtnText}>Preview</Text>
-                    </TouchableOpacity>
-                    
-                    {!isAllPublic && (
-                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'published')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.successSoft, borderColor: coreColor('#BBF7D0', 'border') }]}>
-                        <CheckCircle2 size={16} color={coreColor("#15803D", 'success')} />
-                        <Text style={[styles.bulkActionBtnText, { color: coreColor('#15803D', 'success') }]}>Show Public</Text>
-                      </TouchableOpacity>
-                    )}
-                    {!isAllPublicHidden && (
-                      <TouchableOpacity onPress={() => handleItemBulkAction(group, 'hidden')} style={[styles.bulkActionBtn, { backgroundColor: ui.colors.dangerSoft, borderColor: coreColor('#FECACA', 'border') }]}>
-                        <EyeOff size={16} color={ui.colors.danger} />
-                        <Text style={[styles.bulkActionBtnText, { color: ui.colors.danger }]}>Hide Public</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                {/* nested participants */}
-                <View style={styles.itemGroupParticipants}>
+                {expandedItemId === group.item_id && <>
+                  <View style={styles.expandedActionRow}>{renderItemActions(group, isAllPublic, isAllPublicHidden)}</View>
+                  <View style={styles.itemGroupParticipants}>
                   {[...group.results].sort((a, b) => (a.rank || 99) - (b.rank || 99)).map((r, i) => {
                     const status = (r.result_status ?? 'draft') as ResultStatus;
                     const isLast = i === group.results.length - 1;
@@ -409,12 +461,12 @@ export default function ItemResultsPage() {
                       </View>
                     );
                   })}
-                </View>
+                  </View>
                 </>}
               </View>
             );
           })}
-        </ScrollView>
+        </View>
       )}
 
       {/* Preview Modal */}
@@ -554,9 +606,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   searchBarContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 6,
   },
   searchBox: {
     height: 44,
@@ -576,46 +628,53 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   resultFilters: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  filterScroll: {
-    alignItems: 'center',
-  },
-  chipRow: {
+  filterSelectRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
-  filterChip: {
-    height: 32,
-    borderRadius: 10,
+  filterSelect: {
+    minWidth: 135,
+    flexGrow: 1,
+    flexBasis: 155,
+    maxWidth: 220,
+  },
+  viewSwitcher: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 8,
+    padding: 3,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: ui.colors.surface,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: ui.colors.background,
+  },
+  viewButton: {
+    minHeight: 32,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    borderRadius: 7,
   },
-  filterChipActive: {
+  viewButtonActive: {
     backgroundColor: colors.teal,
-    borderColor: colors.teal,
   },
-  filterChipText: {
+  viewButtonText: {
     color: colors.muted,
     fontFamily: "Outfit_700Bold",
     fontSize: 11,
   },
-  filterChipTextActive: {
+  viewButtonTextActive: {
     color: ui.colors.onPrimary,
-  },
-  filterDivider: {
-    width: 1.5,
-    height: 18,
-    backgroundColor: colors.border,
-    marginHorizontal: 4,
   },
   loadingBox: {
     paddingVertical: 56,
@@ -632,28 +691,29 @@ const styles = StyleSheet.create({
     fontFamily: "Outfit_700Bold",
     fontSize: 13,
   },
-  rowsScrollContainer: {
-    maxHeight: 600,
+  cardsList: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 7,
   },
   itemGroupCard: {
-    marginHorizontal: 20,
-    marginVertical: 4,
     backgroundColor: ui.colors.surface,
-    borderRadius: 10,
+    borderRadius: 9,
     borderWidth: 1,
     borderColor: coreColor('#E2E8F0', 'border'),
     overflow: 'hidden',
   },
   itemGroupHeader: {
-    backgroundColor: coreColor('#F8FAFC', 'surface'),
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: ui.colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderBottomWidth: 1,
     borderBottomColor: coreColor('#E2E8F0', 'border'),
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   itemGroupTitle: {
     flexShrink: 1,
@@ -692,64 +752,186 @@ const styles = StyleSheet.create({
   },
   itemGroupActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 5,
     flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    marginLeft: 'auto',
+  },
+  expandedActionRow: {
+    minHeight: 32,
+    flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: 10,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: coreColor('#E2E8F0', 'border'),
   },
   bulkActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
     backgroundColor: ui.colors.surface,
     borderWidth: 1,
     borderColor: coreColor('#E2E8F0', 'border'),
   },
+  publicAction: {
+    backgroundColor: ui.colors.successSoft,
+    borderColor: coreColor('#BBF7D0', 'border'),
+  },
+  hideAction: {
+    backgroundColor: ui.colors.dangerSoft,
+    borderColor: coreColor('#FECACA', 'border'),
+  },
   bulkActionBtnText: {
     color: coreColor(colors.navy, 'primaryText'),
     fontFamily: "Outfit_700Bold",
-    fontSize: 12,
+    fontSize: 10,
   },
   itemGroupParticipants: {
-    padding: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
   },
   nestedResultRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    gap: 12,
+    paddingVertical: 7,
+    paddingHorizontal: 2,
+    gap: 7,
   },
   nestedRankText: {
     color: colors.muted,
     fontFamily: "Outfit_700Bold",
-    fontSize: 14,
+    fontSize: 12,
   },
   nestedParticipantName: {
     color: colors.text,
     fontFamily: "Outfit_700Bold",
-    fontSize: 13,
+    fontSize: 12,
   },
   nestedMeta: {
     color: colors.muted,
     fontFamily: "Outfit_500Medium",
-    fontSize: 11,
+    fontSize: 10,
   },
   nestedActions: {
     flexDirection: 'row',
     gap: 6,
   },
   nestedActionBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 7,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  tableScroll: {
+    width: '100%',
+  },
+  tableScrollContent: {
+    minWidth: '100%',
+  },
+  resultsTable: {
+    minWidth: 920,
+    width: '100%',
+  },
+  resultsTableHeader: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: ui.colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  resultsTableRow: {
+    minHeight: 42,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tableItemHeading: {
+    minHeight: 38,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: coreColor('#F8FAFC', 'surface'),
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tableItemToggle: {
+    minHeight: 36,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tableHeading: {
+    color: colors.muted,
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 10,
+    textTransform: 'uppercase',
+  },
+  tableCell: {
+    color: colors.text,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 11,
+  },
+  rankColumn: {
+    width: 48,
+  },
+  participantColumn: {
+    width: 190,
+  },
+  organisationColumn: {
+    width: 170,
+  },
+  gradeColumn: {
+    width: 60,
+  },
+  pointsColumn: {
+    width: 70,
+  },
+  statusColumn: {
+    width: 130,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rowActionsColumn: {
+    width: 100,
+  },
+  tableItemCode: {
+    color: colors.muted,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 10,
+  },
+  tableItemCount: {
+    color: colors.muted,
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 10,
+    marginRight: 4,
+  },
+  tableParticipantName: {
+    color: colors.text,
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 11,
+  },
+  resultRowActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   modalOverlay: {
     flex: 1,

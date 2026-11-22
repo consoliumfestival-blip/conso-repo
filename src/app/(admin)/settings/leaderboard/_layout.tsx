@@ -3,7 +3,7 @@ import { ui } from "@/constants/designSystem";
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../../../../core/config/supabase';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -33,6 +33,7 @@ import {
 } from 'lucide-react-native';
 import { useAdminLeaderboard } from '../../../../core/hooks/useAdminLeaderboard';
 import { useFestival } from '../../../../core/hooks/useFestival';
+import { ItemResultsViewContext, type ItemResultsView } from '@/core/contexts/itemResultsViewContext';
 import {
   useGetLeaderboardSettings,
 } from '../../../../core/hooks/useLeaderboardSettings';
@@ -219,6 +220,7 @@ const MetricCard = ({
 );
 
 export default function LeaderboardLayout() {
+  const [itemResultsView, setItemResultsView] = useState<ItemResultsView>('cards');
   const router = useRouter();
   const pathname = usePathname();
   const { tenant_id, user } = useAuthStore();
@@ -341,7 +343,7 @@ export default function LeaderboardLayout() {
             </Text>
           )}
 
-          <ScrollView
+          {!(activeItem === 'item' && itemResultsView === 'table') && <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.metricsGrid}
@@ -387,7 +389,7 @@ export default function LeaderboardLayout() {
               tone={colors.cyan}
               icon={<Activity size={19} color={colors.cyan} />}
             />
-          </ScrollView>
+          </ScrollView>}
 
           {isMobile && (
             <View style={{ marginBottom: 20 }}>
@@ -409,7 +411,9 @@ export default function LeaderboardLayout() {
           )}
 
             {/* Renders unit-rankings, item-results, individual-rankings */}
-            <Slot />
+            <ItemResultsViewContext.Provider value={{ view: itemResultsView, setView: setItemResultsView }}>
+              <Slot />
+            </ItemResultsViewContext.Provider>
           </ScrollView>
         )}
       </View>

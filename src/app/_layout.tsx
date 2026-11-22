@@ -172,7 +172,7 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.preventAutoHideAsync().catch(() => {});
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         queryClient.clear();
         useAuthStore.getState().setUser(null, null, null, false);
@@ -180,8 +180,9 @@ export default function RootLayout() {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (event === 'SIGNED_IN') {
-          // Cached tenant-scoped responses must not survive an account change.
+        if (event === 'SIGNED_IN' && useAuthStore.getState().user?.id !== session?.user?.id) {
+          // Supabase also emits SIGNED_IN for an existing session on tab focus.
+          // Clear private cached responses only when the account actually changes.
           queryClient.clear();
         }
         // Run profile/session reads after the auth callback has returned.

@@ -61,7 +61,8 @@ export const useSchedule = (options?: {
       : options?.overview ? scheduleOverviewService.schedules(tenant_id!, activeFestival!.id) : scheduleService.listSchedules<any>(tenant_id!, activeFestival?.id),
     enabled: !!tenant_id && (!options?.overview || !!activeFestival?.id)
       && (!options?.overviewPage || (!!activeFestival?.id && options.overviewPage.enabled !== false)),
-    refetchInterval: options?.overviewPage ? 30000 : false,
+    // Refresh explicitly or through mutation invalidation, never on an idle timer.
+    refetchInterval: false,
     refetchIntervalInBackground: false,
   });
 

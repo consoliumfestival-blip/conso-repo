@@ -1,5 +1,4 @@
 import { coreColor } from '@/constants/coreTheme';
-import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, Switch } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -163,7 +162,56 @@ export default function EditSchedule() {
     }
   };
 
-  if (isLoadingItems || isLoadingSchedules) return <ActivityIndicator color={coreColor("#1B6B3A", 'primaryText')} style={{ marginTop: 40 }} />;
+  if (isLoadingItems || isLoadingSchedules) {
+    return (
+      <ScrollView className="flex-1 bg-ssf-bg py-3 px-3" contentContainerStyle={{ flexGrow: 1 }}>
+        <View className="flex-row items-center mb-4">
+          <TouchableOpacity
+            onPress={goBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back to schedules"
+            className="mr-3 h-9 w-9 bg-core-surface-white border border-ui-border rounded-lg items-center justify-center"
+          >
+            <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
+          </TouchableOpacity>
+          <View>
+            <Text className="text-xl font-poppins-black text-ui-text">Edit Schedule</Text>
+            <Text className="font-poppins text-xs text-ui-text-muted mt-0.5">Loading schedule details…</Text>
+          </View>
+        </View>
+
+        <SsfCard className="gap-y-4 p-4 border border-ui-border shadow-none">
+          <View className="flex-row items-center gap-x-2 pb-1">
+            <ActivityIndicator size="small" color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text accessibilityLiveRegion="polite" className="font-poppins text-xs text-ui-text-muted">
+              Preparing the schedule editor…
+            </Text>
+          </View>
+          <View className="flex-row flex-wrap gap-4">
+            {[0, 1].map((field) => (
+              <View key={field} className="flex-1 min-w-[280px]">
+                <View className="mb-2 h-3 w-20 rounded bg-ui-muted" />
+                <View className="h-10 rounded-lg border border-ui-border bg-core-surface-white" />
+              </View>
+            ))}
+          </View>
+          {[0, 1].map((row) => (
+            <View key={row} className="flex-row flex-wrap gap-4">
+              {[0, 1].map((field) => (
+                <View key={field} className="flex-1 min-w-[220px]">
+                  <View className="mb-2 h-3 w-24 rounded bg-ui-muted" />
+                  <View className="h-10 rounded-lg border border-ui-border bg-core-surface-white" />
+                </View>
+              ))}
+            </View>
+          ))}
+          <View className="border-t border-ui-border pt-3 items-end">
+            <View className="h-10 w-36 rounded-lg bg-ui-muted" />
+          </View>
+        </SsfCard>
+      </ScrollView>
+    );
+  }
 
   if (!schedule) {
     return (

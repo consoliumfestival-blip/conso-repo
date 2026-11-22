@@ -5,7 +5,6 @@ import { Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, Toucha
 import { usePathname, useRouter } from "expo-router";
 import {
   BadgePlus,
-  Bell,
   Building2,
   CalendarDays,
   ChevronDown,
@@ -256,7 +255,7 @@ function DesktopSidebar({
   layout?: 'tablet' | 'desktop';
 }) {
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
   const appearance = useCoreAppearance();
   const sidebarAppearance = useSidebarAppearance();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
@@ -349,6 +348,7 @@ function DesktopSidebar({
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={17} color={iconColor} /></Pressable>
+        {user && <View accessibilityLabel="Signed in" accessible style={styles.accountStatus}><View style={styles.accountStatusDot} /></View>}
       </View>
     </View>
   );
@@ -584,9 +584,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigationMode = adminNavigationMode(width);
   const showSidebar = navigationMode !== 'phone';
-  const isDesktop = navigationMode === 'desktop';
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
-  const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
 
   React.useEffect(() => {
     if (pathname.startsWith('/stage-management/venue/')) return;
@@ -604,16 +602,6 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <View style={styles.shellMain}>
-        {isDesktop && !hasIntegratedSectionHeader && (
-          <View className="no-print" style={styles.topbarActions}>
-            <TouchableOpacity style={styles.topbarIconButton} accessibilityLabel="Notifications" accessibilityRole="button">
-              <Bell size={18} color={ui.colors.textMuted} />
-            </TouchableOpacity>
-            <View style={styles.onlinePill} accessibilityLabel="Online">
-              <View style={styles.onlineDot} />
-            </View>
-          </View>
-        )}
         <View style={[styles.content, !showSidebar && styles.mobileContent]}>
           {(pathname === "/" || pathname === "/(admin)" || pathname === "/admin") && <PortalInstallPrompt portal="main" />}
           {pathname === "/team-leaders" && <PortalInstallPrompt portal="team-management" />}
@@ -871,39 +859,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topbarActions: {
-    minHeight: 42,
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 8,
-  },
-  topbarIconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: ui.colors.border,
-    backgroundColor: ui.colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  onlinePill: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: ui.colors.successSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  onlineDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: ui.colors.successAction,
-  },
+  accountStatus: { height: 18, alignItems: "center", justifyContent: "center" },
+  accountStatusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ui.colors.successAction },
   mobileBarSafe: {
     position: "absolute",
     left: 0,

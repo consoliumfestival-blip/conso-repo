@@ -479,6 +479,8 @@ export default function ParticipantsList() {
     setSelectedCategory('All');
   };
 
+  const headerActionSize = width < 640 ? 'h-10 px-2.5' : 'h-9 px-2';
+
   return (
     <ScrollView
       className="flex-1 bg-ssf-bg"
@@ -492,37 +494,37 @@ export default function ParticipantsList() {
           <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className="h-10 px-2.5 bg-core-surface-white border border-black rounded-lg flex-row items-center justify-center">
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Numbers</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center`}>
+            <Text className="font-poppins-bold text-ui-primary-text text-[11px]">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Print participant cards"
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className="h-10 px-2.5 bg-core-surface-white border border-black rounded-lg flex-row items-center justify-center"
+            className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center`}
           >
-            <Text className="font-poppins-bold text-ui-primary-text text-xs">Cards</Text>
+            <Text className="font-poppins-bold text-ui-primary-text text-[11px]">Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
             disabled={isExporting || isLoadingList || isLoadingItems || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
+            className={`${headerActionSize} bg-ssf-primary border border-ssf-primary rounded-md flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
           >
-            <FileDown size={15} color={ui.colors.onPrimary} />
-            <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Export</Text>
+            <FileDown size={14} color={ui.colors.onPrimary} />
+            <Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className="h-10 w-10 bg-core-surface-white border border-black rounded-lg items-center justify-center">
-            <Upload size={17} color={coreColor("#1B6B3A", 'primaryText')} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className={`${width < 640 ? 'h-10 w-10' : 'h-9 w-9'} bg-core-surface-white border border-ssf-primary/20 rounded-md items-center justify-center`}>
+            <Upload size={15} color={coreColor("#1B6B3A", 'primaryText')} />
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className="h-10 px-2.5 bg-core-surface-white border border-black rounded-lg flex-row items-center justify-center gap-x-1.5">
-            <UserPlus size={16} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add Multiple</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1.5`}>
+            <UserPlus size={14} color={coreColor('#1B6B3A', 'primaryText')} />
+            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add Multiple</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className="h-10 px-2.5 bg-ssf-primary border border-ssf-primary rounded-lg flex-row items-center justify-center gap-x-1.5">
-            <UserPlus size={17} color={coreColor('#FFFFFF', 'onPrimary')} />
-            <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Add New</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className={`${headerActionSize} bg-ssf-primary border border-ssf-primary rounded-md flex-row items-center justify-center gap-x-1.5`}>
+            <UserPlus size={14} color={coreColor('#FFFFFF', 'onPrimary')} />
+            <Text className="font-poppins-bold text-core-on-primary-white text-[11px]">Add New</Text>
           </TouchableOpacity>
         </View>
       </View>

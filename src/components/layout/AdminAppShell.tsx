@@ -287,8 +287,8 @@ function DesktopSidebar({
     setPopup(null);
     router.push(path as any);
   };
-  const iconColor = sidebarAppearance === 'dark' ? coreColor('#D7E8E8', 'sidebarText') : CORE_PALETTES[appearance?.appearance.palette || 'teal'].primary;
   const tablet = layout === 'tablet';
+  const iconColor = !tablet && sidebarAppearance === 'dark' ? coreColor('#D7E8E8', 'sidebarText') : CORE_PALETTES[appearance?.appearance.palette || 'teal'].primary;
 
   return (
     <View
@@ -347,7 +347,7 @@ function DesktopSidebar({
         <Text numberOfLines={popup.item.children?.length ? undefined : 1} style={[styles.railPopupTitle, !popup.item.children?.length && styles.railTooltipTitle]}>{popup.item.label}</Text>
         {popup.item.children?.map((child, index) => <Pressable key={child.label} accessibilityRole="button" accessibilityLabel={child.label} accessibilityState={{ selected: child.match(pathname) }} onPress={() => go(child.path)} style={[styles.railPopupLink, index > 0 && styles.railPopupLinkDivider, child.match(pathname) && styles.railPopupLinkActive]}><Text style={[styles.railPopupLinkText, child.match(pathname) && styles.railPopupLinkTextActive]}>{child.label}</Text><ChevronRight size={15} color={ui.colors.textMuted} /></Pressable>)}
       </View>}
-      <View style={styles.railFooter}>
+      <View style={[styles.railFooter, tablet && styles.tabletFooter]}>
         {onBottomNavigation && <Pressable accessibilityRole="button" accessibilityLabel="Switch to bottom navigation" onPress={onBottomNavigation} style={styles.railFooterButton}><Menu size={17} color={iconColor} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
@@ -364,7 +364,19 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const { pendingCount } = useJudgeApprovalStore();
-  const columns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+  const columns = width >= 700 ? 5 : width >= 440 ? 4 : 3;
+  const tileSize = Math.min(100, Math.max(70, Math.floor((width - 28 - (columns - 1) * 8) / columns)));
+  const sections: { key: string; title?: string; entries: { label: string; path: string; match: NavItem['match']; icon: IconType; badge?: boolean }[] }[] = [];
+  for (const item of items) {
+    if (item.children?.length) {
+      sections.push({ key: item.label, title: item.label, entries: item.children.map(child => ({ ...child, icon: item.icon })) });
+    } else {
+      const last = sections[sections.length - 1];
+      const group = last && !last.title ? last : { key: item.label, entries: [] };
+      if (group !== last) sections.push(group);
+      group.entries.push({ label: item.label, path: item.path, match: item.match, icon: item.icon, badge: item.label === 'Judge Management' });
+    }
+  }
   const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
   return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
     <View style={styles.modalRoot}>
@@ -376,23 +388,20 @@ function MobileMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close menu" onPress={onClose} style={styles.sheetClose}><X size={20} color={ui.colors.textMuted} /></TouchableOpacity>
         </View>
         <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.menuSections}>
-          {items.map(item => {
-            const Icon = item.icon;
-            const entries = item.children?.length ? item.children : [{ label: item.label, path: item.path, match: item.match }];
-            return <View key={item.label} style={styles.menuSection}>
-              {item.children?.length ? <Text style={styles.menuSectionTitle}>{item.label}</Text> : null}
-              <View style={styles.menuEntries}>
-                {entries.map(entry => {
-                  const active = entry.match(pathname);
-                  return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: `${100 / columns}%` }, active && styles.menuEntryActive]}>
-                    {!item.children?.length && <Icon size={16} color={active ? ui.colors.primaryText : ui.colors.textMuted} />}
-                    <Text style={[styles.menuEntryText, active && styles.menuEntryTextActive]} numberOfLines={2}>{entry.label}</Text>
-                    {item.label === 'Judge Management' && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
-                  </TouchableOpacity>;
-                })}
-              </View>
-            </View>;
-          })}
+          {sections.map(section => <View key={section.key} style={styles.menuSection}>
+            {section.title && <Text style={styles.menuSectionTitle}>{section.title}</Text>}
+            <View style={styles.menuEntries}>
+              {section.entries.map(entry => {
+                const active = entry.match(pathname);
+                const Icon = entry.icon;
+                return <TouchableOpacity key={entry.path} accessibilityRole="button" accessibilityLabel={entry.label} accessibilityState={{ selected: active }} onPress={() => navigate(entry.path)} style={[styles.menuEntry, { width: tileSize, height: tileSize }, active && styles.menuEntryActive]}>
+                  <Icon size={19} color={active ? ui.colors.primaryText : ui.colors.textMuted} />
+                  <Text style={[styles.menuEntryText, active && styles.menuEntryTextActive]} numberOfLines={3}>{entry.label}</Text>
+                  {entry.badge && pendingCount > 0 && <Text style={styles.tabletBadge}>{pendingCount}</Text>}
+                </TouchableOpacity>;
+              })}
+            </View>
+          </View>)}
         </ScrollView>
         <View style={styles.menuFooter}><TouchableOpacity accessibilityRole="button" accessibilityLabel="Switch to sidebar navigation" onPress={() => { onClose(); onSidebar(); }} style={styles.navigationToggle}><PanelsTopLeft size={16} color={ui.colors.primaryText} /><Text style={styles.navigationToggleText}>Switch to sidebar</Text></TouchableOpacity></View>
       </SafeAreaView>
@@ -610,6 +619,7 @@ const styles = StyleSheet.create({
   railPopupLinkText: { color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 12, flexShrink: 1 },
   railPopupLinkTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   railFooter: { alignItems: 'center', gap: 2, paddingTop: 5, borderTopWidth: 1, borderTopColor: coreColor('#31545A', 'sidebarSoft') },
+  tabletFooter: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', paddingHorizontal: 4 },
   railFooterButton: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   sidebarCollapsed: {
     width: 68,
@@ -873,10 +883,10 @@ const styles = StyleSheet.create({
   menuSections: { paddingHorizontal: 14, paddingVertical: 10, paddingBottom: 20 },
   menuSection: { marginBottom: 10 },
   menuSectionTitle: { color: ui.colors.textMuted, fontFamily: "Outfit_700Bold", fontSize: 12, marginBottom: 5, paddingHorizontal: 4 },
-  menuEntries: { flexDirection: "row", flexWrap: "wrap" },
-  menuEntry: { minHeight: 44, flexDirection: "row", alignItems: "center", paddingHorizontal: 9, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, backgroundColor: ui.colors.surface, gap: 7 },
+  menuEntries: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  menuEntry: { minHeight: 70, alignItems: "center", justifyContent: "center", padding: 5, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface, gap: 5 },
   menuEntryActive: { backgroundColor: ui.colors.primarySoft, borderColor: ui.colors.primary },
-  menuEntryText: { flex: 1, color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 12 },
+  menuEntryText: { color: ui.colors.text, fontFamily: "Outfit_500Medium", fontSize: 11, textAlign: "center" },
   menuEntryTextActive: { color: ui.colors.primaryText, fontFamily: "Outfit_700Bold" },
   menuFooter: { paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: ui.colors.border },
   navigationToggle: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border },

@@ -5,7 +5,6 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { Slot, Stack, usePathname, useRouter, useSegments } from "expo-router";
-import { readCoreAppearance, resolveCoreColors } from '@/constants/coreTheme';
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import "../global.css";
@@ -34,6 +33,7 @@ import { NotificationProvider } from "../core/contexts/NotificationContext";
 import { NotificationToast } from "../components/ui/NotificationToast";
 import { PwaUpdateNotice } from "../components/pwa/PwaUpdateNotice";
 import { PwaNetworkStatus } from "../components/pwa/PwaNetworkStatus";
+import { AyaticLoadingScreen } from "../components/loading-ui/AyaticLoadingScreen";
 
 // Removed top-level preventAutoHideAsync, moving it inside component
 
@@ -48,9 +48,8 @@ function AppLoadingScreen() {
   const checkSession = useAuthStore((state) => state.checkSession);
   const logoutTeamLeader = useAuthStore((state) => state.logoutTeamLeader);
   const [logoutError, setLogoutError] = useState('');
-  const coreRoute = ['(admin)', '(super)', '(auth)'].includes(String(useSegments()[0]));
-  const systemDark = useColorScheme() === 'dark';
-  const coreColors = resolveCoreColors(readCoreAppearance(), systemDark);
+  const segments = useSegments();
+  const isPublicRoute = segments[0] === '(public)';
 
   if (teamRoute && teamSessionStatus === 'error') {
     return (
@@ -79,16 +78,12 @@ function AppLoadingScreen() {
     );
   }
 
+  if (!isPublicRoute) return <AyaticLoadingScreen />;
+
+  // Keep the public portal's existing loader separate from the admin portal loader.
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: teamRoute ? teamUi.colors.background : coreRoute ? coreColors.background : LOADING_BG,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <ActivityIndicator size="large" color={teamRoute ? teamUi.colors.primary : coreRoute ? coreColors.primaryText : "#c69a53"} />
+    <View style={{ flex: 1, backgroundColor: LOADING_BG, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" color="#c69a53" />
     </View>
   );
 }

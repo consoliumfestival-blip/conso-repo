@@ -573,11 +573,122 @@ function MobileBottomBar({
   );
 }
 
+function TabletFloatingBar({
+  pathname,
+  items,
+  width,
+  height,
+  onMenu,
+}: {
+  pathname: string;
+  items: NavItem[];
+  width: number;
+  height: number;
+  onMenu: () => void;
+}) {
+  const router = useRouter();
+  const isLandscape = width > height;
+  const directItem = (label: string, shortLabel: string) => {
+    const item = items.find((candidate) => candidate.label === label);
+    return item ? { ...item, shortLabel } : null;
+  };
+  const childItem = (
+    parentLabel: string,
+    childLabel: string,
+    shortLabel: string,
+    icon: IconType,
+  ): NavItem | null => {
+    const child = items
+      .find((candidate) => candidate.label === parentLabel)
+      ?.children?.find((candidate) => candidate.label === childLabel);
+    return child ? { ...child, shortLabel, icon } : null;
+  };
+  const results = childItem("Leaderboard Management", "Item Results", "Results", ClipboardList);
+  const quickItems: (NavItem | null)[] = isLandscape
+    ? [
+        directItem("Dashboard", "Home"),
+        directItem("Participants", "Participants"),
+        directItem("Programs", "Programs"),
+        directItem("Schedules", "Schedule"),
+        directItem("Stage Management", "Stage"),
+        directItem("Judge Management", "Judges"),
+        results,
+      ]
+    : [
+        directItem("Dashboard", "Home"),
+        directItem("Participants", "Participants"),
+        directItem("Programs", "Programs"),
+        directItem("Schedules", "Schedule"),
+        results,
+      ];
+
+  if (isLandscape && width >= 1000) {
+    quickItems.push(
+      childItem("Portals", "Team Leader Management", "Team Leads", UserRoundCog),
+    );
+  }
+
+  const visibleItems = quickItems.filter((item): item is NavItem => item !== null);
+
+  return (
+    <SafeAreaView
+      {...{ dataSet: { coreGlass: "navigation" } } as any}
+      pointerEvents="box-none"
+      className="no-print"
+      style={styles.tabletFloatingBarSafe}
+    >
+      <View style={styles.tabletFloatingBar}>
+        <View style={styles.tabletQuickLinks}>
+          {visibleItems.map((item) => {
+            const active = item.match(pathname);
+            const Icon = item.icon;
+            return (
+              <TouchableOpacity
+                key={item.label}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: active }}
+                onPress={() => router.push(item.path as any)}
+                style={styles.tabletQuickLink}
+              >
+                <View style={[styles.tabletQuickIcon, active && styles.tabletQuickIconActive]}>
+                  <Icon
+                    size={18}
+                    color={active ? ui.colors.primaryText : ui.colors.textMuted}
+                    strokeWidth={active ? 2.3 : 2}
+                  />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.tabletQuickLabel, active && styles.tabletQuickLabelActive]}
+                >
+                  {item.shortLabel || item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Open navigation menu"
+            onPress={onMenu}
+            style={styles.tabletQuickLink}
+          >
+            <View style={styles.tabletQuickIcon}>
+              <Menu size={18} color={ui.colors.textMuted} strokeWidth={2} />
+            </View>
+            <Text numberOfLines={1} style={styles.tabletQuickLabel}>More</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
 export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const tenantId = useAuthStore((state) => state.tenant_id);
   const { settings: tenantFeatures } = useTenantFeatures(tenantId);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const navigationMode = adminNavigationMode(width);
   const [mobilePreference, setMobilePreference] = useState<'bottom' | 'sidebar'>(() => {
@@ -622,7 +733,7 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
         />
       )}
       <View style={styles.shellMain}>
-        <View style={[styles.content, !showSidebar && styles.mobileContent]}>
+        <View style={[styles.content, !showSidebar && (navigationMode === 'tablet' ? styles.tabletContent : styles.mobileContent)]}>
           {(pathname === "/" || pathname === "/(admin)" || pathname === "/admin") && <PortalInstallPrompt portal="main" />}
           {pathname === "/team-leaders" && <PortalInstallPrompt portal="team-management" />}
           {children}
@@ -631,11 +742,21 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
 
       {!showSidebar && (
         <>
-          <MobileBottomBar
-            pathname={pathname}
-            onMenu={() => setMenuOpen(true)}
-            items={visibleNavItems}
-          />
+          {navigationMode === 'tablet' ? (
+            <TabletFloatingBar
+              pathname={pathname}
+              items={visibleNavItems}
+              width={width}
+              height={height}
+              onMenu={() => setMenuOpen(true)}
+            />
+          ) : (
+            <MobileBottomBar
+              pathname={pathname}
+              onMenu={() => setMenuOpen(true)}
+              items={visibleNavItems}
+            />
+          )}
           <MobileMenuSheet
             visible={menuOpen}
             pathname={pathname}
@@ -668,6 +789,9 @@ const styles = StyleSheet.create({
   },
   mobileContent: {
     paddingBottom: Platform.OS === "ios" ? 82 : 72,
+  },
+  tabletContent: {
+    paddingBottom: 104,
   },
   sidebar: {
     width: 48,
@@ -896,6 +1020,71 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: ui.colors.border,
     ...ui.shadow,
+  },
+  tabletFloatingBarSafe: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 40,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingBottom: 8,
+  },
+  tabletFloatingBar: {
+    width: "96%",
+    maxWidth: 1080,
+    minHeight: 68,
+    paddingHorizontal: 8,
+    justifyContent: "center",
+    backgroundColor: coreColor("#FFFFFF", "surface"),
+    borderWidth: 1,
+    borderColor: coreColor("#D9E4E2", "border"),
+    borderRadius: 18,
+    ...Platform.select({
+      web: { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)" } as any,
+      default: {
+        elevation: 8,
+        shadowColor: "#0F172A",
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+      },
+    }),
+  },
+  tabletQuickLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  tabletQuickLink: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    paddingHorizontal: 3,
+  },
+  tabletQuickIcon: {
+    width: 34,
+    height: 30,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabletQuickIconActive: {
+    backgroundColor: ui.colors.primarySoft,
+  },
+  tabletQuickLabel: {
+    maxWidth: "100%",
+    marginTop: 2,
+    color: ui.colors.textMuted,
+    fontFamily: "Outfit_600SemiBold",
+    fontSize: 10,
+  },
+  tabletQuickLabelActive: {
+    color: ui.colors.primaryText,
   },
   mobileBar: {
     height: 66,

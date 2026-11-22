@@ -545,7 +545,7 @@ export default function ParticipantDetails() {
     .toUpperCase();
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
+    <Modal visible={!isEditing} transparent animationType="fade" onRequestClose={goBack} statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.55)', justifyContent: 'center', alignItems: 'center', padding: 12 }}>
       <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={{ width: Math.min(1000, width - 24), height: Math.min(900, height - 24), maxHeight: '96%', borderRadius: 18, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, overflow: 'hidden', shadowColor: '#0F172A', shadowOpacity: 0.18, shadowRadius: 24, elevation: 18 }}>
       <View style={{ minHeight: 56, paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: ui.colors.border, backgroundColor: ui.colors.surface }}>

@@ -51,7 +51,7 @@ export function SsfSheet({
           onPress={onClose}
         />
 
-        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(720, height - 24) : '88%', maxHeight: 840, borderRadius: compact ? 14 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
+        <View {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.panel, { width: sheetWidth }, presentation === 'dialog' && { height: compact ? Math.min(620, height - 24) : '88%', maxHeight: 840, borderRadius: compact ? 14 : 20, borderWidth: 1, borderColor: ui.colors.border, overflow: 'hidden' }]}>
           <View style={[styles.header, compact && { paddingHorizontal: 18, paddingTop: 16, paddingBottom: 12 }]}>
             <View style={styles.headerCopy}>
               <Text className={`font-poppins-bold ${compact ? 'text-base' : 'text-xl'} text-ssf-text`}>{title}</Text>

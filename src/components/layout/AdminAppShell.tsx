@@ -34,7 +34,6 @@ import { useCoreAppearance } from "@/core/contexts/CoreAppearanceContext";
 import { useSidebarAppearance } from "@/core/store/coreAppearanceStore";
 import { adminNavigationMode } from "@/core/utils/adminNavigationLayout";
 import { useTenantFeatures } from "@/core/hooks/useTenantFeatures";
-import { useFestival } from "@/core/hooks/useFestival";
 import { FEATURE_FLAGS } from "@/core/config/features";
 import { ui } from "@/constants/designSystem";
 import { JudgeApprovalToast } from "../ui/JudgeApprovalToast";
@@ -229,30 +228,6 @@ const navItems: NavItem[] = [
     match: (path) => path.includes("/reports"),
   },
 ];
-
-function getPageTitle(pathname: string) {
-  if (pathname.includes('/reports')) return 'Reports & printouts';
-  if (pathname.includes('/festival-viewer')) return 'Festival Viewer';
-  if (pathname.includes('/smart-announcer')) return 'Smart Announcer';
-  if (pathname.includes('/team-leaders') || pathname.includes('/settings/team-leader-portal')) return 'Team Leader Management';
-  if (pathname.includes('/participants/programs')) return 'Programs';
-  if (pathname.includes("/participants/")) {
-    if (pathname.endsWith("/add")) return "Add Participant";
-    if (pathname.includes("chest-card")) return "Chest Cards";
-    if (pathname.includes("import")) return "Import Participants";
-  }
-  if (pathname.includes("/schedule/")) {
-    if (pathname.endsWith("/bulk-create")) return "Bulk Schedule Builder";
-    if (pathname.endsWith("/create")) return "Create Schedule";
-    if (pathname.includes("/results")) return "Schedule Results";
-    if (pathname.includes("/marks")) return "Enter Marks";
-    if (pathname.includes("/checkin")) return "Participant Check-in";
-    if (pathname.includes("/code-letter")) return "Code Letters";
-  }
-  return (
-    navItems.find((item) => item.match(pathname))?.label ?? "Festival Admin"
-  );
-}
 
 function getTenantNavigation(settings: ReturnType<typeof useTenantFeatures>['settings']): NavItem[] {
   return navItems.flatMap((item) => {
@@ -612,10 +587,6 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
   const isDesktop = navigationMode === 'desktop';
   const visibleNavItems = useMemo(() => getTenantNavigation(tenantFeatures), [tenantFeatures]);
   const hasIntegratedSectionHeader = pathname.includes("/settings/leaderboard");
-  const pageTitle = useMemo(() => getPageTitle(pathname), [pathname]);
-  const { useActiveFestival } = useFestival();
-  const { data: activeFestival } = useActiveFestival();
-  const festivalName = activeFestival?.custom_name?.trim() || "Consolium";
 
   React.useEffect(() => {
     if (pathname.startsWith('/stage-management/venue/')) return;
@@ -634,19 +605,12 @@ export function AdminAppShell({ children }: { children: React.ReactNode }) {
       )}
       <View style={styles.shellMain}>
         {isDesktop && !hasIntegratedSectionHeader && (
-          <View {...{ dataSet: { coreGlass: 'navigation' } } as any} className="no-print" style={styles.topbar}>
-            <View>
-              <Text style={styles.topbarEyebrow}>{festivalName}</Text>
-              <Text style={styles.topbarTitle}>{pageTitle}</Text>
-            </View>
-            <View style={styles.topbarActions}>
-              <TouchableOpacity style={styles.topbarIconButton}>
-                <Bell size={19} color={ui.colors.textMuted} />
-              </TouchableOpacity>
-              <View style={styles.onlinePill}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.onlineText}>Online</Text>
-              </View>
+          <View className="no-print" style={styles.topbarActions}>
+            <TouchableOpacity style={styles.topbarIconButton} accessibilityLabel="Notifications" accessibilityRole="button">
+              <Bell size={18} color={ui.colors.textMuted} />
+            </TouchableOpacity>
+            <View style={styles.onlinePill} accessibilityLabel="Online">
+              <View style={styles.onlineDot} />
             </View>
           </View>
         )}
@@ -907,42 +871,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  topbar: {
-    minHeight: 76,
-    backgroundColor: ui.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: ui.colors.border,
-    paddingHorizontal: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    ...Platform.select({
-      web: { position: "sticky" as any, top: 0, zIndex: 10 },
-      default: {},
-    }),
-  },
-  topbarEyebrow: {
-    color: ui.colors.primaryText,
-    fontFamily: "Outfit_700Bold",
-    fontSize: 9,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  topbarTitle: {
-    color: ui.colors.text,
-    fontFamily: "Outfit_700Bold",
-    fontSize: 20,
-    lineHeight: 26,
-  },
   topbarActions: {
+    minHeight: 42,
+    paddingHorizontal: 20,
+    paddingTop: 4,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    justifyContent: "flex-end",
+    gap: 8,
   },
   topbarIconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: ui.colors.border,
     backgroundColor: ui.colors.surface,
@@ -950,24 +891,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   onlinePill: {
-    height: 34,
-    borderRadius: 17,
-    paddingHorizontal: 11,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: ui.colors.successSoft,
-    flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
   },
   onlineDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
     backgroundColor: ui.colors.successAction,
-  },
-  onlineText: {
-    color: ui.colors.success,
-    fontFamily: "Outfit_700Bold",
-    fontSize: 10,
   },
   mobileBarSafe: {
     position: "absolute",

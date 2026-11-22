@@ -17,8 +17,12 @@ export function shouldShowTabletLandscapeScheduleCategory(
   return isTabletScheduleTable && orientation === 'landscape';
 }
 
-export function getScheduleActionRows<T>(actions: readonly T[]): [T[], T[]] {
-  return [actions.slice(0, 2), actions.slice(2, 4)];
+export function getScheduleActionRows<T>(actions: readonly T[]): T[][] {
+  const rows: T[][] = [];
+  for (let index = 0; index < actions.length; index += 2) {
+    rows.push(actions.slice(index, index + 2));
+  }
+  return rows;
 }
 
 export function getCompactScheduleActionOrientation(

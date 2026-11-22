@@ -31,10 +31,15 @@ test('compact schedule action layout covers tablets and small laptop viewports w
   assert.equal(getCompactScheduleActionOrientation(true, 1400, 900, 1400, 900, 0), null, 'wide desktop table');
 });
 
-test('compact schedule actions are arranged as two buttons in each of two rows', () => {
+test('compact schedule actions wrap in rows of two without dropping added actions', () => {
   assert.deepEqual(getScheduleActionRows(['Check-in', 'Codes', 'Marks', 'Results']), [
     ['Check-in', 'Codes'],
     ['Marks', 'Results'],
+  ]);
+  assert.deepEqual(getScheduleActionRows(['Judges', 'Check-in', 'Codes', 'Marks', 'Results']), [
+    ['Judges', 'Check-in'],
+    ['Codes', 'Marks'],
+    ['Results'],
   ]);
 });
 

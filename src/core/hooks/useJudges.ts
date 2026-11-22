@@ -210,6 +210,8 @@ export const useJudges = () => {
     adminUpsertMark: adminUpsertMark.mutateAsync,
     judges: judges.data ?? [],
     isLoadingJudges: judges.isLoading,
+    isErrorJudges: judges.isError,
+    refetchJudges: judges.refetch,
     createJudge,
     updateJudge,
     deleteJudge,

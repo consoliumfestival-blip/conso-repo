@@ -31,6 +31,7 @@ import { stageManagementService } from '../../../services/stageManagementService
 import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
 import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
+import { ScheduleJudgesModal } from '@/components/schedule/ScheduleJudgesModal';
 
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
@@ -89,6 +90,7 @@ function isPostponedSchedule(schedule: any): boolean {
 }
 
 const SCHEDULE_WORKFLOW_ACTIONS = [
+  { label: 'Judges', path: 'judges' },
   { label: 'Check-in', path: 'checkin' },
   { label: 'Codes', path: 'code-letter' },
   { label: 'Marks', path: 'marks' },
@@ -173,9 +175,9 @@ export default function ScheduleDashboard() {
   const sidebarWidth = navigationMode === 'desktop' ? 64 : navigationMode === 'tablet' ? 236 : 0;
   const filterContentWidth = width - sidebarWidth - 60; // Page, panel, and border spacing.
   const tabletFilterColumnWidth = Math.max(120, Math.floor((filterContentWidth - 8) / 2));
-  // Preserve phone cards in portrait and landscape; tablet and desktop widths use the reference table.
+  // Let the viewport, not a potentially stale browser device classification,
+  // decide when to use phone cards. Tablet and desktop viewports use the table.
   const isCompactScheduleLayout = width < 600
-    || Device.deviceType === Device.DeviceType.PHONE
     || (maxTouchPoints > 0 && Math.min(screenWidth, screenHeight) < 600);
   const isCompactScheduleTable = width < 1200;
 
@@ -275,6 +277,7 @@ export default function ScheduleDashboard() {
   const exportLock = React.useRef(false);
   const [isExportingSchedule, setIsExportingSchedule] = React.useState(false);
   const [schedulePdfExportOpen, setSchedulePdfExportOpen] = React.useState(false);
+  const [judgePanelSchedule, setJudgePanelSchedule] = React.useState<any | null>(null);
   const [updatingVisibilityId, setUpdatingVisibilityId] = React.useState<string | null>(null);
   const [assignmentSchedule, setAssignmentSchedule] = React.useState<any | null>(null);
   const [assignmentVenueId, setAssignmentVenueId] = React.useState('');
@@ -283,6 +286,10 @@ export default function ScheduleDashboard() {
   const [assignmentSubstages, setAssignmentSubstages] = React.useState<ScheduleSubstage[]>([]);
   const [assignmentSubstagesChanged, setAssignmentSubstagesChanged] = React.useState(false);
   const [isSavingAssignment, setIsSavingAssignment] = React.useState(false);
+  const openJudgePanel = (schedule: any) => setJudgePanelSchedule(schedule);
+  const saveRequiredJudgeCount = async (scheduleId: string, count: number) => {
+    await updateSchedule({ id: scheduleId, payload: { expected_judge_count: count } });
+  };
   const [shareSchedule, setShareSchedule] = React.useState<any | null>(null);
   const [shareStageUrl, setShareStageUrl] = React.useState<string | null>(null);
   const [shareError, setShareError] = React.useState<string | null>(null);
@@ -1336,6 +1343,7 @@ export default function ScheduleDashboard() {
                   rowGap: 4,
                 }} className="flex-row">
                   {[
+                    { label: 'Judges', path: 'judges' },
                     { label: 'Check-in', path: 'checkin' },
                     { label: 'Codes', path: 'code-letter' },
                     { label: 'Marks', path: 'marks' },
@@ -1345,7 +1353,9 @@ export default function ScheduleDashboard() {
                       key={action.path}
                       accessibilityRole="button"
                       accessibilityLabel={`${action.label} for ${schedule.items?.item_name_en || 'event'}`}
-                      onPress={() => router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
+                      onPress={() => action.path === 'judges'
+                        ? openJudgePanel(schedule)
+                        : router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
                       className={`h-8 px-2 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
                     >
                       <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
@@ -1384,6 +1394,10 @@ export default function ScheduleDashboard() {
                       status={schedule.status}
                       isPostponed={schedule.is_postponed === true}
                       additionalItems={[{
+                        label: 'Manage judges',
+                        icon: <UserCheck size={15} color={coreColor('#0F766E', 'primaryText')} />,
+                        onPress: () => openJudgePanel(schedule),
+                      }, {
                         label: updatingVisibilityId === schedule.id
                           ? 'Saving public visibility…'
                           : schedule.is_public_visible !== false ? 'Hide from public schedule' : 'Show on public schedule',
@@ -1478,6 +1492,17 @@ export default function ScheduleDashboard() {
                       {updatingVisibilityId === schedule.id ? 'Saving…' : schedule.is_public_visible !== false ? 'Public · Hide' : 'Private · Show'}
                     </Text>
                   </TouchableOpacity>
+                  {!showInlineScheduleActions && (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Manage judges for ${scheduleName}`}
+                      onPress={(event) => { event.stopPropagation(); openJudgePanel(schedule); }}
+                      className="h-7 flex-row items-center gap-1 rounded-md border border-ui-border bg-core-surface-white px-2"
+                    >
+                      <UserCheck size={13} color={ui.colors.primaryText} />
+                      <Text className="font-poppins-bold text-[10px] text-ui-text">Judges</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <View className={`${tabletScheduleOrientation ? 'mb-1.5 mt-1' : 'mb-2'} flex-row flex-wrap items-center gap-x-3 gap-y-1`}>
                   <View className="flex-row items-center gap-x-1">
@@ -1502,7 +1527,9 @@ export default function ScheduleDashboard() {
             const scheduleActionButtons = showInlineScheduleActions ? (
               <ScheduleWorkflowActionButtons
                 scheduleName={scheduleName}
-                onNavigate={(path) => router.push(`/(admin)/schedule/${schedule.id}/${path}` as any)}
+                onNavigate={(path) => path === 'judges'
+                  ? openJudgePanel(schedule)
+                  : router.push(`/(admin)/schedule/${schedule.id}/${path}` as any)}
                 orientation={tabletScheduleOrientation ?? 'inline'}
               />
             ) : null;
@@ -1835,6 +1862,14 @@ export default function ScheduleDashboard() {
           </Pressable>
         </Pressable>
       </Modal>
+      {judgePanelSchedule ? (
+        <ScheduleJudgesModal
+          schedule={judgePanelSchedule}
+          visible
+          onClose={() => setJudgePanelSchedule(null)}
+          onUpdateRequiredCount={saveRequiredJudgeCount}
+        />
+      ) : null}
     </>
   );
 }

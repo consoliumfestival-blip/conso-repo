@@ -827,43 +827,41 @@ export default function JudgesPage() {
                 Add judges who will evaluate participants
               </Text>
             </SsfCard>
-          ) : isCompactLayout ? (
-            <View className="gap-y-3 mb-24">
+          ) : (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 24 }}>
               {judges.map((judge: any) => {
                 const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
                 const latestToken = judgeTokens[0];
                 return (
-                  <SsfCard key={judge.id} className="p-3">
-                    <View className="flex-row items-start gap-x-3">
-                      <View className="h-9 w-9 rounded-xl bg-core-primary-soft-teal-50 items-center justify-center">
-                        <Text className="font-poppins-black text-sm text-core-primary-text-teal-700">
-                          {judge.name?.charAt(0)?.toUpperCase() ?? '?'}
-                        </Text>
+                  <SsfCard key={judge.id} className="p-3" style={{ width: width < 640 ? '100%' : width < 1200 ? '48.5%' : '31.5%' }}>
+                    <View className="flex-row items-start gap-x-2.5">
+                      <View className="h-9 w-9 shrink-0 rounded-xl bg-core-primary-soft-teal-50 items-center justify-center">
+                        <Text className="font-poppins-black text-sm text-core-primary-text-teal-700">{judge.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
                       </View>
                       <View className="flex-1" style={{ minWidth: 0 }}>
-                        <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
-                          <Text className="font-poppins-bold text-sm text-ui-text">{judge.name}</Text>
-                          {judgeTokens.length > 0 && (
-                            <View className="px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
-                              <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
-                                {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <View className="flex-row items-start mt-1">
-                          {judge.phone && <Phone size={12} color={ui.colors.textMuted} style={{ marginTop: 2 }} />}
-                          <Text className="font-poppins text-xs text-ui-text-muted ml-1.5 flex-1" style={{ minWidth: 0 }}>
-                            {judge.phone || 'No phone number'}
-                          </Text>
-                        </View>
-                        <Text className="font-poppins text-xs text-ui-text-muted mt-1" style={{ overflowWrap: 'anywhere' } as any}>
-                          {Array.isArray(judge.specialization) && judge.specialization.length
-                            ? judge.specialization.join(', ')
-                            : 'No specialization'}
-                        </Text>
+                        <Text numberOfLines={2} className="font-poppins-bold text-sm text-ui-text">{judge.name}</Text>
+                        {judgeTokens.length > 0 && (
+                          <View className="self-start mt-1 px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
+                            <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
+                              {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
+
+                    <View className="mt-2.5 pt-2.5 border-t border-ui-border gap-y-1.5">
+                      <View className="flex-row items-center">
+                        {judge.phone && <Phone size={12} color={ui.colors.textMuted} />}
+                        <Text numberOfLines={1} className="font-poppins text-xs text-ui-text-muted ml-1.5">{judge.phone || '—'}</Text>
+                      </View>
+                      <Text className="font-poppins text-xs text-ui-text-muted" style={{ overflowWrap: 'anywhere' } as any}>
+                        {Array.isArray(judge.specialization) && judge.specialization.length
+                          ? judge.specialization.join(', ')
+                          : '—'}
+                      </Text>
+                    </View>
+
                     <View className="flex-row items-center gap-x-2 mt-3">
                       <TouchableOpacity
                         onPress={() => openTokenModal(judge, latestToken?.schedule_id || '')}
@@ -893,76 +891,6 @@ export default function JudgesPage() {
                 );
               })}
             </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex-1 bg-core-surface-white border border-ui-border rounded-xl overflow-hidden mb-24" style={{ minWidth: 720 }}>
-                <View className="h-11 px-4 flex-row items-center bg-ui-muted border-b border-ui-border">
-                  <Text style={{ flex: 1.4 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Judge</Text>
-                  <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Phone</Text>
-                  <Text style={{ flex: 1.5 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Specialization</Text>
-                  <Text style={{ width: 245 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
-                </View>
-                {judges.map((judge: any) => {
-                  const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
-                  const latestToken = judgeTokens[0];
-                  return (
-                  <View key={judge.id} className="min-h-16 px-4 flex-row items-center border-b border-ui-border bg-core-surface-white">
-                    <View style={{ flex: 1.4 }} className="flex-row items-center pr-3">
-                      <View className="h-8 w-8 rounded-lg bg-core-primary-soft-teal-50 items-center justify-center mr-2.5">
-                        <Text className="font-poppins-black text-xs text-core-primary-text-teal-700">
-                          {judge.name?.charAt(0)?.toUpperCase() ?? '?'}
-                        </Text>
-                      </View>
-                      <View className="flex-1">
-                        <Text numberOfLines={1} className="font-poppins-bold text-xs text-ui-text">{judge.name}</Text>
-                        {judgeTokens.length > 0 && (
-                          <View className="self-start mt-1 px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
-                            <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
-                              {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                    <View style={{ flex: 1 }} className="flex-row items-center pr-3">
-                      {judge.phone && <Phone size={12} color={ui.colors.textMuted} />}
-                      <Text numberOfLines={1} className="font-poppins text-xs text-ui-text-muted ml-1.5">{judge.phone || '—'}</Text>
-                    </View>
-                    <Text style={{ flex: 1.5 }} numberOfLines={1} className="font-poppins text-xs text-ui-text-muted pr-3">
-                      {Array.isArray(judge.specialization) && judge.specialization.length
-                        ? judge.specialization.join(', ')
-                        : '—'}
-                    </Text>
-                    <View style={{ width: 245 }} className="flex-row justify-end gap-x-2">
-                      <TouchableOpacity
-                        onPress={() => openTokenModal(judge, latestToken?.schedule_id || '')}
-                        className={`h-8 flex-row items-center justify-center border rounded-lg px-3 ${latestToken ? 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200' : 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200'}`}
-                        accessibilityRole="button"
-                        accessibilityLabel={latestToken ? `View active access code for ${judge.name}` : `Generate access code for ${judge.name} in an assigned event`}
-                      >
-                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor("#0F766E", 'primaryText')} />}
-                        <Text className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-core-info-blue-700' : 'text-core-primary-text-teal-700'}`}>
-                          {latestToken ? 'View / Copy Code' : 'Generate Code'}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleDelete(judge.id, judge.name)}
-                        className="h-8 w-8 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white items-center justify-center"
-                        disabled={deletingJudgeId === judge.id}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Delete judge ${judge.name}`}
-                        accessibilityState={{ disabled: deletingJudgeId === judge.id, busy: deletingJudgeId === judge.id }}
-                      >
-                        {deletingJudgeId === judge.id
-                          ? <ActivityIndicator size="small" color={coreColor("#EF4444", 'danger')} />
-                          : <Trash2 size={14} color={coreColor("#EF4444", 'danger')} />}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  );
-                })}
-              </View>
-            </ScrollView>
           )
         ) : (
           /* ================= ASSIGNMENTS TABLE ================= */

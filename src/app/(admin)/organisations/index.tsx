@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Clipboard, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SsfButton } from '../../../components/ui/SsfButton';
+import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfInput } from '../../../components/ui/SsfInput';
 import { useOrganisations } from '../../../core/hooks/useOrganisations';
 import { ArrowLeft, Plus, Building2, User, Archive, ExternalLink, RefreshCw, RotateCcw, Trash2 } from 'lucide-react-native';
@@ -275,69 +276,90 @@ export default function SubOrganisationsManager() {
                 <Text style={{ fontFamily: "Outfit_400Regular", color: ui.colors.textMuted, marginTop: 16 }}>{showArchived ? 'No archived teams.' : 'No teams found.'}</Text>
               </View>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
-                <View style={{ minWidth: 800, flex: 1, backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 14, overflow: 'hidden' }}>
-                  <View style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', backgroundColor: coreColor('#F1F5F9', 'surface'), borderBottomWidth: 1, borderBottomColor: ui.colors.border }}>
-                    <Text style={{ flex: 1.6, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Team</Text>
-                    <Text style={{ flex: 1.5, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Login Username</Text>
-                    <Text style={{ width: 100, fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Type</Text>
-                    <Text style={{ width: 160, textAlign: 'right', fontFamily: "Outfit_700Bold", fontSize: 10, color: ui.colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' }}>Actions</Text>
-                  </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 8 }}>
+                {listedOrgs.map((org: any, index: number) => {
+                  const accents = [
+                    { backgroundColor: coreColor('#ECFDF5', 'successSoft'), borderColor: coreColor('#A7F3D0', 'border'), icon: coreColor('#10B981', 'success') },
+                    { backgroundColor: coreColor('#EFF6FF', 'infoSoft'), borderColor: coreColor('#BFDBFE', 'border'), icon: coreColor('#3B82F6', 'info') },
+                    { backgroundColor: coreColor('#FFF7ED', 'warningSoft'), borderColor: coreColor('#FED7AA', 'border'), icon: coreColor('#F97316', 'warning') },
+                    { backgroundColor: coreColor('#F5F3FF', 'surface'), borderColor: coreColor('#DDD6FE', 'border'), icon: coreColor('#8B5CF6', 'primaryText') },
+                  ];
+                  const accent = accents[index % accents.length];
+                  const actionStyle = (backgroundColor: string, borderColor: string) => ({
+                    width: 36,
+                    height: 36,
+                    backgroundColor,
+                    alignItems: 'center' as const,
+                    justifyContent: 'center' as const,
+                    borderRadius: 9,
+                    borderWidth: 1,
+                    borderColor,
+                  });
 
-                  {listedOrgs.map((org: any) => (
-                    <View key={org.id} style={{ minHeight: 64, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: coreColor('#E2E8F0', 'border'), backgroundColor: ui.colors.surface }}>
-                      <View style={{ flex: 1.6, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
-                        <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: ui.colors.successSoft, alignItems: 'center', justifyContent: 'center', marginRight: 10 }}>
-                          <Building2 size={15} color={coreColor("#0F766E", 'primaryText')} />
+                  return (
+                    <SsfCard key={org.id} style={{
+                      width: width < 640 ? '100%' : width < 1200 ? '48.5%' : '31.5%',
+                      padding: 14,
+                      backgroundColor: accent.backgroundColor,
+                      borderColor: accent.borderColor,
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                          <Building2 size={17} color={accent.icon} />
                         </View>
-                        <Text numberOfLines={1} style={{ flex: 1, fontFamily: "Outfit_700Bold", fontSize: 13, color: ui.colors.text }}>{org.name}</Text>
-                      </View>
-                      <View style={{ flex: 1.5, flexDirection: 'row', alignItems: 'center', paddingRight: 16 }}>
-                        <User size={13} color={coreColor("#0F766E", 'primaryText')} />
-                        <Text numberOfLines={1} style={{ marginLeft: 7, fontFamily: "Outfit_400Regular", fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
-                      </View>
-                      <View style={{ width: 100, alignItems: 'flex-start' }}>
-                        <View style={{ backgroundColor: coreColor('#F1F5F9', 'surface'), borderWidth: 1, borderColor: coreColor('#E2E8F0', 'border'), paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
-                          <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 9, color: coreColor('#0F766E', 'primaryText'), textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
+                        <View style={{ flex: 1, minWidth: 0, gap: 8 }}>
+                          <Text numberOfLines={2} style={{ fontFamily: 'Outfit_700Bold', fontSize: 14, lineHeight: 19, color: ui.colors.text }}>{org.name}</Text>
+                          <View style={{ alignSelf: 'flex-start', backgroundColor: ui.colors.surface, borderWidth: 1, borderColor: ui.colors.border, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 }}>
+                            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 9, color: coreColor('#0F766E', 'primaryText'), textTransform: 'uppercase' }}>{org.org_type || 'UNIT'}</Text>
+                          </View>
                         </View>
                       </View>
-                      <View style={{ width: 160, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+
+                      <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: accent.borderColor, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+                        <User size={14} color={coreColor('#0F766E', 'primaryText')} />
+                        <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, marginLeft: 7, fontFamily: 'Outfit_400Regular', fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
+                      </View>
+
+                      <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
                         {!showArchived && FEATURE_FLAGS.ENABLE_ONBOARDING && (
                           <TouchableOpacity
                             onPress={() => handleResetPassword(org)}
+                            accessibilityRole="button"
                             accessibilityLabel={`Reset Password for ${org.name}`}
                             disabled={isResettingCredential}
-                            style={{ width: 34, height: 34, backgroundColor: coreColor('#FEF2F2', 'dangerSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FECACA', 'border') }}
+                            style={actionStyle(coreColor('#FEF2F2', 'dangerSoft'), coreColor('#FECACA', 'border'))}
                           >
-                            <RefreshCw size={15} color={coreColor("#DC2626", 'danger')} />
+                            <RefreshCw size={15} color={coreColor('#DC2626', 'danger')} />
                           </TouchableOpacity>
                         )}
                         {!showArchived && <TouchableOpacity
                           onPress={() => router.push(`/unit-profile/${org.id}`)}
+                          accessibilityRole="button"
                           accessibilityLabel={`Open ${org.name}`}
-                          style={{ width: 34, height: 34, backgroundColor: coreColor('#EFF6FF', 'infoSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#BFDBFE', 'border') }}
+                          style={actionStyle(coreColor('#EFF6FF', 'infoSoft'), coreColor('#BFDBFE', 'border'))}
                         >
-                          <ExternalLink size={15} color={coreColor("#2563EB", 'info')} />
+                          <ExternalLink size={15} color={coreColor('#2563EB', 'info')} />
                         </TouchableOpacity>}
                         {!showArchived && <TouchableOpacity
                           onPress={() => handleArchiveOrg(org)}
+                          accessibilityRole="button"
                           accessibilityLabel={`Archive ${org.name}`}
                           disabled={isArchiving}
-                          style={{ width: 34, height: 34, backgroundColor: coreColor('#FFFBEB', 'warningSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FDE68A', 'border') }}
+                          style={actionStyle(coreColor('#FFFBEB', 'warningSoft'), coreColor('#FDE68A', 'border'))}
                         >
-                          <Archive size={15} color={coreColor("#B45309", 'warning')} />
+                          <Archive size={15} color={coreColor('#B45309', 'warning')} />
                         </TouchableOpacity>}
-                        {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: coreColor('#ECFDF5', 'successSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#A7F3D0', 'border') }}>
-                          <RotateCcw size={15} color={coreColor("#047857", 'success')} />
+                        {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityRole="button" accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={actionStyle(coreColor('#ECFDF5', 'successSoft'), coreColor('#A7F3D0', 'border'))}>
+                          <RotateCcw size={15} color={coreColor('#047857', 'success')} />
                         </TouchableOpacity>}
-                        {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={{ width: 34, height: 34, backgroundColor: coreColor('#FEF2F2', 'dangerSoft'), alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: coreColor('#FECACA', 'border') }}>
-                          <Trash2 size={15} color={coreColor("#DC2626", 'danger')} />
+                        {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityRole="button" accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={actionStyle(coreColor('#FEF2F2', 'dangerSoft'), coreColor('#FECACA', 'border'))}>
+                          <Trash2 size={15} color={coreColor('#DC2626', 'danger')} />
                         </TouchableOpacity>}
                       </View>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
+                    </SsfCard>
+                  );
+                })}
+              </View>
             )}
           </View>
         </ScrollView>

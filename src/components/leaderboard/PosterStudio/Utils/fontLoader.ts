@@ -4,6 +4,7 @@ export interface FontDefinition {
   family: string;
   url: string;
   category?: string;
+  weights?: string;
 }
 
 export const ML_FONTS: FontDefinition[] = [
@@ -48,6 +49,7 @@ export const EN_FONTS: FontDefinition[] = [
   { family: 'Barlow Condensed', category: 'Display / Poster', weights: '300,400,500,600,700' },
   { family: 'Teko', category: 'Display / Poster', weights: '300,400,500,600,700' },
   { family: 'Exo 2', category: 'Display / Poster', weights: '300,400,500,600,700' },
+  { family: 'Abril Fatface', category: 'Display / Poster', weights: '400' },
   
   // Serif / Elegant
   { family: 'Playfair Display', category: 'Serif / Elegant', weights: '400,500,600,700' },
@@ -144,30 +146,47 @@ export function isFontLoaded(family: string): boolean {
 }
 
 /** Smart Font Metrics Cache for malayalam/english text measurement */
-const metricsCache = new Map<string, { width: number; height: number }>();
+const metricsCache = new Map<string, { width: number; height: number; lines: number }>();
+
+function formatFontFamilySpec(fontFamily: string): string {
+  const trimmed = (fontFamily || 'Inter').trim();
+  if (/["',]/.test(trimmed)) return trimmed;
+  return `"${trimmed}", "Noto Sans Malayalam", "Inter", sans-serif`;
+}
 
 export function measureText(
   text: string,
   fontFamily: string,
   fontSize: number,
   fontWeight: number = 400,
-  maxWidth?: number
-): { width: number; height: number } {
-  const cacheKey = `${text}|${fontFamily}|${fontSize}|${fontWeight}|${maxWidth ?? 'nomax'}`;
+  maxWidth?: number,
+  lineHeight: number = 1.2
+): { width: number; height: number; lines: number } {
+  const cacheKey = `${text}|${fontFamily}|${fontSize}|${fontWeight}|${maxWidth ?? 'nomax'}|${lineHeight}`;
   if (metricsCache.has(cacheKey)) return metricsCache.get(cacheKey)!;
 
-  if (typeof document === 'undefined') return { width: 0, height: 0 };
+  if (typeof document === 'undefined') return { width: 0, height: 0, lines: 1 };
 
   const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
-  ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return { width: 0, height: 0, lines: 1 };
 
-  const words = text.split(' ');
-  let lines = 1;
-  let currentLine = '';
+  ctx.font = `${fontWeight} ${fontSize}px ${formatFontFamilySpec(fontFamily)}`;
+
+  const paragraphs = (text || '').split('\n');
+  let lines = 0;
   let maxLineWidth = 0;
 
-  if (maxWidth) {
+  paragraphs.forEach((paragraph) => {
+    if (!maxWidth) {
+      lines++;
+      maxLineWidth = Math.max(maxLineWidth, ctx.measureText(paragraph).width);
+      return;
+    }
+
+    const words = paragraph.split(' ');
+    let currentLine = '';
+
     words.forEach((word) => {
       const testLine = currentLine ? `${currentLine} ${word}` : word;
       const metrics = ctx.measureText(testLine);
@@ -179,14 +198,69 @@ export function measureText(
         currentLine = testLine;
       }
     });
-    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
-  } else {
-    maxLineWidth = ctx.measureText(text).width;
-  }
 
-  const result = { width: Math.ceil(maxLineWidth), height: Math.ceil(fontSize * 1.4 * lines) };
+    lines++;
+    maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+  });
+
+  lines = Math.max(1, lines);
+  const result = {
+    width: Math.ceil(maxLineWidth),
+    height: Math.ceil(fontSize * lineHeight * lines),
+    lines,
+  };
   metricsCache.set(cacheKey, result);
   return result;
+}
+
+export interface AutoShrinkOptions {
+  text: string;
+  fontFamily?: string;
+  baseFontSize: number;
+  fontWeight?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  maxLines?: number;
+  lineHeight?: number;
+  minFontSize?: number;
+}
+
+export function computeAutoShrinkFontSize({
+  text,
+  fontFamily = 'Poppins',
+  baseFontSize,
+  fontWeight = 400,
+  maxWidth,
+  maxHeight,
+  maxLines,
+  lineHeight = 1.2,
+  minFontSize = 12,
+}: AutoShrinkOptions): number {
+  if (!text || !maxWidth || maxWidth <= 0 || typeof document === 'undefined') {
+    return baseFontSize;
+  }
+
+  const effectiveMin = Math.min(minFontSize, baseFontSize);
+  let low = effectiveMin;
+  let high = Math.max(effectiveMin, Math.round(baseFontSize));
+  let best = effectiveMin;
+
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    const metrics = measureText(text, fontFamily, mid, fontWeight, maxWidth, lineHeight);
+    const fitsWidth = metrics.width <= maxWidth;
+    const fitsHeight = !maxHeight || maxHeight <= 0 || metrics.height <= maxHeight;
+    const fitsLines = !maxLines || maxLines <= 0 || metrics.lines <= maxLines;
+
+    if (fitsWidth && fitsHeight && fitsLines) {
+      best = mid;
+      low = mid + 1;
+    } else {
+      high = mid - 1;
+    }
+  }
+
+  return best;
 }
 
 export function clearMetricsCache() {

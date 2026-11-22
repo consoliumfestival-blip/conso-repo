@@ -2,6 +2,7 @@ import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import React, { useState, useRef } from 'react';
 import { fontService, FontMetadata } from '../../../../services/fontService';
 import { useAuthStore } from '../../../../core/store/authStore';
+import { useFestival } from '../../../../core/hooks/useFestival';
 import { useLocalSearchParams } from 'expo-router';
 
 interface FontManagerPanelProps {
@@ -11,8 +12,11 @@ interface FontManagerPanelProps {
 
 export default function FontManagerPanel({ onClose, onUploadSuccess }: FontManagerPanelProps) {
   const { tenant_id } = useAuthStore();
+  const { useActiveFestival } = useFestival();
+  const { data: activeFestival } = useActiveFestival();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const festivalId = Array.isArray(id) ? id[0] : id;
+  const paramFestivalId = Array.isArray(id) ? id[0] : id;
+  const festivalId = activeFestival?.id || paramFestivalId || '';
 
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);

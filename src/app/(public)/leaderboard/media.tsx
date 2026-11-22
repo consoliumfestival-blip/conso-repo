@@ -44,7 +44,7 @@ export default function PublicMediaCenter() {
         .select(`
           *,
           item:items(item_name_en, item_name_ml, item_type),
-          result:results(public_result_no)
+          result:results(public_result_no, public_visible)
         `)
         .eq('festival_id', festivalInfo.id)
         .order('created_at', { ascending: false });
@@ -52,6 +52,9 @@ export default function PublicMediaCenter() {
       if (error) throw error;
       
       const grouped = (data as any[]).reduce((acc, curr, idx) => {
+        if (curr.is_current === false) return acc;
+        if (curr.visibility_status && curr.visibility_status !== 'published') return acc;
+        if (curr.result && curr.result.public_visible === false) return acc;
         const key = curr.render_hash || `_ungrouped_${idx}`;
         if (!acc[key]) {
           acc[key] = {
@@ -166,7 +169,7 @@ export default function PublicMediaCenter() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {posters.map((poster, idx) => {
-                const imgUrl = poster.resolutions['1080x1080'] || Object.values(poster.resolutions)[0] as string;
+                const imgUrl = poster.resolutions.hd || poster.resolutions.standard || poster.resolutions.share || Object.values(poster.resolutions)[0] as string;
                 return (
                   <div key={idx} className="bg-[#121212]/70 backdrop-blur-md border border-[#333] rounded-[2rem] overflow-hidden shadow-xl group hover:border-[#555] transition-colors flex flex-col">
                     <div className="aspect-square w-full relative bg-black/50">
@@ -211,7 +214,7 @@ export default function PublicMediaCenter() {
           <div className="w-full h-full flex items-center justify-center p-8">
              {posters.length > 0 && (() => {
                const activePoster = posters[activeSlide];
-               const imgUrl = activePoster.resolutions['1080x1080'] || Object.values(activePoster.resolutions)[0] as string;
+               const imgUrl = activePoster.resolutions.hd || activePoster.resolutions.standard || activePoster.resolutions.share || Object.values(activePoster.resolutions)[0] as string;
                return (
                  <div className="relative w-full h-full flex items-center justify-center animate-fade-in">
                    <img 

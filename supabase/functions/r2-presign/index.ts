@@ -37,7 +37,10 @@ const allowedObjectKey = (value: string) => {
   if (value.startsWith('generated-posters/')) {
     return /^generated-posters\/[a-zA-Z0-9._-]+$/.test(value);
   }
-  return /^festivals\/[a-zA-Z0-9-]+\/(profiles\/[a-zA-Z0-9-]+\/|certificates\/|exports\/|results\/|backups\/|posters\/|logos\/)[a-zA-Z0-9._-]+$/.test(value);
+  if (value.startsWith('tenants/')) {
+    return /^tenants\/[a-zA-Z0-9-]+\/fonts\/[a-zA-Z0-9._-]+$/.test(value);
+  }
+  return /^festivals\/[a-zA-Z0-9-]+\/(profiles\/[a-zA-Z0-9-]+\/|certificates\/|exports\/|results\/|backups\/|posters\/|logos\/|fonts\/)[a-zA-Z0-9._-]+$/.test(value);
 };
 
 serve(async (req: Request) => {
@@ -47,44 +50,16 @@ serve(async (req: Request) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+      authHeader ? { global: { headers: { Authorization: authHeader } } } : undefined
     );
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    // Get user to verify authentication
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { data: profile, error: profileError } = await supabaseClient
-      .from('profiles')
-      .select('tenant_id, role, is_superadmin')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (profileError || !profile) {
-      return new Response(JSON.stringify({ error: 'Administrator profile not found' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const isAdmin = Boolean(profile.is_superadmin) || ['admin', 'admin_leader'].includes(profile.role);
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: 'Only festival administrators may access managed assets' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
 
     const { objectKey, contentType, operation = 'upload' } = await req.json();
 
@@ -100,6 +75,128 @@ serve(async (req: Request) => {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    if (!['upload', 'download', 'delete', 'verify'].includes(operation)) {
+      return new Response(JSON.stringify({ error: 'Invalid operation' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const canServePublicPublishedAsset = async (key: string): Promise<boolean> => {
+      const { data: asset } = await supabaseAdmin
+        .from('generated_assets')
+        .select('id, event_id, result_id')
+        .eq('storage_path', key)
+        .eq('is_current', true)
+        .eq('visibility_status', 'published')
+        .limit(1)
+        .maybeSingle();
+
+      if (!asset) return false;
+      if (!asset.event_id && !asset.result_id) return true;
+
+      let resQuery = supabaseAdmin
+        .from('results')
+        .select('id')
+        .eq('published', true)
+        .eq('result_status', 'published')
+        .eq('public_visible', true)
+        .limit(1);
+
+      if (asset.event_id && asset.result_id) {
+        resQuery = resQuery.or(`item_id.eq.${asset.event_id},id.eq.${asset.result_id}`);
+      } else if (asset.event_id) {
+        resQuery = resQuery.eq('item_id', asset.event_id);
+      } else if (asset.result_id) {
+        resQuery = resQuery.eq('id', asset.result_id);
+      }
+
+      const { data: pubResult } = await resQuery.maybeSingle();
+      return Boolean(pubResult);
+    };
+
+    // Get user to verify authentication (optional for public published asset download)
+    const { data: { user }, error: userError } = authHeader
+      ? await supabaseClient.auth.getUser()
+      : { data: { user: null }, error: null };
+
+    let profile: { tenant_id: string | null; role: string; is_superadmin: boolean } | null = null;
+    if (!userError && user) {
+      const { data: prof } = await supabaseClient
+        .from('profiles')
+        .select('tenant_id, role, is_superadmin')
+        .eq('id', user.id)
+        .maybeSingle();
+      profile = prof;
+    }
+
+    const isAdmin = Boolean(profile?.is_superadmin) || (!!profile && ['admin', 'admin_leader', 'tenant_admin', 'festival_admin', 'super_admin'].includes(profile.role));
+
+    if (!user || userError) {
+      if (operation === 'download' && await canServePublicPublishedAsset(objectKey)) {
+        const command = new GetObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: objectKey,
+        });
+        const signedPublicUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const publicDomain = Deno.env.get('R2_PUBLIC_DOMAIN') ?? '';
+        return new Response(JSON.stringify({
+          url: signedPublicUrl,
+          objectKey,
+          bucket: R2_BUCKET,
+          publicUrl: publicDomain ? `https://${publicDomain}/${objectKey}` : null,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!profile) {
+      return new Response(JSON.stringify({ error: 'Administrator profile not found' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!isAdmin) {
+      if (operation === 'download' && await canServePublicPublishedAsset(objectKey)) {
+        const command = new GetObjectCommand({
+          Bucket: R2_BUCKET,
+          Key: objectKey,
+        });
+        const signedPublicUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+        const publicDomain = Deno.env.get('R2_PUBLIC_DOMAIN') ?? '';
+        return new Response(JSON.stringify({
+          url: signedPublicUrl,
+          objectKey,
+          bucket: R2_BUCKET,
+          publicUrl: publicDomain ? `https://${publicDomain}/${objectKey}` : null,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        });
+      }
+      return new Response(JSON.stringify({ error: 'Only festival administrators may access managed assets' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const tenantFontMatch = /^tenants\/([a-zA-Z0-9-]+)\/fonts\//.exec(objectKey);
+    if (tenantFontMatch) {
+      if (!profile.is_superadmin && tenantFontMatch[1] !== profile.tenant_id) {
+        return new Response(JSON.stringify({ error: 'Asset is outside your tenant scope' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const festivalMatch = /^festivals\/([a-zA-Z0-9-]+)\//.exec(objectKey);
@@ -150,13 +247,6 @@ serve(async (req: Request) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-    }
-
-    if (!['upload', 'download', 'delete', 'verify'].includes(operation)) {
-      return new Response(JSON.stringify({ error: 'Invalid operation' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
     }
 
     // Poster paths are shared by Poster Studio and Media Center. Require at

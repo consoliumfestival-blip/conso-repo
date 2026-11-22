@@ -324,11 +324,17 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
       if (!festivalId) return [];
       const { data, error } = await supabase
         .from('generated_assets')
-        .select('*')
+        .select('*, result:results(public_visible)')
         .eq('festival_id', festivalId)
         .order('created_at', { ascending: false });
-      if (error) return [];
-      for (const asset of data) {
+      if (error || !data) return [];
+      const visibleAssets = (data as any[]).filter((asset) => {
+        if (asset.is_current === false) return false;
+        if (asset.visibility_status && asset.visibility_status !== 'published') return false;
+        if (asset.result && asset.result.public_visible === false) return false;
+        return true;
+      });
+      for (const asset of visibleAssets) {
          if (asset.public_url && asset.public_url.startsWith('r2://')) {
             const objectKey = asset.public_url.replace('r2://', '');
             try {
@@ -338,7 +344,7 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
             asset.resolved_url = asset.public_url;
          }
       }
-      return data;
+      return visibleAssets;
     },
     enabled: !publicFeaturesLoading && showPublicResults && page === 'items' && !!festivalId
   });
@@ -1329,7 +1335,12 @@ export function SahithyolsavLandingPage({ page = 'landing', children }: { page?:
               
               <div className="space-y-6">
               {groupedItemResults.length > 0 ? groupedItemResults.map((result: any, idx: number) => {
-                const poster = generatedPosters.find((p: any) => p.result_id === result.result_id || (p.item_id && p.item_id === result.item_id));
+                const poster = generatedPosters.find(
+                  (p: any) =>
+                    p.event_id === result.item_id ||
+                    p.result_id === result.result_id ||
+                    (p.event_name && p.event_name === result.item_name)
+                );
                 return (
                 <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-6 shadow-md flex flex-col md:flex-row gap-6 items-center">
                   <div className="flex-1 w-full">

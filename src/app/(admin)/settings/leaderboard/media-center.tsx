@@ -12,6 +12,88 @@ import { storageService } from '@/services/storage/storageService';
 import { uploadService } from '@/services/storage/uploadService';
 import { useAuthStore } from '@/core/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jsPDF } from 'jspdf';
+
+function crc32(bytes: Uint8Array): number {
+  let crc = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    crc ^= bytes[i];
+    for (let j = 0; j < 8; j++) {
+      crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function buildZipBlob(entries: { name: string; data: Uint8Array }[]): Blob {
+  const encoder = new TextEncoder();
+  const localParts: Uint8Array[] = [];
+  const centralParts: Uint8Array[] = [];
+  let offset = 0;
+
+  for (const entry of entries) {
+    const nameBytes = encoder.encode(entry.name);
+    const data = entry.data;
+    const crc = crc32(data);
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lView = new DataView(localHeader.buffer);
+    lView.setUint32(0, 0x04034b50, true);
+    lView.setUint16(4, 20, true);
+    lView.setUint16(6, 0x0800, true);
+    lView.setUint16(8, 0, true); // STORE
+    lView.setUint16(10, 0, true);
+    lView.setUint16(12, 0, true);
+    lView.setUint32(14, crc, true);
+    lView.setUint32(18, data.length, true);
+    lView.setUint32(22, data.length, true);
+    lView.setUint16(26, nameBytes.length, true);
+    lView.setUint16(28, 0, true);
+    localHeader.set(nameBytes, 30);
+
+    localParts.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cView = new DataView(centralHeader.buffer);
+    cView.setUint32(0, 0x02014b50, true);
+    cView.setUint16(4, 20, true);
+    cView.setUint16(6, 20, true);
+    cView.setUint16(8, 0x0800, true);
+    cView.setUint16(10, 0, true);
+    cView.setUint16(12, 0, true);
+    cView.setUint16(14, 0, true);
+    cView.setUint32(16, crc, true);
+    cView.setUint32(20, data.length, true);
+    cView.setUint32(24, data.length, true);
+    cView.setUint16(28, nameBytes.length, true);
+    cView.setUint16(30, 0, true);
+    cView.setUint16(32, 0, true);
+    cView.setUint16(34, 0, true);
+    cView.setUint16(36, 0, true);
+    cView.setUint32(38, 0, true);
+    cView.setUint32(42, offset, true);
+    centralHeader.set(nameBytes, 46);
+
+    centralParts.push(centralHeader);
+    offset += localHeader.length + data.length;
+  }
+
+  let centralSize = 0;
+  for (const part of centralParts) centralSize += part.length;
+
+  const eocd = new Uint8Array(22);
+  const eView = new DataView(eocd.buffer);
+  eView.setUint32(0, 0x06054b50, true);
+  eView.setUint16(4, 0, true);
+  eView.setUint16(6, 0, true);
+  eView.setUint16(8, entries.length, true);
+  eView.setUint16(10, entries.length, true);
+  eView.setUint32(12, centralSize, true);
+  eView.setUint32(16, offset, true);
+  eView.setUint16(20, 0, true);
+
+  return new Blob([...localParts, ...centralParts, eocd] as BlobPart[], { type: 'application/zip' });
+}
 
 const colors = {
   navy: ui.colors.primaryHover,
@@ -34,7 +116,9 @@ export default function MediaCenterPage() {
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const { jobs, isProcessing } = useExportQueueStore();
-  const [filter, setFilter] = useState('all'); // 'all', 'poster', 'certificate'
+  const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const [isExportingZip, setIsExportingZip] = useState(false);
+  const [exportingPdfId, setExportingPdfId] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const { tenant_id } = useAuthStore();
 
@@ -99,17 +183,114 @@ export default function MediaCenterPage() {
     const confirmed = confirm(`Delete poster "${asset.event_name}"?`);
     if (!confirmed) return;
     try {
-      const { error } = await supabase.from('generated_assets').delete().eq('render_hash', asset.render_hash);
+      const query = String(asset.render_hash || '').startsWith('_ungrouped_')
+        ? supabase.from('generated_assets').delete().eq('id', asset.id)
+        : supabase.from('generated_assets').delete().eq('render_hash', asset.render_hash);
+      const { error } = await query;
       if (error) throw error;
-      for (const res of Object.keys(asset.resolutions || {})) {
-        const url = asset.resolutions[res];
-        if (url && url.startsWith('r2://')) {
-          try { await uploadService.deleteObject(url.replace('r2://', '')); } catch (_) {}
+      for (const objectKey of (asset.storage_paths || []) as string[]) {
+        if (objectKey) {
+          try { await uploadService.deleteObject(objectKey); } catch (_) {}
         }
       }
       queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
     } catch (err: any) {
       alert('Delete failed: ' + err.message);
+    }
+  };
+
+  const fetchImageBlob = async (imageUrl: string): Promise<Blob> => {
+    let response = await fetch(imageUrl).catch(() => null);
+    if (!response || !response.ok) {
+      response = await fetch(`/api/proxy-image?url=${encodeURIComponent(imageUrl)}`);
+    }
+    if (!response || !response.ok) {
+      throw new Error('Could not fetch image bytes');
+    }
+    return await response.blob();
+  };
+
+  const handleDownloadPdf = async (asset: any) => {
+    const imageUrl = asset.resolutions?.hd || asset.resolutions?.standard || asset.resolutions?.share;
+    if (!imageUrl || Platform.OS !== 'web') return;
+    setExportingPdfId(asset.render_hash);
+    try {
+      const blob = await fetchImageBlob(imageUrl);
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const img = new window.Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = dataUrl;
+      });
+      const orientation = img.width >= img.height ? 'landscape' : 'portrait';
+      const pdf = new jsPDF({
+        orientation,
+        unit: 'px',
+        format: [img.width || 1080, img.height || 1080],
+      });
+      const imgFormat = blob.type.includes('png') ? 'PNG' : 'JPEG';
+      pdf.addImage(dataUrl, imgFormat, 0, 0, img.width || 1080, img.height || 1080);
+      const safeName = (asset.event_name || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_');
+      pdf.save(`${safeName}.pdf`);
+    } catch (err: any) {
+      alert('PDF export failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setExportingPdfId(null);
+    }
+  };
+
+  const handleBatchZipExport = async (itemsToExport: any[]) => {
+    if (Platform.OS !== 'web' || itemsToExport.length === 0 || isExportingZip) return;
+    setIsExportingZip(true);
+    try {
+      const entries: { name: string; data: Uint8Array }[] = [];
+      const usedNames = new Set<string>();
+
+      for (let i = 0; i < itemsToExport.length; i++) {
+        const asset = itemsToExport[i];
+        const imageUrl = asset.resolutions?.hd || asset.resolutions?.standard || asset.resolutions?.share;
+        if (!imageUrl) continue;
+        try {
+          const blob = await fetchImageBlob(imageUrl);
+          const buf = new Uint8Array(await blob.arrayBuffer());
+          const ext = blob.type.includes('png') ? 'png' : 'jpg';
+          const base = `${asset.result_no ? `${asset.result_no}_` : ''}${asset.event_name || 'poster'}`
+            .replace(/[^a-zA-Z0-9_-]+/g, '_')
+            .slice(0, 60);
+          let fileName = `${base}.${ext}`;
+          let counter = 1;
+          while (usedNames.has(fileName)) {
+            fileName = `${base}_${counter++}.${ext}`;
+          }
+          usedNames.add(fileName);
+          entries.push({ name: fileName, data: buf });
+        } catch (err) {
+          console.warn('Skipping asset in ZIP export:', asset.event_name, err);
+        }
+      }
+
+      if (entries.length === 0) {
+        alert('No downloadable posters found.');
+        return;
+      }
+
+      const zipBlob = buildZipBlob(entries);
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `${(activeFestival?.custom_name || 'festival').replace(/[^a-zA-Z0-9_-]+/g, '_')}_posters.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 10000);
+    } finally {
+      setIsExportingZip(false);
     }
   };
 
@@ -122,26 +303,41 @@ export default function MediaCenterPage() {
         .select(`
           *,
           item:items(item_name_en, item_name_ml, item_type),
-          result:results(public_result_no)
+          result:results(public_result_no, public_visible)
         `)
         .eq('festival_id', activeFestival.id)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
       
-      // Group by render_hash (null-safe — each null gets its own unique key)
+      // Group by render_hash (ignore superseded rows where is_current === false)
       const grouped = (data as any[]).reduce((acc, curr, idx) => {
+        if (curr.is_current === false) return acc;
         const key = curr.render_hash || `_ungrouped_${idx}`;
         if (!acc[key]) {
+          const isExplicitDraft = curr.visibility_status === 'draft' || curr.visibility_status === 'hidden';
+          const isResultHidden = curr.result && curr.result.public_visible === false;
+          const isLivePublic = !isExplicitDraft && !isResultHidden;
           acc[key] = {
             id: curr.id,
             render_hash: key,
             template_id: curr.template_id,
+            event_id: curr.event_id,
+            result_id: curr.result_id,
             event_name: curr.event_name || curr.item?.item_name_en || curr.item?.item_name_ml || 'Festival Event',
             result_no: curr.result?.public_result_no,
+            visibility_status: curr.visibility_status || 'published',
+            is_live_public: isLivePublic,
             created_at: curr.created_at,
+            storage_paths: [] as string[],
             resolutions: {}
           };
+        }
+        if (curr.storage_path && !acc[key].storage_paths.includes(curr.storage_path)) {
+          acc[key].storage_paths.push(curr.storage_path);
+        } else if (curr.public_url && curr.public_url.startsWith('r2://')) {
+          const k = curr.public_url.replace('r2://', '');
+          if (!acc[key].storage_paths.includes(k)) acc[key].storage_paths.push(k);
         }
         acc[key].resolutions[curr.resolution] = curr.public_url;
         return acc;
@@ -325,6 +521,12 @@ export default function MediaCenterPage() {
     }
   };
 
+  const filteredAssets = React.useMemo(() => {
+    if (filter === 'published') return assets.filter((a: any) => a.is_live_public);
+    if (filter === 'draft') return assets.filter((a: any) => !a.is_live_public);
+    return assets;
+  }, [assets, filter]);
+
   const openUrl = (url: string) => {
     if (Platform.OS === 'web') {
       window.open(url, '_blank');
@@ -352,9 +554,15 @@ export default function MediaCenterPage() {
             <RefreshCw size={16} color={coreColor(colors.navy, 'primaryText')} />
             <Text style={styles.btnSecondaryText}>Refresh</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.btnPrimary}>
+          <TouchableOpacity
+            style={[styles.btnPrimary, (isExportingZip || filteredAssets.length === 0) && styles.btnDisabled]}
+            onPress={() => handleBatchZipExport(filteredAssets)}
+            disabled={isExportingZip || filteredAssets.length === 0}
+          >
             <Archive size={16} color={ui.colors.onPrimary} />
-            <Text style={styles.btnPrimaryText}>Batch Export (ZIP)</Text>
+            <Text style={styles.btnPrimaryText}>
+              {isExportingZip ? 'Exporting ZIP...' : `Batch Export (${filteredAssets.length})`}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }]} onPress={() => setShowUploadModal(true)}>
             <Upload size={16} color={ui.colors.onPrimary} />
@@ -374,6 +582,34 @@ export default function MediaCenterPage() {
           </View>
         ) : (
           <>
+            {/* Filter Tabs */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+              {([
+                { key: 'all', label: `All (${assets.length})` },
+                { key: 'published', label: `🌐 Published Live (${assets.filter((a: any) => a.is_live_public).length})` },
+                { key: 'draft', label: `📝 Drafts / Not Public (${assets.filter((a: any) => !a.is_live_public).length})` },
+              ] as const).map((tab) => {
+                const active = filter === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => setFilter(tab.key)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: active ? colors.navy : colors.border,
+                      backgroundColor: active ? colors.navy : colors.card,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFFFFF' : colors.navy }}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <View style={{ marginBottom: 20, padding: 16, backgroundColor: colors.card, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                 <View style={{ flex: 1, minWidth: 250 }}>
@@ -417,7 +653,7 @@ export default function MediaCenterPage() {
               </View>
             </View>
             <View style={styles.grid}>
-              {assets.map((asset: any) => (
+              {filteredAssets.map((asset: any) => (
               <View key={asset.render_hash} style={styles.card}>
                 <View style={styles.imageContainer}>
                   <Image 
@@ -425,18 +661,29 @@ export default function MediaCenterPage() {
                     style={styles.thumbnail}
                     resizeMode="cover"
                   />
+                  <View
+                    style={[
+                      styles.qualityBadge,
+                      {
+                        left: 12,
+                        right: undefined,
+                        backgroundColor: asset.is_live_public ? 'rgba(6, 95, 70, 0.9)' : 'rgba(51, 65, 85, 0.9)',
+                      },
+                    ]}
+                  >
+                    <Text style={styles.qualityText}>
+                      {asset.is_live_public ? '🌐 Live Public' : '📝 Draft (Hidden)'}
+                    </Text>
+                  </View>
                   <View style={styles.qualityBadge}>
                     <Text style={styles.qualityText}>
-                      {asset.resolutions?.hd ? '4K HD' : asset.resolutions?.standard ? 'HD' : 'Standard'}
+                      {asset.resolutions?.hd ? 'HD' : asset.resolutions?.standard ? 'Standard' : 'Poster'}
                     </Text>
                   </View>
                 </View>
                 
                 <View style={styles.cardBody}>
                   <Text style={styles.eventName} numberOfLines={1}>{asset.event_name}</Text>
-                  <Text style={{fontSize: 9, color: 'red', marginTop: 4}} numberOfLines={2}>
-                    URL: {asset.resolutions?.thumb || asset.resolutions?.standard || asset.resolutions?.hd || 'No URL'}
-                  </Text>
                   <Text style={styles.metaText}>
                     {asset.result_no ? `Result #${asset.result_no}` : 'General Poster'} • {new Date(asset.created_at).toLocaleDateString()}
                   </Text>
@@ -448,16 +695,16 @@ export default function MediaCenterPage() {
                       disabled={!asset.resolutions?.hd}
                     >
                       <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
-                      <Text style={styles.actionText}>HD PNG</Text>
+                      <Text style={styles.actionText}>HD Image</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
-                      style={[styles.actionBtn, !asset.resolutions?.print && styles.actionBtnDisabled]}
-                      onPress={() => asset.resolutions?.print && openUrl(asset.resolutions.print)}
-                      disabled={!asset.resolutions?.print}
+                      style={[styles.actionBtn, (!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash) && styles.actionBtnDisabled]}
+                      onPress={() => handleDownloadPdf(asset)}
+                      disabled={!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash}
                     >
                       <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
-                      <Text style={styles.actionText}>PDF</Text>
+                      <Text style={styles.actionText}>{exportingPdfId === asset.render_hash ? 'PDF...' : 'PDF'}</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 
@@ -706,7 +953,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    backdropFilter: 'blur(4px)',
   },
   qualityText: {
     color: ui.colors.onPrimary,

@@ -107,9 +107,9 @@ export default function LayersPanel() {
               <button
                 onClick={(e) => { e.stopPropagation(); toggleLock(l.id); }}
                 style={styles.miniBtn}
-                title={l.isLocked ? 'Unlock' : 'Lock'}
+                title={(l.isLocked || l.lockProfile === 'fully-locked') ? 'Unlock' : 'Lock'}
               >
-                {l.lockProfile === 'fully-locked' ? <Lock size={14} /> : <Unlock size={14} />}
+                {(l.isLocked || l.lockProfile === 'fully-locked') ? <Lock size={14} /> : <Unlock size={14} />}
               </button>
             </div>
           </div>

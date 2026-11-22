@@ -183,7 +183,15 @@ export const useLayerStore = create<LayerStore>((set, get) => ({
     }),
   toggleLock: (id) =>
     set((s) => ({
-      layers: s.layers.map((l) => (l.id === id ? { ...l, isLocked: !l.isLocked } : l)),
+      layers: s.layers.map((l) => {
+        if (l.id !== id) return l;
+        const nextLocked = !(l.isLocked || l.lockProfile === 'fully-locked');
+        return {
+          ...l,
+          isLocked: nextLocked,
+          lockProfile: nextLocked ? 'fully-locked' : 'editable',
+        };
+      }),
     })),
   toggleVisibility: (id) =>
     set((s) => ({

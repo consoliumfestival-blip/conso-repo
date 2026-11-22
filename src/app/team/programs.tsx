@@ -325,6 +325,7 @@ function TeamProgramsContent() {
       ? participants.filter((person) => (groupEligibilityQuery.data ?? []).includes(person.id)
         && !groupRosterQuery.data?.some((member) => member.participant_id === person.id)
         && person.id !== managedParticipant?.participant_id
+        && !!person.chest_number?.trim()
         && person.status !== 'rejected')
       : [];
   const substitutionRequestsByRegistration = new Map(
@@ -905,7 +906,11 @@ function TeamProgramsContent() {
                 <Pressable accessibilityRole="button" accessibilityState={{ disabled: activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id) }} disabled={activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)} onPress={() => { setManageViewMode('substitute'); setSubstitutionError(''); }} style={{ minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: 9, backgroundColor: orange, opacity: (activeViewProgram?.entry_kind === 'general_team' ? pendingGroupSubstitutionRegistrations.has(managedParticipant.registration_id) : pendingSubstitutionRegistrationIds.has(managedParticipant.registration_id)) ? 0.45 : 1 }}><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Request substitution</Text></Pressable>
               </> : <>
                 <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ gap: 8, paddingBottom: 8 }} keyboardShouldPersistTaps="handled">
-                  <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>Select an eligible participant from your team. The request stays pending until an Admin approves it.</Text>
+                  <Text style={{ color: muted, fontSize: 12, lineHeight: 18 }}>
+                    {activeViewProgram?.entry_kind === 'general_team'
+                      ? 'Select an eligible participant from your team. After Admin approval, the replacement becomes group leader.'
+                      : 'Select an eligible participant from your team. The request stays pending until an Admin approves it.'}
+                  </Text>
                   {participantsLoading || (activeViewProgram?.entry_kind === 'general_team' && groupEligibilityQuery.isFetching) ? <ActivityIndicator color={orange} style={{ paddingVertical: 12 }} /> : null}
                   {!!participantError && !participantsLoading ? <Text style={{ color: ui.colors.danger, fontSize: 12, paddingVertical: 10 }}>Could not load replacement participants. Close and retry after refreshing the team list.</Text> : null}
                   {activeViewProgram?.entry_kind === 'general_team' && groupEligibilityQuery.isError ? <Text style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load eligible group members. Close and retry.</Text> : null}

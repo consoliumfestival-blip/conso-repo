@@ -420,7 +420,7 @@ function TabletMenuSheet({ visible, onClose, pathname, items, onSidebar }: {
   const columns = Math.max(1, Math.min(7, Math.floor((windowSize - 28 + 8) / 72)));
   const tileWidth = Math.max(44, Math.floor((windowSize - 28 - (columns - 1) * 8) / columns));
   const navigate = (path: string) => { onClose(); setTimeout(() => router.push(path as any), 150); };
-  return <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+  return <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
     <View style={[styles.modalRoot, { alignItems: position === 'left' ? 'flex-start' : position === 'right' ? 'flex-end' : 'center', padding: 12 }]}>
       <Pressable {...{ dataSet: { tabletMenuScrim: "true" } } as any} style={styles.tabletMenuScrim} onPress={onClose} accessibilityRole="button" accessibilityLabel="Close menu" />
       <SafeAreaView {...{ dataSet: { coreGlass: 'sheet' } } as any} style={[styles.sheet, styles.tabletFloatingSheet, { width: windowSize, height: Math.min(Math.round(windowSize * 0.60), height - 24), maxHeight: height - 24 }]}>
@@ -631,7 +631,6 @@ function TabletFloatingBar({
 
   return (
     <SafeAreaView
-      {...{ dataSet: { coreGlass: "navigation" } } as any}
       pointerEvents="box-none"
       className="no-print"
       style={styles.tabletFloatingBarSafe}
@@ -1040,16 +1039,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: coreColor("#D9E4E2", "border"),
     borderRadius: 18,
-    ...Platform.select({
-      web: { boxShadow: "0 8px 24px rgba(15, 23, 42, 0.12)" } as any,
-      default: {
-        elevation: 8,
-        shadowColor: "#0F172A",
-        shadowOffset: { width: 0, height: 5 },
-        shadowOpacity: 0.14,
-        shadowRadius: 12,
-      },
-    }),
   },
   tabletQuickLinks: {
     flexDirection: "row",
@@ -1132,7 +1121,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     overflow: "hidden",
   },
-  tabletMenuScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15, 23, 42, 0.12)" },
+  tabletMenuScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "transparent" },
   tabletFloatingSheet: { borderRadius: 20, ...ui.shadow },
   positionControls: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto', marginRight: 8 },
   positionButton: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

@@ -328,5 +328,14 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
 [data-tablet-submenu-link="true"]:focus:not(:focus-visible) { outline: none; }
 [data-tablet-submenu-link="true"]:focus-visible { outline: 2px solid var(--core-primary, #0F766E); outline-offset: -2px; }
 
-/* Keep the tablet menu background visible while softening the page behind it. */
-[data-tablet-menu-scrim="true"] { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+/* Fade in only the tablet menu backdrop blur; keep the page free of a dark tint. */
+@keyframes tablet-menu-backdrop-blur-in {
+  from { backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+  to { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+}
+[data-tablet-menu-scrim="true"] {
+  background: transparent !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: tablet-menu-backdrop-blur-in 180ms ease-out both;
+}

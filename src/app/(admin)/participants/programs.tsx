@@ -7,6 +7,7 @@ import { AlertTriangle, Check, ChevronDown, Download, GitCompare, Plus, RefreshC
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
+import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 import { GroupRosterEditor } from '../../../components/participants/GroupRosterEditor';
 import { GroupEntryDeleteDialog } from '../../../components/participants/GroupEntryDeleteDialog';
 import { TeamProgramProgressModal } from '../../../components/participants/TeamProgramProgressModal';
@@ -60,7 +61,6 @@ export default function ProgramsScreen() {
   const [stageFilter, setStageFilter] = useState('All stages');
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [categoryFilter, setCategoryFilter] = useState('All categories');
-  const [filterPicker, setFilterPicker] = useState<'type' | 'stage' | 'status' | 'category' | null>(null);
   const [itemToDeactivate, setItemToDeactivate] = useState<ProgramItem | null>(null);
   const [showTeamProgress, setShowTeamProgress] = useState(false);
   const [showParticipantComparison, setShowParticipantComparison] = useState(false);
@@ -437,17 +437,6 @@ export default function ProgramsScreen() {
   const cardWidth = isPhone ? '100%' : Platform.OS === 'web'
     ? `calc((100% - ${(cardColumns - 1) * cardGap}px) / ${cardColumns})` as any
     : Math.floor((cardsAvailableWidth - (cardColumns - 1) * cardGap) / cardColumns);
-  const pickerOptions = filterPicker ? filterOptions[filterPicker] : [];
-  const pickerValue = filterPicker === 'type' ? typeFilter : filterPicker === 'stage' ? stageFilter : filterPicker === 'status' ? statusFilter : categoryFilter;
-  const setPickerValue = (value: string) => {
-    setPage(1);
-    if (filterPicker === 'type') setTypeFilter(value);
-    if (filterPicker === 'stage') setStageFilter(value);
-    if (filterPicker === 'status') setStatusFilter(value);
-    if (filterPicker === 'category') setCategoryFilter(value);
-    setFilterPicker(null);
-  };
-
   return <View className="flex-1 bg-ssf-bg">
     <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 28 }}>
       <View className="mb-4 flex-row flex-wrap items-end justify-between gap-3">
@@ -476,7 +465,49 @@ export default function ProgramsScreen() {
           <Search size={16} color={coreColor("#64748B", 'textMuted')}/><TextInput value={programSearch} onChangeText={setProgramSearch} placeholder="Search by program name or code..." className="ml-2 flex-1 font-poppins text-sm outline-none" />
           {!!programSearch && <TouchableOpacity onPress={() => setProgramSearch('')} accessibilityLabel="Clear search"><X size={15} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>}
         </View>
-        {([['stage', stageFilter], ['status', statusFilter], ['type', typeFilter], ['category', categoryFilter]] as const).map(([key, value]) => <TouchableOpacity key={key} disabled={key === 'status' && !!statuses.error} onPress={() => setFilterPicker(key)} className="h-10 flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" style={{ minWidth: isPhone ? 0 : 112, width: isPhone ? '48%' : undefined, flexGrow: isPhone ? 1 : 0, height: isPhone ? 44 : 40, opacity: key === 'status' && statuses.error ? 0.5 : 1 }} accessibilityRole="button" accessibilityLabel={`${key} filter, currently ${key === 'status' && statuses.error ? 'unavailable' : value}`}><Text className="min-w-0 flex-1 font-poppins text-xs text-ui-text" numberOfLines={1}>{key === 'status' && statuses.error ? 'Status unavailable' : key === 'category' && value === 'GENERAL' ? 'General' : value}</Text><ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/></TouchableOpacity>)}
+        {([['stage', stageFilter], ['status', statusFilter], ['type', typeFilter], ['category', categoryFilter]] as const).map(([key, value]) => {
+          const disabled = key === 'status' && !!statuses.error;
+          const updateValue = (nextValue: string) => {
+            setPage(1);
+            if (key === 'stage') setStageFilter(nextValue);
+            if (key === 'status') setStatusFilter(nextValue);
+            if (key === 'type') setTypeFilter(nextValue);
+            if (key === 'category') setCategoryFilter(nextValue);
+          };
+          const options = filterOptions[key].map(option => ({
+            label: key === 'category' && option === 'GENERAL' ? 'General' : option,
+            value: option,
+          }));
+          const controlStyle = {
+            minWidth: isPhone ? 0 : 112,
+            width: isPhone ? '48%' as const : undefined,
+            flexGrow: isPhone ? 1 : 0,
+            height: isPhone ? 44 : 40,
+            opacity: disabled ? 0.5 : 1,
+          };
+          return disabled ? (
+            <TouchableOpacity key={key} disabled className="h-10 flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3" style={controlStyle} accessibilityRole="button" accessibilityLabel="Status filter unavailable">
+              <Text className="min-w-0 flex-1 font-poppins text-xs text-ui-text" numberOfLines={1}>Status unavailable</Text>
+              <ChevronDown size={14} color={coreColor("#64748B", 'textMuted')}/>
+            </TouchableOpacity>
+          ) : (
+            <SsfSelectMenu
+              key={key}
+              value={value}
+              onValueChange={updateValue}
+              options={options}
+              placeholder={filterOptions[key][0]}
+              accessibilityLabel={`Filter by ${key}`}
+              compact
+              active={value !== filterOptions[key][0]}
+              minMenuWidth={isPhone ? 160 : 190}
+              maxMenuHeight={260}
+              autoFocusSearch={false}
+              keepInViewport
+              style={controlStyle}
+            />
+          );
+        })}
         {hasActiveFilters ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setPage(1); setTypeFilter('All types'); setStageFilter('All stages'); setStatusFilter('All statuses'); setCategoryFilter('All categories'); }} className="min-h-11 justify-center px-2" style={{ width: isPhone ? '100%' : undefined, alignItems: isPhone ? 'flex-end' : 'center' }}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Clear filters</Text></TouchableOpacity> : null}
       </View>
       {!itemsError && !statuses.error && <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>}
@@ -504,10 +535,6 @@ export default function ProgramsScreen() {
         <SsfButton label="Next" size="sm" variant="outline" disabled={page * 20 >= (pageQuery.data?.total ?? 0) || pageQuery.isFetching || programSearch.trim() !== debouncedSearch} onPress={() => setPage(value => value + 1)} />
       </View>
     </ScrollView>
-
-    <Modal visible={!!filterPicker} transparent animationType="fade" onRequestClose={() => setFilterPicker(null)}>
-      <View className="flex-1 bg-core-surface-strong-black/40" style={{ justifyContent: isPhone ? 'flex-end' : 'center', padding: isPhone ? 0 : 16 }}><View className="max-h-[75%] bg-core-surface-white p-4" style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16, borderBottomLeftRadius: isPhone ? 0 : 16, borderBottomRightRadius: isPhone ? 0 : 16, paddingBottom: isPhone ? 24 : 16 }}><View className="mb-3 flex-row items-center justify-between"><Text className="font-poppins-bold text-base text-ui-text">Filter programs</Text><TouchableOpacity onPress={() => setFilterPicker(null)} accessibilityLabel="Close filter" className="min-h-11 min-w-11 items-center justify-center"><X size={19} color={coreColor("#475569", 'text')}/></TouchableOpacity></View><ScrollView>{pickerOptions.map(option => <TouchableOpacity key={option} onPress={() => setPickerValue(option)} className="min-h-11 justify-center border-b border-ui-border"><Text className={`font-poppins text-sm ${pickerValue === option ? 'font-poppins-bold text-core-success-emerald-800' : 'text-ui-text'}`}>{option}</Text></TouchableOpacity>)}</ScrollView></View></View>
-    </Modal>
 
     <Modal visible={!!itemToDeactivate} transparent animationType="fade" onRequestClose={() => !deactivating && setItemToDeactivate(null)}>
       <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-4"><View style={{ width: Math.min(width - 32, 520), maxHeight: height - 40 }} className="rounded-xl bg-core-surface-white p-5">

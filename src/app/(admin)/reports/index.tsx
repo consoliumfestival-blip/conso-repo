@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileText, Printer } from 'lucide-react-native';
+import { Check, Download, FileText, Printer, Square } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useFestivalCategories } from '@/core/hooks/useFestivalCategories';
@@ -13,7 +13,7 @@ import { loadAdminExportGroupMembers, loadAdminExportPeople, loadAdminExportRegi
 import type { ExportAssignment, ExportItem, ExportParticipant } from '@/services/participantExportService';
 import { scheduleService } from '@/services/scheduleService';
 
-type ReportKind = 'program_list' | 'team_items' | 'participant_slips' | 'festival_schedule' | 'venue_schedule' | 'organisation_schedule' | 'blank_schedule' | 'team_attendance' | 'chance_sheet';
+type ReportKind = 'program_list' | 'team_items' | 'participant_slips' | 'team_results' | 'festival_schedule' | 'venue_schedule' | 'organisation_schedule' | 'blank_schedule' | 'team_attendance' | 'chance_sheet';
 
 const CATEGORY_EQUIVALENTS: Record<string, string> = {
   JUNIOR: 'JR', JR: 'JR', SENIOR: 'SR', SR: 'SR', CAMPUS: 'CA', CA: 'CA', GENERAL: 'GN', GN: 'GN',
@@ -28,6 +28,7 @@ const REPORT_OPTIONS: { value: ReportKind; label: string; detail: string }[] = [
   { value: 'program_list', label: 'Program participant list', detail: 'Participants assigned to a selected program, with verification status.' },
   { value: 'team_items', label: 'Team item list', detail: 'A selected team’s participants grouped by program.' },
   { value: 'participant_slips', label: 'Participant slips', detail: 'Printable slips showing each participant’s assigned programs.' },
+  { value: 'team_results', label: 'Selected team program results', detail: 'Stored published points, rank and grade for selected programs assigned to one team.' },
   { value: 'festival_schedule', label: 'Festival master schedule', detail: 'The complete festival schedule in the existing official PDF format.' },
   { value: 'venue_schedule', label: 'Venue-wise schedule', detail: 'The festival schedule using the existing venue-wise PDF format.' },
   { value: 'organisation_schedule', label: 'Organisation-wise schedule', detail: 'Schedule entries grouped with the participant list.' },
@@ -59,9 +60,10 @@ export default function ReportsAndPrintouts() {
   const [teamId, setTeamId] = useState('All');
   const [categoryCode, setCategoryCode] = useState('All');
   const [itemId, setItemId] = useState('All');
+  const [teamResultItemIds, setTeamResultItemIds] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const participantReport = ['program_list', 'team_items', 'participant_slips'].includes(report);
+  const participantReport = ['program_list', 'team_items', 'participant_slips', 'team_results'].includes(report);
   const scheduleReport = ['festival_schedule', 'venue_schedule', 'organisation_schedule', 'blank_schedule', 'team_attendance'].includes(report);
   const filterWidth = compact ? (width >= 480 ? '48%' : '100%') : '23%';
 
@@ -111,7 +113,7 @@ export default function ReportsAndPrintouts() {
   const reportItems = items.filter((item) => (itemId === 'All' || item.id === itemId)
     && (categoryCode === 'All' || itemHasCategory(item, categoryCode)));
   const selectedTeam = (teamsQuery.data ?? []).find((team) => team.id === teamId);
-  const needsTeam = report === 'team_items' || report === 'participant_slips';
+  const needsTeam = report === 'team_items' || report === 'participant_slips' || report === 'team_results';
   const needsSelectedItem = (report === 'program_list' && (fileType === 'PDF' || programScope === 'selected'))
     || report === 'team_items' || report === 'chance_sheet';
   const matchingSchedules = (scheduleQuery.data ?? []).filter((row: any) => reportItems.some((item) => item.id === row.item_id));
@@ -128,6 +130,7 @@ export default function ReportsAndPrintouts() {
       if (teamsQuery.isError) return 'Could not load team options. Retry the request.';
       if (!selectedTeam) return needsTeam ? 'Select a team for this report.' : 'Select an available team.';
     }
+    if (report === 'team_results' && !visiblePrograms.some((program) => teamResultItemIds.has(program.id))) return 'Select one or more programs for this team results report.';
     if (needsSelectedItem && !selectedItem) return report === 'program_list' && fileType === 'CSV'
       ? 'Select a program for the selected-program CSV.'
       : 'Select a program for this PDF report.';
@@ -240,9 +243,11 @@ export default function ReportsAndPrintouts() {
       const registrations = selectedTeam
         ? await loadAdminTeamExportRegistrations(festival.id, selectedTeam.id, selectedTeamParticipantIds)
         : await loadAdminExportRegistrations(festival.id, null);
-      const teamRegistrations = registrations.filter((row: any) => {
-        return itemId === 'All' || row.item_id === itemId;
-      });
+      const selectedResultItems = visiblePrograms.filter((item) => teamResultItemIds.has(item.id));
+      const selectedResultItemIds = selectedResultItems.map((item) => item.id);
+      const teamRegistrations = registrations.filter((row: any) => report === 'team_results'
+        ? selectedResultItemIds.includes(row.item_id)
+        : itemId === 'All' || row.item_id === itemId);
       const groupMembers = await loadAdminExportGroupMembers(teamRegistrations.filter((row: any) => row.status !== 'rejected'));
       const participantIds = Array.from(new Set([
         ...teamRegistrations.map((row: any) => row.participant_id).filter(Boolean),
@@ -266,11 +271,33 @@ export default function ReportsAndPrintouts() {
         const ids: string[] = registration.participant_id ? [registration.participant_id] : membersByRegistration.get(registration.id) ?? [];
         return ids.filter((id) => personById.has(id)).map((id) => ({
           registration_id: registration.id, participant_id: id, item_id: registration.item_id,
+          entry_kind: registration.entry_kind,
           registration_status: registration.status, is_verified: registration.is_verified,
           organisation_id: registration.organisation_id || personById.get(id)?.organisation_id,
           organisation_name: personById.get(id)?.organisation_name,
         }));
       });
+      if (report === 'team_results') {
+        if (!tenantId || !selectedTeam) throw new Error('Select a team and sign in to an admin account to create this report.');
+        if (!selectedResultItemIds.length) throw new Error('Select one or more programs for this report.');
+        const { downloadTeamSelectedResultsPdf, loadAdminPublishedItemResults } = await import('@/services/participantExportService');
+        const results = await loadAdminPublishedItemResults({
+          tenantId,
+          festivalId: festival.id,
+          registrationIds: teamRegistrations.map((registration: any) => registration.id),
+          itemIds: selectedResultItemIds,
+        });
+        downloadTeamSelectedResultsPdf({
+          teamName: selectedTeam.label,
+          festivalName: festival.custom_name || `Festival ${festival.festival_year}`,
+          selectedItemIds: selectedResultItemIds,
+          participants: people,
+          items,
+          assignments,
+          results,
+        });
+        return;
+      }
       const { downloadItemVerificationPdf, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf } = await import('@/services/participantExportService');
       const festivalName = festival.custom_name || `Festival ${festival.festival_year}`;
       if (report === 'program_list') {
@@ -305,9 +332,25 @@ export default function ReportsAndPrintouts() {
           {report === 'program_list' ? <Filter width={filterWidth} label="File type" value={fileType} onChange={(value) => setFileType(value as 'PDF' | 'CSV')} options={reportFormatOptions} /> : null}
           {report === 'program_list' && fileType === 'CSV' ? <Filter width={filterWidth} label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} /> : null}
           {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[...(needsTeam ? [] : [{ value: 'All', label: 'All permitted teams' }]), ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} placeholder={needsTeam ? 'Select a team' : undefined} /> : null}
-          {report !== 'chance_sheet' ? <Filter width={filterWidth} label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); }} options={categoryOptions} /> : null}
-          <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={needsSelectedItem ? visibleProgramOptions.filter((option) => option.value !== 'All') : visibleProgramOptions} placeholder={needsSelectedItem ? 'Select a program' : undefined} />
+          {report !== 'chance_sheet' ? <Filter width={filterWidth} label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); setTeamResultItemIds((current) => new Set([...current].filter((id) => items.some((item) => item.id === id && (value === 'All' || itemHasCategory(item, value)))))); }} options={categoryOptions} /> : null}
+          {report !== 'team_results' ? <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={needsSelectedItem ? visibleProgramOptions.filter((option) => option.value !== 'All') : visibleProgramOptions} placeholder={needsSelectedItem ? 'Select a program' : undefined} /> : null}
         </View>
+        {report === 'team_results' ? <View style={{ gap: 8 }}>
+          <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>SELECT PROGRAMS ({visiblePrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected)</Text>
+          {visiblePrograms.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
+            {visiblePrograms.map((item) => {
+              const isSelected = teamResultItemIds.has(item.id);
+              return <TouchableOpacity key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked: isSelected }} onPress={() => setTeamResultItemIds((current) => {
+                const next = new Set(current);
+                if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+                return next;
+              })} style={{ minHeight: 36, maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 7, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, borderRadius: 7, paddingHorizontal: 9, backgroundColor: ui.colors.surface }}>
+                {isSelected ? <Check size={14} color={ui.colors.primary} /> : <Square size={14} color={ui.colors.textMuted} />}
+                <Text numberOfLines={1} style={{ maxWidth: compact ? width - 100 : 310, fontSize: 11, fontWeight: isSelected ? '700' : '500', color: ui.colors.text }}>{item.item_code ? `${item.item_code} · ` : ''}{item.item_name_en || item.item_name_ml || 'Unnamed program'}</Text>
+              </TouchableOpacity>;
+            })}
+          </View> : <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>No programs match this category.</Text>}
+        </View> : null}
         {((participantReport && teamsQuery.isLoading) || itemsLoading || festivalLoading || (scheduleReport && scheduleQuery.isLoading)) ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><ActivityIndicator size="small" color={ui.colors.primary} /><Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Loading report options…</Text></View> : null}
         {participantReport && teamsQuery.isError ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load team options. Retry before exporting a team report.</Text> : null}
         {festivalError ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryFestival()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry active festival</Text></TouchableOpacity> : null}
@@ -322,7 +365,7 @@ export default function ReportsAndPrintouts() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><FileText size={18} color={ui.colors.primary} /><Text style={{ fontSize: 15, fontWeight: '800', color: ui.colors.text }}>Download</Text></View>
         <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Your current access limits the records in this report.</Text>
         <View style={{ gap: 11, paddingVertical: 2 }}>
-          {[['Report', reportMeta.label], ['Programs', itemId === 'All' ? 'All permitted programs' : selectedItem?.item_name_en || selectedItem?.item_name_ml || selectedItem?.item_code || 'Selected program'], ...(participantReport ? [['Team', selectedTeam?.label || (teamId === 'All' ? 'All permitted teams' : 'Selected team')]] : []), ...(report !== 'chance_sheet' ? [['Category', categoryCode === 'All' ? 'All permitted' : categoryCode]] : []), ['File type', fileType]].map(([label, value]) => <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{label}</Text><Text numberOfLines={2} style={{ flex: 1, textAlign: 'right', color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{value}</Text></View>)}
+          {[['Report', reportMeta.label], ['Programs', report === 'team_results' ? `${visiblePrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected` : itemId === 'All' ? 'All permitted programs' : selectedItem?.item_name_en || selectedItem?.item_name_ml || selectedItem?.item_code || 'Selected program'], ...(participantReport ? [['Team', selectedTeam?.label || (teamId === 'All' ? 'All permitted teams' : 'Selected team')]] : []), ...(report !== 'chance_sheet' ? [['Category', categoryCode === 'All' ? 'All permitted' : categoryCode]] : []), ['File type', fileType]].map(([label, value]) => <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{label}</Text><Text numberOfLines={2} style={{ flex: 1, textAlign: 'right', color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{value}</Text></View>)}
         </View>
         <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !canDownload, busy }} disabled={!canDownload} onPress={download} style={{ minHeight: 44, borderRadius: 8, backgroundColor: ui.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: canDownload ? 1 : 0.55 }}>
           {busy ? <ActivityIndicator size="small" color="#fff" /> : <Download size={16} color="#fff" />}

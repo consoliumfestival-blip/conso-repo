@@ -257,71 +257,84 @@ html:has(#team-leader-portal, #team-leader-portal-active) ::-webkit-scrollbar-th
   [data-core-theme-scope] { --core-blur: none !important; }
 }
 
-/* UI appearance never changes printable documents. */
+/* Keep every browser print/PDF monochrome, independent of the active UI theme. */
 @media print {
+  @page { background: #fff; }
   [data-core-theme-scope] {
-    --core-background: #F6F7F9 !important;
-    --core-background-rgb: 246 247 249 !important;
-    --core-surface: #FFFFFF !important;
+    --core-background: #fff !important;
+    --core-background-rgb: 255 255 255 !important;
+    --core-surface: #fff !important;
     --core-surface-rgb: 255 255 255 !important;
-    --core-surface-muted: #F1F4F7 !important;
-    --core-surface-muted-rgb: 241 244 247 !important;
-    --core-surface-strong: #E8EDF2 !important;
-    --core-surface-strong-rgb: 232 237 242 !important;
-    --core-text: #111827 !important;
-    --core-text-rgb: 17 24 39 !important;
-    --core-text-muted: #64748B !important;
-    --core-text-muted-rgb: 100 116 139 !important;
-    --core-text-subtle: #94A3B8 !important;
-    --core-text-subtle-rgb: 148 163 184 !important;
-    --core-border: #E2E8F0 !important;
-    --core-border-rgb: 226 232 240 !important;
-    --core-border-strong: #CBD5E1 !important;
-    --core-border-strong-rgb: 203 213 225 !important;
-    --core-primary: #0F766E !important;
-    --core-primary-rgb: 15 118 110 !important;
-    --core-primary-hover: #0B5D56 !important;
-    --core-primary-hover-rgb: 11 93 86 !important;
-    --core-primary-soft: #E7F6F3 !important;
-    --core-primary-soft-rgb: 231 246 243 !important;
-    --core-on-primary: #FFFFFF !important;
-    --core-on-primary-rgb: 255 255 255 !important;
-    --core-sidebar: #102A2E !important;
-    --core-sidebar-rgb: 16 42 46 !important;
-    --core-sidebar-soft: #17383D !important;
-    --core-sidebar-soft-rgb: 23 56 61 !important;
-    --core-sidebar-text: #D7E8E8 !important;
-    --core-sidebar-text-rgb: 215 232 232 !important;
-    --core-success: #15803D !important;
-    --core-success-rgb: 21 128 61 !important;
-    --core-success-soft: #DCFCE7 !important;
-    --core-success-soft-rgb: 220 252 231 !important;
-    --core-warning: #B45309 !important;
-    --core-warning-rgb: 180 83 9 !important;
-    --core-warning-soft: #FEF3C7 !important;
-    --core-warning-soft-rgb: 254 243 199 !important;
-    --core-danger: #DC2626 !important;
-    --core-danger-rgb: 220 38 38 !important;
-    --core-danger-soft: #FEE2E2 !important;
-    --core-danger-soft-rgb: 254 226 226 !important;
-    --core-info: #2563EB !important;
-    --core-info-rgb: 37 99 235 !important;
-    --core-info-soft: #DBEAFE !important;
-    --core-info-soft-rgb: 219 234 254 !important;
-    --core-overlay: #0F172A !important;
-    --core-overlay-rgb: 15 23 42 !important;
-    --core-primary-text: #0F766E !important;
-    --core-primary-text-rgb: 15 118 110 !important;
-    --core-success-action: #15803D !important;
-    --core-success-action-rgb: 21 128 61 !important;
-    --core-warning-action: #B45309 !important;
-    --core-warning-action-rgb: 180 83 9 !important;
-    --core-danger-action: #DC2626 !important;
-    --core-danger-action-rgb: 220 38 38 !important;
-    --core-info-action: #2563EB !important;
-    --core-info-action-rgb: 37 99 235 !important;
+    --core-surface-muted: #fff !important;
+    --core-surface-muted-rgb: 255 255 255 !important;
+    --core-surface-strong: #fff !important;
+    --core-surface-strong-rgb: 255 255 255 !important;
+    --core-text: #000 !important;
+    --core-text-rgb: 0 0 0 !important;
+    --core-text-muted: #000 !important;
+    --core-text-muted-rgb: 0 0 0 !important;
+    --core-text-subtle: #000 !important;
+    --core-text-subtle-rgb: 0 0 0 !important;
+    --core-border: #000 !important;
+    --core-border-rgb: 0 0 0 !important;
+    --core-border-strong: #000 !important;
+    --core-border-strong-rgb: 0 0 0 !important;
+    --core-primary: #000 !important;
+    --core-primary-rgb: 0 0 0 !important;
+    --core-primary-hover: #000 !important;
+    --core-primary-hover-rgb: 0 0 0 !important;
+    --core-primary-soft: #fff !important;
+    --core-primary-soft-rgb: 255 255 255 !important;
+    --core-on-primary: #000 !important;
+    --core-on-primary-rgb: 0 0 0 !important;
+    --core-sidebar: #fff !important;
+    --core-sidebar-rgb: 255 255 255 !important;
+    --core-sidebar-soft: #fff !important;
+    --core-sidebar-soft-rgb: 255 255 255 !important;
+    --core-sidebar-text: #000 !important;
+    --core-sidebar-text-rgb: 0 0 0 !important;
+    --core-success: #000 !important;
+    --core-success-rgb: 0 0 0 !important;
+    --core-success-soft: #fff !important;
+    --core-success-soft-rgb: 255 255 255 !important;
+    --core-warning: #000 !important;
+    --core-warning-rgb: 0 0 0 !important;
+    --core-warning-soft: #fff !important;
+    --core-warning-soft-rgb: 255 255 255 !important;
+    --core-danger: #000 !important;
+    --core-danger-rgb: 0 0 0 !important;
+    --core-danger-soft: #fff !important;
+    --core-danger-soft-rgb: 255 255 255 !important;
+    --core-info: #000 !important;
+    --core-info-rgb: 0 0 0 !important;
+    --core-info-soft: #fff !important;
+    --core-info-soft-rgb: 255 255 255 !important;
+    --core-overlay: #fff !important;
+    --core-overlay-rgb: 255 255 255 !important;
+    --core-primary-text: #000 !important;
+    --core-primary-text-rgb: 0 0 0 !important;
+    --core-success-action: #000 !important;
+    --core-success-action-rgb: 0 0 0 !important;
+    --core-warning-action: #000 !important;
+    --core-warning-action-rgb: 0 0 0 !important;
+    --core-danger-action: #000 !important;
+    --core-danger-action-rgb: 0 0 0 !important;
+    --core-info-action: #000 !important;
+    --core-info-action-rgb: 0 0 0 !important;
     --core-blur: none !important;
   }
+  html, body, body * {
+    color: #000 !important;
+    background-color: #fff !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body * { background-image: none !important; }
+  img, svg { filter: grayscale(1) !important; }
+  .print-card { border-color: #000 !important; }
 }
 
 /* Pointer focus should not draw a black browser outline on tablet submenu links. */

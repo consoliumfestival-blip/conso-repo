@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import type { AdminSubstitutionRequest } from '@/services/teamSubstitutionService';
+import { PDF_MONOCHROME_CSS } from '@/utils/pdfTheme';
 
 function escapeHtml(value: string | null | undefined) {
   return (value ?? '').replace(/[&<>"']/g, (character) => ({
@@ -29,23 +30,24 @@ function buildHtml(requests: AdminSubstitutionRequest[]) {
     </article>`).join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pending program substitutions</title>
   <style>
-    @page { size: A4; margin: 14mm; }
+    ${PDF_MONOCHROME_CSS}
+    @page { size: A4; margin: 10mm; }
     * { box-sizing: border-box; }
-    body { color: #18212b; font: 12px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-    h1 { font-size: 19px; margin: 0 0 4px; }
-    .subtitle { color: #586779; margin: 0 0 16px; }
-    .request { border: 1px solid #aab4be; padding: 10px 12px; margin: 0 0 10px; break-inside: avoid; }
+    body { color: #000; font: 10px/1.3 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1 { font-size: 16px; margin: 0 0 3px; }
+    .subtitle { color: #000; margin: 0 0 10px; }
+    .request { border: 1px solid #000; padding: 7px 8px; margin: 0 0 7px; break-inside: avoid; }
     .heading, .change, .date { display: flex; justify-content: space-between; gap: 10px; }
     .heading strong { font-size: 14px; }
-    .heading span, .team, .date, .change span { color: #526171; }
+    .heading span, .team, .date, .change span { color: #000; }
     .team { margin-top: 2px; }
-    .change { justify-content: flex-start; align-items: center; margin-top: 10px; }
+    .change { justify-content: flex-start; align-items: center; margin-top: 7px; }
     .change > div:not(.arrow) { min-width: 42%; display: grid; gap: 1px; }
-    .change small, .reason small { color: #526171; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+    .change small, .reason small { color: #000; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
     .arrow { font-size: 17px; }
-    .reason { border-top: 1px solid #d6dce2; margin-top: 9px; padding-top: 7px; }
+    .reason { border-top: 1px solid #000; margin-top: 7px; padding-top: 5px; }
     .reason p { white-space: pre-wrap; margin: 2px 0 0; overflow-wrap: anywhere; }
-    .date { justify-content: flex-start; margin-top: 8px; font-size: 10px; }
+    .date { justify-content: flex-start; margin-top: 6px; font-size: 9px; }
   </style></head><body>
     <h1>Pending program substitutions</h1>
     <p class="subtitle">${requests.length} request(s) · Generated ${escapeHtml(new Date().toLocaleString())}</p>

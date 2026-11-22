@@ -1,12 +1,12 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Asset } from 'expo-asset';
 import type { TeamLeaderContext, TeamLeaderScheduleRow } from './teamLeaderPortalService';
 import { normalizeScheduleLifecycleStatus } from '../core/utils/scheduleLifecycle';
 import { formatScheduleTime } from '../core/utils/scheduleTime';
+import { applyMonochromePdfTheme } from '../utils/pdfTheme';
 
-const NAVY = '#123B63';
-const MUTED = '#64748B';
+const NAVY = '#000000';
+const MUTED = '#000000';
 
 type ScheduleRow = {
   id: string;
@@ -157,7 +157,7 @@ const writeFooter = (doc: jsPDF, pageNumber: number) => {
   doc.text(`Page ${pageNumber}`, width - 14, height - 8, { align: 'right' });
 };
 
-const makeDocument = () => new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+const makeDocument = () => applyMonochromePdfTheme(new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' }));
 
 export type BlankScheduleItem = {
   item_code?: string | null;
@@ -192,14 +192,7 @@ export type ChanceSheetPdfInput = {
 export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
   if (!input.rows.length) throw new Error('No active entries were found for this item.');
 
-  const logoAsset = Asset.fromModule(require('../../public/brand/consolium-icon-192.png'));
-  await logoAsset.downloadAsync();
-  const logoUri = logoAsset.localUri || logoAsset.uri;
-  const logoResponse = await fetch(logoUri);
-  if (!logoResponse.ok) throw new Error('Unable to load the Consolium logo for this PDF.');
-  const logoBytes = new Uint8Array(await logoResponse.arrayBuffer());
-
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = applyMonochromePdfTheme(new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }));
   const width = doc.internal.pageSize.getWidth();
   const height = doc.internal.pageSize.getHeight();
   const left = 8;
@@ -209,15 +202,14 @@ export async function downloadChanceSheetPdf(input: ChanceSheetPdfInput) {
 
   const drawHeader = () => {
     doc.setTextColor(15, 23, 42);
-    doc.addImage(logoBytes, 'PNG', left, 7, 17, 17);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
-    doc.text('CONSOULIUM', left + 22, 16);
+    doc.text('CONSOULIUM', left, 16);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     const festivalLabel = [input.festivalName, input.festivalYear].filter(Boolean).join(' · ') || 'Festival';
-    doc.setTextColor(100, 116, 139);
-    doc.text(doc.splitTextToSize(festivalLabel, right - (left + 22)), left + 22, 22);
+    doc.setTextColor(0, 0, 0);
+    doc.text(doc.splitTextToSize(festivalLabel, right - left), left, 22);
     doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
@@ -380,7 +372,7 @@ export function downloadBlankSchedulePdf(input: BlankSchedulePdfInput) {
       textColor: [18, 59, 99],
       lineColor: [185, 198, 210],
       lineWidth: 0.3,
-      cellPadding: { top: 6, right: 3, bottom: 6, left: 3 },
+      cellPadding: { top: 2.5, right: 2.5, bottom: 2.5, left: 2.5 },
       overflow: 'linebreak',
       valign: 'middle',
     },

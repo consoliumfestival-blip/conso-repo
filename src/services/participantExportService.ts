@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '@/core/config/supabase';
+import { applyMonochromePdfTheme } from '@/utils/pdfTheme';
 
 export type ExportParticipant = {
   id: string;
@@ -194,10 +195,9 @@ export async function loadAdminScheduleAttendanceData(festivalId: string, itemId
   return { registrations, groupMembers, participants, organisations };
 }
 
-const INK: [number, number, number] = [18, 24, 32];
-const GRID: [number, number, number] = [105, 112, 121];
-const MUTED: [number, number, number] = [78, 84, 92];
-const LIGHT_GRAY: [number, number, number] = [224, 226, 229];
+const INK: [number, number, number] = [0, 0, 0];
+const GRID: [number, number, number] = [0, 0, 0];
+const MUTED: [number, number, number] = [0, 0, 0];
 const PAGE_WIDTH = 210;
 const PAGE_HEIGHT_F4 = 330;
 const PRINT_MARGIN = 10;
@@ -227,6 +227,10 @@ const itemLabel = (item?: ExportItem) => {
 
 function requireWebPdf() {
   if (Platform.OS !== 'web') throw new Error('PDF download is available in the browser portal.');
+}
+
+function createMonochromePdf(doc: jsPDF) {
+  return applyMonochromePdfTheme(doc);
 }
 
 function sortParticipants(rows: ExportParticipant[]) {
@@ -270,7 +274,7 @@ export function downloadTeamParticipantSlipsPdf(args: {
   const participants = sortParticipants(args.participants);
   const maxItems = Math.max(0, ...participants.map((person) => (itemsByParticipant.get(person.id) ?? []).length));
   const slotsPerPage = maxItems > 24 ? 3 : 4;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = createMonochromePdf(new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }));
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const slotHeight = (pageHeight - PRINT_MARGIN * 2) / slotsPerPage;
@@ -365,7 +369,7 @@ export function downloadTeamItemParticipantsPdf(args: {
   });
   if (!groups.size) throw new Error('No active assignments were found for the selected competitions in this team.');
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] });
+  const doc = createMonochromePdf(new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] }));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...INK);
@@ -413,6 +417,145 @@ export function downloadTeamItemParticipantsPdf(args: {
   return { itemCount: groups.size };
 }
 
+export type ExportItemResult = {
+  registration_id: string;
+  item_id: string;
+  points_awarded: number | null;
+  rank: number | string | null;
+  grade: string | null;
+  published_at?: string | null;
+};
+
+/** Load published result snapshots for the exact team roster and selected items. */
+export async function loadAdminPublishedItemResults(input: {
+  festivalId: string;
+  tenantId: string;
+  registrationIds: string[];
+  itemIds: string[];
+}): Promise<ExportItemResult[]> {
+  const registrationIds = Array.from(new Set(input.registrationIds.filter(Boolean)));
+  const itemIds = Array.from(new Set(input.itemIds.filter(Boolean)));
+  if (!registrationIds.length || !itemIds.length) return [];
+
+  const rows: ExportItemResult[] = [];
+  for (let registrationOffset = 0; registrationOffset < registrationIds.length; registrationOffset += 100) {
+    const registrationBatch = registrationIds.slice(registrationOffset, registrationOffset + 100);
+    for (let itemOffset = 0; itemOffset < itemIds.length; itemOffset += 100) {
+      const itemBatch = itemIds.slice(itemOffset, itemOffset + 100);
+      let offset = 0;
+      while (true) {
+        const { data, error } = await supabase.from('results')
+          .select('id,registration_id,item_id,points_awarded,rank,grade,published_at,result_status')
+          .eq('tenant_id', input.tenantId)
+          .eq('festival_id', input.festivalId)
+          .eq('published', true)
+          .in('registration_id', registrationBatch)
+          .in('item_id', itemBatch)
+          .or('result_status.is.null,result_status.eq.published')
+          .order('published_at', { ascending: false, nullsFirst: false })
+          .order('id', { ascending: false })
+          .range(offset, offset + 499);
+        if (error) throw error;
+        const batch = (data ?? []) as ExportItemResult[];
+        rows.push(...batch);
+        if (batch.length < 500) break;
+        offset += 500;
+      }
+    }
+  }
+
+  const latestByAssignment = new Map<string, ExportItemResult>();
+  rows.forEach((row) => {
+    const key = `${row.registration_id}:${row.item_id}`;
+    if (!latestByAssignment.has(key)) latestByAssignment.set(key, row);
+  });
+  return Array.from(latestByAssignment.values());
+}
+
+/** Selected-team results, using stored published marks only. */
+export function downloadTeamSelectedResultsPdf(args: {
+  teamName: string;
+  festivalName?: string | null;
+  selectedItemIds: string[];
+  participants: ExportParticipant[];
+  items: ExportItem[];
+  assignments: ExportAssignment[];
+  results: ExportItemResult[];
+}) {
+  requireWebPdf();
+  const selectedItemIds = new Set(args.selectedItemIds);
+  if (!selectedItemIds.size) throw new Error('Select at least one program for this report.');
+  const people = new Map(args.participants.map((person) => [person.id, person]));
+  const items = new Map(args.items.map((item) => [item.id, item]));
+  const results = new Map(args.results.map((result) => [`${result.registration_id}:${result.item_id}`, result]));
+  const groups = new Map<string, { item: ExportItem; rows: { name: string; category: string; chest: string; points: string; rank: string; grade: string; general: string }[] }>();
+
+  args.assignments.filter(registrationIsActive).forEach((assignment) => {
+    if (!selectedItemIds.has(assignment.item_id) || !assignment.registration_id) return;
+    const participant = people.get(assignment.participant_id);
+    const item = items.get(assignment.item_id);
+    if (!participant || !item) return;
+    const result = results.get(`${assignment.registration_id}:${assignment.item_id}`);
+    const group = groups.get(item.id) ?? { item, rows: [] };
+    group.rows.push({
+      name: safeText(participant.name) || 'Unnamed participant',
+      category: safeText(participant.category_code) || '—',
+      chest: safeText(participant.chest_number) || '—',
+      points: result?.points_awarded == null ? '—' : String(result.points_awarded),
+      rank: result?.rank == null ? '—' : String(result.rank),
+      grade: safeText(result?.grade) || '—',
+      general: assignment.entry_kind === 'general_team' ? 'Yes' : 'No',
+    });
+    groups.set(item.id, group);
+  });
+  if (!groups.size) throw new Error('No active team assignments match the selected programs.');
+
+  const doc = createMonochromePdf(new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] }));
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...INK);
+  doc.text('TEAM PROGRAM RESULTS', PAGE_WIDTH / 2, 16, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`Team: ${safeText(args.teamName) || '—'}`, PRINT_MARGIN, 22);
+  doc.text(`Festival: ${safeText(args.festivalName) || '—'}`, PAGE_WIDTH - PRINT_MARGIN, 22, { align: 'right' });
+  let cursorY = 27;
+
+  [...groups.values()].sort((a, b) => itemLabel(a.item).localeCompare(itemLabel(b.item))).forEach(({ item, rows }) => {
+    if (cursorY > PAGE_HEIGHT_F4 - 24) { doc.addPage(); cursorY = PRINT_MARGIN + 7; }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...INK);
+    const title = item.item_code ? `${item.item_code} · ${itemLabel(item)}` : itemLabel(item);
+    const titleLines = doc.splitTextToSize(title, PAGE_WIDTH - PRINT_MARGIN * 2) as string[];
+    doc.text(titleLines, PRINT_MARGIN, cursorY);
+    cursorY += Math.max(5, titleLines.length * 3.8 + 1);
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['Participant', 'Category', 'Chest No.', 'Points', 'Rank', 'Grade', 'General?']],
+      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name))
+        .map((row) => [row.name, row.category, row.chest, row.points, row.rank, row.grade, row.general]),
+      margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: 13, bottom: PRINT_MARGIN + 4 },
+      theme: 'grid',
+      styles: { font: 'helvetica', fontSize: 7.1, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.4, overflow: 'linebreak', minCellHeight: 5.2, valign: 'middle' },
+      headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
+      columnStyles: {
+        0: { cellWidth: 75 }, 1: { cellWidth: 24 }, 2: { cellWidth: 24, halign: 'center' },
+        3: { cellWidth: 19, halign: 'center' }, 4: { cellWidth: 15, halign: 'center' },
+        5: { cellWidth: 17, halign: 'center' }, 6: { cellWidth: 16, halign: 'center' },
+      },
+      rowPageBreak: 'avoid',
+      didDrawPage: (hook) => { if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName)} · ${title}`); },
+    });
+    cursorY = ((doc as any).lastAutoTable?.finalY ?? cursorY + 10) + 5;
+  });
+
+  pageFooter(doc, PAGE_HEIGHT_F4);
+  const safeTeam = (safeText(args.teamName) || 'team').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '');
+  doc.save(`team-results-${safeTeam}.pdf`);
+  return { itemCount: groups.size };
+}
+
 /** Item verification report shared by Admin and Team Leader scopes. */
 export function downloadItemVerificationPdf(args: {
   festivalName?: string | null;
@@ -445,7 +588,7 @@ export function downloadItemVerificationPdf(args: {
     : safeText(a.participant.chest_number).localeCompare(safeText(b.participant.chest_number), undefined, { numeric: true })
       || safeText(a.participant.name).localeCompare(safeText(b.participant.name)));
 
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] });
+  const doc = createMonochromePdf(new jsPDF({ orientation: 'portrait', unit: 'mm', format: [PAGE_WIDTH, PAGE_HEIGHT_F4] }));
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...INK);
@@ -499,7 +642,7 @@ export function downloadItemVerificationPdf(args: {
     didParseCell: (hook) => {
       if (hook.section === 'body' && hook.column.index === 2) hook.cell.styles.fontSize = 9;
       if (hook.section === 'body' && hook.column.index === 3 && ['Rejected', 'Cancelled'].includes(String(hook.cell.raw))) {
-        hook.cell.styles.fillColor = LIGHT_GRAY;
+        hook.cell.styles.fillColor = [255, 255, 255];
         hook.cell.styles.fontStyle = 'bold';
       }
     },

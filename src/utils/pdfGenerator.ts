@@ -1,5 +1,6 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { PDF_MONOCHROME_CSS } from '@/utils/pdfTheme';
 import { Platform } from 'react-native';
 import { UnitProfileData } from '../services/unitProfileService';
 
@@ -67,45 +68,46 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
         <meta charset="utf-8">
         <title>${escapeHtml(unitData.name)} - Report</title>
         <style>
+          ${PDF_MONOCHROME_CSS}
           body {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-            color: #333;
+            color: #000;
             margin: 0;
-            padding: 20px;
+            padding: 12px;
           }
           h1 {
             text-align: center;
-            color: #030E21;
+            color: #000;
             margin-bottom: 5px;
           }
           .meta {
             text-align: center;
-            color: #666;
-            margin-bottom: 30px;
+            color: #000;
+            margin-bottom: 16px;
             font-size: 14px;
           }
           .item-section {
-            margin-bottom: 30px;
+            margin-bottom: 14px;
             break-inside: auto;
             page-break-inside: auto;
           }
           .item-header {
-            background-color: #f3f4f6;
-            padding: 10px;
-            border-left: 4px solid #3B82F6;
+            background-color: #fff;
+            padding: 6px;
+            border-left: 1px solid #000;
             margin-bottom: 10px;
           }
           .item-title {
             margin: 0;
             font-size: 16px;
-            color: #1f2937;
+            color: #000;
             overflow-wrap: anywhere;
             word-break: normal;
           }
           .item-cat {
             display: block;
             font-size: 12px;
-            color: #6b7280;
+            color: #000;
             margin-top: 3px;
             overflow-wrap: anywhere;
           }
@@ -116,8 +118,8 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
             table-layout: fixed;
           }
           th, td {
-            border: 1px solid #e5e7eb;
-            padding: 8px 12px;
+            border: 1px solid #000;
+            padding: 4px 6px;
             text-align: left;
             vertical-align: top;
             overflow-wrap: anywhere;
@@ -126,22 +128,22 @@ export const generateUnitReport = async (unitData: UnitProfileData, totalPoints:
           thead { display: table-header-group; }
           tr { break-inside: avoid; page-break-inside: avoid; }
           th {
-            background-color: #f9fafb;
-            color: #4b5563;
+            background-color: #fff;
+            color: #000;
             font-weight: bold;
           }
           .absent {
-            color: #dc2626;
+            color: #000;
             font-weight: bold;
           }
           .attended {
-            color: #059669;
+            color: #000;
           }
           .footer {
-            margin-top: 40px;
+            margin-top: 20px;
             text-align: center;
             font-size: 11px;
-            color: #9ca3af;
+            color: #000;
           }
         </style>
       </head>

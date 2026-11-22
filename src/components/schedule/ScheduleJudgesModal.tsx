@@ -4,7 +4,7 @@ import { useAuthStore } from '@/core/store/authStore';
 import { codeLetterAt } from '@/core/utils/codeLetters';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
-import { buildJudgeEvaluationSheetPrintDocument } from '@/core/utils/judgeEvaluationSheetPrint';
+import { buildJudgeEvaluationSheetPrintDocument, waitForJudgeEvaluationSheetAssets } from '@/core/utils/judgeEvaluationSheetPrint';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Alert, Clipboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Check, Copy, FileText, Printer, Search, X } from 'lucide-react-native';
@@ -50,7 +50,7 @@ function isActiveToken(token: JudgeToken, now = Date.now()) {
 }
 
 export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequiredCount }: ScheduleJudgesModalProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { tenant_id, user } = useAuthStore();
   const {
     judges,
@@ -73,7 +73,9 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
   const [generatingJudgeId, setGeneratingJudgeId] = React.useState<string | null>(null);
   const [printError, setPrintError] = React.useState<string | null>(null);
   const [printRequest, setPrintRequest] = React.useState<{ judge: any; token: string } | null>(null);
-  const pendingPrintWindow = React.useRef<Window | null>(null);
+  const [printPreviewDocument, setPrintPreviewDocument] = React.useState<{ judgeName: string; html: string } | null>(null);
+  const [isPrintPreviewReady, setIsPrintPreviewReady] = React.useState(false);
+  const printPreviewFrame = React.useRef<HTMLIFrameElement | null>(null);
 
   const tokensQuery = useQuery<JudgeToken[]>({
     queryKey: ['judgeTokens', tenant_id, scheduleId],
@@ -100,7 +102,12 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
   const isLoading = assignedQuery.isLoading || tokensQuery.isLoading || isLoadingJudges;
 
   React.useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setPrintPreviewDocument(null);
+      setIsPrintPreviewReady(false);
+      setPrintRequest(null);
+      return;
+    }
     setErrorMessage(null);
     setPrintError(null);
     setShownCodes([]);
@@ -208,27 +215,25 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
       Alert.alert('Print evaluation sheet', 'Open this page in a browser to print or save the evaluation sheet as PDF.');
       return;
     }
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      setPrintError('Allow pop-ups for this site, then try again.');
-      return;
-    }
-    pendingPrintWindow.current = printWindow;
     setPrintError(null);
+    setPrintPreviewDocument(null);
+    setIsPrintPreviewReady(false);
     setPrintRequest({ judge, token });
   };
 
   React.useEffect(() => {
-    if (!printRequest || Platform.OS !== 'web' || !pendingPrintWindow.current) return;
+    if (!printRequest || Platform.OS !== 'web') return;
     let cancelled = false;
-    const prepareAndPrint = async () => {
-      const printWindow = pendingPrintWindow.current;
+    const preparePreview = async () => {
       try {
-        await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
-        if (!printWindow || printWindow.closed) return;
-        const qrElement = document.getElementById('schedule-judge-print-qr')?.querySelector('svg') as SVGSVGElement | null;
-        const logoElement = document.getElementById('schedule-judge-print-logo')?.querySelector('img') as HTMLImageElement | null;
-        if (!qrElement || !logoElement?.src) throw new Error('The logo or QR code is not ready. Please try again.');
+        const { qr: qrElement, logo: logoElement } = await waitForJudgeEvaluationSheetAssets(
+          () => ({
+            qr: document.getElementById('schedule-judge-print-qr')?.querySelector('svg') as SVGSVGElement | null,
+            logo: document.getElementById('schedule-judge-print-logo')?.querySelector('img') as HTMLImageElement | null,
+          }),
+          () => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())),
+        );
+        if (cancelled) return;
 
         const { count, error } = await supabase.rpc('get_schedule_registrations', {
           p_schedule_id: scheduleId,
@@ -249,6 +254,7 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
           ? schedule.items.category_codes.join(', ')
           : String(schedule.items?.category ?? schedule.items?.category_codes ?? '-');
         const printDocument = buildJudgeEvaluationSheetPrintDocument({
+          judgeName: String(printRequest.judge?.name || 'Judge'),
           eventName: schedule.items?.item_name_ml || schedule.items?.item_name_en || 'Competition',
           category,
           accessCode: printRequest.token,
@@ -260,33 +266,32 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
           })),
         });
         if (cancelled) return;
-        printWindow.document.open();
-        printWindow.document.write(printDocument);
-        printWindow.document.close();
-        await Promise.all([
-          printWindow.document.fonts?.ready ?? Promise.resolve(),
-          ...Array.from(printWindow.document.images).map((image) => image.complete
-            ? Promise.resolve()
-            : new Promise<void>((resolve) => {
-                image.addEventListener('load', () => resolve(), { once: true });
-                image.addEventListener('error', () => resolve(), { once: true });
-              })),
-        ]);
-        const logoReady = printWindow.document.querySelector('img') as HTMLImageElement | null;
-        if (!logoReady || logoReady.naturalWidth === 0) throw new Error('The logo could not be loaded into the evaluation sheet.');
-        printWindow.focus();
-        printWindow.print();
+        setPrintPreviewDocument({ judgeName: String(printRequest.judge?.name || 'Judge'), html: printDocument });
       } catch (error: any) {
-        if (printWindow && !printWindow.closed) printWindow.close();
         if (!cancelled) setPrintError(error?.message || 'Could not prepare the evaluation sheet.');
       } finally {
-        pendingPrintWindow.current = null;
         if (!cancelled) setPrintRequest(null);
       }
     };
-    void prepareAndPrint();
+    void preparePreview();
     return () => { cancelled = true; };
   }, [printRequest, schedule, scheduleId]);
+
+  const closePrintPreview = () => {
+    setPrintPreviewDocument(null);
+    setIsPrintPreviewReady(false);
+    setPrintError(null);
+  };
+
+  const printPreview = () => {
+    const printWindow = printPreviewFrame.current?.contentWindow;
+    if (!printWindow || !isPrintPreviewReady) {
+      setPrintError('The evaluation sheet preview is still loading. Please wait and try again.');
+      return;
+    }
+    printWindow.focus();
+    printWindow.print();
+  };
 
   const copyCode = (token: string) => {
     if (Platform.OS === 'web' && navigator.clipboard) void navigator.clipboard.writeText(token);
@@ -295,8 +300,10 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
 
   const activeScheduleName = schedule?.items?.item_name_en || schedule?.items?.item_name_ml || 'Competition';
   const modalWidth = Math.min(640, width - 32);
+  const printPreviewHeight = Math.max(280, Math.min(720, height * 0.68));
 
   return (
+    <>
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} className="flex-1 bg-black/45 items-center justify-center px-4 py-5">
         <Pressable onPress={(event) => event.stopPropagation()} className="w-full overflow-hidden rounded-xl border border-ui-border bg-core-surface-white" style={{ maxWidth: modalWidth, maxHeight: '92%' }}>
@@ -377,7 +384,7 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
                               <Text className="font-poppins-bold text-[10px] text-ui-text">{shownCodes.includes(String(judge.id)) ? token.token : 'View code'}</Text>
                             </TouchableOpacity>
                             {shownCodes.includes(String(judge.id)) && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Copy access code for ${judge.name}`} onPress={() => copyCode(token.token)} className="h-8 w-8 items-center justify-center rounded-md border border-ui-border"><Copy size={13} color={ui.colors.textMuted} /></TouchableOpacity>}
-                            {Platform.OS === 'web' && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Print evaluation sheet for ${judge.name}`} onPress={() => void printEvaluationSheet(judge, token.token)} className="h-8 flex-row items-center gap-1 rounded-md border border-ui-border px-2"><Printer size={13} color={ui.colors.primaryText} /><Text className="font-poppins-bold text-[10px] text-ui-text">PDF</Text></TouchableOpacity>}
+                            {Platform.OS === 'web' && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Preview evaluation sheet for ${judge.name}`} accessibilityState={{ busy: String(printRequest?.judge?.id) === String(judge.id) }} disabled={String(printRequest?.judge?.id) === String(judge.id)} onPress={() => void printEvaluationSheet(judge, token.token)} className="h-8 flex-row items-center gap-1 rounded-md border border-ui-border px-2 disabled:opacity-60">{String(printRequest?.judge?.id) === String(judge.id) ? <ActivityIndicator size="small" color={ui.colors.primary} /> : <Printer size={13} color={ui.colors.primaryText} />}<Text className="font-poppins-bold text-[10px] text-ui-text">{String(printRequest?.judge?.id) === String(judge.id) ? 'Preparing…' : 'PDF'}</Text></TouchableOpacity>}
                             <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Regenerate access code for ${judge.name}`} disabled={generatingJudgeId === String(judge.id)} onPress={() => confirmRegenerateCode(judge)} className="h-8 rounded-md border border-ui-border px-2 items-center justify-center"><Text className="font-poppins-bold text-[10px] text-ui-text">Regenerate</Text></TouchableOpacity>
                           </>
                         ) : (
@@ -413,5 +420,40 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
         </Pressable>
       </Pressable>
     </Modal>
+    <Modal transparent visible={!!printPreviewDocument} animationType="fade" onRequestClose={closePrintPreview}>
+      <View className="flex-1 items-center justify-center bg-black/50 px-4 py-5">
+        <View className="w-full overflow-hidden rounded-xl border border-ui-border bg-core-surface-white" style={{ maxWidth: Math.min(960, width - 32), maxHeight: '94%' }}>
+          <View className="flex-row items-center justify-between border-b border-ui-border px-4 py-3">
+            <View className="mr-3 flex-1">
+              <Text className="font-poppins-bold text-sm text-ui-text">Evaluation sheet preview</Text>
+              <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted" numberOfLines={1}>{printPreviewDocument?.judgeName} · {activeScheduleName}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close evaluation sheet preview" onPress={closePrintPreview} className="h-8 w-8 items-center justify-center rounded-lg border border-ui-border">
+              <X size={15} color={ui.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <View className="p-3">
+            {printPreviewDocument && Platform.OS === 'web' && React.createElement('iframe', {
+              ref: printPreviewFrame,
+              title: `Evaluation sheet preview for ${printPreviewDocument.judgeName}`,
+              srcDoc: printPreviewDocument.html,
+              onLoad: () => { setIsPrintPreviewReady(true); setPrintError(null); },
+              style: { width: '100%', height: printPreviewHeight, border: `1px solid ${ui.colors.border}`, backgroundColor: '#fff' },
+            })}
+          </View>
+          {printError && <Text accessibilityRole="alert" className="px-4 pb-2 font-poppins text-xs text-core-danger-red-700">{printError}</Text>}
+          <View className="flex-row justify-end gap-2 border-t border-ui-border px-4 py-3">
+            <TouchableOpacity accessibilityRole="button" onPress={closePrintPreview} className="h-9 items-center justify-center rounded-md border border-ui-border px-3">
+              <Text className="font-poppins-bold text-xs text-ui-text">Close</Text>
+            </TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" disabled={!isPrintPreviewReady} onPress={printPreview} className="h-9 flex-row items-center justify-center gap-1.5 rounded-md bg-ui-primary px-3 disabled:opacity-50">
+              {!isPrintPreviewReady && <ActivityIndicator size="small" color={ui.colors.onPrimary} />}
+              <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isPrintPreviewReady ? 'Print / Save PDF' : 'Loading preview…'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+    </>
   );
 }

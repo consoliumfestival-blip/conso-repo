@@ -4,6 +4,7 @@ export type JudgeEvaluationSheetPrintRow = {
 };
 
 export type JudgeEvaluationSheetPrintInput = {
+  judgeName?: string;
   eventName: string;
   category: string;
   accessCode: string;
@@ -11,6 +12,24 @@ export type JudgeEvaluationSheetPrintInput = {
   qrSvg: string;
   rows: JudgeEvaluationSheetPrintRow[];
 };
+
+export type JudgeEvaluationSheetPrintAssets = {
+  qr: SVGSVGElement;
+  logo: HTMLImageElement;
+};
+
+export async function waitForJudgeEvaluationSheetAssets(
+  getAssets: () => { qr: SVGSVGElement | null; logo: HTMLImageElement | null },
+  waitForFrame: () => Promise<void>,
+  maxFrames = 120,
+): Promise<JudgeEvaluationSheetPrintAssets> {
+  for (let frame = 0; frame < maxFrames; frame += 1) {
+    const { qr, logo } = getAssets();
+    if (qr && logo?.complete && logo.naturalWidth > 0) return { qr, logo };
+    await waitForFrame();
+  }
+  throw new Error('The QR code or logo did not finish loading. Please try again.');
+}
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => {
@@ -60,6 +79,7 @@ export function buildJudgeEvaluationSheetPrintDocument(input: JudgeEvaluationShe
       .brand img { display: block; width: 10mm; height: 10mm; object-fit: contain; }
       .brand-name { font-size: 17pt; font-weight: 800; letter-spacing: 1pt; }
       .sheet-title { font-size: 10pt; font-weight: 700; letter-spacing: .3pt; margin: 0 0 2mm; }
+      .judge-name { font-size: 9pt; font-weight: 700; margin: 0 0 2mm; }
       .event { border-left: 1mm solid #000080; padding-left: 2.5mm; }
       .event-label { margin-bottom: 1mm; font-size: 8pt; font-weight: 700; text-transform: uppercase; }
       .event-name { margin: 0; font-size: 16pt; line-height: 1.2; overflow-wrap: anywhere; }
@@ -82,7 +102,7 @@ export function buildJudgeEvaluationSheetPrintDocument(input: JudgeEvaluationShe
       td.serial, td.code { text-align: center; }
       td.code { font-size: 11pt; font-weight: 700; }
       @media screen {
-        body { width: 210mm; min-height: 297mm; margin: 16px auto; padding: 10mm; box-shadow: 0 1px 8px #0002; }
+        body { width: min(210mm, 100%); min-height: 297mm; margin: 0 auto; padding: 10mm; box-shadow: 0 1px 8px #0002; }
       }
     </style>
   </head>
@@ -94,6 +114,7 @@ export function buildJudgeEvaluationSheetPrintDocument(input: JudgeEvaluationShe
           <div class="brand-name">CONSOULIUM</div>
         </div>
         <h1 class="sheet-title">Official Evaluation Sheet</h1>
+        ${input.judgeName ? `<p class="judge-name">Judge: ${escapeHtml(input.judgeName)}</p>` : ''}
         <section class="event">
           <div class="event-label">Event / Item</div>
           <h2 class="event-name">${escapeHtml(input.eventName)}</h2>

@@ -61,6 +61,7 @@ export default function ReportsAndPrintouts() {
   const [categoryCode, setCategoryCode] = useState('All');
   const [itemId, setItemId] = useState('All');
   const [teamResultItemIds, setTeamResultItemIds] = useState<Set<string>>(new Set());
+  const [teamResultsProgramFilter, setTeamResultsProgramFilter] = useState<'published' | 'all'>('published');
   const [programSelectorOpen, setProgramSelectorOpen] = useState(false);
   const [programSearch, setProgramSearch] = useState('');
   const [busy, setBusy] = useState(false);
@@ -73,6 +74,15 @@ export default function ReportsAndPrintouts() {
     queryKey: ['reports', 'teams', tenantId, userId, festival?.id],
     queryFn: () => loadAdminExportTeams(festival!.id),
     enabled: !!userId && !!festival?.id && participantReport,
+    retry: false,
+  });
+  const publishedResultItemsQuery = useQuery({
+    queryKey: ['reports', 'leaderboard-published-item-ids', tenantId, festival?.id],
+    queryFn: async () => {
+      const { loadAdminLeaderboardPublishedItemIds } = await import('@/services/participantExportService');
+      return loadAdminLeaderboardPublishedItemIds({ tenantId: tenantId!, festivalId: festival!.id });
+    },
+    enabled: !!tenantId && !!festival?.id && report === 'team_results' && teamResultsProgramFilter === 'published',
     retry: false,
   });
   const scheduleQuery = useQuery({
@@ -111,15 +121,19 @@ export default function ReportsAndPrintouts() {
     : [{ value: 'PDF', label: 'PDF' }];
   const selectedItem = items.find((candidate) => candidate.id === itemId);
   const visiblePrograms = useMemo(() => items.filter((item) => categoryCode === 'All' || itemHasCategory(item, categoryCode)), [items, categoryCode]);
+  const teamResultsPrograms = useMemo(() => teamResultsProgramFilter === 'published'
+    ? visiblePrograms.filter((item) => publishedResultItemsQuery.data?.includes(item.id))
+    : visiblePrograms, [visiblePrograms, teamResultsProgramFilter, publishedResultItemsQuery.data]);
+  const selectedTeamResultItemCount = teamResultsPrograms.filter((item) => teamResultItemIds.has(item.id)).length;
   const matchingPrograms = useMemo(() => {
     const query = programSearch.trim().toLowerCase();
-    return visiblePrograms.filter((item) => !query || [item.item_code, item.item_name_en, item.item_name_ml].some((value) => value?.toLowerCase().includes(query)));
-  }, [visiblePrograms, programSearch]);
+    return teamResultsPrograms.filter((item) => !query || [item.item_code, item.item_name_en, item.item_name_ml].some((value) => value?.toLowerCase().includes(query)));
+  }, [teamResultsPrograms, programSearch]);
   const visibleProgramOptions = useMemo(() => [{ value: 'All', label: 'All permitted programs' }, ...visiblePrograms.map((item) => programOptions.find((option) => option.value === item.id)!).filter(Boolean)], [visiblePrograms, programOptions]);
   const reportItems = items.filter((item) => (itemId === 'All' || item.id === itemId)
     && (categoryCode === 'All' || itemHasCategory(item, categoryCode)));
   const selectedTeam = (teamsQuery.data ?? []).find((team) => team.id === teamId);
-  const needsTeam = report === 'team_items' || report === 'participant_slips' || report === 'team_results';
+  const needsTeam = report === 'team_items' || report === 'participant_slips';
   const needsSelectedItem = (report === 'program_list' && (fileType === 'PDF' || programScope === 'selected'))
     || report === 'team_items' || report === 'chance_sheet';
   const matchingSchedules = (scheduleQuery.data ?? []).filter((row: any) => reportItems.some((item) => item.id === row.item_id));
@@ -131,12 +145,17 @@ export default function ReportsAndPrintouts() {
     if (!festival?.id) return 'No active festival is available for this account.';
     if (itemsLoading) return 'Loading programs…';
     if (itemsError) return 'Could not load programs. Retry the request.';
-    if (participantReport && (needsTeam || teamId !== 'All')) {
+    if (participantReport && (needsTeam || teamId !== 'All' || report === 'team_results')) {
       if (teamsQuery.isLoading) return 'Loading team options…';
       if (teamsQuery.isError) return 'Could not load team options. Retry the request.';
-      if (!selectedTeam) return needsTeam ? 'Select a team for this report.' : 'Select an available team.';
+      if (needsTeam && !selectedTeam) return 'Select a team for this report.';
+      if (teamId !== 'All' && !selectedTeam) return 'Select an available team.';
     }
-    if (report === 'team_results' && !visiblePrograms.some((program) => teamResultItemIds.has(program.id))) return 'Select one or more programs for this team results report.';
+    if (report === 'team_results' && teamResultsProgramFilter === 'published') {
+      if (publishedResultItemsQuery.isLoading) return 'Loading competitions published in Leaderboard Management…';
+      if (publishedResultItemsQuery.isError) return 'Could not load Leaderboard Management published competitions. Retry the request.';
+    }
+    if (report === 'team_results' && !teamResultsPrograms.some((program) => teamResultItemIds.has(program.id))) return 'Select one or more eligible programs for this report.';
     if (needsSelectedItem && !selectedItem) return report === 'program_list' && fileType === 'CSV'
       ? 'Select a program for the selected-program CSV.'
       : 'Select a program for this PDF report.';
@@ -244,12 +263,13 @@ export default function ReportsAndPrintouts() {
       }
       if (report === 'program_list' && fileType === 'PDF' && !selectedItem) throw new Error('Select a program to create this report.');
       if (needsTeam && !selectedTeam) throw new Error('Select a team to create this report.');
+      if (report === 'team_results' && teamId !== 'All' && !selectedTeam) throw new Error('Select a team to create this report.');
       const selectedTeamPeople = selectedTeam ? await loadAdminExportPeople(festival.id, selectedTeam.id, null) : null;
       const selectedTeamParticipantIds = selectedTeamPeople?.map((person: any) => person.id) ?? [];
       const registrations = selectedTeam
         ? await loadAdminTeamExportRegistrations(festival.id, selectedTeam.id, selectedTeamParticipantIds)
         : await loadAdminExportRegistrations(festival.id, null);
-      const selectedResultItems = visiblePrograms.filter((item) => teamResultItemIds.has(item.id));
+      const selectedResultItems = teamResultsPrograms.filter((item) => teamResultItemIds.has(item.id));
       const selectedResultItemIds = selectedResultItems.map((item) => item.id);
       const teamRegistrations = registrations.filter((row: any) => report === 'team_results'
         ? selectedResultItemIds.includes(row.item_id)
@@ -284,7 +304,7 @@ export default function ReportsAndPrintouts() {
         }));
       });
       if (report === 'team_results') {
-        if (!tenantId || !selectedTeam) throw new Error('Select a team and sign in to an admin account to create this report.');
+        if (!tenantId) throw new Error('Sign in to an admin account to create this report.');
         if (!selectedResultItemIds.length) throw new Error('Select one or more programs for this report.');
         const { downloadTeamSelectedResultsPdf, loadAdminPublishedItemResults } = await import('@/services/participantExportService');
         const results = await loadAdminPublishedItemResults({
@@ -294,7 +314,8 @@ export default function ReportsAndPrintouts() {
           itemIds: selectedResultItemIds,
         });
         downloadTeamSelectedResultsPdf({
-          teamName: selectedTeam.label,
+          teamName: selectedTeam?.label,
+          groupByTeam: !selectedTeam,
           festivalName: festival.custom_name || `Festival ${festival.festival_year}`,
           selectedItemIds: selectedResultItemIds,
           participants: people,
@@ -337,19 +358,20 @@ export default function ReportsAndPrintouts() {
           <Filter width={filterWidth} label="Report" value={report} onChange={(value) => { setReport(value as ReportKind); if (value !== 'program_list') setFileType('PDF'); if (value === 'chance_sheet') setCategoryCode('All'); }} options={REPORT_OPTIONS.map(({ value, label }) => ({ value, label }))} />
           {report === 'program_list' ? <Filter width={filterWidth} label="File type" value={fileType} onChange={(value) => setFileType(value as 'PDF' | 'CSV')} options={reportFormatOptions} /> : null}
           {report === 'program_list' && fileType === 'CSV' ? <Filter width={filterWidth} label="Programs" value={programScope} onChange={(value) => setProgramScope(value as 'all' | 'selected')} options={[{ value: 'all', label: 'All permitted programs' }, { value: 'selected', label: 'Selected program only' }]} /> : null}
-          {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[...(needsTeam ? [] : [{ value: 'All', label: 'All permitted teams' }]), ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} placeholder={needsTeam ? 'Select a team' : undefined} /> : null}
+          {participantReport ? <Filter width={filterWidth} label="Team" value={teamId} onChange={(value) => setTeamId(value)} options={[...(needsTeam ? [] : [{ value: 'All', label: report === 'team_results' ? 'All teams' : 'All permitted teams' }]), ...(teamsQuery.data ?? []).map((team) => ({ value: team.id, label: team.label }))]} placeholder={needsTeam ? 'Select a team' : undefined} /> : null}
           {report !== 'chance_sheet' ? <Filter width={filterWidth} label="Category" value={categoryCode} onChange={(value) => { setCategoryCode(value); setItemId('All'); setTeamResultItemIds((current) => new Set([...current].filter((id) => items.some((item) => item.id === id && (value === 'All' || itemHasCategory(item, value)))))); }} options={categoryOptions} /> : null}
           {report !== 'team_results' ? <Filter width={filterWidth} label="Program" value={itemId} onChange={setItemId} options={needsSelectedItem ? visibleProgramOptions.filter((option) => option.value !== 'All') : visibleProgramOptions} placeholder={needsSelectedItem ? 'Select a program' : undefined} /> : null}
         </View>
         {report === 'team_results' ? <View style={{ gap: 8 }}>
-          <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>SELECT PROGRAMS ({visiblePrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected)</Text>
+          <Filter width="100%" label="Program filter" value={teamResultsProgramFilter} onChange={(value) => setTeamResultsProgramFilter(value as 'published' | 'all')} options={[{ value: 'published', label: 'Published in Leaderboard Management' }, { value: 'all', label: 'All programs' }]} />
+          <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>SELECT PROGRAMS ({selectedTeamResultItemCount} selected)</Text>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Select programs" accessibilityState={{ expanded: programSelectorOpen }} onPress={() => setProgramSelectorOpen((open) => !open)} style={{ minHeight: 42, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: ui.colors.surface }}>
-            <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '600' }}>{teamResultItemIds.size ? `${teamResultItemIds.size} programs selected` : 'Select programs'}</Text>
+            <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '600' }}>{selectedTeamResultItemCount ? `${selectedTeamResultItemCount} programs selected` : 'Select programs'}</Text>
             <ChevronDown size={16} color={ui.colors.textMuted} />
           </TouchableOpacity>
           {programSelectorOpen ? <View style={{ borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, padding: 10, gap: 8, backgroundColor: ui.colors.surface }}>
             <TextInput accessibilityLabel="Search programs" placeholder="Search programs" placeholderTextColor={ui.colors.textMuted} value={programSearch} onChangeText={setProgramSearch} style={{ minHeight: 38, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 7, paddingHorizontal: 10, color: ui.colors.text, fontSize: 12 }} />
-            <TouchableOpacity accessibilityRole="button" disabled={!visiblePrograms.length} onPress={() => setTeamResultItemIds(new Set(visiblePrograms.map((item) => item.id)))} style={{ alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 6, backgroundColor: ui.colors.buttonPrimary, opacity: visiblePrograms.length ? 1 : 0.5 }}><Text style={{ color: ui.colors.buttonForeground, fontSize: 12, fontWeight: '700' }}>Select all</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" disabled={!teamResultsPrograms.length} onPress={() => setTeamResultItemIds(new Set(teamResultsPrograms.map((item) => item.id)))} style={{ alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 6, backgroundColor: ui.colors.buttonPrimary, opacity: teamResultsPrograms.length ? 1 : 0.5 }}><Text style={{ color: ui.colors.buttonForeground, fontSize: 12, fontWeight: '700' }}>Select all</Text></TouchableOpacity>
             {matchingPrograms.length ? <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
             {matchingPrograms.map((item) => {
               const isSelected = teamResultItemIds.has(item.id);
@@ -362,11 +384,12 @@ export default function ReportsAndPrintouts() {
                 <Text numberOfLines={1} style={{ maxWidth: compact ? width - 100 : 310, fontSize: 11, fontWeight: isSelected ? '700' : '500', color: ui.colors.text }}>{item.item_code ? `${item.item_code} · ` : ''}{item.item_name_en || item.item_name_ml || 'Unnamed program'}</Text>
               </TouchableOpacity>;
             })}
-          </ScrollView> : <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>No programs found.</Text>}
+          </ScrollView> : <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>{teamResultsProgramFilter === 'published' && publishedResultItemsQuery.isLoading ? 'Loading Leaderboard Management published competitions…' : teamResultsProgramFilter === 'published' ? 'No Leaderboard Management published competitions found.' : 'No programs found.'}</Text>}
           </View> : null}
         </View> : null}
         {((participantReport && teamsQuery.isLoading) || itemsLoading || festivalLoading || (scheduleReport && scheduleQuery.isLoading)) ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><ActivityIndicator size="small" color={ui.colors.primary} /><Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Loading report options…</Text></View> : null}
         {participantReport && teamsQuery.isError ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load team options. Retry before exporting a team report.</Text> : null}
+        {report === 'team_results' && publishedResultItemsQuery.isError ? <TouchableOpacity accessibilityRole="button" onPress={() => void publishedResultItemsQuery.refetch()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry published competitions</Text></TouchableOpacity> : null}
         {festivalError ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryFestival()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry active festival</Text></TouchableOpacity> : null}
         {!festivalLoading && !festivalError && !festival?.id ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryFestival()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Check active festival again</Text></TouchableOpacity> : null}
         {itemsError ? <TouchableOpacity accessibilityRole="button" onPress={() => void retryItems()} style={{ paddingVertical: 8 }}><Text style={{ color: ui.colors.primary, fontWeight: '700', fontSize: 12 }}>Retry programs</Text></TouchableOpacity> : null}
@@ -379,7 +402,7 @@ export default function ReportsAndPrintouts() {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}><FileText size={18} color={ui.colors.primary} /><Text style={{ fontSize: 15, fontWeight: '800', color: ui.colors.text }}>Download</Text></View>
         <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Your current access limits the records in this report.</Text>
         <View style={{ gap: 11, paddingVertical: 2 }}>
-          {[['Report', reportMeta.label], ['Programs', report === 'team_results' ? `${visiblePrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected` : itemId === 'All' ? 'All permitted programs' : selectedItem?.item_name_en || selectedItem?.item_name_ml || selectedItem?.item_code || 'Selected program'], ...(participantReport ? [['Team', selectedTeam?.label || (teamId === 'All' ? 'All permitted teams' : 'Selected team')]] : []), ...(report !== 'chance_sheet' ? [['Category', categoryCode === 'All' ? 'All permitted' : categoryCode]] : []), ['File type', fileType]].map(([label, value]) => <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{label}</Text><Text numberOfLines={2} style={{ flex: 1, textAlign: 'right', color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{value}</Text></View>)}
+          {[['Report', reportMeta.label], ['Programs', report === 'team_results' ? `${teamResultsPrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected` : itemId === 'All' ? 'All permitted programs' : selectedItem?.item_name_en || selectedItem?.item_name_ml || selectedItem?.item_code || 'Selected program'], ...(participantReport ? [['Team', selectedTeam?.label || (teamId === 'All' ? (report === 'team_results' ? 'All teams' : 'All permitted teams') : 'Selected team')]] : []), ...(report !== 'chance_sheet' ? [['Category', categoryCode === 'All' ? 'All permitted' : categoryCode]] : []), ['File type', fileType]].map(([label, value]) => <View key={label} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}><Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{label}</Text><Text numberOfLines={2} style={{ flex: 1, textAlign: 'right', color: ui.colors.text, fontSize: 11, fontWeight: '600' }}>{value}</Text></View>)}
         </View>
         <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !canDownload, busy }} disabled={!canDownload} onPress={download} style={{ minHeight: 44, borderRadius: 8, backgroundColor: ui.colors.buttonPrimary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: canDownload ? 1 : 0.55 }}>
           {busy ? <ActivityIndicator size="small" color={ui.colors.buttonForeground} /> : <Download size={16} color={ui.colors.buttonForeground} />}
@@ -402,3 +425,4 @@ export default function ReportsAndPrintouts() {
     </SsfCard>
   </ScrollView>;
 }
+

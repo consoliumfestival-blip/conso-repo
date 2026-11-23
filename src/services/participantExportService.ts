@@ -426,6 +426,29 @@ export type ExportItemResult = {
   published_at?: string | null;
 };
 
+/** Item IDs with results published in Leaderboard Management (public visibility is independent). */
+export async function loadAdminLeaderboardPublishedItemIds(input: {
+  festivalId: string;
+  tenantId: string;
+}): Promise<string[]> {
+  const itemIds = new Set<string>();
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await supabase.from('results')
+      .select('item_id')
+      .eq('tenant_id', input.tenantId)
+      .eq('festival_id', input.festivalId)
+      .eq('published', true)
+      .or('result_status.is.null,result_status.eq.published')
+      .not('item_id', 'is', null)
+      .order('id')
+      .range(offset, offset + 499);
+    if (error) throw error;
+    const rows = (data ?? []) as { item_id: string | null }[];
+    rows.forEach((row) => { if (row.item_id) itemIds.add(row.item_id); });
+    if (rows.length < 500) return [...itemIds];
+  }
+}
+
 /** Load published result snapshots for the exact team roster and selected items. */
 export async function loadAdminPublishedItemResults(input: {
   festivalId: string;
@@ -474,7 +497,8 @@ export async function loadAdminPublishedItemResults(input: {
 
 /** Selected-team results, using stored published marks only. */
 export function downloadTeamSelectedResultsPdf(args: {
-  teamName: string;
+  teamName?: string;
+  groupByTeam?: boolean;
   festivalName?: string | null;
   selectedItemIds: string[];
   participants: ExportParticipant[];
@@ -488,7 +512,7 @@ export function downloadTeamSelectedResultsPdf(args: {
   const people = new Map(args.participants.map((person) => [person.id, person]));
   const items = new Map(args.items.map((item) => [item.id, item]));
   const results = new Map(args.results.map((result) => [`${result.registration_id}:${result.item_id}`, result]));
-  const groups = new Map<string, { item: ExportItem; rows: { name: string; category: string; chest: string; points: string; rank: string; grade: string; general: string }[] }>();
+  const groups = new Map<string, { teamKey: string; teamName: string; item: ExportItem; rows: { name: string; category: string; chest: string; points: string; rank: string; grade: string; general: string }[] }>();
 
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
     if (!selectedItemIds.has(assignment.item_id) || !assignment.registration_id) return;
@@ -496,7 +520,10 @@ export function downloadTeamSelectedResultsPdf(args: {
     const item = items.get(assignment.item_id);
     if (!participant || !item) return;
     const result = results.get(`${assignment.registration_id}:${assignment.item_id}`);
-    const group = groups.get(item.id) ?? { item, rows: [] };
+    const teamName = args.teamName || assignment.organisation_name || participant.organisation_name || 'Unassigned team';
+    const teamKey = assignment.organisation_id || participant.organisation_id || teamName;
+    const groupKey = args.groupByTeam ? `${teamKey}:${item.id}` : item.id;
+    const group = groups.get(groupKey) ?? { teamKey, teamName, item, rows: [] };
     group.rows.push({
       name: safeText(participant.name) || 'Unnamed participant',
       category: safeText(participant.category_code) || '—',
@@ -506,7 +533,7 @@ export function downloadTeamSelectedResultsPdf(args: {
       grade: safeText(result?.grade) || '—',
       general: assignment.entry_kind === 'general_team' ? 'Yes' : 'No',
     });
-    groups.set(item.id, group);
+    groups.set(groupKey, group);
   });
   if (!groups.size) throw new Error('No active team assignments match the selected programs.');
 
@@ -517,11 +544,22 @@ export function downloadTeamSelectedResultsPdf(args: {
   doc.text('TEAM PROGRAM RESULTS', PAGE_WIDTH / 2, 16, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text(`Team: ${safeText(args.teamName) || '—'}`, PRINT_MARGIN, 22);
+  doc.text(args.groupByTeam ? 'Teams: All permitted teams' : `Team: ${safeText(args.teamName) || '—'}`, PRINT_MARGIN, 22);
   doc.text(`Festival: ${safeText(args.festivalName) || '—'}`, PAGE_WIDTH - PRINT_MARGIN, 22, { align: 'right' });
   let cursorY = 27;
 
-  [...groups.values()].sort((a, b) => itemLabel(a.item).localeCompare(itemLabel(b.item))).forEach(({ item, rows }) => {
+  let previousTeamKey = '';
+  [...groups.values()].sort((a, b) => (args.groupByTeam ? a.teamName.localeCompare(b.teamName) || a.teamKey.localeCompare(b.teamKey) : 0) || itemLabel(a.item).localeCompare(itemLabel(b.item))).forEach(({ teamKey, teamName, item, rows }) => {
+    if (args.groupByTeam && teamKey !== previousTeamKey) {
+      if (cursorY > PAGE_HEIGHT_F4 - 30) { doc.addPage(); cursorY = PRINT_MARGIN + 7; }
+      if (previousTeamKey) cursorY += 3;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10);
+      doc.setTextColor(...INK);
+      doc.text(`TEAM: ${safeText(teamName)}`, PRINT_MARGIN, cursorY);
+      cursorY += 6;
+      previousTeamKey = teamKey;
+    }
     if (cursorY > PAGE_HEIGHT_F4 - 24) { doc.addPage(); cursorY = PRINT_MARGIN + 7; }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
@@ -545,13 +583,13 @@ export function downloadTeamSelectedResultsPdf(args: {
         5: { cellWidth: 17, halign: 'center' }, 6: { cellWidth: 16, halign: 'center' },
       },
       rowPageBreak: 'avoid',
-      didDrawPage: (hook) => { if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName)} · ${title}`); },
+      didDrawPage: (hook) => { if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName || teamName)} · ${title}`); },
     });
     cursorY = ((doc as any).lastAutoTable?.finalY ?? cursorY + 10) + 5;
   });
 
   pageFooter(doc, PAGE_HEIGHT_F4);
-  const safeTeam = (safeText(args.teamName) || 'team').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '');
+  const safeTeam = (safeText(args.teamName) || (args.groupByTeam ? 'all-teams' : 'team')).replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '');
   doc.save(`team-results-${safeTeam}.pdf`);
   return { itemCount: groups.size };
 }
@@ -696,3 +734,4 @@ export async function downloadParticipantsCsv(participants: ExportParticipant[])
   }
   return { participantCount: participants.length };
 }
+

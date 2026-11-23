@@ -23,10 +23,37 @@ export default function ScoringRulesList() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [jsonText, setJsonText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [criteriaScoringEnabled, setCriteriaScoringEnabled] = useState(false);
+  const [loadingScoringMode, setLoadingScoringMode] = useState(true);
+  const [savingScoringMode, setSavingScoringMode] = useState(false);
 
   useEffect(() => {
     loadRules();
-  }, []);
+    if (tenantId) loadScoringMode();
+  }, [tenantId]);
+
+  const loadScoringMode = async () => {
+    if (!tenantId) { setLoadingScoringMode(false); return; }
+    try {
+      const { data, error } = await scoringRuleRepository.getCriteriaScoringEnabled(tenantId);
+      if (error) throw error;
+      setCriteriaScoringEnabled(data === true);
+    } catch (error: any) {
+      Alert.alert('Scoring mode unavailable', error.message);
+    } finally {
+      setLoadingScoringMode(false);
+    }
+  };
+
+  const toggleScoringMode = async () => {
+    if (!tenantId || savingScoringMode) return;
+    setSavingScoringMode(true);
+    const next = !criteriaScoringEnabled;
+    const { error } = await scoringRuleRepository.setCriteriaScoringEnabled(tenantId, next);
+    if (error) Alert.alert('Could not update scoring mode', error.message);
+    else setCriteriaScoringEnabled(next);
+    setSavingScoringMode(false);
+  };
 
   const loadRules = async () => {
     try {
@@ -152,6 +179,19 @@ export default function ScoringRulesList() {
   return (
     <View className="flex-1 bg-ssf-bg">
       <ScrollView className="flex-1 py-6 px-4">
+        <Card className="mb-4 border-ui-border">
+          <CardContent className="p-4 flex-row items-center justify-between gap-4">
+            <View className="flex-1">
+              <Text className="font-poppins-bold text-ui-text">Criteria scoring</Text>
+              <Text className="font-poppins text-ui-muted-foreground text-xs mt-1">
+                {criteriaScoringEnabled ? 'On for competitions that have not started judging. Existing competitions keep their saved mode.' : 'Off. Judges enter one total mark out of 100.'}
+              </Text>
+            </View>
+            <Button disabled={savingScoringMode || loadingScoringMode || !tenantId} onPress={toggleScoringMode}>
+              <Text>{loadingScoringMode ? 'Loading…' : savingScoringMode ? 'Saving…' : criteriaScoringEnabled ? 'Turn off' : 'Turn on'}</Text>
+            </Button>
+          </CardContent>
+        </Card>
         {/* Page Title — matches schedule page pattern */}
         <View className="flex-row items-center mb-6">
           <TouchableOpacity onPress={goBack} className="mr-3 p-1.5 bg-ui-muted rounded-full">

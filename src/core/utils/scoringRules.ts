@@ -42,10 +42,32 @@ export const getScoringRulesForItem = async (
   itemNameEn: string, 
   itemNameMl?: string, 
   itemType: 'stage' | 'offstage' = 'stage',
-  tenantId?: string
+  tenantId?: string,
+  scheduleId?: string,
+  judgeToken?: string,
 ): Promise<ItemRule> => {
   
   // Fetch rules from database
+  // Criteria entry is a tenant opt-in. Missing settings fail closed to the
+  // legacy single-total workflow for old tenants and newly provisioned rows.
+  if (tenantId && scheduleId) {
+    let pinnedMode: ScoringEntryMode | null = null;
+    if (scheduleId) {
+      const { data, error } = await scoringRuleRepository.getScheduleScoringMode(scheduleId, tenantId, judgeToken);
+      if (error) throw new Error(error.message);
+      if (data === 'criteria' || data === 'total_only') pinnedMode = data;
+    }
+    const { data: criteriaEnabled, error: settingsError } = await scoringRuleRepository.getCriteriaScoringEnabled(tenantId, scheduleId, judgeToken);
+    if (settingsError) throw new Error(settingsError.message);
+    if (pinnedMode === 'total_only' || (pinnedMode === null && criteriaEnabled !== true)) {
+      return {
+        ...(itemType === 'offstage' ? FALLBACK_CREATIVE_RULE : FALLBACK_PERFORMANCE_RULE),
+        total_marks: 100,
+        entry_mode: 'total_only',
+        criteria: [],
+      };
+    }
+  }
   const { data: dbRules, error } = await scoringRuleRepository.listRules<any>(tenantId);
   if (error) throw new Error(error.message);
   const rulesList = (dbRules || []) as any[];
@@ -101,7 +123,7 @@ export const getScoringRulesForItem = async (
   });
 
   let matchedRule = sortedRules.find(
-    rule => !rule.is_default && (
+    rule => (scheduleId ? !['DEFAULT_PERFORMANCE', 'DEFAULT_CREATIVE'].includes(rule.event_name) : !rule.is_default) && (
       rule.event_name.toLowerCase().trim() === normalizedSearchEn || 
       (rule.event_name_ml && rule.event_name_ml.toLowerCase().trim() === normalizedSearchMl)
     )
@@ -110,7 +132,7 @@ export const getScoringRulesForItem = async (
   // 2. Try partial match
   if (!matchedRule) {
     matchedRule = sortedRules.find(
-      rule => !rule.is_default && (
+      rule => (scheduleId ? !['DEFAULT_PERFORMANCE', 'DEFAULT_CREATIVE'].includes(rule.event_name) : !rule.is_default) && (
         (normalizedSearchEn && normalizedSearchEn.includes(rule.event_name.toLowerCase().trim())) ||
         (normalizedSearchMl && rule.event_name_ml && normalizedSearchMl.includes(rule.event_name_ml.toLowerCase().trim()))
       )

@@ -603,7 +603,7 @@ export default function ResultsPage() {
         || (mode === 'marks' && confirmedMissingMarks.length > 0)) {
         if (!schedule) throw new Error('Schedule details are not loaded.');
         const rules = await getScoringRulesForItem(schedule.items?.item_name_en, schedule.items?.item_name_ml,
-          schedule.items?.type, schedule.tenant_id);
+          schedule.items?.type, schedule.tenant_id, mode === 'direct' ? undefined : scheduleId as string);
         defaultMaximum = rules.total_marks;
       }
 

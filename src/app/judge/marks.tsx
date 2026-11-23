@@ -197,7 +197,7 @@ export default function JudgeMarksPage() {
       const itemNameMl = sessionData.schedules?.items?.item_name_ml || '';
       const itemType = sessionData.schedules?.items?.item_type || 'stage';
       const tenantId = sessionData.tenant_id;
-      const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenantId);
+      const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenantId, sessionData.schedule_id, token);
       setEventCriteria(formatCriteriaForUI(rules.criteria));
       setEntryMode(rules.entry_mode);
       setEventTotalMarks(rules.total_marks);

@@ -131,7 +131,7 @@ export function DirectMarkEntryModal({
         ...next,
         [criterion.key]: current[criterion.key] ?? 0,
       }), {} as Record<string, number>);
-      marks[judge] = Object.values(completedScores).reduce((sum, value) => sum + value, 0);
+      marks[judge] = (Object.values(completedScores) as number[]).reduce((sum, value) => sum + value, 0);
       if (missing.length > 0) {
         missingByJudge.push({
           judge,

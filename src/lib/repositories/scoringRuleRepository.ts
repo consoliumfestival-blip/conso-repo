@@ -1,6 +1,19 @@
 import { supabase } from '../../core/config/supabase';
 
 export const scoringRuleRepository = {
+  async getCriteriaScoringEnabled(tenantId: string, scheduleId?: string, token?: string) {
+    return await supabase.rpc('get_tenant_criteria_scoring', {
+      p_tenant_id: tenantId, p_schedule_id: scheduleId ?? null, p_token: token ?? null,
+    });
+  },
+  async setCriteriaScoringEnabled(tenantId: string, enabled: boolean) {
+    return await supabase.rpc('set_tenant_criteria_scoring', { p_tenant_id: tenantId, p_enabled: enabled });
+  },
+  async getScheduleScoringMode(scheduleId: string, tenantId: string, token?: string) {
+    return await supabase.rpc('get_schedule_scoring_mode', {
+      p_schedule_id: scheduleId, p_tenant_id: tenantId, p_token: token ?? null,
+    });
+  },
   async listRules<T>(tenantId?: string) {
     let query = supabase
       .from('scoring_rules')

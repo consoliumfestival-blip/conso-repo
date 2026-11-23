@@ -106,7 +106,7 @@ export default function MarkEntryPage() {
         const itemType = schedule.items.item_type || 'stage';
         setConfiguredMaximum(NaN); setRuleError('');
         try {
-          const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenant_id || undefined);
+          const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenant_id || undefined, schedule.id);
           setEventCriteria(formatCriteriaForUI(rules.criteria));
           setConfiguredMaximum(rules.total_marks);
         } catch (error: any) { setEventCriteria([]); setRuleError(error.message || 'Configure scoring rules first.'); }

@@ -83,7 +83,7 @@ export function AdminMarkEntryModal({
     setLoading(true);
     setEventTotalMarks(NaN); setRuleError('');
     try {
-      const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenantId);
+      const rules = await getScoringRulesForItem(itemNameEn, itemNameMl, itemType as any, tenantId, scheduleId);
       setEventCriteria(formatCriteriaForUI(rules.criteria));
       setEntryMode(rules.entry_mode);
       setEventTotalMarks(rules.total_marks);

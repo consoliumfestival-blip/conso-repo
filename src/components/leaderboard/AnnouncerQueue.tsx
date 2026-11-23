@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/core/config/supabase';
 import { ui } from '@/constants/designSystem';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
+import { PortalManagementPageLoading } from '@/components/layout/PortalManagementPage';
 
 type Entry = { item_id: string; queue_position: number; announced_at: string | null };
 type Item = { id: string; name: string; item_code?: string | null; category_codes?: string[] };
@@ -129,10 +130,11 @@ export function AnnouncerQueue({ tenantId, festivalId, userId, items }: Props) {
   };
   const projections = new Map(ranked.map(item => [item.id, item]));
   const link = token ? getCurrentOriginAppUrl(`/announcer/${token}`) : null;
+  if (queue.isLoading) return <PortalManagementPageLoading section />;
   return <View style={{ backgroundColor: ui.colors.surface, borderColor: ui.colors.border, borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 14, gap: 10 }}>
     <Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 16 }}>Announcer queue</Text>
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Select prepared items, arrange their order, then save. Announcing does not publish results.</Text>
-    {queue.isLoading ? <ActivityIndicator color={ui.colors.primary} /> : queue.error ? <Pressable onPress={() => void queue.refetch()}><Text style={{ color: ui.colors.danger }}>Queue unavailable. Tap to retry.</Text></Pressable> : <>
+    {queue.error ? <Pressable onPress={() => void queue.refetch()}><Text style={{ color: ui.colors.danger }}>Queue unavailable. Tap to retry.</Text></Pressable> : <>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
         {([['all', 'All Results'], ['suspense', 'Maintain Suspense'], ['team', 'Select Team']] as const).map(([value, label]) =>
           <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: mode === value, disabled: save.isPending }} disabled={save.isPending} onPress={() => { setMode(value); if (value === 'team') { initializedTeam.current = ''; setTeamId(''); setSelected([]); } }} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderRadius: 8, borderColor: mode === value ? ui.colors.primary : ui.colors.border, backgroundColor: mode === value ? ui.colors.primarySoft : ui.colors.surface }}>

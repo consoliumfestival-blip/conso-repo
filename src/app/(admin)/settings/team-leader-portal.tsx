@@ -3,7 +3,6 @@ import { teamLeaderClipboardValue, TeamLeaderCredentialKind } from '@/core/utils
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   Alert,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -15,14 +14,13 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
-import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { supabase } from '@/core/config/supabase';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useAuthStore } from '@/core/store/authStore';
 import { SearchableCombobox } from '@/components/ui/SearchableCombobox';
 import { ChevronLeft, Search, Trash2, Users, Check, AlertCircle, Copy } from 'lucide-react-native';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
-import { PortalManagementHeader } from '@/components/layout/PortalManagementHeader';
+import { PortalManagementPage } from '@/components/layout/PortalManagementPage';
 
 interface Participant {
   id: string;
@@ -78,7 +76,7 @@ const temporaryPasswordKey = (tenantId: string, festivalId: string, userId: stri
 export default function TeamLeaderPortalAdmin() {
   const router = useRouter();
   const { useActiveFestival } = useFestival();
-  const { data: activeFestival } = useActiveFestival();
+  const { data: activeFestival, isLoading: festivalLoading } = useActiveFestival();
   const tenantId = useAuthStore((state) => state.tenant_id);
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -195,7 +193,7 @@ export default function TeamLeaderPortalAdmin() {
 
     try {
       // Keep cached rows visible during refresh. Only the first load shows
-      // skeletons; mutations refresh in the background.
+      // the page loader; mutations refresh in the background.
       if (!cached) {
         setLoading(true);
         setLoadingDropdowns(true);
@@ -316,10 +314,14 @@ export default function TeamLeaderPortalAdmin() {
   }, [activeFestival?.id, tenantId]);
 
   useFocusEffect(useCallback(() => {
-    if (activeFestival?.id && tenantId) {
+    if (festivalLoading) return;
+    if (tenantId) {
       void loadData(true);
+    } else {
+      setLoading(false);
+      setLoadingDropdowns(false);
     }
-  }, [activeFestival?.id, tenantId, loadData]));
+  }, [festivalLoading, tenantId, loadData]));
 
   useEffect(() => {
     if (tempCredentials && assignments.some((row) => row.user_id === tempCredentials.user_id && row.password_state !== 'pending_change')) {
@@ -623,13 +625,17 @@ export default function TeamLeaderPortalAdmin() {
   );
 
   return (
-    <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 32 }} horizontal={false} showsHorizontalScrollIndicator={false}>
-      <View style={{ width: '100%', maxWidth: 1000, alignSelf: 'center' }}>
+    <PortalManagementPage
+      title="Team Leader Management"
+      description="Assign and manage team leaders."
+      loading={festivalLoading || loading || loadingDropdowns}
+      beforeHeader={(
         <TouchableOpacity onPress={() => router.back()} className="flex-row items-center mb-2">
           <ChevronLeft size={20} className="text-foreground" />
           <Text className="text-sm text-muted-foreground ml-1">Back to Settings</Text>
         </TouchableOpacity>
-        <PortalManagementHeader title="Team Leader Management" description="Assign and manage team leaders." />
+      )}
+    >
 
       <Card
         style={{
@@ -641,10 +647,7 @@ export default function TeamLeaderPortalAdmin() {
           <CardTitle>Assign Team Leader</CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          {loadingDropdowns ? (
-            <AyaticLoadingScreen />
-          ) : (
-            <View style={{ gap: 16 }}>
+          <View style={{ gap: 16 }}>
               <SearchableCombobox
                 label="Team Leader"
                 placeholder="Search participant..."
@@ -788,8 +791,7 @@ export default function TeamLeaderPortalAdmin() {
               >
                 Assign
               </Button>
-            </View>
-          )}
+          </View>
         </CardContent>
       </Card>
 
@@ -813,9 +815,7 @@ export default function TeamLeaderPortalAdmin() {
             />
           </View>
 
-          {loading ? (
-            <AyaticLoadingScreen />
-          ) : filteredAssignments.length === 0 ? (
+          {filteredAssignments.length === 0 ? (
             <View style={{ alignItems: 'center', padding: 24 }}>
               <Users size={32} color="hsl(var(--muted-foreground))" />
               <Text style={{ fontSize: 13, color: 'hsl(var(--muted-foreground))', marginTop: 8 }}>
@@ -918,7 +918,6 @@ export default function TeamLeaderPortalAdmin() {
           )}
         </CardContent>
       </Card>
-      </View>
-    </ScrollView>
+    </PortalManagementPage>
   );
 }

@@ -276,6 +276,7 @@ function DesktopSidebar({
   const { logout, user } = useAuthStore();
   const appearance = useCoreAppearance();
   const sidebarAppearance = useSidebarAppearance();
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [tabletExpanded, setTabletExpanded] = useState(false);
   const { height } = useWindowDimensions();
@@ -368,9 +369,53 @@ function DesktopSidebar({
         {onBottomNavigation && <Pressable accessibilityRole="button" accessibilityLabel="Switch to bottom navigation" onPress={onBottomNavigation} style={styles.railFooterButton}><Menu size={17} color={iconColor} /></Pressable>}
         <Pressable accessibilityRole="button" accessibilityLabel="Appearance settings" onPress={() => go('/(admin)/settings/appearance')} style={styles.railFooterButton}><Palette size={17} color={iconColor} /></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={appearance?.isDark ? 'Use light mode' : 'Use dark mode'} onPress={() => appearance?.setAppearance({ ...appearance.appearance, mode: appearance.isDark ? 'light' : 'dark' })} style={styles.railFooterButton}>{appearance?.isDark ? <Sun size={17} color={iconColor} /> : <Moon size={17} color={iconColor} />}</Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={logout} style={styles.railFooterButton}><LogOut size={17} color={iconColor} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" onPress={() => setLogoutConfirmOpen(true)} style={styles.railFooterButton}><LogOut size={17} color={iconColor} /></Pressable>
         {user && <View accessibilityLabel="Signed in" accessible style={styles.accountStatus}><View style={styles.accountStatusDot} /></View>}
       </View>
+      <Modal
+        visible={logoutConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutConfirmOpen(false)}
+      >
+        <View style={styles.confirmationRoot}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel sign out"
+            onPress={() => setLogoutConfirmOpen(false)}
+            style={styles.confirmationScrim}
+          />
+          <View
+            accessibilityViewIsModal
+            accessibilityLabel="Confirm sign out"
+            style={styles.confirmationCard}
+          >
+            <Text style={styles.confirmationTitle}>Sign out?</Text>
+            <Text style={styles.confirmationMessage}>
+              Are you sure you want to sign out of this account?
+            </Text>
+            <View style={styles.confirmationActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setLogoutConfirmOpen(false)}
+                style={[styles.confirmationButton, styles.confirmationCancelButton]}
+              >
+                <Text style={styles.confirmationCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setLogoutConfirmOpen(false);
+                  void logout();
+                }}
+                style={[styles.confirmationButton, styles.confirmationSignOutButton]}
+              >
+                <Text style={styles.confirmationSignOutText}>Sign out</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1112,6 +1157,70 @@ const styles = StyleSheet.create({
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: ui.colors.surfaceStrong,
+  },
+  confirmationRoot: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  confirmationScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.42)",
+  },
+  confirmationCard: {
+    width: "100%",
+    maxWidth: 380,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: ui.colors.border,
+    backgroundColor: ui.colors.surface,
+    ...ui.shadow,
+  },
+  confirmationTitle: {
+    color: ui.colors.text,
+    fontFamily: "Outfit_700Bold",
+    fontSize: 18,
+  },
+  confirmationMessage: {
+    marginTop: 6,
+    color: ui.colors.textMuted,
+    fontFamily: "Outfit_400Regular",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmationActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 20,
+  },
+  confirmationButton: {
+    minHeight: 40,
+    minWidth: 88,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    borderRadius: 9,
+  },
+  confirmationCancelButton: {
+    borderWidth: 1,
+    borderColor: ui.colors.border,
+    backgroundColor: ui.colors.surface,
+  },
+  confirmationCancelText: {
+    color: ui.colors.text,
+    fontFamily: "Outfit_600SemiBold",
+    fontSize: 13,
+  },
+  confirmationSignOutButton: {
+    backgroundColor: ui.colors.destructive,
+  },
+  confirmationSignOutText: {
+    color: ui.colors.onPrimary,
+    fontFamily: "Outfit_700Bold",
+    fontSize: 13,
   },
   sheet: {
     width: "100%",

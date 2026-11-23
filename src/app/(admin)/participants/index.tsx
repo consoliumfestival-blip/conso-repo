@@ -456,7 +456,7 @@ export default function ParticipantsList() {
           <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
-          {!selectMode && <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-2 rounded-lg border border-ssf-border bg-core-surface-white px-3 py-2">
+          {!selectMode && <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className={`${headerActionSize} flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white`}>
             <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
             <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
           </TouchableOpacity>}

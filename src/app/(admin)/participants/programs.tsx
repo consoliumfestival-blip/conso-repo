@@ -549,8 +549,8 @@ export default function ProgramsScreen() {
     <Modal visible={!!activeCard} transparent animationType="fade" onRequestClose={() => !saving && setActiveCard(null)}>
       <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40 p-3">
         <Pressable className="absolute inset-0" onPress={() => !saving && setActiveCard(null)} accessibilityRole="button" accessibilityLabel="Close participant picker" />
-        <View style={{ width: Math.max(0, Math.min(width - 24, 900)), height: Math.max(0, Math.min(height - 24, 820)) }} className="rounded-2xl bg-core-surface-white p-4">
-          <View className="mb-3 flex-row items-start"><View className="flex-1"><Text className="font-poppins-black text-lg text-ui-text">{activeCard?.item.item_name_en || activeCard?.item.item_code}</Text><Text className="font-poppins text-xs text-ui-text-muted">{activeCard?.category} · {activeCard?.kind === 'general_team' ? 'Group entry' : 'Individual participant'} · {cardModalMode === 'details' ? 'Assigned participants' : 'Assign participants'}</Text></View><TouchableOpacity onPress={() => !saving && setActiveCard(null)} accessibilityLabel="Close"><X size={20} color={coreColor("#475569", 'text')} /></TouchableOpacity></View>
+        <View style={{ width: Math.max(0, Math.min(width - 24, 760)), height: Math.max(0, Math.min(height - 24, 680)) }} className="rounded-2xl bg-core-surface-white p-3">
+          <View className="mb-2 flex-row items-start"><View className="flex-1"><Text className="font-poppins-black text-base text-ui-text">{activeCard?.item.item_name_en || activeCard?.item.item_code}</Text><Text className="font-poppins text-xs text-ui-text-muted">{activeCard?.category} · {activeCard?.kind === 'general_team' ? 'Group entry' : 'Individual participant'} · {cardModalMode === 'details' ? 'Assigned participants' : 'Assign participants'}</Text></View><TouchableOpacity onPress={() => !saving && setActiveCard(null)} accessibilityLabel="Close"><X size={20} color={coreColor("#475569", 'text')} /></TouchableOpacity></View>
           {detailQuery.isFetching || (activeCard?.kind === 'general_team' && cardModalMode === 'details' && entries.isFetching) ? <ActivityIndicator size="small" /> : (shouldLoadProgramDetail && detailQuery.error) || (activeCard?.kind === 'general_team' && cardModalMode === 'details' && entries.error) ? <SsfButton label="Retry program details" variant="outline" size="sm" onPress={() => { if (shouldLoadProgramDetail) void detailQuery.refetch(); if (entryItemId) void entries.refetch(); }} /> : cardModalMode === 'details' && activeCard?.kind === 'general_team' ? <>
             <Text className="mb-2 font-poppins text-xs text-ui-text-muted">Showing existing team entries and their assigned members only.</Text>
             <ScrollView className="min-h-0 flex-1" style={{ flex: 1, minHeight: 80 }} keyboardShouldPersistTaps="handled">
@@ -581,16 +581,16 @@ export default function ProgramsScreen() {
               const toggleSelection = () => activeCard?.kind === 'participant' && cardModalMode === 'assign'
                 ? toggleSelectedParticipant(person)
                 : setSelectedIds(ids => chosen ? ids.filter(id => id !== person.id) : [...ids, person.id]);
-              return <View key={person.id} className="mb-1 flex-row items-center rounded-md border border-ui-border bg-core-surface-muted-slate-50 px-1.5 py-0.5">
-                <TouchableOpacity accessibilityRole="checkbox" accessibilityState={{ checked: chosen || alreadyAssigned, disabled: !selectable || saving }} accessibilityLabel={`${chosen ? 'Deselect' : 'Select'} ${person.name}`} disabled={!selectable || saving} onPress={toggleSelection} className="mr-1 min-h-11 w-10 items-center justify-center">
+              return <TouchableOpacity key={person.id} accessibilityRole="checkbox" accessibilityState={{ checked: chosen || alreadyAssigned, disabled: !selectable || saving }} accessibilityLabel={`${chosen ? 'Deselect' : 'Select'} ${person.name}`} disabled={!selectable || saving} onPress={toggleSelection} className="mb-1 min-h-11 flex-row items-center rounded-md border border-ui-border bg-[#F8FAF8] px-2 py-1">
+                <View className="mr-2 min-h-10 w-8 items-center justify-center">
                   <View className={`h-[18px] w-[18px] items-center justify-center rounded-[4px] border ${removing ? 'border-core-danger-red-700 bg-core-danger-red-700' : chosen ? 'border-core-success-emerald-600 bg-core-success-action-emerald-600' : alreadyAssigned ? 'border-core-success-emerald-600 bg-core-surface-white' : 'border-core-border-slate-300 bg-core-surface-white'}`}>
                     {(removing || chosen) && <Check size={12} color={coreColor('white', 'onPrimary')}/>}
                     {alreadyAssigned && !chosen && <Check size={12} color={coreColor('#047857', 'success')}/>}
                   </View>
-                </TouchableOpacity>
+                </View>
                 <View className="min-w-0 flex-1 py-1"><Text className="font-poppins-bold text-[12px] leading-4 text-ui-text" numberOfLines={1}>{person.name}</Text><Text className="font-poppins text-[10px] leading-3.5 text-ui-text-muted" numberOfLines={1}>{person.chest_number || 'No chest number'} · {person.organisations?.name || 'Organisation unavailable'}{activeCard?.kind === 'general_team' ? ` · ${person.category_code || 'No category'}` : ''}</Text></View>
                 {alreadyAssigned && cardModalMode === 'assign' && <Text className="ml-1 font-poppins-bold text-[9px] text-core-success-emerald-800">Assigned</Text>}
-              </View>;
+              </TouchableOpacity>;
             }) : <Text className="py-4 font-poppins text-sm text-ui-text-muted">No eligible participants in this category.</Text>}
           </ScrollView>
           </>}

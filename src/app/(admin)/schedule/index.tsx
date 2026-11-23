@@ -850,6 +850,7 @@ export default function ScheduleDashboard() {
               {' · '}{venues.length} venues{' · '}{totalSchedules} scheduled events
             </Text>
           </View>
+          <View className="flex-row flex-wrap items-center justify-end gap-1.5">
           <TouchableOpacity
             onPress={() => setSchedulePdfExportOpen(true)}
             disabled={isExportingSchedule}
@@ -861,6 +862,11 @@ export default function ScheduleDashboard() {
             {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
             <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/venues')} accessibilityRole="button" accessibilityLabel="Manage venues"><MapPin size={14} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Venues</Text></TouchableOpacity>
+          <TouchableOpacity className="h-9 flex-row items-center justify-center rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/import-json' as any)}><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Import JSON</Text></TouchableOpacity>
+          {!isMobile && Platform.OS === 'web' && <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/bulk-create' as any)}><Plus size={14} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Bulk Create</Text></TouchableOpacity>}
+          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-ssf-primary/10 px-2" onPress={() => router.push('/(admin)/schedule/create')}><Plus size={14} color={coreColor('#1B6B3A', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add New</Text></TouchableOpacity>
+          </View>
         </View>
 
       {isErrorSchedules && <View className="mb-2"><Text className="font-poppins text-xs text-core-danger-red-700">Schedules could not be loaded.</Text><SsfButton label="Retry schedules" size="sm" variant="outline" onPress={()=>{void refetchSchedules();}} /></View>}
@@ -1189,43 +1195,6 @@ export default function ScheduleDashboard() {
           </View>
         </View>
       )}
-
-      <View className="flex-row justify-end items-center mb-3 flex-wrap gap-2">
-        <TouchableOpacity
-          className="min-h-9 flex-row items-center gap-x-1 bg-core-surface-white px-3 py-2 rounded-lg border border-ui-border"
-          onPress={() => router.push('/(admin)/schedule/venues')}
-          accessibilityRole="button"
-          accessibilityLabel="Manage venues"
-          accessibilityHint="Opens venue management"
-        >
-          <MapPin size={14} color={coreColor('#0F766E', 'primaryText')} />
-          <Text className="font-poppins-bold text-xs text-ui-text">Venues</Text>
-        </TouchableOpacity>
-        <View className="flex-row flex-wrap gap-2">
-          <TouchableOpacity
-            className="flex-row items-center gap-x-1 bg-core-info-soft-blue-50 px-3 py-2 rounded-lg border border-core-info-soft-blue-100"
-            onPress={() => router.push('/(admin)/schedule/import-json' as any)}
-          >
-            <Text className="font-poppins-bold text-core-info-blue-700 text-xs">Import JSON</Text>
-          </TouchableOpacity>
-          {!isMobile && Platform.OS === 'web' && (
-            <TouchableOpacity
-              className="flex-row items-center gap-x-1 bg-core-surface-white px-3 py-2 rounded-lg border border-ui-border"
-              onPress={() => router.push('/(admin)/schedule/bulk-create' as any)}
-            >
-              <Plus size={14} color={coreColor("#0F766E", 'primaryText')} />
-              <Text className="font-poppins-bold text-xs text-core-primary-text-teal-700">Bulk Create</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            className="flex-row items-center gap-x-1 bg-ssf-primary/10 px-3 py-2 rounded-lg border border-ssf-primary/20"
-            onPress={() => router.push('/(admin)/schedule/create')}
-          >
-            <Plus size={14} color={coreColor("#1B6B3A", 'primaryText')} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Add New</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
       {isSearchDebouncing ? (
         <SsfCard className="items-center py-6">

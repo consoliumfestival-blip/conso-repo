@@ -179,7 +179,9 @@ export default function ParticipantsList() {
       return (data ?? []).filter((result) => result.result_status == null || result.result_status === 'published');
     },
   });
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedStatusById, setSelectedStatusById] = useState<Map<string, string>>(new Map());
+  const selected = new Set(selectedStatusById.keys());
+  const approvableSelectedIds = Array.from(selected).filter((id) => (selectedStatusById.get(id) || 'pending').toLowerCase() !== 'approved');
   const selectionScopeIsCurrent = selectionScope === currentSelectionScope;
   const selectionScopeMatchesSession = () => {
     const currentAuth = useAuthStore.getState();
@@ -188,7 +190,7 @@ export default function ParticipantsList() {
 
   useEffect(() => {
     if (selectionScope === currentSelectionScope) return;
-    setSelected(new Set());
+    setSelectedStatusById(new Map());
     setSelectMode(false);
     setIsExportOpen(false);
     setDeleteTarget(null);
@@ -330,6 +332,12 @@ export default function ParticipantsList() {
   const updateSingleStatus = async (id: string, newStatus: string) => {
     try {
       await updateStatus({ id, status: newStatus as any, reason: null });
+      setSelectedStatusById((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Map(prev);
+        next.set(id, newStatus);
+        return next;
+      });
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert('Status update failed: ' + error.message);
       else Alert.alert('Error', error.message);
@@ -363,15 +371,15 @@ export default function ParticipantsList() {
   const toggleSelectMode = () => {
     if (isSelectingAll) return;
     setSelectMode(prev => !prev);
-    setSelected(new Set());
+    setSelectedStatusById(new Map());
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string, status: string | null | undefined) => {
     if (isSelectingAll) return;
-    setSelected(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+    setSelectedStatusById((prev) => {
+      const next = new Map(prev);
+      if (prev.has(id)) next.delete(id);
+      else next.set(id, status || 'pending');
       return next;
     });
   };
@@ -380,8 +388,10 @@ export default function ParticipantsList() {
     const scope = scopeKey;
     setIsSelectingAll(true);
     try {
-      const rows = await loadAllAdminParticipants(filters, true);
-      if (scope === operationScope.current && selectionScopeMatchesSession()) setSelected(new Set(rows.map((p: any) => p.id)));
+      const rows = await loadAllAdminParticipants(filters, false, 'id,status');
+      if (scope === operationScope.current && selectionScopeMatchesSession()) {
+        setSelectedStatusById(new Map(rows.map((p: any) => [p.id, p.status || 'pending'])));
+      }
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert(error?.message || 'Unable to select all participants.');
       else Alert.alert('Selection unavailable', error?.message || 'Unable to select all participants.');
@@ -390,14 +400,15 @@ export default function ParticipantsList() {
 
   const bulkUpdateAction = async (action: 'delete' | 'approve') => {
     if (listError || isLoadingList || pageQuery.isFetching || processingBulk || !selectionScopeMatchesSession()) return;
-    const ids = Array.from(selected);
+    const ids = action === 'approve' ? approvableSelectedIds : Array.from(selected);
+    if (ids.length === 0) return;
     try {
       if (action === 'delete') {
         await deleteMultiple(ids);
       } else {
         await approveMultiple(ids);
       }
-      setSelected(new Set());
+      setSelectedStatusById(new Map());
       setSelectMode(false);
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert('Action failed: ' + error.message);
@@ -406,10 +417,10 @@ export default function ParticipantsList() {
   };
 
   const confirmBulkAction = (action: 'delete' | 'approve') => {
-    if (listError || isLoadingList || pageQuery.isFetching || processingBulk || !selectionScopeMatchesSession() || selected.size === 0) return;
+    if (listError || isLoadingList || pageQuery.isFetching || processingBulk || !selectionScopeMatchesSession() || (action === 'approve' ? approvableSelectedIds.length === 0 : selected.size === 0)) return;
     const msg = action === 'delete'
       ? `Delete ${selected.size} selected participant(s)? This cannot be undone.`
-      : `Approve ${selected.size} selected participant(s)?`;
+      : `Approve ${approvableSelectedIds.length} selected participant(s)?`;
 
     if (Platform.OS === 'web') {
       if (window.confirm(msg)) bulkUpdateAction(action);
@@ -575,10 +586,10 @@ export default function ParticipantsList() {
               <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0 || !!listError || !selectionScopeIsCurrent} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-core-danger-soft-red-100' : 'bg-core-surface-muted-gray-100'}`}>
                 <Trash2 size={16} color={selected.size > 0 ? coreColor('#DC2626', 'danger') : coreColor('#9CA3AF', 'textMuted')} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || selected.size === 0 || !!listError || !selectionScopeIsCurrent} className={`flex-row items-center gap-x-1 px-3 py-2 rounded-lg ${selected.size > 0 ? 'bg-ssf-primary' : 'bg-core-surface-strong-gray-200'}`}>
-                {processingBulk ? <ActivityIndicator color={coreColor("white", 'onPrimary')} size="small" /> : <CheckCircle size={16} color={selected.size > 0 ? coreColor('white', 'onPrimary') : coreColor('#9CA3AF', 'textMuted')} />}
-                <Text className={`font-poppins-bold text-xs ${selected.size > 0 ? 'text-core-on-primary-white' : 'text-core-text-muted-gray-400'}`}>Approve</Text>
-              </TouchableOpacity>
+              {approvableSelectedIds.length > 0 && <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || !!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-1 rounded-lg bg-ssf-primary px-3 py-2">
+                {processingBulk ? <ActivityIndicator color={coreColor("white", 'onPrimary')} size="small" /> : <CheckCircle size={16} color={coreColor('white', 'onPrimary')} />}
+                <Text className="font-poppins-bold text-xs text-core-on-primary-white">Approve{approvableSelectedIds.length < selected.size ? ` (${approvableSelectedIds.length})` : ''}</Text>
+              </TouchableOpacity>}
             </View>
           </View>
         )}
@@ -610,8 +621,8 @@ export default function ParticipantsList() {
                     accessibilityRole="button"
                     accessibilityLabel={`${selectMode ? 'Select' : 'Open'} ${p.name}`}
                     activeOpacity={0.86}
-                    onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
-                    onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id); }}
+                    onPress={() => selectMode ? toggleSelect(p.id, p.status) : router.push(`/(admin)/participants/${p.id}`)}
+                    onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id, p.status); }}
                     style={{ minHeight: 148, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
@@ -664,10 +675,10 @@ export default function ParticipantsList() {
                   <TouchableOpacity
                     className={`min-h-[72px] flex-row items-center justify-between border-b border-ssf-border px-3 py-2 ${isSelected ? 'bg-core-success-soft-green-50' : 'bg-ssf-surface'
                       }`}
-                    onPress={() => selectMode ? toggleSelect(p.id) : router.push(`/(admin)/participants/${p.id}`)}
+                    onPress={() => selectMode ? toggleSelect(p.id, p.status) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => {
                       if (!selectMode) setSelectMode(true);
-                      toggleSelect(p.id);
+                      toggleSelect(p.id, p.status);
                     }}
                   >
                     {selectMode && (

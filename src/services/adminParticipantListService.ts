@@ -33,11 +33,11 @@ export async function loadAdminParticipantPage(filters: AdminParticipantFilters,
   return { participants: responseRows<any>(data, 'Participant'), count };
 }
 
-export async function loadAllAdminParticipants(filters: AdminParticipantFilters, idsOnly = false) {
+export async function loadAllAdminParticipants(filters: AdminParticipantFilters, idsOnly = false, columns?: string) {
   const rows: any[] = [];
   let expectedCount: number | null = null;
   for (let offset = 0; ; offset += BATCH_SIZE) {
-    const { data, error, count } = await filteredQuery(filters, true, idsOnly ? 'id' : undefined).range(offset, offset + BATCH_SIZE - 1);
+    const { data, error, count } = await filteredQuery(filters, true, idsOnly ? 'id' : columns).range(offset, offset + BATCH_SIZE - 1);
     if (error) throw error;
     if (count == null) throw new Error('Participant count unavailable.');
     if (expectedCount !== null && count !== expectedCount) throw new Error('Participants changed while loading. Please retry.');

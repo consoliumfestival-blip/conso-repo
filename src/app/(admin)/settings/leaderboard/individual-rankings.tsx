@@ -91,7 +91,6 @@ export default function IndividualRankingsPage() {
   const categoryOptions = useMemo(() => [
     'all',
     ...Array.from(new Set(festivalCategories
-      .filter((category) => !isGeneralCategoryCode(category.code))
       .map((category) => category.code.toLowerCase()))),
   ], [festivalCategories]);
 
@@ -113,8 +112,8 @@ export default function IndividualRankingsPage() {
       if (r.is_group) return false;
 
       // 2. Status check (Published vs All)
-      // Ensure "published" means it is visible on the public leaderboard
-      if (statusFilter === 'published' && r.public_visible !== true) return false;
+      // Core-published results count here even before public visibility is enabled.
+      if (statusFilter === 'published' && (!r.published || r.result_status !== 'published')) return false;
 
       // 3. Category match based on item name/ml prefix
       const itemCodes = itemCategoryCodes.get(r.item_id ?? '') || [];
@@ -123,10 +122,6 @@ export default function IndividualRankingsPage() {
           ? itemCodes.some(isGeneralCategoryCode)
           : itemCodes.includes(selectedCategory));
         
-      // 4. Exclude General items from individual rankings
-      const isGeneral = itemCodes.some(isGeneralCategoryCode);
-      if (isGeneral) return false;
-
       return categoryMatch;
     });
 

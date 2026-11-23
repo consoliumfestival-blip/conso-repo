@@ -233,12 +233,8 @@ const toIndividualRows = (results: PublicPublishedResultRow[]): RankingViewRow[]
   }>();
 
   results.forEach((result) => {
-    if (!result.participant_id) return;
-
-    // Exclude General categories from individual rankings
-    const catCodes = result.item_category_codes || [];
-    const isGeneral = catCodes.some(isGeneralCategoryCode);
-    if (isGeneral) return;
+    // Individual General items belong here; group results belong to team standings.
+    if (result.is_group || !result.participant_id) return;
 
     const existing = grouped.get(result.participant_id);
     if (existing) {

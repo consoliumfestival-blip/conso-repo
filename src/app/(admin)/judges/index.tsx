@@ -698,8 +698,8 @@ export default function JudgesPage() {
               <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
             </TouchableOpacity>
             <View>
-              <Text className="text-xl font-poppins-black text-ui-text">Judge Panel</Text>
-              <Text className="font-poppins text-xs text-ui-text-muted mt-0.5">
+              <Text className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ui-text`}>Judge Panel</Text>
+              <Text className="font-poppins text-sm text-ui-text-muted mt-0.5">
                 {judges.length} judge{judges.length !== 1 ? 's' : ''} registered
               </Text>
             </View>
@@ -829,20 +829,31 @@ export default function JudgesPage() {
             </SsfCard>
           ) : (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 24 }}>
-              {judges.map((judge: any) => {
+              {judges.map((judge: any, index: number) => {
                 const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
                 const latestToken = judgeTokens[0];
+                const accents = [
+                  { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', icon: '#10B981' },
+                  { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', icon: '#3B82F6' },
+                  { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', icon: '#F97316' },
+                  { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', icon: '#8B5CF6' },
+                ];
+                const accent = accents[index % accents.length];
                 return (
-                  <SsfCard key={judge.id} className="p-3" style={{ width: width < 640 ? '100%' : width < 1200 ? '48.5%' : '31.5%' }}>
+                  <SsfCard key={judge.id} className="p-3" style={{
+                    width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
+                    backgroundColor: accent.backgroundColor,
+                    borderColor: accent.borderColor,
+                  }}>
                     <View className="flex-row items-start gap-x-2.5">
-                      <View className="h-9 w-9 shrink-0 rounded-xl bg-core-primary-soft-teal-50 items-center justify-center">
-                        <Text className="font-poppins-black text-sm text-core-primary-text-teal-700">{judge.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
+                      <View className="h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-core-surface-white">
+                        <Text className="font-poppins-black text-sm" style={{ color: accent.icon }}>{judge.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
                       </View>
                       <View className="flex-1" style={{ minWidth: 0 }}>
                         <Text numberOfLines={2} className="font-poppins-bold text-sm text-ui-text">{judge.name}</Text>
                         {judgeTokens.length > 0 && (
-                          <View className="self-start mt-1 px-2 py-0.5 rounded-full bg-core-info-soft-blue-50 border border-core-info-soft-blue-200">
-                            <Text className="font-poppins-bold text-[9px] text-core-info-blue-700">
+                          <View className="mt-2 self-start rounded-full border border-white/80 bg-core-surface-white px-2.5 py-1">
+                            <Text className="font-poppins-bold text-[10px] text-ui-text">
                               {judgeTokens.length} active code{judgeTokens.length !== 1 ? 's' : ''}
                             </Text>
                           </View>
@@ -850,33 +861,34 @@ export default function JudgesPage() {
                       </View>
                     </View>
 
-                    <View className="mt-2.5 pt-2.5 border-t border-ui-border gap-y-1.5">
+                    <View className="mt-3 gap-y-1 border-t pt-2.5" style={{ borderColor: accent.borderColor }}>
                       <View className="flex-row items-center">
                         {judge.phone && <Phone size={12} color={ui.colors.textMuted} />}
-                        <Text numberOfLines={1} className="font-poppins text-xs text-ui-text-muted ml-1.5">{judge.phone || '—'}</Text>
+                        <Text numberOfLines={1} className="ml-1.5 font-poppins text-[11px] text-ui-text-muted">{judge.phone || '—'}</Text>
                       </View>
-                      <Text className="font-poppins text-xs text-ui-text-muted" style={{ overflowWrap: 'anywhere' } as any}>
+                      <Text className="font-poppins text-[11px] text-ui-text-muted" style={{ overflowWrap: 'anywhere' } as any}>
                         {Array.isArray(judge.specialization) && judge.specialization.length
                           ? judge.specialization.join(', ')
                           : '—'}
                       </Text>
                     </View>
 
-                    <View className="flex-row items-center gap-x-2 mt-3">
+                    <View className="mt-3 flex-row items-center gap-x-2">
                       <TouchableOpacity
                         onPress={() => openTokenModal(judge, latestToken?.schedule_id || '')}
-                        className={`h-9 flex-1 flex-row items-center justify-center border rounded-lg px-3 ${latestToken ? 'bg-core-info-soft-blue-50 border-core-info-soft-blue-200' : 'bg-core-primary-soft-teal-50 border-core-primary-soft-teal-200'}`}
+                        className="h-11 flex-1 flex-row items-center justify-center rounded-lg px-2"
+                        style={{ backgroundColor: ui.colors.buttonPrimary }}
                         accessibilityRole="button"
                         accessibilityLabel={latestToken ? `View active access code for ${judge.name}` : `Generate access code for ${judge.name} in an assigned event`}
                       >
-                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor('#0F766E', 'buttonText')} />}
-                        <Text numberOfLines={1} className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-core-info-blue-700' : 'text-core-primary-text-teal-700'}`}>
+                        {latestToken ? <Copy size={15} color={ui.colors.buttonForeground} /> : <Key size={15} color={ui.colors.buttonForeground} />}
+                        <Text numberOfLines={1} className="ml-1.5 font-poppins-bold text-xs" style={{ color: ui.colors.buttonForeground }}>
                           {latestToken ? 'View / Copy Code' : 'Generate Code'}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleDelete(judge.id, judge.name)}
-                        className="h-9 w-10 rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white items-center justify-center"
+                        className="h-11 w-11 items-center justify-center rounded-lg border border-core-danger-soft-red-200 bg-core-surface-white"
                         disabled={deletingJudgeId === judge.id}
                         accessibilityRole="button"
                         accessibilityLabel={`Delete judge ${judge.name}`}

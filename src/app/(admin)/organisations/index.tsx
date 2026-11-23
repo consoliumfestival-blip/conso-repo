@@ -219,15 +219,16 @@ export default function SubOrganisationsManager() {
       <Animated.View entering={FadeInDown.duration(400)} style={{ flex: 1 }}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
           
-          <View style={{ padding: 20, paddingTop: Platform.OS === 'web' ? 40 : 60 }}>
+          <View style={{ padding: 20, paddingTop: Platform.OS === 'web' ? 24 : 32 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <TouchableOpacity onPress={() => router.back()} style={{ padding: 10, backgroundColor: ui.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: coreColor('#E2E8F0', 'border') }}>
                   <ArrowLeft size={20} color={ui.colors.text} />
                 </TouchableOpacity>
                 <View>
-                  <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 11, letterSpacing: 2, textTransform: 'uppercase' }}>Hierarchy Management</Text>
-                  <Text style={{ color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: 22, lineHeight: 26 }}>Teams</Text>
+                  <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_700Bold", fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' }}>Hierarchy Management</Text>
+                  <Text style={{ color: ui.colors.text, fontFamily: "Outfit_700Bold", fontSize: width < 768 ? 24 : 30, lineHeight: width < 768 ? 30 : 36 }}>Teams</Text>
+                  <Text style={{ color: ui.colors.textMuted, fontFamily: "Outfit_400Regular", fontSize: 14, marginTop: 2 }}>{listedOrgs.length} {showArchived ? 'archived' : 'active'} teams</Text>
                 </View>
               </View>
               {FEATURE_FLAGS.ENABLE_ONBOARDING ? (
@@ -286,11 +287,15 @@ export default function SubOrganisationsManager() {
                   ];
                   const accent = accents[index % accents.length];
                   const actionStyle = (backgroundColor: string, borderColor: string) => ({
-                    width: 36,
-                    height: 36,
+                    flex: 1,
+                    minWidth: 70,
+                    height: 44,
+                    paddingHorizontal: 7,
                     backgroundColor,
                     alignItems: 'center' as const,
                     justifyContent: 'center' as const,
+                    flexDirection: 'row' as const,
+                    gap: 5,
                     borderRadius: 9,
                     borderWidth: 1,
                     borderColor,
@@ -298,7 +303,7 @@ export default function SubOrganisationsManager() {
 
                   return (
                     <SsfCard key={org.id} style={{
-                      width: width < 640 ? '100%' : width < 1200 ? '48.5%' : '31.5%',
+                      width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
                       padding: 14,
                       backgroundColor: accent.backgroundColor,
                       borderColor: accent.borderColor,
@@ -317,7 +322,7 @@ export default function SubOrganisationsManager() {
 
                       <View style={{ marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: accent.borderColor, flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
                         <User size={14} color={coreColor('#0F766E', 'primaryText')} />
-                        <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, marginLeft: 7, fontFamily: 'Outfit_400Regular', fontSize: 12, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
+                        <Text numberOfLines={1} style={{ flex: 1, minWidth: 0, marginLeft: 7, fontFamily: 'Outfit_400Regular', fontSize: 11, color: ui.colors.textMuted }}>{org.admin_email || '—'}</Text>
                       </View>
 
                       <View style={{ marginTop: 12, flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
@@ -330,15 +335,17 @@ export default function SubOrganisationsManager() {
                             style={actionStyle(coreColor('#FEF2F2', 'dangerSoft'), coreColor('#FECACA', 'border'))}
                           >
                             <RefreshCw size={15} color={coreColor('#DC2626', 'danger')} />
+                            <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: coreColor('#B91C1C', 'danger') }}>Reset</Text>
                           </TouchableOpacity>
                         )}
                         {!showArchived && <TouchableOpacity
                           onPress={() => router.push(`/unit-profile/${org.id}`)}
                           accessibilityRole="button"
                           accessibilityLabel={`Open ${org.name}`}
-                          style={actionStyle(coreColor('#EFF6FF', 'infoSoft'), coreColor('#BFDBFE', 'border'))}
+                          style={{ ...actionStyle(ui.colors.buttonPrimary, coreColor('#16A34A', 'border')), borderColor: coreColor('#16A34A', 'border') }}
                         >
-                          <ExternalLink size={15} color={coreColor('#2563EB', 'info')} />
+                          <ExternalLink size={15} color={ui.colors.buttonForeground} />
+                          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: ui.colors.buttonForeground }}>Open</Text>
                         </TouchableOpacity>}
                         {!showArchived && <TouchableOpacity
                           onPress={() => handleArchiveOrg(org)}
@@ -348,12 +355,15 @@ export default function SubOrganisationsManager() {
                           style={actionStyle(coreColor('#FFFBEB', 'warningSoft'), coreColor('#FDE68A', 'border'))}
                         >
                           <Archive size={15} color={coreColor('#B45309', 'warning')} />
+                          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: coreColor('#92400E', 'warning') }}>Archive</Text>
                         </TouchableOpacity>}
                         {showArchived && <TouchableOpacity onPress={() => handleRestoreOrg(org)} accessibilityRole="button" accessibilityLabel={`Reactivate ${org.name}`} disabled={isRestoring || isDeletingArchived} style={actionStyle(coreColor('#ECFDF5', 'successSoft'), coreColor('#A7F3D0', 'border'))}>
                           <RotateCcw size={15} color={coreColor('#047857', 'success')} />
+                          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: coreColor('#047857', 'success') }}>Restore</Text>
                         </TouchableOpacity>}
                         {showArchived && <TouchableOpacity onPress={() => handleDeleteArchivedOrg(org)} accessibilityRole="button" accessibilityLabel={`Permanently delete ${org.name}`} disabled={isRestoring || isDeletingArchived} style={actionStyle(coreColor('#FEF2F2', 'dangerSoft'), coreColor('#FECACA', 'border'))}>
                           <Trash2 size={15} color={coreColor('#DC2626', 'danger')} />
+                          <Text style={{ fontFamily: 'Outfit_700Bold', fontSize: 11, color: coreColor('#B91C1C', 'danger') }}>Delete</Text>
                         </TouchableOpacity>}
                       </View>
                     </SsfCard>

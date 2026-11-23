@@ -1,47 +1,24 @@
 import { Modal } from '@/components/ui/CoreModal';
 import { coreColor } from '@/constants/coreTheme';
-import { supabase } from '@/core/config/supabase';
-import { useQuery } from '@tanstack/react-query';
+import { useAdminTeamProgramProgress, type AdminTeamProgramProgressRow } from '@/core/hooks/useAdminTeamProgramProgress';
 import { ChevronDown, ChevronUp, RefreshCw, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-
-type ProgressRow = {
-  festival_team_id: string;
-  organisation_id: string;
-  team_name: string;
-  participant_count: number;
-  assigned_participant_count: number;
-  item_id: string | null;
-  item_code: string | null;
-  item_name: string | null;
-  assigned_count: number;
-  is_completed: boolean;
-};
 
 type TeamProgress = {
   id: string;
   name: string;
   participantCount: number;
   assignedParticipantCount: number;
-  programs: ProgressRow[];
+  programs: AdminTeamProgramProgressRow[];
   completedCount: number;
 };
 
-export function TeamProgramProgressModal({ festivalId, onClose }: { festivalId: string; onClose: () => void }) {
+export function TeamProgramProgressModal({ festivalId, tenantId, actorId, onClose }: { festivalId: string; tenantId: string; actorId: string; onClose: () => void }) {
   const { width, height } = useWindowDimensions();
   const isPhone = width < 600;
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
-  const progress = useQuery({
-    queryKey: ['admin-team-program-progress', festivalId],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_admin_team_program_progress', {
-        p_festival_id: festivalId,
-      });
-      if (error) throw new Error(error.message);
-      return (data ?? []) as ProgressRow[];
-    },
-  });
+  const progress = useAdminTeamProgramProgress(festivalId, tenantId, actorId);
 
   const teams = useMemo(() => {
     const byId = new Map<string, TeamProgress>();

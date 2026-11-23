@@ -15,6 +15,7 @@ import { ProgramParticipantComparisonModal } from '../../../components/programs/
 import { useFestival } from '../../../core/hooks/useFestival';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useCodeLetterUpdates } from '../../../core/hooks/useCodeLetterUpdates';
+import { adminTeamProgramProgressQueryKey, useAdminTeamProgramProgress } from '../../../core/hooks/useAdminTeamProgramProgress';
 import { useAuthStore } from '../../../core/store/authStore';
 import { supabase } from '../../../core/config/supabase';
 import { formatGeneralEntryError, GeneralTeamEntry, generalEntryService, getGeneralTeamSelectionError } from '../../../services/generalEntryService';
@@ -104,9 +105,16 @@ export default function ProgramsScreen() {
     enabled: hasAccess && !!visibilityTenantId && !!festival?.id && programSearch.trim() === debouncedSearch,
     ...programCacheOptions,
   });
+  const teamProgressQuery = useAdminTeamProgramProgress(festival?.id, visibilityTenantId, user?.id, hasAccess);
+  const teamProgressSummary = useMemo(() => {
+    const assignedPrograms = (teamProgressQuery.data ?? []).filter(row => row.item_id && Number(row.assigned_count) > 0);
+    return {
+      total: assignedPrograms.length,
+      completed: assignedPrograms.reduce((count, row) => count + (row.is_completed ? 1 : 0), 0),
+    };
+  }, [teamProgressQuery.data]);
   const programCards = pageQuery.data?.cards ?? [];
   const sectionCards = { length: pageQuery.data?.section_total ?? 0 };
-  const doneCount = pageQuery.data?.completed ?? 0;
   const itemsError = pageQuery.error;
   const retryItems = pageQuery.refetch;
   // Completion flags and filter options are part of the same backend snapshot.
@@ -187,6 +195,9 @@ export default function ProgramsScreen() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin-program-substitution-summary', festival.id] }),
         queryClient.invalidateQueries({ queryKey: ['admin-program-substitution-requests', festival.id] }),
+        ...(action === 'approve'
+          ? [queryClient.invalidateQueries({ queryKey: adminTeamProgramProgressQueryKey(festival.id) })]
+          : []),
         invalidateProgramReads(),
       ]);
     } catch (reviewError: any) {
@@ -347,6 +358,9 @@ export default function ProgramsScreen() {
       if (attemptedWrite) {
         await Promise.allSettled([
           invalidateProgramReads(),
+          ...(activeCard.kind === 'participant'
+            ? [queryClient.invalidateQueries({ queryKey: adminTeamProgramProgressQueryKey(festival.id) })]
+            : []),
           queryClient.invalidateQueries({ queryKey: ['program-intake-statuses', festival.id] }),
         ]);
       }
@@ -377,7 +391,12 @@ export default function ProgramsScreen() {
       }
       setSelectedIds([]);
       setConfirmDeselect(false);
-      await invalidateProgramReads();
+      await Promise.all([
+        invalidateProgramReads(),
+        ...(removed > 0
+          ? [queryClient.invalidateQueries({ queryKey: adminTeamProgramProgressQueryKey(festival.id) })]
+          : []),
+      ]);
       const uniqueFailures = [...new Set(failures)];
       setNotice(`${removed} participant assignment(s) deselected.${uniqueFailures.length ? ` ${uniqueFailures.join(' ')}` : ''}`);
       await queryClient.invalidateQueries({ queryKey: ['festivalRegistrations', festival.id] });
@@ -412,7 +431,10 @@ export default function ProgramsScreen() {
         itemRecords: [],
       });
       await queryClient.invalidateQueries({ queryKey: ['items', festival.id] });
-      await invalidateProgramReads();
+      await Promise.all([
+        invalidateProgramReads(),
+        queryClient.invalidateQueries({ queryKey: adminTeamProgramProgressQueryKey(festival.id) }),
+      ]);
       setNotice('');
       setItemToDeactivate(null);
     } catch (cause) {
@@ -444,7 +466,7 @@ export default function ProgramsScreen() {
         <View>
           <Text className="font-poppins-bold text-[10px] uppercase tracking-widest text-ui-text-muted">Festival · {festival.custom_name || festival.level} {festival.festival_year}</Text>
           <Text className="mt-1 font-poppins-black text-2xl text-ui-text">Programs</Text>
-          <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{itemsError ? 'Programs unavailable' : `${sectionCards.length} programs`} · {itemsError || statuses.error ? 'Completion unavailable' : `${doneCount} completed`}</Text>
+          <Text className="mt-1 font-poppins text-xs text-ui-text-muted">{itemsError ? 'Programs unavailable' : `${sectionCards.length} ${sectionLabel.toLowerCase()} programs`} · Team progress {teamProgressQuery.isLoading ? 'loading' : teamProgressQuery.isError ? 'unavailable' : `${teamProgressSummary.completed}/${teamProgressSummary.total}`}</Text>
         </View>
         <View className="flex-row flex-wrap items-center gap-1.5">
           {(['all', 'individual', 'group'] as const).map(value => <TouchableOpacity key={value} onPress={() => { setPage(1); setSection(value); setTypeFilter('All types'); setCategoryFilter('All categories'); }} className={`h-9 items-center justify-center rounded-md border px-2 ${section === value ? 'border-button-border bg-button-primary' : 'border-button-border bg-core-surface-white'}`}><Text className={`font-poppins-bold text-[11px] ${section === value ? 'text-button-foreground' : 'text-button-text'}`}>{value === 'all' ? 'All' : value === 'individual' ? 'Individual' : 'Group items'}</Text></TouchableOpacity>)}
@@ -511,7 +533,14 @@ export default function ProgramsScreen() {
         })}
         {hasActiveFilters ? <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear program filters" onPress={() => { setPage(1); setTypeFilter('All types'); setStageFilter('All stages'); setStatusFilter('All statuses'); setCategoryFilter('All categories'); }} className="min-h-11 justify-center px-2" style={{ width: isPhone ? '100%' : undefined, alignItems: isPhone ? 'flex-end' : 'center' }}><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Clear filters</Text></TouchableOpacity> : null}
       </View>
-      {!itemsError && !statuses.error && <SsfCard><View className="flex-row items-center justify-between"><Text className="font-poppins-bold text-sm text-ui-text">{doneCount} of {sectionCards.length} {sectionLabel.toLowerCase()} programs complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{sectionCards.length ? Math.round(doneCount / sectionCards.length * 100) : 0}%</Text></View><View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${sectionCards.length ? doneCount / sectionCards.length * 100 : 0}%` }} /></View></SsfCard>}
+      {!itemsError && <SsfCard>
+        {teamProgressQuery.isLoading ? <Text className="font-poppins text-xs text-ui-text-muted">Loading team progress…</Text>
+          : teamProgressQuery.error ? <View className="flex-row flex-wrap items-center justify-between gap-2"><Text className="flex-1 font-poppins text-xs text-core-danger-red-700">Team progress could not be loaded.</Text><SsfButton label="Retry team progress" variant="outline" size="sm" onPress={() => { void teamProgressQuery.refetch(); }} /></View>
+            : <>
+              <View className="flex-row items-center justify-between"><Text className="flex-1 pr-2 font-poppins-bold text-sm text-ui-text">Team progress · {teamProgressSummary.completed} of {teamProgressSummary.total} individual program assignments complete</Text><Text className="font-poppins-bold text-xs text-core-success-emerald-700">{teamProgressSummary.total ? Math.round(teamProgressSummary.completed / teamProgressSummary.total * 100) : 0}%</Text></View>
+              <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-core-surface-muted-slate-100"><View className="h-full rounded-full bg-core-success-action-emerald-600" style={{ width: `${teamProgressSummary.total ? teamProgressSummary.completed / teamProgressSummary.total * 100 : 0}%` }} /></View>
+            </>}
+      </SsfCard>}
       {statuses.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Completion status could not be loaded: {statuses.error.message}</Text><SsfButton label="Retry completion status" variant="outline" size="sm" onPress={() => { void statuses.refetch(); }} /></SsfCard>}
       {registrationsError && section !== 'group' && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load all participant assignments.</Text><SsfButton label="Retry assignments" variant="outline" size="sm" onPress={() => { void retryRegistrations(); }} /></SsfCard>}
       {section === 'group' && entries.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">{formatGeneralEntryError(entries.error, 'load')}</Text></SsfCard>}
@@ -614,7 +643,7 @@ export default function ProgramsScreen() {
     {editingEntry && festival && detailQuery.isSuccess && !detailQuery.isFetching && <GroupRosterEditor key={editingEntry.id} entry={editingEntry} festivalId={festival.id}
       participants={participants as any[]} visibleOrganisationIds={visibleOrganisationIds}
       onClose={() => setEditingEntry(null)} onSaved={message => { setEditingEntry(null); setNotice(message); void invalidateProgramReads(); }} />}
-    {showTeamProgress && festival && <TeamProgramProgressModal festivalId={festival.id} onClose={() => setShowTeamProgress(false)} />}
+    {showTeamProgress && festival && visibilityTenantId && user?.id && <TeamProgramProgressModal festivalId={festival.id} tenantId={visibilityTenantId} actorId={user.id} onClose={() => setShowTeamProgress(false)} />}
     <ProgramParticipantComparisonModal visible={showParticipantComparison} tenantId={visibilityTenantId} festivalId={festival?.id ?? null} onClose={() => setShowParticipantComparison(false)} />
     <Modal visible={showSubstitutionQueue} transparent animationType="fade" onRequestClose={() => !reviewingSubstitutionId && setShowSubstitutionQueue(false)}>
       <View className="flex-1 items-center justify-center bg-core-surface-strong-black/40" style={{ justifyContent: isPhone ? 'flex-end' : 'center', padding: isPhone ? 8 : 24 }}>

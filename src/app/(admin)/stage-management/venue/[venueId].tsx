@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import StageVenuePortal from '@/components/stage/StageVenuePortal';
 import { stageManagementService } from '@/services/stageManagementService';
 import { useQuery } from '@tanstack/react-query';
@@ -8,6 +9,7 @@ import { ActivityIndicator, Text, View } from 'react-native';
 export default function VenueStageManagementPage() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const venueId = Array.isArray(params.venueId) ? params.venueId[0] : params.venueId;
   const validVenueId = !!venueId && /^[0-9a-f-]{36}$/i.test(venueId);
   const modeQuery = useQuery({
@@ -19,12 +21,12 @@ export default function VenueStageManagementPage() {
   });
 
   React.useEffect(() => {
-    if (!validVenueId || !modeQuery.data) return;
+    if (!isFocused || !validVenueId || !modeQuery.data) return;
     const canonical = modeQuery.data === 'v2' ? 'v2' : undefined;
     if (params.read !== canonical) {
       router.replace(`/stage-management/venue/${venueId}${canonical ? '?read=v2' : ''}` as any);
     }
-  }, [modeQuery.data, params.read, router, validVenueId, venueId]);
+  }, [isFocused, modeQuery.data, params.read, router, validVenueId, venueId]);
 
   if (!validVenueId) return null;
   if (modeQuery.isPending) return <View className="flex-1 items-center justify-center bg-ssf-bg"><ActivityIndicator /></View>;

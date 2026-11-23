@@ -5,6 +5,7 @@ import React from 'react';
 import { Animated, Pressable, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
 import { Modal } from '@/components/ui/CoreModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { SsfCard } from '../../../components/ui/SsfCard';
 import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfButton } from '../../../components/ui/SsfButton';
@@ -938,6 +939,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
 export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?: string } = {}) {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { user, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = initialized && !!user && (role === 'admin' || is_superadmin);
   const modeQuery = useQuery({
@@ -949,10 +951,10 @@ export function StageManagementDashboard({ venueIdOverride }: { venueIdOverride?
   });
 
   React.useEffect(() => {
-    if (!modeQuery.data) return;
+    if (!isFocused || !modeQuery.data) return;
     const canonical = modeQuery.data === 'v2' ? 'v2' : undefined;
     if (params.read !== canonical) router.replace(`/stage-management${canonical ? '?read=v2' : ''}` as any);
-  }, [modeQuery.data, params.read, router]);
+  }, [isFocused, modeQuery.data, params.read, router]);
 
   if (!hasStageAccess || modeQuery.isPending) return <View className="flex-1 items-center justify-center bg-ssf-bg"><Text>Loading Stage management...</Text></View>;
   if (modeQuery.isError) return <View className="flex-1 items-center justify-center bg-ssf-bg px-5"><Text>Stage mode unavailable. Refresh to retry.</Text></View>;

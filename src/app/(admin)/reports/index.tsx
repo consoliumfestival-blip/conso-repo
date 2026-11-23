@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
-import { Check, Download, FileText, Printer, Square } from 'lucide-react-native';
+import { Check, ChevronDown, Download, FileText, Printer, Square } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useFestivalCategories } from '@/core/hooks/useFestivalCategories';
@@ -61,6 +61,8 @@ export default function ReportsAndPrintouts() {
   const [categoryCode, setCategoryCode] = useState('All');
   const [itemId, setItemId] = useState('All');
   const [teamResultItemIds, setTeamResultItemIds] = useState<Set<string>>(new Set());
+  const [programSelectorOpen, setProgramSelectorOpen] = useState(false);
+  const [programSearch, setProgramSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const participantReport = ['program_list', 'team_items', 'participant_slips', 'team_results'].includes(report);
@@ -109,6 +111,10 @@ export default function ReportsAndPrintouts() {
     : [{ value: 'PDF', label: 'PDF' }];
   const selectedItem = items.find((candidate) => candidate.id === itemId);
   const visiblePrograms = useMemo(() => items.filter((item) => categoryCode === 'All' || itemHasCategory(item, categoryCode)), [items, categoryCode]);
+  const matchingPrograms = useMemo(() => {
+    const query = programSearch.trim().toLowerCase();
+    return visiblePrograms.filter((item) => !query || [item.item_code, item.item_name_en, item.item_name_ml].some((value) => value?.toLowerCase().includes(query)));
+  }, [visiblePrograms, programSearch]);
   const visibleProgramOptions = useMemo(() => [{ value: 'All', label: 'All permitted programs' }, ...visiblePrograms.map((item) => programOptions.find((option) => option.value === item.id)!).filter(Boolean)], [visiblePrograms, programOptions]);
   const reportItems = items.filter((item) => (itemId === 'All' || item.id === itemId)
     && (categoryCode === 'All' || itemHasCategory(item, categoryCode)));
@@ -337,8 +343,15 @@ export default function ReportsAndPrintouts() {
         </View>
         {report === 'team_results' ? <View style={{ gap: 8 }}>
           <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 0.7 }}>SELECT PROGRAMS ({visiblePrograms.filter((item) => teamResultItemIds.has(item.id)).length} selected)</Text>
-          {visiblePrograms.length ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
-            {visiblePrograms.map((item) => {
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Select programs" accessibilityState={{ expanded: programSelectorOpen }} onPress={() => setProgramSelectorOpen((open) => !open)} style={{ minHeight: 42, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: ui.colors.surface }}>
+            <Text style={{ color: ui.colors.text, fontSize: 12, fontWeight: '600' }}>{teamResultItemIds.size ? `${teamResultItemIds.size} programs selected` : 'Select programs'}</Text>
+            <ChevronDown size={16} color={ui.colors.textMuted} />
+          </TouchableOpacity>
+          {programSelectorOpen ? <View style={{ borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, padding: 10, gap: 8, backgroundColor: ui.colors.surface }}>
+            <TextInput accessibilityLabel="Search programs" placeholder="Search programs" placeholderTextColor={ui.colors.textMuted} value={programSearch} onChangeText={setProgramSearch} style={{ minHeight: 38, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 7, paddingHorizontal: 10, color: ui.colors.text, fontSize: 12 }} />
+            <TouchableOpacity accessibilityRole="button" disabled={!visiblePrograms.length} onPress={() => setTeamResultItemIds(new Set(visiblePrograms.map((item) => item.id)))} style={{ alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 10, borderRadius: 6, backgroundColor: ui.colors.buttonPrimary, opacity: visiblePrograms.length ? 1 : 0.5 }}><Text style={{ color: ui.colors.buttonForeground, fontSize: 12, fontWeight: '700' }}>Select all</Text></TouchableOpacity>
+            {matchingPrograms.length ? <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {matchingPrograms.map((item) => {
               const isSelected = teamResultItemIds.has(item.id);
               return <TouchableOpacity key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked: isSelected }} onPress={() => setTeamResultItemIds((current) => {
                 const next = new Set(current);
@@ -349,7 +362,8 @@ export default function ReportsAndPrintouts() {
                 <Text numberOfLines={1} style={{ maxWidth: compact ? width - 100 : 310, fontSize: 11, fontWeight: isSelected ? '700' : '500', color: ui.colors.text }}>{item.item_code ? `${item.item_code} · ` : ''}{item.item_name_en || item.item_name_ml || 'Unnamed program'}</Text>
               </TouchableOpacity>;
             })}
-          </View> : <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>No programs match this category.</Text>}
+          </ScrollView> : <Text style={{ fontSize: 12, color: ui.colors.textMuted }}>No programs found.</Text>}
+          </View> : null}
         </View> : null}
         {((participantReport && teamsQuery.isLoading) || itemsLoading || festivalLoading || (scheduleReport && scheduleQuery.isLoading)) ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><ActivityIndicator size="small" color={ui.colors.primary} /><Text style={{ fontSize: 12, color: ui.colors.textMuted }}>Loading report options…</Text></View> : null}
         {participantReport && teamsQuery.isError ? <Text accessibilityRole="alert" style={{ color: ui.colors.danger, fontSize: 12 }}>Could not load team options. Retry before exporting a team report.</Text> : null}

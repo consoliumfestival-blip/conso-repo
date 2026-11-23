@@ -9,7 +9,7 @@ import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/team/TeamCard';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function MyTeamScreen() {
@@ -20,14 +20,7 @@ export default function MyTeamScreen() {
   const loading = standingsQuery.isLoading;
 
   if (contextLoading || loading) {
-    return (
-      <TeamLeaderAppShell>
-        <View style={{ gap: 12 }}>
-          <Skeleton style={{ height: 100, borderRadius: 12 }} />
-          <Skeleton style={{ height: 200, borderRadius: 12 }} />
-        </View>
-      </TeamLeaderAppShell>
-    );
+    return <AyaticLoadingScreen />;
   }
 
   if (!context || !standingsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (standingsQuery.error as Error)?.message || 'Unable to load team standings.'} onRetry={() => void standingsQuery.retry()} /></TeamLeaderAppShell>;

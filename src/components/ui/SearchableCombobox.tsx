@@ -1,8 +1,8 @@
 import { ui } from '@/constants/designSystem';
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Platform, LayoutChangeEvent } from 'react-native';
 import { Label } from '@/components/ui/shadcn/label';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { ChevronDown, Search, X, Check } from 'lucide-react-native';
 
 export function SearchableCombobox<T extends { id: string; name: string }>({
@@ -149,11 +149,7 @@ export function SearchableCombobox<T extends { id: string; name: string }>({
               showsVerticalScrollIndicator
             >
               {loading ? (
-                <View className="gap-1.5 p-3">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-10 rounded-md" />
-                  ))}
-                </View>
+                <AyaticLoadingScreen />
               ) : filteredItems.length === 0 ? (
                 <View className="items-center p-5">
                   <Text className="text-sm text-muted-foreground">

@@ -6,6 +6,7 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, Platform, Clipboard, u
 import { useRouter } from 'expo-router';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfCard } from '../../../components/ui/SsfCard';
+import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfInput } from '../../../components/ui/SsfInput';
 import { useOrganisations } from '../../../core/hooks/useOrganisations';
 import { ArrowLeft, Plus, Building2, User, Archive, ExternalLink, RefreshCw, RotateCcw, Trash2 } from 'lucide-react-native';
@@ -17,6 +18,10 @@ export default function SubOrganisationsManager() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const isPhone = width < 640;
+  const [cardsWidth, setCardsWidth] = useState(0);
+  const cardsAvailableWidth = cardsWidth || width - 32;
+  const cardColumns = getPortalCardColumns(cardsAvailableWidth);
+  const cardWidth = getPortalCardWidth(cardsAvailableWidth, cardColumns, Platform.OS === 'web');
   
   const { 
     childOrganisations: orgs, 
@@ -277,15 +282,9 @@ export default function SubOrganisationsManager() {
                 <Text style={{ fontFamily: "Outfit_400Regular", color: ui.colors.textMuted, marginTop: 16 }}>{showArchived ? 'No archived teams.' : 'No teams found.'}</Text>
               </View>
             ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 8 }}>
+              <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: PORTAL_CARD_GAP, paddingBottom: 8 }}>
                 {listedOrgs.map((org: any, index: number) => {
-                  const accents = [
-                    { backgroundColor: coreColor('#ECFDF5', 'successSoft'), borderColor: coreColor('#A7F3D0', 'border'), icon: coreColor('#10B981', 'success') },
-                    { backgroundColor: coreColor('#EFF6FF', 'infoSoft'), borderColor: coreColor('#BFDBFE', 'border'), icon: coreColor('#3B82F6', 'info') },
-                    { backgroundColor: coreColor('#FFF7ED', 'warningSoft'), borderColor: coreColor('#FED7AA', 'border'), icon: coreColor('#F97316', 'warning') },
-                    { backgroundColor: coreColor('#F5F3FF', 'surface'), borderColor: coreColor('#DDD6FE', 'border'), icon: coreColor('#8B5CF6', 'primaryText') },
-                  ];
-                  const accent = accents[index % accents.length];
+                  const accent = getPortalCardAccent(index);
                   const actionStyle = (backgroundColor: string, borderColor: string) => ({
                     flex: 1,
                     minWidth: 70,
@@ -303,8 +302,8 @@ export default function SubOrganisationsManager() {
 
                   return (
                     <SsfCard key={org.id} style={{
-                      width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
-                      padding: 14,
+                      width: cardWidth,
+                      padding: 12,
                       backgroundColor: accent.backgroundColor,
                       borderColor: accent.borderColor,
                     }}>

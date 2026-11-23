@@ -30,6 +30,7 @@ import {
   ClipboardCheck
 } from 'lucide-react-native';
 import { SsfCard } from '../../../components/ui/SsfCard';
+import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfInput } from '../../../components/ui/SsfInput';
 import { useJudges } from '../../../core/hooks/useJudges';
@@ -65,6 +66,10 @@ export default function JudgesPage() {
   const { schedules, venues } = useSchedule();
   const { width } = useWindowDimensions();
   const isCompactLayout = width < 1280;
+  const [cardsWidth, setCardsWidth] = useState(0);
+  const cardsAvailableWidth = cardsWidth || width - 32;
+  const cardColumns = getPortalCardColumns(cardsAvailableWidth);
+  const cardWidth = getPortalCardWidth(cardsAvailableWidth, cardColumns, Platform.OS === 'web');
 
   const [activeTab, setActiveTab] = useState<'judges' | 'assignments'>('judges');
 
@@ -828,20 +833,14 @@ export default function JudgesPage() {
               </Text>
             </SsfCard>
           ) : (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 24 }}>
+            <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: PORTAL_CARD_GAP, paddingBottom: 24 }}>
               {judges.map((judge: any, index: number) => {
                 const judgeTokens = allTokens.filter((token: any) => token.judge_id === judge.id);
                 const latestToken = judgeTokens[0];
-                const accents = [
-                  { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', icon: '#10B981' },
-                  { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', icon: '#3B82F6' },
-                  { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', icon: '#F97316' },
-                  { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', icon: '#8B5CF6' },
-                ];
-                const accent = accents[index % accents.length];
+                const accent = getPortalCardAccent(index);
                 return (
                   <SsfCard key={judge.id} className="p-3" style={{
-                    width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
+                    width: cardWidth,
                     backgroundColor: accent.backgroundColor,
                     borderColor: accent.borderColor,
                   }}>

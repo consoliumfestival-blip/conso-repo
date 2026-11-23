@@ -15,7 +15,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
-import { Skeleton } from '@/components/ui/shadcn/skeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { supabase } from '@/core/config/supabase';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useAuthStore } from '@/core/store/authStore';
@@ -642,7 +642,7 @@ export default function TeamLeaderPortalAdmin() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           {loadingDropdowns ? (
-            <Skeleton style={{ height: 200, borderRadius: 8 }} />
+            <AyaticLoadingScreen />
           ) : (
             <View style={{ gap: 16 }}>
               <SearchableCombobox
@@ -814,11 +814,7 @@ export default function TeamLeaderPortalAdmin() {
           </View>
 
           {loading ? (
-            <View style={{ gap: 8 }}>
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} style={{ height: 60, borderRadius: 8 }} />
-              ))}
-            </View>
+            <AyaticLoadingScreen />
           ) : filteredAssignments.length === 0 ? (
             <View style={{ alignItems: 'center', padding: 24 }}>
               <Users size={32} color="hsl(var(--muted-foreground))" />

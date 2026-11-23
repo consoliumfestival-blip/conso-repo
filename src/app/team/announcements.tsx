@@ -10,7 +10,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
 export default function AnnouncementsScreen() {
@@ -21,15 +21,7 @@ export default function AnnouncementsScreen() {
   const loading = announcementsQuery.isLoading;
 
   if (contextLoading || loading) {
-    return (
-      <TeamLeaderAppShell>
-        <View style={{ gap: 12 }}>
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} style={{ height: 100, borderRadius: 12 }} />
-          ))}
-        </View>
-      </TeamLeaderAppShell>
-    );
+    return <AyaticLoadingScreen />;
   }
   if (!context || !announcementsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (announcementsQuery.error as Error)?.message || 'Unable to load announcements.'} onRetry={() => void announcementsQuery.retry()} /></TeamLeaderAppShell>;
 

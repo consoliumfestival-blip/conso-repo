@@ -1,7 +1,7 @@
 import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Pressable, Alert, TextInput, Platform, Switch, useWindowDimensions, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Pressable, Alert, TextInput, Platform, Switch, useWindowDimensions, Image, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { SsfCard } from '../../../../components/ui/SsfCard';
@@ -23,7 +23,7 @@ import { CATEGORIES } from '../../../../constants/categories';
 import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategories';
 import { SsfSelectMenu } from '../../../../components/ui/SsfSelectMenu';
 import { SsfSheet } from '../../../../components/ui/SsfSheet';
-import { SsfSkeleton } from '../../../../components/ui/SsfSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { SsfDatePicker } from '../../../../components/ui/SsfDatePicker';
 import { Modal } from '@/components/ui/CoreModal';
 
@@ -43,33 +43,7 @@ function ReadOnlyField({ label, value }: { label: string; value?: React.ReactNod
 }
 
 function ParticipantDetailsLoadingSkeleton() {
-  const { width } = useWindowDimensions();
-  const isWide = width >= 640;
-  const fieldRows = isWide ? [2, 2, 1] : [1, 1, 1, 1, 1];
-  const boneStyle = { backgroundColor: coreColor('#D7DEE8', 'border') };
-
-  return (
-    <View style={{ gap: 10, padding: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ui.colors.border }}>
-        <SsfSkeleton width={38} height={38} radius={10} style={boneStyle} />
-        <View style={{ flex: 1, gap: 7 }}>
-          <SsfSkeleton width={160} height={16} radius={6} style={boneStyle} />
-          <SsfSkeleton width={220} height={10} radius={5} style={boneStyle} />
-        </View>
-        <SsfSkeleton width={76} height={34} radius={8} style={boneStyle} />
-      </View>
-      {fieldRows.map((count, rowIndex) => (
-        <View key={rowIndex} style={{ flexDirection: isWide ? 'row' : 'column', gap: 12 }}>
-          {Array.from({ length: count }).map((_, fieldIndex) => (
-            <View key={fieldIndex} style={{ flex: 1, minWidth: 0, gap: 6 }}>
-              <SsfSkeleton width={rowIndex === 0 && fieldIndex === 0 ? 64 : 92} height={10} radius={5} style={boneStyle} />
-              <SsfSkeleton height={40} radius={8} style={boneStyle} />
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
+  return <AyaticLoadingScreen />;
 }
 
 export default function ParticipantDetails() {

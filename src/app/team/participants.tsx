@@ -16,7 +16,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService, TeamLeaderParticipant } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { ParticipantExportModal, ParticipantExportKind } from '@/components/participants/ParticipantExportModal';
 import { downloadItemVerificationPdf, downloadParticipantsCsv, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf, ExportAssignment, ExportItem, ExportParticipant, ExportSort, TeamLeaderParticipantExportRow } from '@/services/participantExportService';
@@ -67,23 +67,7 @@ export default function ParticipantsScreen() {
   }, [participants, filter, search]);
 
   if (contextLoading || loading) {
-    return (
-      <TeamLeaderAppShell>
-        {isWideRoster ? (
-          <View style={{ gap: 8 }}>
-            <Skeleton style={{ height: 42, borderRadius: 8 }} />
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} style={{ height: 58, borderRadius: 8 }} />)}
-          </View>
-        ) : (
-          <View style={{ gap: 12 }}>
-            <Skeleton style={{ height: 40, borderRadius: 8 }} />
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} style={{ height: 60, borderRadius: 12 }} />
-            ))}
-          </View>
-        )}
-      </TeamLeaderAppShell>
-    );
+    return <AyaticLoadingScreen />;
   }
 
   if (!context || !participantsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (participantsQuery.error as Error)?.message || 'Unable to load participants.'} onRetry={() => void participantsQuery.retry()} /></TeamLeaderAppShell>;

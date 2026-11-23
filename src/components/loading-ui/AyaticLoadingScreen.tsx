@@ -144,7 +144,10 @@ export function AyaticLoadingScreen() {
     <View
       accessibilityRole="progressbar"
       accessibilityLabel="Loading"
-      style={styles.screen}
+      style={[
+        styles.screen,
+        Platform.OS === "web" ? styles.webScreen : styles.nativeScreen,
+      ]}
     >
       <View style={styles.logo}>
         {waves.map((wave) => <LoadingWave key={wave.start} wave={wave} reducedMotion={reducedMotion} />)}
@@ -155,10 +158,23 @@ export function AyaticLoadingScreen() {
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFEF9",
+    zIndex: 99999,
+    elevation: 99999,
+  },
+  webScreen: {
+    position: "fixed" as any,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    width: "100vw",
+    height: "100vh",
+  },
+  nativeScreen: {
+    ...StyleSheet.absoluteFillObject,
   },
   logo: {
     position: "relative",

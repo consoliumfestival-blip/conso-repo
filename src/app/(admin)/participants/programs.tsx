@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, ChevronDown, Download, GitCompare, Plus, RefreshCw, Search, Trash2, UsersRound, X } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
+import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 import { GroupRosterEditor } from '../../../components/participants/GroupRosterEditor';
@@ -453,13 +454,8 @@ export default function ProgramsScreen() {
   const isPhone = width < 600;
   const hasActiveFilters = typeFilter !== 'All types' || stageFilter !== 'All stages' || statusFilter !== 'All statuses' || categoryFilter !== 'All categories';
   const cardsAvailableWidth = cardsWidth || width - 32;
-  // Compact cards fit more columns while retaining room for titles and actions.
-  const cardGap = 8;
-  const cardMinWidth = 252;
-  const cardColumns = isPhone ? 1 : Math.max(1, Math.floor((cardsAvailableWidth + cardGap) / (cardMinWidth + cardGap)));
-  const cardWidth = isPhone ? '100%' : Platform.OS === 'web'
-    ? `calc((100% - ${(cardColumns - 1) * cardGap}px) / ${cardColumns})` as any
-    : Math.floor((cardsAvailableWidth - (cardColumns - 1) * cardGap) / cardColumns);
+  const cardColumns = getPortalCardColumns(cardsAvailableWidth);
+  const cardWidth = getPortalCardWidth(cardsAvailableWidth, cardColumns, Platform.OS === 'web');
   return <View className="flex-1 bg-ssf-bg">
     <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 28 }}>
       <View className="mb-4 flex-row flex-wrap items-end justify-between gap-3">
@@ -547,10 +543,11 @@ export default function ProgramsScreen() {
       {visibleOrganisations.error && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not load the organisations available to this account: {visibleOrganisations.error.message}</Text></SsfCard>}
       {!visibilityTenantId && <SsfCard><Text className="font-poppins text-sm text-core-danger-red-700">Could not determine the organisation scope for participant assignment.</Text></SsfCard>}
       {section === 'group' && <Text className="mb-2 mt-4 font-poppins text-xs text-ui-text-muted">Create one entry per team. Use the selected leader chest number to identify the group.</Text>}
-      {pageQuery.isLoading || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'all' ? '' : section === 'individual' ? 'individual ' : 'group '}programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ gap: cardGap, alignItems: 'flex-start' }} className="mt-3 flex-row flex-wrap">{programCards.map(card => {
+      {pageQuery.isLoading || programSearch.trim() !== debouncedSearch ? <View className="flex-row items-center gap-2 py-3"><ActivityIndicator size="small" /><Text className="font-poppins text-xs text-ui-text-muted">Loading programs…</Text></View> : itemsError ? null : programCards.length === 0 ? <SsfCard className="mt-3"><Text className="font-poppins text-sm text-ui-text-muted">No {programSearch || typeFilter !== 'All types' || stageFilter !== 'All stages' || (!statuses.error && statusFilter !== 'All statuses') || categoryFilter !== 'All categories' ? 'matching' : 'active'} {section === 'all' ? '' : section === 'individual' ? 'individual ' : 'group '}programs found.</Text></SsfCard> : <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ gap: PORTAL_CARD_GAP, alignItems: 'flex-start' }} className="mt-3 flex-row flex-wrap">{programCards.map((card, index) => {
         const complete = cardComplete(card.item.id, card.category, card.kind);
         const overLimitTeams = card.over_limit_teams;
-        return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth }} className="rounded-lg border border-ui-border bg-core-surface-white p-2 shadow-sm">
+        const accent = getPortalCardAccent(index);
+        return <View key={`${card.item.id}:${card.category}`} style={{ width: cardWidth, borderColor: accent.borderColor }} className="rounded-lg border bg-core-surface-white p-2 shadow-sm">
           <View className="min-h-[44px] flex-row items-start justify-between gap-1.5"><View className="flex-1"><Text className="font-poppins-bold text-[13px] leading-4 text-ui-text" numberOfLines={2}>{card.item.item_name_en || card.item.item_name_ml || card.item.item_code}</Text><Text className="mt-0.5 font-poppins text-[10px] text-ui-text-muted">{card.category}</Text></View><View className={`rounded-full px-1.5 py-0.5 ${complete && !statuses.error ? 'bg-core-success-soft-emerald-100' : 'bg-core-surface-muted-slate-100'}`}><Text className={`font-poppins-bold text-[9px] ${complete && !statuses.error ? 'text-core-success-emerald-800' : 'text-core-text-slate-600'}`}>{statuses.error ? 'Unavailable' : complete ? 'Complete' : 'Open'}</Text></View></View>
           <View className="mb-2 mt-1 flex-row flex-wrap gap-1"><View className="rounded bg-core-surface-muted-slate-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[9px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded bg-core-surface-muted-slate-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[9px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
           {overLimitTeams > 0 && <View className="mb-1.5 flex-row items-start gap-1.5 rounded border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-1.5"><AlertTriangle size={12} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[10px] text-core-danger-red-700">{overLimitTeams} team(s) exceed limit {card.item.max_participants_per_team}. Deselect existing assignments in View participants.</Text></View>}

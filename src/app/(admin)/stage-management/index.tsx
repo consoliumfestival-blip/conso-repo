@@ -6,6 +6,7 @@ import { Animated, Pressable, View, Text, ScrollView, TouchableOpacity, Platform
 import { Modal } from '@/components/ui/CoreModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
+import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../core/hooks/useStageManagement';
 import { Calendar, ChevronRight, MapPin, Clock, Search, X, Lock, Bell, RefreshCw, Copy, Check, ExternalLink, RotateCcw } from 'lucide-react-native';
@@ -131,6 +132,10 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
+  const [cardsWidth, setCardsWidth] = React.useState(0);
+  const cardsAvailableWidth = cardsWidth || width - 32;
+  const cardColumns = getPortalCardColumns(cardsAvailableWidth);
+  const cardWidth = getPortalCardWidth(cardsAvailableWidth, cardColumns, Platform.OS === 'web');
   const mobileHalfFilterWidth = width >= 320 ? Math.floor((width - 64) / 2) : Math.max(0, width - 56);
 
   const [refreshing, setRefreshing] = React.useState(false);
@@ -405,23 +410,17 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">Create venues from Schedule Management first.</Text>
           </SsfCard>
         ) : (
-          <View className="flex-row flex-wrap gap-3 pb-5">
+          <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: PORTAL_CARD_GAP, paddingBottom: 20 }}>
             {venues.map((venue: any, index: number) => {
               const stageSchedules = schedules.filter((schedule: any) =>
                 schedule.venue_id === venue.id || schedule.venues?.id === venue.id
               );
               const copied = copiedVenueId === venue.id;
-              const accents = [
-                { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', icon: '#10B981' },
-                { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', icon: '#3B82F6' },
-                { backgroundColor: '#FFF7ED', borderColor: '#FED7AA', icon: '#F97316' },
-                { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE', icon: '#8B5CF6' },
-              ];
-              const accent = accents[index % accents.length];
+              const accent = getPortalCardAccent(index);
 
               return (
                 <SsfCard key={venue.id} className="p-3" style={{
-                  width: width < 768 ? '100%' : width < 1200 ? '48.5%' : '32%',
+                  width: cardWidth,
                   backgroundColor: accent.backgroundColor,
                   borderColor: accent.borderColor,
                 }}>

@@ -10,6 +10,7 @@ import { participantService } from '@/services/participantService';
 import { supabase } from '@/core/config/supabase';
 import { useRouter } from 'expo-router';
 import { SsfCard } from '../../../components/ui/SsfCard';
+import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { useParticipants } from '../../../core/hooks/useParticipants';
 import { useAuthStore } from '../../../core/store/authStore';
 import { useFestival } from '../../../core/hooks/useFestival';
@@ -67,13 +68,9 @@ export default function ParticipantsList() {
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const isCompactParticipantLayout = width < 1200;
   const isCardLayout = width >= 768;
-  const cardGap = 8;
-  const cardMinWidth = 252;
   const cardsAvailableWidth = cardsWidth || width - 32;
-  const cardColumns = Math.max(1, Math.floor((cardsAvailableWidth + cardGap) / (cardMinWidth + cardGap)));
-  const cardWidth = Platform.OS === 'web'
-    ? `calc((100% - ${(cardColumns - 1) * cardGap}px) / ${cardColumns})` as any
-    : Math.floor((cardsAvailableWidth - (cardColumns - 1) * cardGap) / cardColumns);
+  const cardColumns = getPortalCardColumns(cardsAvailableWidth);
+  const cardWidth = getPortalCardWidth(cardsAvailableWidth, cardColumns, Platform.OS === 'web');
   const phoneFilterWidth = width < 640
     ? Math.max(120, Math.floor((width - 32) / 2))
     : width < 1200
@@ -615,8 +612,9 @@ export default function ParticipantsList() {
             <Text className="text-ssf-text-muted font-poppins mb-4">No participants found.</Text>
           </View>
         ) : isCardLayout ? (
-          <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: cardGap }}>
-            {filteredParticipants.map((p: any) => {
+          <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: PORTAL_CARD_GAP }}>
+            {filteredParticipants.map((p: any, index: number) => {
+              const accent = getPortalCardAccent(index);
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
               return (
@@ -627,7 +625,7 @@ export default function ParticipantsList() {
                     activeOpacity={0.86}
                     onPress={() => selectMode ? toggleSelect(p.id, p.status) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id, p.status); }}
-                    style={isSelected ? { borderColor: ui.colors.primary, backgroundColor: ui.colors.primarySoft } : undefined}
+                    style={isSelected ? { borderColor: ui.colors.primary, backgroundColor: ui.colors.primarySoft } : { borderColor: accent.borderColor }}
                     className="rounded-lg border border-ui-border bg-core-surface-white p-2 shadow-sm"
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>

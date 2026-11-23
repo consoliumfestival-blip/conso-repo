@@ -13,7 +13,7 @@ import { useTeamTheme, useTeamUi } from '@/core/contexts/TeamLeaderThemeContext'
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 import { getTeamDashboardEventsToday, getTeamDashboardUpcomingEvents, isTeamEventInProgress } from '@/core/utils/teamDashboardFlow';
 import { getCompletedScheduleCount, getScheduleLifecycleLabel } from '@/core/utils/scheduleLifecycle';
@@ -176,10 +176,10 @@ export default function TeamLeaderDashboard() {
   const dataError = queries.find(query => query.error && !query.data)?.error as Error | undefined;
   const refresh = () => { void Promise.all([refreshContext(), ...queries.map(query => query.refetch())]); };
 
-  if (contextLoading || featuresLoading) return <TeamLeaderAppShell><View style={{ gap: 12 }}><Skeleton style={{ height: 200, borderRadius: 20 }} /><Skeleton style={{ height: 110, borderRadius: 16 }} /><Skeleton style={{ height: 160, borderRadius: 16 }} /></View></TeamLeaderAppShell>;
+  if (contextLoading || featuresLoading) return <AyaticLoadingScreen />;
   if (!context) return <TeamLeaderAppShell><Card><CardContent style={{ padding: 24, alignItems: 'center' }}><Text style={{ color: ui.colors.textMuted, textAlign: 'center' }}>{contextError || 'Unable to load portal context. Please try again.'}</Text></CardContent></Card></TeamLeaderAppShell>;
   if (dataError) return <TeamLeaderAppShell><TeamLeaderDataError message={dataError.message || 'Please retry the team dashboard request.'} onRetry={refresh} /></TeamLeaderAppShell>;
-  if (dataLoading) return <TeamLeaderAppShell><View style={{ gap: 10 }}><Skeleton style={{ height: 120, borderRadius: 17 }} /><Skeleton style={{ height: 100, borderRadius: 17 }} /><Skeleton style={{ height: 210, borderRadius: 17 }} /></View></TeamLeaderAppShell>;
+  if (dataLoading) return <AyaticLoadingScreen />;
 
   const teamName = context.team_name || 'Your Team';
   const now = Date.now();

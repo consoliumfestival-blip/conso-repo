@@ -10,7 +10,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { getTeamLeaderScheduleCategoryLabel } from '@/core/utils/teamLeaderScheduleCategory';
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
@@ -31,15 +31,7 @@ export default function FullScheduleScreen() {
   });
 
   if (contextLoading || loading) {
-    return (
-      <TeamLeaderAppShell>
-        <View style={{ gap: 12 }}>
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} style={{ height: 80, borderRadius: 12 }} />
-          ))}
-        </View>
-      </TeamLeaderAppShell>
-    );
+    return <AyaticLoadingScreen />;
   }
 
   if (!context || !scheduleQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (scheduleQuery.error as Error)?.message || 'Unable to load schedule.'} onRetry={() => void scheduleQuery.retry()} /></TeamLeaderAppShell>;

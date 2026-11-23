@@ -10,7 +10,7 @@ import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
 import { teamLeaderPortalService } from '@/services/teamLeaderPortalService';
 import { Card, CardContent } from '@/components/team/TeamCard';
 import { Badge } from '@/components/team/TeamBadge';
-import { Skeleton } from '@/components/team/TeamSkeleton';
+import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/team/TeamTabs';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
 
@@ -23,15 +23,7 @@ export default function ResultsScreen() {
   const [filter, setFilter] = useState('all');
 
   if (contextLoading || loading) {
-    return (
-      <TeamLeaderAppShell>
-        <View style={{ gap: 12 }}>
-          <Skeleton style={{ height: 40, borderRadius: 8 }} />
-          <Skeleton style={{ height: 120, borderRadius: 12 }} />
-          <Skeleton style={{ height: 120, borderRadius: 12 }} />
-        </View>
-      </TeamLeaderAppShell>
-    );
+    return <AyaticLoadingScreen />;
   }
   if (!context || !resultsQuery.data) return <TeamLeaderAppShell><TeamLeaderDataError message={!context ? 'Team details are unavailable.' : (resultsQuery.error as Error)?.message || 'Unable to load results.'} onRetry={() => void resultsQuery.retry()} /></TeamLeaderAppShell>;
 

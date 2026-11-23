@@ -456,6 +456,10 @@ export default function ParticipantsList() {
           <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
+          {!selectMode && <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-2 rounded-lg border border-ssf-border bg-core-surface-white px-3 py-2">
+            <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
+          </TouchableOpacity>}
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center`}>
             <Text className="font-poppins-bold text-ui-primary-text text-[11px]">Numbers</Text>
           </TouchableOpacity>
@@ -565,13 +569,7 @@ export default function ParticipantsList() {
       </View>
 
       {/* Bulk action bar */}
-      <View className={`flex-row items-center justify-between ${isCompactParticipantLayout ? 'mb-2 mt-1' : 'mb-4 mt-2'}`}>
-        {!selectMode ? (
-          <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-2 px-3 py-2 bg-core-surface-white border border-ssf-border rounded-lg">
-            <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
-          </TouchableOpacity>
-        ) : (
+      {selectMode && <View className={`flex-row items-center justify-between ${isCompactParticipantLayout ? 'mb-2 mt-1' : 'mb-4 mt-2'}`}>
           <View className="flex-1 flex-row items-center justify-between bg-core-surface-white px-3 py-2 border border-ssf-border rounded-lg">
             <View className="flex-row items-center gap-x-3">
               <TouchableOpacity onPress={toggleSelectMode} className="p-1">
@@ -592,8 +590,7 @@ export default function ParticipantsList() {
               </TouchableOpacity>}
             </View>
           </View>
-        )}
-      </View>
+      </View>}
 
       {/* List */}
       <SsfCard className={isCardLayout ? 'mb-4 p-0' : 'mb-4 p-0 overflow-hidden'} style={isCardLayout ? { backgroundColor: 'transparent', borderWidth: 0, shadowOpacity: 0, elevation: 0 } : undefined}>

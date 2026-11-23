@@ -378,7 +378,8 @@ export default function ProgramsScreen() {
       setSelectedIds([]);
       setConfirmDeselect(false);
       await invalidateProgramReads();
-      setNotice(`${removed} participant assignment(s) deselected.${failures.length ? ` ${failures.join(' ')}` : ''}`);
+      const uniqueFailures = [...new Set(failures)];
+      setNotice(`${removed} participant assignment(s) deselected.${uniqueFailures.length ? ` ${uniqueFailures.join(' ')}` : ''}`);
       await queryClient.invalidateQueries({ queryKey: ['festivalRegistrations', festival.id] });
       await queryClient.invalidateQueries({ queryKey: ['participantRegistrations'] });
       await queryClient.invalidateQueries({ queryKey: ['program-intake-statuses', festival.id] });

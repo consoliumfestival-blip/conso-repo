@@ -55,8 +55,8 @@ export function FestivalReadonlyPortalAdmin({ tenantId, festivalId }: { tenantId
       {field('PIN', credential.pin)}
     </>}
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      <Pressable accessibilityRole="button" onPress={() => void load(false)} disabled={loading || !festivalId} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, backgroundColor: ui.colors.primary }}>
-        <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>{loading ? 'Loading…' : credential ? 'Refresh access' : 'View access'}</Text>
+      <Pressable accessibilityRole="button" onPress={() => void load(false)} disabled={loading || !festivalId} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, backgroundColor: ui.colors.buttonPrimary }}>
+        <Text style={{ color: ui.colors.buttonForeground, fontWeight: '700' }}>{loading ? 'Loading…' : credential ? 'Refresh access' : 'View access'}</Text>
       </Pressable>
       {credential && <>
         <Pressable accessibilityRole="button" onPress={() => {

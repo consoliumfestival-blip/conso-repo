@@ -34,6 +34,7 @@ import { NotificationToast } from "../components/ui/NotificationToast";
 import { PwaUpdateNotice } from "../components/pwa/PwaUpdateNotice";
 import { PwaNetworkStatus } from "../components/pwa/PwaNetworkStatus";
 import { AyaticLoadingScreen } from "../components/loading-ui/AyaticLoadingScreen";
+import { ButtonThemeSurface } from '@/components/ui/ButtonThemeSurface';
 
 // Removed top-level preventAutoHideAsync, moving it inside component
 
@@ -124,7 +125,7 @@ function LayoutContent() {
   if (blockProtectedCoreRoute) return <AppLoadingScreen />;
   return (
     <>
-      <Slot />
+      <ButtonThemeSurface><Slot /></ButtonThemeSurface>
       {pathname.startsWith('/stage-management/venue/') ? <PwaUpdateNotice /> : null}
       <PwaNetworkStatus />
     </>

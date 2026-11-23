@@ -4,10 +4,10 @@ import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { cn } from "../../../lib/utils";
 
 const variantStyles = {
-  default: "bg-core-primary-hex-0f766e",
+  default: "bg-button-primary",
   destructive: "bg-destructive",
-  outline: `border border-core-border-hex-b7d9d3 bg-core-primary-soft-hex-e7f6f3`,
-  secondary: "bg-core-primary-soft-hex-e7f6f3",
+  outline: `border border-[color:var(--core-button-border,#B7D9D3)] bg-button-soft`,
+  secondary: "bg-button-soft",
   ghost: "bg-transparent",
   link: "bg-transparent",
 };
@@ -20,12 +20,12 @@ const sizeStyles = {
 };
 
 const textVariantStyles = {
-  default: "text-core-on-primary-white",
+  default: "text-button-foreground",
   destructive: "text-destructive-foreground",
   outline: `text-core-text-hex-0f172a`,
-  secondary: "text-core-primary-text-hex-0f766e",
+  secondary: "text-button-text",
   ghost: "text-foreground",
-  link: "text-primary",
+  link: "text-button-text",
 };
 
 export interface ButtonProps {
@@ -56,10 +56,10 @@ const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>, Butto
         {...props}
       >
         {loading ? (
-          <ActivityIndicator size="small" color={variant === "default" ? coreColor("white", 'onPrimary') : coreColor("#0F766E", 'primaryText')} />
+          <ActivityIndicator size="small" color={variant === "default" ? coreColor("white", 'buttonForeground') : coreColor("#0F766E", 'primaryText')} />
         ) : (
           <Text className={cn("text-sm font-medium", textVariantStyles[variant])}>
-            {children}
+            {React.Children.map(children, child => variant === 'default' && React.isValidElement<{ color?: string }>(child) && 'color' in child.props ? React.cloneElement(child, { color: coreColor('white', 'buttonForeground') }) : child)}
           </Text>
         )}
       </TouchableOpacity>

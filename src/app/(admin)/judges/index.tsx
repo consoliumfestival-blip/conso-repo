@@ -733,11 +733,11 @@ export default function JudgesPage() {
             {activeTab === 'judges' && (
               <TouchableOpacity
                 onPress={() => setIsAddModalOpen(true)}
-                className="h-9 flex-row items-center bg-core-primary-teal-700 px-3 rounded-lg"
+                className="h-9 flex-row items-center bg-button-primary px-3 rounded-lg"
                 accessibilityLabel="Add judge"
               >
-                <Plus size={15} color={ui.colors.onPrimary} />
-                <Text className="font-poppins-bold text-core-on-primary-white text-xs ml-1.5">Add Judge</Text>
+                <Plus size={15} color={ui.colors.buttonForeground} />
+                <Text className="font-poppins-bold text-button-foreground text-xs ml-1.5">Add Judge</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -747,7 +747,7 @@ export default function JudgesPage() {
             <View className="flex-row">
               <TouchableOpacity
                 onPress={() => setActiveTab('judges')}
-                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
+                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'judges' ? 'border-button-border' : 'border-transparent'}`}
                 accessibilityRole="tab"
                 accessibilityLabel="Judges Directory"
                 accessibilityState={{ selected: activeTab === 'judges' }}
@@ -756,7 +756,7 @@ export default function JudgesPage() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setActiveTab('assignments')}
-                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-core-primary-teal-700' : 'border-transparent'}`}
+                className={`min-h-10 justify-center px-4 pb-2 border-b-2 ${activeTab === 'assignments' ? 'border-button-border' : 'border-transparent'}`}
                 accessibilityRole="tab"
                 accessibilityLabel="Assignments and Codes"
                 accessibilityState={{ selected: activeTab === 'assignments' }}
@@ -801,12 +801,12 @@ export default function JudgesPage() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleApproveToken(token.id)}
-                      className="px-3 py-2 bg-core-success-action-green-500 rounded-lg flex-row items-center"
+                      className="px-3 py-2 bg-button-primary rounded-lg flex-row items-center"
                       accessibilityRole="button"
                       accessibilityLabel={`Approve login request from ${j?.name || 'judge'}`}
                     >
-                      <UserCheck size={14} color={ui.colors.onPrimary} />
-                      <Text className="font-poppins-bold text-core-on-primary-white text-xs ml-1">Approve</Text>
+                      <UserCheck size={14} color={ui.colors.buttonForeground} />
+                      <Text className="font-poppins-bold text-button-foreground text-xs ml-1">Approve</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -869,7 +869,7 @@ export default function JudgesPage() {
                         accessibilityRole="button"
                         accessibilityLabel={latestToken ? `View active access code for ${judge.name}` : `Generate access code for ${judge.name} in an assigned event`}
                       >
-                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor('#0F766E', 'primaryText')} />}
+                        {latestToken ? <Copy size={13} color={ui.colors.info} /> : <Key size={13} color={coreColor('#0F766E', 'buttonText')} />}
                         <Text numberOfLines={1} className={`font-poppins-bold text-[10px] ml-1.5 ${latestToken ? 'text-core-info-blue-700' : 'text-core-primary-text-teal-700'}`}>
                           {latestToken ? 'View / Copy Code' : 'Generate Code'}
                         </Text>
@@ -1039,11 +1039,11 @@ export default function JudgesPage() {
                                 ) : (
                                   <TouchableOpacity
                                     onPress={() => openTokenModal(j, schedule.id)}
-                                    className="bg-ssf-primary px-2.5 py-1 rounded-md"
+                                    className="bg-button-primary px-2.5 py-1 rounded-md"
                                     accessibilityRole="button"
                                     accessibilityLabel={`Generate access code for ${j.name}`}
                                   >
-                                    <Text className="font-poppins-bold text-core-on-primary-white text-[10px]">Gen Code</Text>
+                                    <Text className="font-poppins-bold text-button-foreground text-[10px]">Gen Code</Text>
                                   </TouchableOpacity>
                                 )}
                                 <TouchableOpacity
@@ -1433,7 +1433,7 @@ export default function JudgesPage() {
                     className={`flex-1 h-10 flex-row items-center justify-center gap-x-2 rounded-lg ${
                       isPrintBlocked
                         ? 'bg-core-primary-indigo-600/50'
-                        : 'bg-core-primary-indigo-600'
+                        : 'bg-button-primary'
                     }`}
                     accessibilityRole="button"
                     accessibilityLabel="Print evaluation sheet"
@@ -1442,17 +1442,17 @@ export default function JudgesPage() {
                       busy: isLoadingPrintRowCount || isPreparingPrint,
                     }}
                   >
-                    <Printer size={16} color={ui.colors.onPrimary} />
-                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">{isPreparingPrint ? 'Preparing…' : 'Print'}</Text>
+                    <Printer size={16} color={ui.colors.buttonForeground} />
+                    <Text className="font-poppins-bold text-button-foreground text-sm">{isPreparingPrint ? 'Preparing…' : 'Print'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={shareToken}
-                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-core-primary-teal-700 rounded-lg"
+                    className="flex-1 h-10 flex-row items-center justify-center gap-x-2 bg-button-primary rounded-lg"
                     accessibilityRole="button"
                     accessibilityLabel="Share access code and judge portal link"
                   >
-                    <Share2 size={16} color={ui.colors.onPrimary} />
-                    <Text className="font-poppins-bold text-core-on-primary-white text-sm">Share</Text>
+                    <Share2 size={16} color={ui.colors.buttonForeground} />
+                    <Text className="font-poppins-bold text-button-foreground text-sm">Share</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -1548,7 +1548,7 @@ export default function JudgesPage() {
                       accessibilityState={{ checked: isSelected, disabled: isDisabled }}
                       className={`flex-row items-center justify-between p-3 rounded-xl mb-2 border ${
                         isSelected
-                          ? 'bg-ssf-primary/10 border-ssf-primary'
+                          ? 'bg-ssf-primary/10 border-button-border'
                           : isDisabled
                             ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-40'
                             : 'bg-core-surface-muted-gray-50 border-core-border-gray-200'
@@ -1559,13 +1559,13 @@ export default function JudgesPage() {
                           <Text className={`font-poppins-bold text-xs ${isSelected ? 'text-core-on-primary-white' : 'text-core-text-gray-600'}`}>{j.name.charAt(0)}</Text>
                         </View>
                         <View className="flex-1">
-                          <Text className={`font-poppins-bold text-sm ${isSelected ? 'text-ui-primary-text' : 'text-ssf-text'}`}>{j.name}</Text>
+                          <Text className={`font-poppins-bold text-sm ${isSelected ? 'text-button-text' : 'text-ssf-text'}`}>{j.name}</Text>
                           {j.specialization && j.specialization.length > 0 && (
                             <Text className="font-poppins text-xs text-core-text-muted-gray-500">{Array.isArray(j.specialization) ? j.specialization.join(', ') : j.specialization}</Text>
                           )}
                         </View>
                       </View>
-                      <View className={`w-6 h-6 rounded-md items-center justify-center border ${isSelected ? 'bg-ssf-primary border-ssf-primary' : 'border-core-border-gray-300 bg-core-surface-white'}`}>
+                      <View className={`w-6 h-6 rounded-md items-center justify-center border ${isSelected ? 'bg-ssf-primary border-button-border' : 'border-core-border-gray-300 bg-core-surface-white'}`}>
                         {isSelected && <Text className="font-poppins-bold text-core-on-primary-white text-xs">✓</Text>}
                       </View>
                     </TouchableOpacity>

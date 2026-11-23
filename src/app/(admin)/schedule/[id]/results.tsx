@@ -702,11 +702,11 @@ export default function ResultsPage() {
           {/* Mode A: Judges used the system */}
           {judgePortalEnabled && <TouchableOpacity
             onPress={() => setMode('marks')}
-            className="bg-core-surface-white border border-ssf-primary rounded-lg p-4"
+            className="bg-core-surface-white border border-button-border rounded-lg p-4"
           >
             <View className="flex-row items-center gap-x-3 mb-2">
               <View className="w-10 h-10 rounded-full bg-ssf-primary/10 items-center justify-center">
-                <ClipboardList size={20} color={coreColor("#1B6B3A", 'primaryText')} />
+                <ClipboardList size={20} color={coreColor("#1B6B3A", 'buttonText')} />
               </View>
               <Text className="font-poppins-black text-ssf-text text-base">
                 Judges Used the System
@@ -817,9 +817,9 @@ export default function ResultsPage() {
                       key={num}
                       onPress={() => setManualGeneralSize(num)}
                       disabled={!isGroupEvent}
-                      className={`px-3 py-1.5 rounded-md border ${manualGeneralSize === num ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ui-border'} ${!isGroupEvent ? 'opacity-50' : ''}`}
+                      className={`px-3 py-1.5 rounded-md border ${manualGeneralSize === num ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ui-border'} ${!isGroupEvent ? 'opacity-50' : ''}`}
                     >
-                      <Text className={`font-poppins-bold text-xs ${manualGeneralSize === num ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{num}</Text>
+                      <Text className={`font-poppins-bold text-xs ${manualGeneralSize === num ? 'text-button-foreground' : 'text-ui-text'}`}>{num}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -857,13 +857,13 @@ export default function ResultsPage() {
                   disabled={isDisabled}
                   className={`h-8 px-3 rounded-lg border items-center justify-center ${
                     isSelected 
-                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
+                      ? 'bg-button-primary border-button-border'
                       : isDisabled 
                         ? 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-50'
                         : 'bg-core-surface-white border-core-info-soft-blue-200'
                   }`}
                 >
-                  <Text className={`font-poppins-bold text-[10px] ${isSelected ? 'text-core-on-primary-white' : isDisabled ? 'text-core-text-muted-gray-400' : 'text-core-info-blue-800'}`}>
+                  <Text className={`font-poppins-bold text-[10px] ${isSelected ? 'text-button-foreground' : isDisabled ? 'text-core-text-muted-gray-400' : 'text-core-info-blue-800'}`}>
                     {bracket.label} {bracket.max === 1 ? 'Person' : 'People'}
                   </Text>
                 </TouchableOpacity>

@@ -339,14 +339,14 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
                 <View className="flex-row items-center gap-2">
                   <View className="flex-1 flex-row gap-1.5">
                     {requiredJudgeOptions.map((count) => (
-                      <TouchableOpacity key={count} accessibilityRole="radio" accessibilityState={{ selected: requiredCount === count }} onPress={() => setRequiredCount(count)} className={`h-9 flex-1 items-center justify-center rounded-md border ${requiredCount === count ? 'border-ui-primary bg-core-primary-soft-teal-50' : 'border-ui-border bg-core-surface-white'}`}>
-                        <Text className={`font-poppins-bold text-xs ${requiredCount === count ? 'text-ui-primary-text' : 'text-ui-text'}`}>{count}</Text>
+                      <TouchableOpacity key={count} accessibilityRole="radio" accessibilityState={{ selected: requiredCount === count }} onPress={() => setRequiredCount(count)} className={`h-9 flex-1 items-center justify-center rounded-md border ${requiredCount === count ? 'border-button-border bg-core-primary-soft-teal-50' : 'border-ui-border bg-core-surface-white'}`}>
+                        <Text className={`font-poppins-bold text-xs ${requiredCount === count ? 'text-button-text' : 'text-ui-text'}`}>{count}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                   {hasRequiredCountChanges && (
-                    <TouchableOpacity accessibilityRole="button" onPress={() => void saveRequiredCount()} disabled={isSavingRequiredCount} className="h-9 rounded-md bg-ui-primary px-3 items-center justify-center">
-                      {isSavingRequiredCount ? <ActivityIndicator size="small" color={ui.colors.onPrimary} /> : <Text className="font-poppins-bold text-[10px] text-core-on-primary-white">Save</Text>}
+                    <TouchableOpacity accessibilityRole="button" onPress={() => void saveRequiredCount()} disabled={isSavingRequiredCount} className="h-9 rounded-md bg-button-primary px-3 items-center justify-center">
+                      {isSavingRequiredCount ? <ActivityIndicator size="small" color={ui.colors.buttonForeground} /> : <Text className="font-poppins-bold text-[10px] text-button-foreground">Save</Text>}
                     </TouchableOpacity>
                   )}
                 </View>
@@ -403,9 +403,9 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
               {printError && <Text accessibilityRole="alert" className="mt-2 font-poppins text-xs text-core-danger-red-700">{printError}</Text>}
               <View className="mt-3 flex-row justify-end gap-2">
                 <TouchableOpacity accessibilityRole="button" onPress={onClose} className="h-9 items-center justify-center rounded-md border border-ui-border px-3"><Text className="font-poppins-bold text-xs text-ui-text">Close</Text></TouchableOpacity>
-                <TouchableOpacity accessibilityRole="button" disabled={isSavingPanel || panelIsOverCapacity || selectedJudgeIds.length === assignedJudges.length && selectedJudgeIds.every((id) => assignedJudges.some((judge: any) => String(judge.id) === id))} onPress={() => void savePanel()} className="h-9 flex-row items-center justify-center gap-1.5 rounded-md bg-ui-primary px-3 disabled:opacity-50">
-                  {isSavingPanel && <ActivityIndicator size="small" color={ui.colors.onPrimary} />}
-                  <Text className="font-poppins-bold text-xs text-core-on-primary-white">Save assignments</Text>
+                <TouchableOpacity accessibilityRole="button" disabled={isSavingPanel || panelIsOverCapacity || selectedJudgeIds.length === assignedJudges.length && selectedJudgeIds.every((id) => assignedJudges.some((judge: any) => String(judge.id) === id))} onPress={() => void savePanel()} className="h-9 flex-row items-center justify-center gap-1.5 rounded-md bg-button-primary px-3 disabled:opacity-50">
+                  {isSavingPanel && <ActivityIndicator size="small" color={ui.colors.buttonForeground} />}
+                  <Text className="font-poppins-bold text-xs text-button-foreground">Save assignments</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -446,9 +446,9 @@ export function ScheduleJudgesModal({ schedule, visible, onClose, onUpdateRequir
             <TouchableOpacity accessibilityRole="button" onPress={closePrintPreview} className="h-9 items-center justify-center rounded-md border border-ui-border px-3">
               <Text className="font-poppins-bold text-xs text-ui-text">Close</Text>
             </TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" disabled={!isPrintPreviewReady} onPress={printPreview} className="h-9 flex-row items-center justify-center gap-1.5 rounded-md bg-ui-primary px-3 disabled:opacity-50">
-              {!isPrintPreviewReady && <ActivityIndicator size="small" color={ui.colors.onPrimary} />}
-              <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isPrintPreviewReady ? 'Print / Save PDF' : 'Loading preview…'}</Text>
+            <TouchableOpacity accessibilityRole="button" disabled={!isPrintPreviewReady} onPress={printPreview} className="h-9 flex-row items-center justify-center gap-1.5 rounded-md bg-button-primary px-3 disabled:opacity-50">
+              {!isPrintPreviewReady && <ActivityIndicator size="small" color={ui.colors.buttonForeground} />}
+              <Text className="font-poppins-bold text-xs text-button-foreground">{isPrintPreviewReady ? 'Print / Save PDF' : 'Loading preview…'}</Text>
             </TouchableOpacity>
           </View>
         </View>

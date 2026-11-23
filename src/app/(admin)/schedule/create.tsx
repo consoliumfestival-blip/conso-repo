@@ -261,12 +261,12 @@ export default function CreateSchedule() {
                 onPress={() => setJudgeCount(n)}
                 className={`flex-1 py-3 rounded-xl border items-center ${
                   judgeCount === n
-                    ? 'bg-ssf-primary border-ssf-primary'
+                    ? 'bg-button-primary border-button-border'
                     : 'bg-core-surface-white border-ssf-border'
                 }`}
               >
                 <Text className={`font-poppins-black text-base ${
-                  judgeCount === n ? 'text-core-on-primary-white' : 'text-ssf-text'
+                  judgeCount === n ? 'text-button-foreground' : 'text-ssf-text'
                 }`}>{n}</Text>
               </TouchableOpacity>
             ))}

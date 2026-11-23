@@ -1,5 +1,6 @@
 import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
 import { coreColor } from '@/constants/coreTheme';
+import { ui } from '@/constants/designSystem';
 import React from 'react';
 import { Animated, Pressable, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
 import { Modal } from '@/components/ui/CoreModal';
@@ -442,10 +443,10 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                       accessibilityRole="button"
                       onPress={() => openStagePortal(venue.id)}
                       className="h-11 flex-1 flex-row items-center justify-center rounded-lg px-2"
-                      style={{ backgroundColor: '#4ADE80' }}
+                      style={{ backgroundColor: ui.colors.buttonPrimary }}
                     >
-                      <ExternalLink size={15} color="#14532D" />
-                      <Text className="ml-1.5 font-poppins-bold text-xs" style={{ color: '#14532D' }}>Open Stage</Text>
+                      <ExternalLink size={15} color={ui.colors.buttonForeground} />
+                      <Text className="ml-1.5 font-poppins-bold text-xs" style={{ color: ui.colors.buttonForeground }}>Open Stage</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
@@ -644,9 +645,9 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   <TouchableOpacity
                     key={item}
                     onPress={() => setSelectedCategory(item)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>{item}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -730,9 +731,9 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedStatus(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -751,11 +752,11 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   key={item}
                   onPress={() => setSelectedCategory(item)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item
-                      ? 'bg-ssf-primary border-ssf-primary'
+                      ? 'bg-button-primary border-button-border'
                       : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -793,11 +794,11 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   key={item.id}
                   onPress={() => setSelectedStatus(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id
-                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
+                      ? 'bg-button-primary border-button-border'
                       : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -880,9 +881,9 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => router.push(`/stage-management/${schedule.id}/code-letter` as any)}
-                  className="h-8 px-3 rounded-lg bg-core-primary-teal-700 items-center justify-center"
+                  className="h-8 px-3 rounded-lg bg-button-primary items-center justify-center"
                 >
-                  <Text className="font-poppins-bold text-[9px] text-core-on-primary-white">Code Letters</Text>
+                  <Text className="font-poppins-bold text-[9px] text-button-foreground">Code Letters</Text>
                 </TouchableOpacity>
                 <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
               </View>
@@ -920,7 +921,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             </View>
             <ScheduleWorkflowBadges status={actionSchedule.status} isShuffleLocked={actionSchedule.is_shuffle_locked} registrations={getRegistrationsForSchedule(allRegistrations, actionSchedule)} summary={optimizedRead ? summariesBySchedule.get(actionSchedule.id) : undefined} />
             <View className="mt-4 gap-2 border-t border-ui-border pt-3">
-              <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/checkin` as any); }} className="h-12 flex-row items-center justify-between rounded-xl bg-core-primary-teal-700 px-4"><Text className="font-poppins-bold text-sm text-core-on-primary-white">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'onPrimary')} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/checkin` as any); }} className="h-12 flex-row items-center justify-between rounded-xl bg-button-primary px-4"><Text className="font-poppins-bold text-sm text-button-foreground">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'buttonForeground')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/code-letter` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showStatusChoices }} onPress={() => setShowStatusChoices((value) => !value)} className="h-11 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-xs text-ui-text">Change status</Text><ChevronRight size={16} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               {showStatusChoices ? <View className="flex-row flex-wrap gap-2 pb-1">

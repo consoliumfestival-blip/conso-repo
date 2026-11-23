@@ -1,10 +1,11 @@
+import { Modal } from '@/components/ui/CoreModal';
 import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
 import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
-import { Modal, Platform, Pressable, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
@@ -87,9 +88,9 @@ export default function ScheduleScreen() {
             <Button variant="outline" size="sm" onPress={() => router.push('/team/schedule/full')}>
               Full Schedule
             </Button>
-            <Pressable accessibilityRole="button" accessibilityLabel="Export team schedule PDFs" accessibilityState={{ disabled: isExporting || !schedule.length, busy: isExporting }} disabled={isExporting || !schedule.length} onPress={() => setExportPickerOpen(true)} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 12, backgroundColor: ui.colors.primaryStrong, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isExporting || !schedule.length ? 0.55 : 1 }}>
-              <Download size={15} color={ui.colors.onPrimary} />
-              <Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>{isExporting ? 'Preparing…' : 'Export'}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Export team schedule PDFs" accessibilityState={{ disabled: isExporting || !schedule.length, busy: isExporting }} disabled={isExporting || !schedule.length} onPress={() => setExportPickerOpen(true)} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 12, backgroundColor: ui.colors.buttonPrimary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: isExporting || !schedule.length ? 0.55 : 1 }}>
+              <Download size={15} color={ui.colors.buttonForeground} />
+              <Text style={{ color: ui.colors.buttonForeground, fontSize: 12, fontWeight: '700' }}>{isExporting ? 'Preparing…' : 'Export'}</Text>
             </Pressable>
           </View>} />
 

@@ -1,3 +1,4 @@
+import { ui } from '@/constants/designSystem';
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -414,14 +415,14 @@ export default function JudgePortalLanding() {
           >
             <View
               className="rounded-xl py-4 flex-row items-center justify-center gap-x-2"
-              style={{ backgroundColor: code.length === 6 && !isLoading ? '#2563EB' : '#3B82F6', opacity: code.length < 6 && !isLoading ? 0.8 : 1, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 5 }}
+              style={{ backgroundColor: ui.colors.buttonPrimary, opacity: code.length < 6 && !isLoading ? 0.8 : 1, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 5 }}
             >
               {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={ui.colors.buttonForeground} />
               ) : (
                 <>
-                  <Text className="font-poppins-medium text-[15px] text-white">Enter Portal</Text>
-                  <ArrowRight size={18} color="#FFFFFF" />
+                  <Text className="font-poppins-medium text-[15px] text-button-foreground">Enter Portal</Text>
+                  <ArrowRight size={18} color={ui.colors.buttonForeground} />
                 </>
               )}
             </View>

@@ -1,9 +1,10 @@
 import { Platform } from 'react-native';
 import tokens from './coreThemeTokens.json';
+import { legacyButtonColors, resolveButtonColors, buttonVariables } from './buttonTheme';
 
 export type CoreMode = 'light' | 'dark' | 'system';
 export type CorePalette = keyof typeof tokens.palettes;
-export type CoreColor = keyof typeof tokens.legacy;
+export type CoreColor = keyof typeof tokens.legacy | keyof typeof legacyButtonColors;
 export type CoreAppearance = { mode: CoreMode; palette: CorePalette };
 export const CORE_APPEARANCE_KEY = 'core-appearance-v1';
 export const DEFAULT_CORE_APPEARANCE: CoreAppearance = { mode: 'light', palette: 'teal' };
@@ -46,10 +47,10 @@ export function coreAlpha(color: string, opacity: number): string {
 }
 export function coreVariables(colors: ReturnType<typeof resolveCoreColors>) {
   const result: Record<string, string> = {};
-  for (const role of Object.keys(tokens.legacy) as CoreColor[]) {
+  for (const role of Object.keys(tokens.legacy) as (keyof typeof tokens.legacy)[]) {
     const hex = colors[role];
     result[coreVariableName(role)] = hex;
     result[`${coreVariableName(role)}-rgb`] = hex.match(/[\da-f]{2}/gi)!.map((part) => parseInt(part, 16)).join(' ');
   }
-  return result;
+  return { ...result, ...buttonVariables(resolveButtonColors(colors, colors.primary === '#0F766E' && colors.onPrimary === '#FFFFFF')) };
 }

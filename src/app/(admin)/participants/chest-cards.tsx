@@ -889,18 +889,18 @@ export default function ChestCardsPage() {
                   <TouchableOpacity
                     key={template.id}
                     onPress={() => setSelectedTemplateId(template.id)}
-                    className={`px-3 py-2 rounded-xl border ${selectedTemplateId === template.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
+                    className={`px-3 py-2 rounded-xl border ${selectedTemplateId === template.id ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedTemplateId === template.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
+                    <Text className={`font-poppins-bold text-xs ${selectedTemplateId === template.id ? 'text-button-foreground' : 'text-ssf-text'}`}>
                       {template.active ? 'Active · ' : ''}{template.name}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
               <View className="flex-row flex-wrap gap-2">
-                <TouchableOpacity onPress={uploadBackground} disabled={isUploadingBackground} className="bg-core-primary-emerald-600 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
-                  {isUploadingBackground ? <ActivityIndicator size="small" color={ui.colors.onPrimary} /> : <ImagePlus size={15} color={ui.colors.onPrimary} />}
-                  <Text className="font-poppins-bold text-core-on-primary-white text-xs">{isUploadingBackground ? 'Uploading...' : 'Upload / Replace'}</Text>
+                <TouchableOpacity onPress={uploadBackground} disabled={isUploadingBackground} className="bg-button-primary px-3 py-2 rounded-xl flex-row items-center gap-x-2">
+                  {isUploadingBackground ? <ActivityIndicator size="small" color={ui.colors.buttonForeground} /> : <ImagePlus size={15} color={ui.colors.buttonForeground} />}
+                  <Text className="font-poppins-bold text-button-foreground text-xs">{isUploadingBackground ? 'Uploading...' : 'Upload / Replace'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={localUploadBackground} disabled={isUploadingBackground} className="bg-core-success-soft-emerald-100 border border-core-success-soft-emerald-300 px-3 py-2 rounded-xl flex-row items-center gap-x-2">
                   <ImagePlus size={15} color={ui.colors.success} />
@@ -925,9 +925,9 @@ export default function ChestCardsPage() {
                     <TouchableOpacity
                       key={field}
                       onPress={() => setSelectedField(field)}
-                      className={`px-3 py-2 rounded-xl border ${selectedField === field ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
+                      className={`px-3 py-2 rounded-xl border ${selectedField === field ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                     >
-                      <Text className={`font-poppins-bold text-xs ${selectedField === field ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
+                      <Text className={`font-poppins-bold text-xs ${selectedField === field ? 'text-button-foreground' : 'text-ssf-text'}`}>
                         {field}
                       </Text>
                     </TouchableOpacity>
@@ -1013,9 +1013,9 @@ export default function ChestCardsPage() {
                     );
                   })}
                 </View>
-                <TouchableOpacity onPress={() => saveTemplates(templates)} className="mt-4 bg-core-primary-blue-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
-                  <Save size={16} color={ui.colors.onPrimary} />
-                  <Text className="font-poppins-bold text-core-on-primary-white">Save Layout Preset</Text>
+                <TouchableOpacity onPress={() => saveTemplates(templates)} className="mt-4 bg-button-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">
+                  <Save size={16} color={ui.colors.buttonForeground} />
+                  <Text className="font-poppins-bold text-button-foreground">Save Layout Preset</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1032,9 +1032,9 @@ export default function ChestCardsPage() {
                       <TouchableOpacity
                         key={mode}
                         onPress={() => updateTemplate(t => ({ ...t, backgroundResizeMode: mode }))}
-                        className={`px-3 py-2 rounded-xl border flex-1 items-center ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
+                        className={`px-3 py-2 rounded-xl border flex-1 items-center ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                       >
-                        <Text className={`font-poppins-bold text-xs ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
+                        <Text className={`font-poppins-bold text-xs ${activeTemplate.backgroundResizeMode === mode || (!activeTemplate.backgroundResizeMode && mode === 'cover') ? 'text-button-foreground' : 'text-ssf-text'}`}>
                           {mode}
                         </Text>
                       </TouchableOpacity>
@@ -1165,9 +1165,9 @@ export default function ChestCardsPage() {
           </View>
 
           <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, alignItems: isMobile ? 'stretch' : 'center' }}>
-            <TouchableOpacity onPress={() => { setPrintSize('auto'); setTimeout(handlePrint, 100); }} className="bg-ssf-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1">
-              <Printer size={16} color={ui.colors.onPrimary} />
-              <Text className="font-poppins-bold text-core-on-primary-white">Print Cards</Text>
+            <TouchableOpacity onPress={() => { setPrintSize('auto'); setTimeout(handlePrint, 100); }} className="bg-button-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1">
+              <Printer size={16} color={ui.colors.buttonForeground} />
+              <Text className="font-poppins-bold text-button-foreground">Print Cards</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1178,10 +1178,10 @@ export default function ChestCardsPage() {
                   setTimeout(() => window.print(), 100);
                 }
               }} 
-              className="bg-core-primary-emerald-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
+              className="bg-button-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
             >
-              <Download size={16} color={ui.colors.onPrimary} />
-              <Text className="font-poppins-bold text-core-on-primary-white">A4 PDF (4)</Text>
+              <Download size={16} color={ui.colors.buttonForeground} />
+              <Text className="font-poppins-bold text-button-foreground">A4 PDF (4)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1195,10 +1195,10 @@ export default function ChestCardsPage() {
                   }, 100);
                 }
               }} 
-              className="bg-core-primary-purple-600 px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
+              className="bg-button-primary px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2 flex-1"
             >
-              <Download size={16} color={ui.colors.onPrimary} />
-              <Text className="font-poppins-bold text-core-on-primary-white">A3 PDF (20)</Text>
+              <Download size={16} color={ui.colors.buttonForeground} />
+              <Text className="font-poppins-bold text-button-foreground">A3 PDF (20)</Text>
             </TouchableOpacity>
             
             <TouchableOpacity onPress={confirmRegenerate} className="bg-core-surface-white border border-ssf-border px-4 py-3 rounded-xl flex-row items-center justify-center gap-x-2">

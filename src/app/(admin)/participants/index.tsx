@@ -456,41 +456,41 @@ export default function ParticipantsList() {
           <Text className="text-sm font-poppins text-ssf-text-muted mt-1">{listError ? 'Participants unavailable' : `${resultCount} showing`}</Text>
         </View>
         <View className={`${width < 640 ? 'w-full' : 'flex-1'} flex-row flex-wrap justify-end gap-1.5`}>
-          {!selectMode && <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className={`${headerActionSize} flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white`}>
-            <CheckSquare size={16} color={coreColor("#1B6B3A", 'primaryText')} />
-            <Text className="font-poppins-bold text-xs text-ui-primary-text">Select Multiple</Text>
+          {!selectMode && <TouchableOpacity onPress={toggleSelectMode} disabled={!!listError || !selectionScopeIsCurrent} className={`${headerActionSize} flex-row items-center justify-center gap-x-1.5 rounded-md border border-button-border bg-core-surface-white`}>
+            <CheckSquare size={16} color={coreColor("#1B6B3A", 'buttonText')} />
+            <Text className="font-poppins-bold text-xs text-button-text">Select Multiple</Text>
           </TouchableOpacity>}
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center`}>
-            <Text className="font-poppins-bold text-ui-primary-text text-[11px]">Numbers</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Manage chest numbers" onPress={() => router.push('/(admin)/participants/chest-numbers')} className={`${headerActionSize} bg-core-surface-white border border-button-border rounded-md flex-row items-center justify-center`}>
+            <Text className="font-poppins-bold text-button-text text-[11px]">Numbers</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Print participant cards"
             onPress={() => router.push('/(admin)/participants/chest-cards' as any)}
-            className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center`}
+            className={`${headerActionSize} bg-core-surface-white border border-button-border rounded-md flex-row items-center justify-center`}
           >
-            <Text className="font-poppins-bold text-ui-primary-text text-[11px]">Cards</Text>
+            <Text className="font-poppins-bold text-button-text text-[11px]">Cards</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={openExport}
             disabled={isExporting || isLoadingList || isLoadingItems || !!listError}
             accessibilityRole="button"
             accessibilityLabel="Export participants"
-            className={`${headerActionSize} bg-ssf-primary border border-ssf-primary rounded-md flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
+            className={`${headerActionSize} bg-button-primary border border-button-border rounded-md flex-row items-center gap-x-1.5 ${isLoadingList || isLoadingItems || listError ? 'opacity-60' : ''}`}
           >
-            <FileDown size={14} color={ui.colors.onPrimary} />
-            <Text className="font-poppins-bold text-[11px] text-core-on-primary-white">Export</Text>
+            <FileDown size={14} color={ui.colors.buttonForeground} />
+            <Text className="font-poppins-bold text-[11px] text-button-foreground">Export</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className={`${width < 640 ? 'h-10 w-10' : 'h-9 w-9'} bg-core-surface-white border border-ssf-primary/20 rounded-md items-center justify-center`}>
-            <Upload size={15} color={coreColor("#1B6B3A", 'primaryText')} />
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Import participants" onPress={() => router.push('/(admin)/participants/import')} className={`${width < 640 ? 'h-10 w-10' : 'h-9 w-9'} bg-core-surface-white border border-button-border rounded-md items-center justify-center`}>
+            <Upload size={15} color={coreColor("#1B6B3A", 'buttonText')} />
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className={`${headerActionSize} bg-core-surface-white border border-ssf-primary/20 rounded-md flex-row items-center justify-center gap-x-1.5`}>
-            <UserPlus size={14} color={coreColor('#1B6B3A', 'primaryText')} />
-            <Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add Multiple</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add multiple participants" onPress={() => setIsBulkAddOpen(true)} className={`${headerActionSize} bg-core-surface-white border border-button-border rounded-md flex-row items-center justify-center gap-x-1.5`}>
+            <UserPlus size={14} color={coreColor('#1B6B3A', 'buttonText')} />
+            <Text className="font-poppins-bold text-[11px] text-button-text">Add Multiple</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className={`${headerActionSize} bg-ssf-primary border border-ssf-primary rounded-md flex-row items-center justify-center gap-x-1.5`}>
-            <UserPlus size={14} color={coreColor('#FFFFFF', 'onPrimary')} />
-            <Text className="font-poppins-bold text-core-on-primary-white text-[11px]">Add New</Text>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Add participant" onPress={() => router.push('/(admin)/participants/add')} className={`${headerActionSize} bg-button-primary border border-button-border rounded-md flex-row items-center justify-center gap-x-1.5`}>
+            <UserPlus size={14} color={coreColor('#FFFFFF', 'buttonForeground')} />
+            <Text className="font-poppins-bold text-button-foreground text-[11px]">Add New</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -584,9 +584,9 @@ export default function ParticipantsList() {
               <TouchableOpacity onPress={() => confirmBulkAction('delete')} disabled={processingBulk || selected.size === 0 || !!listError || !selectionScopeIsCurrent} className={`p-2 rounded-lg ${selected.size > 0 ? 'bg-core-danger-soft-red-100' : 'bg-core-surface-muted-gray-100'}`}>
                 <Trash2 size={16} color={selected.size > 0 ? coreColor('#DC2626', 'danger') : coreColor('#9CA3AF', 'textMuted')} />
               </TouchableOpacity>
-              {approvableSelectedIds.length > 0 && <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || !!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-1 rounded-lg bg-ssf-primary px-3 py-2">
-                {processingBulk ? <ActivityIndicator color={coreColor("white", 'onPrimary')} size="small" /> : <CheckCircle size={16} color={coreColor('white', 'onPrimary')} />}
-                <Text className="font-poppins-bold text-xs text-core-on-primary-white">Approve{approvableSelectedIds.length < selected.size ? ` (${approvableSelectedIds.length})` : ''}</Text>
+              {approvableSelectedIds.length > 0 && <TouchableOpacity onPress={() => confirmBulkAction('approve')} disabled={processingBulk || !!listError || !selectionScopeIsCurrent} className="flex-row items-center gap-x-1 rounded-lg bg-button-primary px-3 py-2">
+                {processingBulk ? <ActivityIndicator color={coreColor("white", 'buttonForeground')} size="small" /> : <CheckCircle size={16} color={coreColor('white', 'buttonForeground')} />}
+                <Text className="font-poppins-bold text-xs text-button-foreground">Approve{approvableSelectedIds.length < selected.size ? ` (${approvableSelectedIds.length})` : ''}</Text>
               </TouchableOpacity>}
             </View>
           </View>

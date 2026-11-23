@@ -673,12 +673,12 @@ export default function CheckIn() {
                   disabled={isUpdating}
                   onPress={() => handleVerify(verifyModal.reg.id)}
                   style={{
-                    flex: 1, backgroundColor: coreColor('#1B6B3A', 'primary'),
+                    flex: 1, backgroundColor: coreColor('#1B6B3A', 'buttonPrimary'),
                     borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                   }}
                 >
-                  <CheckCircle2 size={18} color={ui.colors.onPrimary} />
-                  <Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>
+                  <CheckCircle2 size={18} color={ui.colors.buttonForeground} />
+                  <Text style={{ color: ui.colors.buttonForeground, fontWeight: '700' }}>
                     {isUpdating ? 'Saving...' : 'Verify'}
                   </Text>
                 </TouchableOpacity>

@@ -572,9 +572,9 @@ export default function ParticipantDetails() {
               <TouchableOpacity
                 accessibilityRole="button"
                 onPress={() => setIsEditing(true)}
-                className={`${isDesktopProfile ? 'h-8 px-2.5' : 'h-10 px-3'} flex-row items-center justify-center gap-1.5 rounded-lg bg-ssf-primary`}
+                className={`${isDesktopProfile ? 'h-8 px-2.5' : 'h-10 px-3'} flex-row items-center justify-center gap-1.5 rounded-lg bg-button-primary`}
               >
-                <Edit3 size={isDesktopProfile ? 12 : 14} color={ui.colors.onPrimary} />
+                <Edit3 size={isDesktopProfile ? 12 : 14} color={ui.colors.buttonForeground} />
                 <Text className={`font-poppins-bold ${isDesktopProfile ? 'text-[9px]' : 'text-[10px]'} text-action-foreground`}>Edit</Text>
               </TouchableOpacity>
             )}
@@ -637,7 +637,7 @@ export default function ParticipantDetails() {
               {(!festival?.gender_mode || festival.gender_mode === 'both') && <View style={{ flex: 1, minWidth: 0 }}>
                 <Text className={`mb-1 font-poppins-bold ${isDesktopProfile ? 'text-[10px]' : 'text-[11px]'} text-ssf-text`}>Gender</Text>
                 <View className="flex-row gap-2">
-                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`${isDesktopProfile ? 'min-h-8 px-2 py-1' : 'min-h-10 px-3 py-2'} flex-1 items-center justify-center rounded-lg border ${gender === option ? 'border-ssf-primary bg-ssf-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}><Text className={`font-poppins-bold ${isDesktopProfile ? 'text-[11px]' : 'text-xs'} capitalize ${gender === option ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
+                  {(['boys', 'girls'] as const).map(option => <TouchableOpacity key={option} onPress={() => setGender(option)} className={`${isDesktopProfile ? 'min-h-8 px-2 py-1' : 'min-h-10 px-3 py-2'} flex-1 items-center justify-center rounded-lg border ${gender === option ? 'border-button-border bg-button-primary' : 'border-core-border-slate-300 bg-core-surface-white'}`}><Text className={`font-poppins-bold ${isDesktopProfile ? 'text-[11px]' : 'text-xs'} capitalize ${gender === option ? 'text-button-foreground' : 'text-ssf-text'}`}>{option}</Text></TouchableOpacity>)}
                 </View>
               </View>}
               <View style={{ flex: 1, minWidth: 0 }}>

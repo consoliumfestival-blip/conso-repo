@@ -520,8 +520,8 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
                   <View className={`mt-3 ${isMobile ? 'gap-y-2' : 'flex-row items-center justify-between'}`}>
                     <View className="flex-row items-center gap-1"><ShieldCheck size={16} color={coreColor("#16A34A", 'success')} /><Text className="font-poppins-bold text-sm text-core-success-green-700">All Participants Verified!</Text></View>
                     {isMobile ? (
-                      <TouchableOpacity accessibilityRole="button" onPress={() => setMode('codes')} className="mt-2 h-11 w-full items-center justify-center rounded-lg bg-ssf-primary px-3">
-                        <Text className="font-poppins-bold text-xs text-core-on-primary-white">Start Draw →</Text>
+                      <TouchableOpacity accessibilityRole="button" onPress={() => setMode('codes')} className="mt-2 h-11 w-full items-center justify-center rounded-lg bg-button-primary px-3">
+                        <Text className="font-poppins-bold text-xs text-button-foreground">Start Draw →</Text>
                       </TouchableOpacity>
                     ) : <SsfButton label="Start Draw →" size="sm" onPress={() => setMode('codes')} />}
                   </View>
@@ -540,9 +540,9 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
               <View className="flex-row flex-wrap items-center justify-between gap-3">
                 <Text className="font-poppins-bold text-lg text-ssf-text">Participants ({eligibleForCodes.length})</Text>
                 {!isLocked ? isMobile ? (
-                  <TouchableOpacity accessibilityRole="button" onPress={drawCodeLetters} disabled={busyId === `draw-${selectedSchedule.id}` || eligibleForCodes.length === 0} className={`h-11 w-full flex-row items-center justify-center rounded-lg bg-ssf-primary px-3 ${busyId === `draw-${selectedSchedule.id}` || eligibleForCodes.length === 0 ? 'opacity-50' : ''}`}>
-                    <RefreshCw size={14} color={coreColor("#FFFFFF", 'onPrimary')} />
-                    <Text className="ml-2 font-poppins-bold text-xs text-core-on-primary-white">{busyId === `draw-${selectedSchedule.id}` ? 'Drawing...' : 'Draw Letters'}</Text>
+                  <TouchableOpacity accessibilityRole="button" onPress={drawCodeLetters} disabled={busyId === `draw-${selectedSchedule.id}` || eligibleForCodes.length === 0} className={`h-11 w-full flex-row items-center justify-center rounded-lg bg-button-primary px-3 ${busyId === `draw-${selectedSchedule.id}` || eligibleForCodes.length === 0 ? 'opacity-50' : ''}`}>
+                    <RefreshCw size={14} color={coreColor("#FFFFFF", 'buttonForeground')} />
+                    <Text className="ml-2 font-poppins-bold text-xs text-button-foreground">{busyId === `draw-${selectedSchedule.id}` ? 'Drawing...' : 'Draw Letters'}</Text>
                   </TouchableOpacity>
                 ) : <SsfButton label={busyId === `draw-${selectedSchedule.id}` ? 'Drawing...' : 'Draw Letters'} onPress={drawCodeLetters} disabled={busyId === `draw-${selectedSchedule.id}` || eligibleForCodes.length === 0} icon={<RefreshCw size={14} color={coreColor("#FFF", 'onPrimary')} />} size="sm" /> : null}
               </View>
@@ -826,8 +826,8 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
           </View>
           <WorkflowBadges status={actionSchedule.status} isShuffleLocked={actionSchedule.is_shuffle_locked} registrations={eventRegistrations(actionSchedule.id)} summary={optimizedRead ? (actionSchedule as StageVenueSummarySchedule).registration_summary : undefined} />
           <View className="mt-4 gap-2 border-t border-ui-border pt-3">
-            <TouchableOpacity accessibilityRole="button" onPress={() => openSchedule(actionSchedule, 'checkin')} className="h-12 flex-row items-center justify-between rounded-xl bg-core-primary-teal-700 px-4">
-              <Text className="font-poppins-bold text-sm text-core-on-primary-white">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'onPrimary')} />
+            <TouchableOpacity accessibilityRole="button" onPress={() => openSchedule(actionSchedule, 'checkin')} className="h-12 flex-row items-center justify-between rounded-xl bg-button-primary px-4">
+              <Text className="font-poppins-bold text-sm text-button-foreground">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'buttonForeground')} />
             </TouchableOpacity>
             <TouchableOpacity accessibilityRole="button" onPress={() => openSchedule(actionSchedule, 'codes')} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4">
               <Text className="font-poppins-bold text-sm text-ssf-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} />
@@ -852,7 +852,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
 }
 
 function PortalAction({ label, onPress, disabled, danger, primary, mobile }: { label: string; onPress: () => void; disabled?: boolean; danger?: boolean; primary?: boolean; mobile?: boolean }) {
-  const style = primary ? 'border-core-primary-teal-700 bg-core-primary-teal-700 text-core-on-primary-white' : danger ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50 text-core-danger-red-700' : 'border-ui-border bg-core-surface-white text-ui-text';
+  const style = primary ? 'border-button-border bg-button-primary text-button-foreground' : danger ? 'border-core-danger-soft-red-200 bg-core-danger-soft-red-50 text-core-danger-red-700' : 'border-ui-border bg-core-surface-white text-ui-text';
   const textClass = style.split(' ').slice(2).join(' ');
   return (
     <TouchableOpacity accessibilityRole="button" onPress={onPress} disabled={disabled} className={`${mobile ? 'h-11 min-w-0 flex-1 px-2' : 'h-8 px-3'} items-center justify-center rounded-lg border ${style.split(' ').slice(0, 2).join(' ')} ${disabled ? 'opacity-50' : ''}`}>

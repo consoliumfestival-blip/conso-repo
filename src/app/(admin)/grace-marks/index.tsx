@@ -88,8 +88,8 @@ export default function GraceMarksScreen() {
     </SsfCard> : <>
       <View className="flex-row flex-wrap gap-2 mb-4">{teams.map(team =>
         <TouchableOpacity key={team.id} onPress={() => setSelected(team.id)} accessibilityRole="button"
-          accessibilityState={{ selected: currentTeam?.id === team.id }} className={'rounded-lg border px-3 py-2 ' + (currentTeam?.id === team.id ? 'bg-ui-primary border-ui-primary' : 'bg-core-surface-white border-ui-border')}>
-          <Text className={'font-poppins-bold text-xs ' + (currentTeam?.id === team.id ? 'text-core-on-primary-white' : 'text-ui-text')}>{team.name}</Text>
+          accessibilityState={{ selected: currentTeam?.id === team.id }} className={'rounded-lg border px-3 py-2 ' + (currentTeam?.id === team.id ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ui-border')}>
+          <Text className={'font-poppins-bold text-xs ' + (currentTeam?.id === team.id ? 'text-button-foreground' : 'text-ui-text')}>{team.name}</Text>
         </TouchableOpacity>)}</View>
       {!teams.length && <Text className="font-poppins text-ui-text-muted mb-4">No participating teams are available.</Text>}
       {currentTeam && <SsfCard className="mb-4"><Text className="font-poppins-bold text-lg text-ui-text mb-4">{currentTeam.name}</Text>

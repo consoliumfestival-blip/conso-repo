@@ -141,9 +141,9 @@ export const JudgeApprovalToast = () => {
             hideToast();
             router.push('/(admin)/judges');
           }} 
-          className="bg-core-primary-blue-600 px-3 py-1.5 rounded-lg ml-2"
+          className="bg-button-primary px-3 py-1.5 rounded-lg ml-2"
         >
-          <Text className="font-poppins-semibold text-core-on-primary-white text-xs">View</Text>
+          <Text className="font-poppins-semibold text-button-foreground text-xs">View</Text>
         </TouchableOpacity>
       )}
 

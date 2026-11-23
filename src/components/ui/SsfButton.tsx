@@ -26,8 +26,8 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  const baseClasses = 'items-center justify-center rounded-xl flex-row active:opacity-80';
  
  const variantClasses = {
- primary: 'bg-ui-primary',
- outline: 'border border-ui-border bg-ui-primary-soft',
+ primary: 'bg-button-primary',
+ outline: 'border border-button-border bg-button-soft',
  ghost: 'bg-transparent',
  };
 
@@ -38,9 +38,9 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  };
 
  const textVariantClasses = {
- primary: 'text-core-on-primary-white',
+ primary: 'text-button-foreground',
  outline: 'text-ui-text',
- ghost: 'text-ui-primary-text',
+ ghost: 'text-button-text',
  };
 
  const textSizeClasses = {
@@ -50,6 +50,8 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  };
 
  const isDisabled = disabled || isLoading;
+ const destructiveOverride = /bg-(?:core-danger|red-|destructive)/.test(className);
+ const foreground = destructiveOverride ? ui.colors.onPrimary : ui.colors.buttonForeground;
 
  return (
  <TouchableOpacity
@@ -65,11 +67,11 @@ export const SsfButton: React.FC<SsfButtonProps> = ({
  {...props}
  >
  {isLoading ? (
- <ActivityIndicator color={variant === 'primary' ? ui.colors.onPrimary : ui.colors.primaryText} className="mr-2" />
+ <ActivityIndicator color={variant === 'primary' ? foreground : ui.colors.buttonText} className="mr-2" />
  ) : icon ? (
- <View className="mr-2">{icon}</View>
+ <View className="mr-2">{variant === 'primary' && React.isValidElement<{ color?: string }>(icon) ? React.cloneElement(icon, { color: foreground }) : icon}</View>
  ) : null}
- <Text className={`font-poppins-bold ${textVariantClasses[variant]} ${textSizeClasses[size]}`}>
+ <Text className={`font-poppins-bold ${destructiveOverride && variant === 'primary' ? 'text-core-on-primary-white' : textVariantClasses[variant]} ${textSizeClasses[size]}`}>
  {label}
  </Text>
  </TouchableOpacity>

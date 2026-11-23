@@ -197,10 +197,10 @@ export default function ImportParticipants() {
             {organisations.map((org: any) => (
               <TouchableOpacity
                 key={org.id}
-                className={`px-3 py-2 rounded-xl border ${selectedOrgId === org.id ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
+                className={`px-3 py-2 rounded-xl border ${selectedOrgId === org.id ? 'bg-button-primary border-button-border' : 'bg-ssf-surface border-ssf-border'}`}
                 onPress={() => setSelectedOrgId(org.id)}
               >
-                <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>
+                <Text className={`font-poppins-bold text-sm ${selectedOrgId === org.id ? 'text-button-foreground' : 'text-ssf-text'}`}>
                   {org.name} <Text className="font-poppins font-normal text-xs opacity-80">({org.org_type})</Text>
                 </Text>
               </TouchableOpacity>
@@ -255,9 +255,9 @@ export default function ImportParticipants() {
                       <TouchableOpacity
                         key={`${field.key}-${header}`}
                         onPress={() => handleMapColumn(field.key, header)}
-                        className={`px-3 py-2 rounded-lg border mr-2 ${columnMapping[field.key] === header ? 'bg-ssf-primary border-ssf-primary' : 'bg-ssf-surface border-ssf-border'}`}
+                        className={`px-3 py-2 rounded-lg border mr-2 ${columnMapping[field.key] === header ? 'bg-button-primary border-button-border' : 'bg-ssf-surface border-ssf-border'}`}
                       >
-                        <Text className={`font-poppins text-sm ${columnMapping[field.key] === header ? 'text-core-on-primary-white font-poppins-bold' : 'text-ssf-text'}`}>
+                        <Text className={`font-poppins text-sm ${columnMapping[field.key] === header ? 'text-button-foreground font-poppins-bold' : 'text-ssf-text'}`}>
                           {header}
                         </Text>
                       </TouchableOpacity>

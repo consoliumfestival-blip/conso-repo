@@ -117,9 +117,9 @@ function ScheduleWorkflowActionButtons({
         onNavigate(action.path);
       }}
       style={isTabletGrid ? { flex: 1 } : undefined}
-      className={`h-11 px-3 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
+      className={`h-11 px-3 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ui-border'}`}
     >
-      <Text className={`font-poppins-bold text-xs ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
+      <Text className={`font-poppins-bold text-xs ${action.path === 'results' ? 'text-button-foreground' : 'text-ui-text'}`}>{action.label}</Text>
     </TouchableOpacity>
   );
 
@@ -857,15 +857,15 @@ export default function ScheduleDashboard() {
             accessibilityRole="button"
             accessibilityLabel="Export schedule PDF"
             accessibilityState={{ disabled: isExportingSchedule, busy: isExportingSchedule }}
-            className={`min-h-10 flex-row items-center gap-2 rounded-lg px-4 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100' : 'bg-ui-primary'}`}
+            className={`min-h-10 flex-row items-center gap-2 rounded-lg px-4 py-2 ${isExportingSchedule ? 'bg-core-surface-muted-gray-100' : 'bg-button-primary'}`}
           >
-            {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.onPrimary} />}
-            <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-core-on-primary-white'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
+            {isExportingSchedule ? <Clock size={15} color={ui.colors.primaryText} /> : <Download size={15} color={ui.colors.buttonForeground} />}
+            <Text className={`font-poppins-bold text-xs ${isExportingSchedule ? 'text-ui-text-muted' : 'text-button-foreground'}`}>{isExportingSchedule ? 'Preparing…' : 'Export'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/venues')} accessibilityRole="button" accessibilityLabel="Manage venues"><MapPin size={14} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Venues</Text></TouchableOpacity>
-          <TouchableOpacity className="h-9 flex-row items-center justify-center rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/import-json' as any)}><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Import JSON</Text></TouchableOpacity>
-          {!isMobile && Platform.OS === 'web' && <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/bulk-create' as any)}><Plus size={14} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Bulk Create</Text></TouchableOpacity>}
-          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-ssf-primary/20 bg-ssf-primary/10 px-2" onPress={() => router.push('/(admin)/schedule/create')}><Plus size={14} color={coreColor('#1B6B3A', 'primaryText')} /><Text className="font-poppins-bold text-[11px] text-ui-primary-text">Add New</Text></TouchableOpacity>
+          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-button-border bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/venues')} accessibilityRole="button" accessibilityLabel="Manage venues"><MapPin size={14} color={coreColor('#0F766E', 'buttonText')} /><Text className="font-poppins-bold text-[11px] text-button-text">Venues</Text></TouchableOpacity>
+          <TouchableOpacity className="h-9 flex-row items-center justify-center rounded-md border border-button-border bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/import-json' as any)}><Text className="font-poppins-bold text-[11px] text-button-text">Import JSON</Text></TouchableOpacity>
+          {!isMobile && Platform.OS === 'web' && <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-button-border bg-core-surface-white px-2" onPress={() => router.push('/(admin)/schedule/bulk-create' as any)}><Plus size={14} color={coreColor('#0F766E', 'buttonText')} /><Text className="font-poppins-bold text-[11px] text-button-text">Bulk Create</Text></TouchableOpacity>}
+          <TouchableOpacity className="h-9 flex-row items-center justify-center gap-x-1.5 rounded-md border border-button-border bg-ssf-primary/10 px-2" onPress={() => router.push('/(admin)/schedule/create')}><Plus size={14} color={coreColor('#1B6B3A', 'buttonText')} /><Text className="font-poppins-bold text-[11px] text-button-text">Add New</Text></TouchableOpacity>
           </View>
         </View>
 
@@ -970,9 +970,9 @@ export default function ScheduleDashboard() {
               accessibilityRole="button"
               accessibilityLabel={selectedDate ? `Date filter: ${selectedDate}` : 'Filter by schedule date'}
               onPress={() => setCalendarOpen(true)}
-              className={`h-9 px-3 rounded-lg border flex-row items-center justify-center ${selectedDate ? 'border-ui-primary bg-core-info-soft-blue-50' : 'border-ui-border bg-core-surface-white'}`}
+              className={`h-9 px-3 rounded-lg border flex-row items-center justify-center ${selectedDate ? 'border-button-border bg-core-info-soft-blue-50' : 'border-ui-border bg-core-surface-white'}`}
             >
-              <Calendar size={13} color={selectedDate ? coreColor('#1D4ED8', 'primaryText') : ui.colors.textMuted} />
+              <Calendar size={13} color={selectedDate ? coreColor('#1D4ED8', 'buttonText') : ui.colors.textMuted} />
               <Text className="ml-1.5 font-poppins-bold text-[10px] text-ui-text-muted">{selectedDate || 'Date: All'}</Text>
             </TouchableOpacity>
             {(selectedItem !== 'All' || selectedCategory !== 'All' || selectedVenue !== 'All' || selectedStatus !== 'All' || !!selectedDate) && (
@@ -1033,9 +1033,9 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     key={item}
                     onPress={() => setSelectedCategory(item)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-ssf-primary border-ssf-primary' : 'bg-core-surface-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>{item}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1119,9 +1119,9 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setSelectedStatus(item.id)}
-                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-core-primary-blue-600 border-core-primary-blue-600' : 'bg-core-surface-white border-ssf-border'}`}
+                    className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ssf-border'}`}
                   >
-                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>{item.name}</Text>
+                    <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>{item.name}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -1140,11 +1140,11 @@ export default function ScheduleDashboard() {
                   key={item}
                   onPress={() => setSelectedCategory(item)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedCategory === item
-                      ? 'bg-ssf-primary border-ssf-primary'
+                      ? 'bg-button-primary border-button-border'
                       : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedCategory === item ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>
                     {item}
                   </Text>
                 </TouchableOpacity>
@@ -1182,11 +1182,11 @@ export default function ScheduleDashboard() {
                   key={item.id}
                   onPress={() => setSelectedStatus(item.id)}
                   className={`px-4 py-1.5 rounded-full mr-2 border ${selectedStatus === item.id
-                      ? 'bg-core-primary-blue-600 border-core-primary-blue-600'
+                      ? 'bg-button-primary border-button-border'
                       : 'bg-core-surface-white border-ssf-border'
                     }`}
                 >
-                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-core-on-primary-white' : 'text-ssf-text-muted'}`}>
+                  <Text className={`font-poppins-bold text-xs ${selectedStatus === item.id ? 'text-button-foreground' : 'text-ssf-text-muted'}`}>
                     {item.name}
                   </Text>
                 </TouchableOpacity>
@@ -1325,9 +1325,9 @@ export default function ScheduleDashboard() {
                       onPress={() => action.path === 'judges'
                         ? openJudgePanel(schedule)
                         : router.push(`/(admin)/schedule/${schedule.id}/${action.path}` as any)}
-                      className={`h-8 px-2 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-core-primary-teal-700 border-core-primary-teal-700' : 'bg-core-surface-white border-ui-border'}`}
+                      className={`h-8 px-2 rounded-lg border items-center justify-center ${action.path === 'results' ? 'bg-button-primary border-button-border' : 'bg-core-surface-white border-ui-border'}`}
                     >
-                      <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-core-on-primary-white' : 'text-ui-text'}`}>{action.label}</Text>
+                      <Text className={`font-poppins-bold text-[9px] ${action.path === 'results' ? 'text-button-foreground' : 'text-ui-text'}`}>{action.label}</Text>
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
@@ -1336,7 +1336,7 @@ export default function ScheduleDashboard() {
                     onPress={() => void openScheduleShare(schedule)}
                     className="h-8 w-8 rounded-lg border border-core-primary-soft-teal-200 bg-core-primary-soft-teal-50 items-center justify-center"
                   >
-                    <Share2 size={14} color={coreColor('#0F766E', 'primaryText')} />
+                    <Share2 size={14} color={coreColor('#0F766E', 'buttonText')} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     className={`h-8 w-8 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
@@ -1733,7 +1733,7 @@ export default function ScheduleDashboard() {
             </View>
             <View className="flex-row mb-1">{['S','M','T','W','T','F','S'].map((day,index)=><View key={`${day}-${index}`} style={{width:'14.2857%'}} className="h-8 items-center justify-center"><Text className="font-poppins-bold text-[10px] text-ui-text-muted">{day}</Text></View>)}</View>
             <View className="flex-row flex-wrap">
-              {calendarCells.map((date,index)=>date ? <TouchableOpacity key={date} disabled={!dateSet.has(date)} accessibilityRole="button" accessibilityLabel={`Select ${date}`} onPress={()=>{setSelectedDate(date);setPage(1);setCalendarOpen(false);}} style={{width:'14.2857%'}} className={`h-10 items-center justify-center rounded-lg ${selectedDate===date?'bg-ui-primary':dateSet.has(date)?'bg-core-surface-white':'bg-core-surface-white opacity-40'}`}><Text className={`font-poppins text-xs ${selectedDate===date?'text-core-on-primary-white':dateSet.has(date)?'text-ui-text':'text-ui-text-muted'}`}>{Number(date.slice(-2))}</Text></TouchableOpacity>:<View key={`empty-${index}`} style={{width:'14.2857%'}} className="h-10" />)}
+              {calendarCells.map((date,index)=>date ? <TouchableOpacity key={date} disabled={!dateSet.has(date)} accessibilityRole="button" accessibilityLabel={`Select ${date}`} onPress={()=>{setSelectedDate(date);setPage(1);setCalendarOpen(false);}} style={{width:'14.2857%'}} className={`h-10 items-center justify-center rounded-lg ${selectedDate===date?'bg-button-primary':dateSet.has(date)?'bg-core-surface-white':'bg-core-surface-white opacity-40'}`}><Text className={`font-poppins text-xs ${selectedDate===date?'text-button-foreground':dateSet.has(date)?'text-ui-text':'text-ui-text-muted'}`}>{Number(date.slice(-2))}</Text></TouchableOpacity>:<View key={`empty-${index}`} style={{width:'14.2857%'}} className="h-10" />)}
             </View>
             <View className="flex-row items-center justify-between mt-3">
               <TouchableOpacity accessibilityRole="button" onPress={()=>{setSelectedDate(null);setPage(1);setCalendarOpen(false);}} className="h-9 px-3 items-center justify-center rounded-lg border border-ui-border"><Text className="font-poppins-bold text-[10px] text-ui-text">All dates</Text></TouchableOpacity>
@@ -1824,8 +1824,8 @@ export default function ScheduleDashboard() {
               </TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: isSavingAssignment || assignmentSubstagesQuery.isLoading || assignmentVenueConflictQuery.isLoading, busy: isSavingAssignment }}
                 disabled={isSavingAssignment || assignmentSubstagesQuery.isLoading || assignmentVenueConflictQuery.isLoading || (canEditAssignmentSubstages && isLoadingItems)}
-                onPress={() => void saveScheduleAssignment()} className="h-10 px-4 justify-center rounded-lg bg-ui-primary">
-                <Text className="font-poppins-bold text-xs text-core-on-primary-white">{isSavingAssignment ? 'Saving…' : 'Save assignment'}</Text>
+                onPress={() => void saveScheduleAssignment()} className="h-10 px-4 justify-center rounded-lg bg-button-primary">
+                <Text className="font-poppins-bold text-xs text-button-foreground">{isSavingAssignment ? 'Saving…' : 'Save assignment'}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>

@@ -315,12 +315,12 @@ export default function EditSchedule() {
                 onPress={() => setJudgeCount(n)}
                 className={`h-10 flex-1 rounded-lg border items-center justify-center ${
                   judgeCount === n
-                    ? 'bg-ssf-primary border-ssf-primary'
+                    ? 'bg-button-primary border-button-border'
                     : 'bg-core-surface-white border-ssf-border'
                 }`}
               >
                 <Text className={`font-poppins-bold text-xs ${
-                  judgeCount === n ? 'text-core-on-primary-white' : 'text-ssf-text'
+                  judgeCount === n ? 'text-button-foreground' : 'text-ssf-text'
                 }`}>{n}</Text>
               </TouchableOpacity>
             ))}

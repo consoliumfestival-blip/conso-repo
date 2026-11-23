@@ -124,7 +124,7 @@ export default function JudgeAuditPage() {
                 onPress={() => setSelectedAction(action)}
                 className={`px-3 py-2 rounded-full border ${
                   selected
-                    ? 'bg-ssf-primary border-ssf-primary'
+                    ? 'bg-button-primary border-button-border'
                     : 'bg-core-surface-white border-core-border-gray-200'
                 }`}
                 accessibilityRole="button"
@@ -132,7 +132,7 @@ export default function JudgeAuditPage() {
                 accessibilityState={{ selected }}
               >
                 <Text className={`font-poppins-bold text-[10px] ${
-                  selected ? 'text-core-on-primary-white' : 'text-core-text-gray-600'
+                  selected ? 'text-button-foreground' : 'text-core-text-gray-600'
                 }`}>
                   {actionLabel(action)}
                 </Text>

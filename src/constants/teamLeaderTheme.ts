@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { ui as shared } from './designSystem';
+import { resolveButtonColors } from './buttonTheme';
 
 /** Outfit is bundled on web and loaded at startup on native. */
 export const TEAM_FONT_FAMILY = Platform.OS === 'web'
@@ -100,7 +101,7 @@ export function createTeamUi(mode: TeamThemeMode, teamName?: string | null) {
   return {
     ...shared,
     fontFamily: TEAM_FONT_FAMILY,
-    colors,
+    colors: { ...colors, ...resolveButtonColors({ ...colors, primary: colors.primaryStrong, primaryText: colors.primary }) },
     radius: { ...shared.radius, card: 17 },
     shadow: Platform.select({
       web: { boxShadow: mode === 'dark' ? '0 12px 30px rgba(0,0,0,0.22)' : '0 8px 26px rgba(39,34,30,0.065)' },

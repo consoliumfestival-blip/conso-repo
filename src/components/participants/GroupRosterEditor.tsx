@@ -124,7 +124,7 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
                 <View className={`h-5 w-5 items-center justify-center rounded border ${selected ? 'border-core-success-emerald-700 bg-core-success-action-emerald-700' : 'border-core-border-slate-300'}`}>{selected && <Check size={13} color={coreColor("white", 'onPrimary')} />}</View>
                 <View className="flex-1"><Text className="font-poppins-bold text-xs text-ui-text">{person.name}</Text><Text className="font-poppins text-[11px] text-ui-text-muted">{person.chest_number || 'No chest number'}{!eligibleMember ? ' · No longer eligible' : ''}</Text></View>
               </TouchableOpacity>
-              {selected && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Choose ${person.name} as group leader`} disabled={saving || !eligibleMember} onPress={() => setLeaderId(person.id)} className={`min-h-10 justify-center rounded-lg border px-3 ${leaderId === person.id ? 'border-core-primary-emerald-700 bg-core-success-soft-emerald-50' : 'border-ui-border'}`}><Text className="font-poppins-bold text-xs text-ui-text">{leaderId === person.id ? 'Leader' : 'Make leader'}</Text></TouchableOpacity>}
+              {selected && <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Choose ${person.name} as group leader`} disabled={saving || !eligibleMember} onPress={() => setLeaderId(person.id)} className={`min-h-10 justify-center rounded-lg border px-3 ${leaderId === person.id ? 'border-button-border bg-core-success-soft-emerald-50' : 'border-ui-border'}`}><Text className="font-poppins-bold text-xs text-ui-text">{leaderId === person.id ? 'Leader' : 'Make leader'}</Text></TouchableOpacity>}
             </View>;
           })}
         </ScrollView>
@@ -133,8 +133,8 @@ export function GroupRosterEditor({ entry, festivalId, participants, visibleOrga
         {!!error && <Text className="mt-2 font-poppins text-xs text-core-danger-red-700">{error}</Text>}
         <View className="mt-3 flex-row justify-end gap-2">
           <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={onClose} className="min-h-11 justify-center rounded-lg border border-ui-border px-4"><Text className="font-poppins-bold text-xs text-ui-text">Cancel</Text></TouchableOpacity>
-          <TouchableOpacity accessibilityRole="button" disabled={!valid || !changed || saving} onPress={save} className={`min-h-11 min-w-28 flex-row items-center justify-center rounded-lg bg-core-primary-emerald-700 px-4 ${!valid || !changed || saving ? 'opacity-50' : ''}`}>
-            {saving ? <ActivityIndicator color={coreColor("white", 'onPrimary')} /> : <Text className="font-poppins-bold text-xs text-core-on-primary-white">Save roster</Text>}
+          <TouchableOpacity accessibilityRole="button" disabled={!valid || !changed || saving} onPress={save} className={`min-h-11 min-w-28 flex-row items-center justify-center rounded-lg bg-button-primary px-4 ${!valid || !changed || saving ? 'opacity-50' : ''}`}>
+            {saving ? <ActivityIndicator color={coreColor("white", 'buttonForeground')} /> : <Text className="font-poppins-bold text-xs text-button-foreground">Save roster</Text>}
           </TouchableOpacity>
         </View>
       </View>

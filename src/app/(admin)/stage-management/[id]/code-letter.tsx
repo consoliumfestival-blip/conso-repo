@@ -263,10 +263,10 @@ export default function CodeLetterGeneration() {
                 accessibilityRole="button"
                 onPress={handleGenerate}
                 disabled={isGeneratingCodeLetters}
-                className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-ssf-primary px-2 ${isGeneratingCodeLetters ? 'opacity-60' : ''}`}
+                className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg bg-button-primary px-2 ${isGeneratingCodeLetters ? 'opacity-60' : ''}`}
               >
-                <RefreshCw size={15} color={coreColor("#FFFFFF", 'onPrimary')} />
-                <Text className="font-poppins-bold text-[11px] text-core-on-primary-white">{isGeneratingCodeLetters ? 'Drawing…' : 'Draw letters'}</Text>
+                <RefreshCw size={15} color={coreColor("#FFFFFF", 'buttonForeground')} />
+                <Text className="font-poppins-bold text-[11px] text-button-foreground">{isGeneratingCodeLetters ? 'Drawing…' : 'Draw letters'}</Text>
               </TouchableOpacity>
               {activeRegistrations.every((r: any) => r.code_letter) ? (
                 <TouchableOpacity accessibilityRole="button" onPress={openLockModal} className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-2">

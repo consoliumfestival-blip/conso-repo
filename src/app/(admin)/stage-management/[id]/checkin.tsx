@@ -346,8 +346,8 @@ export default function CheckIn() {
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" onPress={submitStage}
             disabled={isUpdating || !!unresolvedCount || submittedStageIds.has(substages.length ? selectedSubstageId : '')}
-            className="h-11 items-center justify-center rounded-lg bg-ssf-primary px-3">
-            <Text className="font-poppins-bold text-xs text-core-on-primary-white">{submittedStageIds.has(substages.length ? selectedSubstageId : '') ? 'Submitted' : 'Submit stage'}</Text>
+            className="h-11 items-center justify-center rounded-lg bg-button-primary px-3">
+            <Text className="font-poppins-bold text-xs text-button-foreground">{submittedStageIds.has(substages.length ? selectedSubstageId : '') ? 'Submitted' : 'Submit stage'}</Text>
           </TouchableOpacity>
         </View> : null}
         <TouchableOpacity accessibilityRole="button" onPress={() => setShowCancelled(!showCancelled)} className="mb-2">
@@ -370,8 +370,8 @@ export default function CheckIn() {
           {(substages.length ? allSubmitted : allVerified || allSubmitted) ? (
             <View className="mt-3 rounded-lg border border-core-success-soft-emerald-200 bg-core-success-soft-emerald-50 p-2.5">
               <View className="flex-row items-center gap-2"><ShieldCheck size={17} color={coreColor("#16A34A", 'success')} /><Text className="flex-1 font-poppins-bold text-xs text-core-success-green-800">All stages submitted</Text></View>
-              <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/code-letter` as any)} className="mt-2 h-11 flex-row items-center justify-center rounded-lg bg-ssf-primary px-3">
-                <Text className="font-poppins-bold text-xs text-core-on-primary-white">Start Draw →</Text>
+              <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/code-letter` as any)} className="mt-2 h-11 flex-row items-center justify-center rounded-lg bg-button-primary px-3">
+                <Text className="font-poppins-bold text-xs text-button-foreground">Start Draw →</Text>
               </TouchableOpacity>
             </View>
           ) : totalCount > 0 ? (
@@ -443,8 +443,8 @@ export default function CheckIn() {
                         <CheckCircle2 size={16} color={coreColor("#16A34A", 'success')} /><Text className="font-poppins-bold text-xs text-core-success-emerald-800">Undo verification</Text>
                       </TouchableOpacity>
                     ) : (
-                      <TouchableOpacity accessibilityRole="button" onPress={() => setVerifyModal({ reg, visible: true })} disabled={isUpdating} className={`mt-3 h-11 flex-row items-center justify-center gap-2 rounded-lg bg-ssf-primary ${isUpdating ? 'opacity-60' : ''}`}>
-                        <Camera size={16} color={coreColor("#FFFFFF", 'onPrimary')} /><Text className="font-poppins-bold text-xs text-core-on-primary-white">{reg.entry_kind === 'general_team' ? 'Verify group' : 'Verify participant'}</Text>
+                      <TouchableOpacity accessibilityRole="button" onPress={() => setVerifyModal({ reg, visible: true })} disabled={isUpdating} className={`mt-3 h-11 flex-row items-center justify-center gap-2 rounded-lg bg-button-primary ${isUpdating ? 'opacity-60' : ''}`}>
+                        <Camera size={16} color={coreColor("#FFFFFF", 'buttonForeground')} /><Text className="font-poppins-bold text-xs text-button-foreground">{reg.entry_kind === 'general_team' ? 'Verify group' : 'Verify participant'}</Text>
                       </TouchableOpacity>
                     )
                   ) : null}
@@ -779,12 +779,12 @@ export default function CheckIn() {
                   disabled={isUpdating}
                   onPress={() => handleVerify(verifyModal.reg.id)}
                   style={{
-                    flex: 1, backgroundColor: coreColor('#1B6B3A', 'primary'),
+                    flex: 1, backgroundColor: coreColor('#1B6B3A', 'buttonPrimary'),
                     borderRadius: 12, padding: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
                   }}
                 >
-                  <CheckCircle2 size={18} color={coreColor("#FFF", 'onPrimary')} />
-                  <Text style={{ color: coreColor('#FFF', 'onPrimary'), fontWeight: '700' }}>
+                  <CheckCircle2 size={18} color={coreColor("#FFF", 'buttonForeground')} />
+                  <Text style={{ color: coreColor('#FFF', 'buttonForeground'), fontWeight: '700' }}>
                     {isUpdating ? 'Saving...' : 'Verify'}
                   </Text>
                 </TouchableOpacity>

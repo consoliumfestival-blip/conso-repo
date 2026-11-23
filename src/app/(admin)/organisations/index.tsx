@@ -265,9 +265,9 @@ export default function SubOrganisationsManager() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => showArchived ? refetchArchivedChildOrganisations() : refetchChildOrganisations()}
-                  style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'primary') }}
+                  style={{ marginTop: 16, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'buttonPrimary') }}
                 >
-                  <Text style={{ fontFamily: "Outfit_700Bold", color: ui.colors.onPrimary }}>Retry</Text>
+                  <Text style={{ fontFamily: "Outfit_700Bold", color: ui.colors.buttonForeground }}>Retry</Text>
                 </TouchableOpacity>
               </View>
             ) : listedOrgs.length === 0 ? (

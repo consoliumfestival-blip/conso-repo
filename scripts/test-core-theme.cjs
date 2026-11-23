@@ -7,7 +7,9 @@ const root=path.resolve(__dirname,'..');
 const scope=require('./core-theme-scope.json');
 const filename=path.join(root,'src/constants/coreTheme.ts');
 const localRequire=require('node:module').createRequire(filename);
-const sandbox={exports:{},require:name=>name==='react-native'?{Platform:{OS:'web'}}:localRequire(name)};
+const buttonSandbox={exports:{}};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(root,'src/constants/buttonTheme.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,buttonSandbox);
+const sandbox={exports:{},require:name=>name==='react-native'?{Platform:{OS:'web'}}:name==='./buttonTheme'?buttonSandbox.exports:localRequire(name)};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync(filename,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,esModuleInterop:true}}).outputText,sandbox);
 const theme=sandbox.exports;
 const plain=value=>JSON.parse(JSON.stringify(value));
@@ -54,7 +56,7 @@ test('all generated utility aliases resolve in the Tailwind colour registry',()=
 });
 test('theme changes do not alter service/RPC calls or excluded portal sources',()=>{
  const changed=cp.execFileSync('git',['-c','core.safecrlf=false','diff','--name-only'],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim().split(/\r?\n/);
- assert.ok(!changed.some(p=>/^(src\/app\/(team|judge)\/|src\/services\/|src\/providers\/|supabase\/)/.test(p)), 'Excluded portal, backend or schema changed');
+ assert.ok(!changed.some(p=>/^(src\/app\/\(public\)\/|src\/services\/|src\/providers\/|supabase\/)/.test(p)), 'Public portal, backend or schema changed');
  const calls=text=>{
   const source=ts.createSourceFile('check.tsx',text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX),result=[];
   const inspect=n=>{if(ts.isCallExpression(n)&&/supabase|\b\w*(?:Service|Repository)\./.test(n.expression.getText(source)))result.push(n.getText(source).replace(/\s+/g,''));ts.forEachChild(n,inspect);};inspect(source);return result;
@@ -69,7 +71,7 @@ test('chest-card output and persisted defaults retain their original literal col
  const before=cp.execFileSync('git',['show',`HEAD:${file}`],{cwd:root,encoding:'utf8'}),after=fs.readFileSync(path.join(root,file),'utf8');
  const statements=text=>{const source=ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);return source.statements.filter(ts.isVariableStatement).flatMap(s=>s.declarationList.declarations.map(d=>[d.name.getText(source),s.getText(source)]));};
  const originals=new Map(statements(before)),current=new Map(statements(after));
- const normalize=text=>text.replaceAll('legacyCoreOutputColors.','ui.colors.').replace(' ...fixedCoreOutputVariables,','').replace(/[ \t]+$/gm,'');
+ const normalize=text=>text.replaceAll('\r\n','\n').replaceAll('legacyCoreOutputColors.','ui.colors.').replace(' ...fixedCoreOutputVariables,','').replace(/[ \t]+$/gm,'');
  for(const name of ['defaultTemplate','readTemplates','createQrUrl','FieldBox','ChestCard'])assert.equal(normalize(current.get(name).replaceAll('legacyCoreOutputColors.','ui.colors.').replace(' ...fixedCoreOutputVariables,','')),normalize(originals.get(name)),name);
  for(const role of Object.keys(tokens.legacy))assert.ok(fs.readFileSync(path.join(root,'src/global.css'),'utf8').includes(`${theme.coreVariableName(role)}: ${tokens.legacy[role]} !important`),`Missing print reset: ${role}`);
 });

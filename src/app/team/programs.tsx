@@ -1,9 +1,10 @@
+import { Modal } from '@/components/ui/CoreModal';
 import { isTeamAuthorizationError } from '@/core/utils/teamReadCache';
 import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import { TeamText as Text } from '@/components/team/TeamText';
-import { ActivityIndicator, Modal, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, ArrowDownAZ, ArrowDownZA, Check, CheckCircle2, ChevronDown, Eye, ListOrdered, Search, X } from 'lucide-react-native';
 import { TeamLeaderAppShell } from '@/components/layout/TeamLeaderAppShell';
@@ -776,8 +777,8 @@ function TeamProgramsContent() {
             <Pressable accessibilityRole="button" disabled={!!savingItemId} onPress={() => setPendingCompletionProgram(null)} style={{ flex: 1, minHeight: 44, borderRadius: 9, borderWidth: 1, borderColor: border, backgroundColor: ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: ui.colors.text, fontSize: 13, fontWeight: '700' }}>Cancel</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={!!savingItemId || !pendingCompletionProgram || pendingCompletionProgram.assignment_locked} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.primary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId || pendingCompletionProgram?.assignment_locked ? 0.5 : 1 }}>
-              {savingItemId === pendingCompletionProgram?.item_id ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
+            <Pressable accessibilityRole="button" disabled={!!savingItemId || !pendingCompletionProgram || pendingCompletionProgram.assignment_locked} onPress={confirmProgramCompletion} style={{ flex: 1, minHeight: 44, borderRadius: 9, backgroundColor: ui.colors.buttonPrimary, alignItems: 'center', justifyContent: 'center', opacity: savingItemId || pendingCompletionProgram?.assignment_locked ? 0.5 : 1 }}>
+              {savingItemId === pendingCompletionProgram?.item_id ? <ActivityIndicator color={ui.colors.buttonForeground} /> : <Text style={{ color: ui.colors.buttonForeground, fontSize: 13, fontWeight: '800', textAlign: 'center' }}>Yes, completed</Text>}
             </Pressable>
           </View>
         </View>

@@ -193,12 +193,12 @@ export default function MarkEntryPage() {
               onPress={() => setSelectedJudge(j.id)}
               className={`mx-1 px-3 py-1.5 rounded-full border ${
                 selectedJudge === j.id
-                  ? 'bg-ssf-primary border-ssf-primary'
+                  ? 'bg-button-primary border-button-border'
                   : 'border-ui-border bg-core-surface-white'
               }`}
             >
               <Text className={`font-poppins-bold text-xs ${
-                selectedJudge === j.id ? 'text-core-on-primary-white' : 'text-ssf-text'
+                selectedJudge === j.id ? 'text-button-foreground' : 'text-ssf-text'
               }`}>
                 {j.name}
               </Text>
@@ -284,13 +284,13 @@ export default function MarkEntryPage() {
                             disabled={true}
                             className={`px-2.5 py-1 rounded-lg mb-1 border ${
                               (marks[reg.id]?.[selectedJudge]?.[c.key] ?? -1) === val
-                                ? 'bg-ssf-primary border-ssf-primary'
+                                ? 'bg-button-primary border-button-border'
                                 : 'bg-core-surface-muted-gray-100 border-core-border-gray-200 opacity-80'
                             }`}
                           >
                             <Text className={`font-poppins-bold text-xs ${
                               (marks[reg.id]?.[selectedJudge]?.[c.key] ?? -1) === val
-                                ? 'text-core-on-primary-white' : 'text-core-text-gray-600'
+                                ? 'text-button-foreground' : 'text-core-text-gray-600'
                             }`}>{val}</Text>
                           </TouchableOpacity>
                         ))}

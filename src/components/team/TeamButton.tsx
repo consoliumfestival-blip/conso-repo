@@ -29,7 +29,7 @@ export const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>
       borderRadius: ui.radius.xl,
       borderWidth: primary || variant === 'ghost' || variant === 'link' ? 0 : 1,
       borderColor: destructive ? ui.colors.borderStrong : ui.colors.border,
-      backgroundColor: primary ? ui.colors.primaryStrong
+      backgroundColor: primary ? ui.colors.buttonPrimary
         : destructive ? ui.colors.dangerSoft
           : variant === 'ghost' || variant === 'link' ? 'transparent' : ui.colors.primarySoft,
       alignItems: 'center',
@@ -38,7 +38,7 @@ export const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>
       opacity: disabled || loading ? 0.5 : 1,
     };
     const textStyle: TextStyle = {
-      color: primary ? ui.colors.onPrimary : destructive ? ui.colors.danger
+      color: primary ? ui.colors.buttonForeground : destructive ? ui.colors.danger
         : variant === 'outline' || variant === 'secondary' ? ui.colors.text : ui.colors.primary,
       fontSize: size === 'sm' ? 14 : size === 'lg' ? 18 : 16,
       fontWeight: '700',
@@ -48,8 +48,8 @@ export const Button = React.forwardRef<React.ElementRef<typeof TouchableOpacity>
     return (
       <TouchableOpacity ref={ref} onPress={onPress} disabled={disabled || loading} accessibilityRole="button" className={className}
         accessibilityLabel={label} accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }} style={[buttonStyle, style]}>
-        {loading ? <ActivityIndicator color={primary ? ui.colors.onPrimary : ui.colors.primary} style={{ marginRight: 8 }} /> : null}
-        {label !== undefined ? <TeamText style={textStyle}>{label}</TeamText> : children}
+        {loading ? <ActivityIndicator color={primary ? ui.colors.buttonForeground : ui.colors.buttonText} style={{ marginRight: 8 }} /> : null}
+        {label !== undefined ? <TeamText style={textStyle}>{label}</TeamText> : React.Children.map(children, child => primary && React.isValidElement<{ color?: string }>(child) && 'color' in child.props ? React.cloneElement(child, { color: ui.colors.buttonForeground }) : child)}
       </TouchableOpacity>
     );
   },

@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { createTeamUi, TeamThemeMode } from '@/constants/teamLeaderTheme';
 import { useTeamLeaderContext } from '@/core/contexts/TeamLeaderContext';
+import { ButtonThemeSurface } from '@/components/ui/ButtonThemeSurface';
+import { resolveButtonColors } from '@/constants/buttonTheme';
 
 const STORAGE_KEY = 'team-leader-portal-theme';
 
@@ -42,7 +44,7 @@ export function TeamLeaderThemeProvider({ children }: { children: React.ReactNod
 
   const teamName = context?.team_name ?? null;
   const value = useMemo(() => ({ mode, ui: createTeamUi(mode, teamName), toggleMode }), [mode, teamName, toggleMode]);
-  return <TeamThemeContext.Provider value={value}>{children}</TeamThemeContext.Provider>;
+  return <TeamThemeContext.Provider value={value}><ButtonThemeSurface palette={resolveButtonColors({ ...value.ui.colors, primary: value.ui.colors.primaryStrong, primaryText: value.ui.colors.primary })}>{children}</ButtonThemeSurface></TeamThemeContext.Provider>;
 }
 
 export function useTeamTheme() {

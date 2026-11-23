@@ -1,10 +1,11 @@
 import { Platform } from 'react-native';
 import tokens from './coreThemeTokens.json';
+import { legacyButtonColors } from './buttonTheme';
 import { coreColor, CoreColor } from './coreTheme';
 
 // Static StyleSheets can retain these CSS references: changing the scoped
 // variables updates them without rebuilding styles or remounting screens.
-const themedColors = Object.fromEntries(Object.entries(tokens.legacy).map(([role, fallback]) => [role, coreColor(fallback, role as CoreColor)])) as Record<CoreColor, string>;
+const themedColors = Object.fromEntries(Object.entries({ ...tokens.legacy, ...legacyButtonColors }).map(([role, fallback]) => [role, coreColor(fallback, role as CoreColor)])) as Record<CoreColor, string>;
 
 export const ui = {
   colors: { ...themedColors, destructive: themedColors.danger, destructiveSoft: themedColors.dangerSoft },

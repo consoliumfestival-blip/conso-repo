@@ -137,7 +137,7 @@ export function ScheduleLifecycleActions({
             })}
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 2 }}>
               <Pressable accessibilityRole="button" onPress={() => setEditing(false)} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: coreColor('#E5E7EB', 'border') }}><Text style={{ color: coreColor('#4B5563', 'text'), fontSize: 12, fontWeight: '700' }}>Cancel</Text></Pressable>
-              <Pressable accessibilityRole="button" disabled={saving} onPress={saveDraft} style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'primary'), opacity: saving ? 0.6 : 1 }}><Text style={{ color: coreColor('#FFFFFF', 'onPrimary'), fontSize: 12, fontWeight: '700' }}>{saving ? 'Saving…' : 'Save status'}</Text><ChevronDown size={14} color={coreColor("#FFFFFF", 'onPrimary')} /></Pressable>
+              <Pressable accessibilityRole="button" disabled={saving} onPress={saveDraft} style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 10, backgroundColor: coreColor('#0F766E', 'buttonPrimary'), opacity: saving ? 0.6 : 1 }}><Text style={{ color: coreColor('#FFFFFF', 'buttonForeground'), fontSize: 12, fontWeight: '700' }}>{saving ? 'Saving…' : 'Save status'}</Text><ChevronDown size={14} color={coreColor("#FFFFFF", 'buttonForeground')} /></Pressable>
             </View>
           </View>
         </View>

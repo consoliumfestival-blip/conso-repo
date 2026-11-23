@@ -152,8 +152,8 @@ export function AdminBulkAddParticipantsModal({
           </ScrollView>
           <View style={{ paddingHorizontal: 18, paddingVertical: 10, borderTopWidth: 1, borderTopColor: ui.colors.border, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
             <TouchableOpacity accessibilityRole="button" disabled={saving} onPress={close} style={{ minHeight: 42, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 9, borderWidth: 1, borderColor: ui.colors.border }}><Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 12 }}>Cancel</Text></TouchableOpacity>
-            <TouchableOpacity accessibilityRole="button" disabled={saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0} onPress={save} style={{ minHeight: 42, minWidth: 138, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: ui.colors.primary, opacity: saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0 ? 0.6 : 1 }}>
-              {saving ? <ActivityIndicator color={ui.colors.onPrimary} /> : <Text style={{ color: ui.colors.onPrimary, fontWeight: '700', fontSize: 12 }}>Add participants</Text>}
+            <TouchableOpacity accessibilityRole="button" disabled={saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0} onPress={save} style={{ minHeight: 42, minWidth: 138, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderRadius: 9, backgroundColor: ui.colors.buttonPrimary, opacity: saving || organisationsLoading || categoriesQuery.isLoading || teamOptions.length === 0 || categoryOptions.length === 0 ? 0.6 : 1 }}>
+              {saving ? <ActivityIndicator color={ui.colors.buttonForeground} /> : <Text style={{ color: ui.colors.buttonForeground, fontWeight: '700', fontSize: 12 }}>Add participants</Text>}
             </TouchableOpacity>
           </View>
         </View>

@@ -477,14 +477,14 @@ export default function JudgeApprovalsPage() {
                           <TouchableOpacity
                             onPress={() => approveRequest(approval.id)}
                             disabled={actionTokenId !== null}
-                            className="h-8 px-3 rounded-lg bg-core-primary-teal-700 flex-row items-center justify-center"
+                            className="h-8 px-3 rounded-lg bg-button-primary flex-row items-center justify-center"
                             accessibilityLabel={`Approve ${judgeName}'s login request`}
                           >
                             {isActionRunning
-                              ? <ActivityIndicator size="small" color={ui.colors.onPrimary} />
+                              ? <ActivityIndicator size="small" color={ui.colors.buttonForeground} />
                               : <>
-                                  <Check size={13} color={ui.colors.onPrimary} />
-                                  <Text className="ml-1 font-poppins-bold text-[10px] text-core-on-primary-white">Approve</Text>
+                                  <Check size={13} color={ui.colors.buttonForeground} />
+                                  <Text className="ml-1 font-poppins-bold text-[10px] text-button-foreground">Approve</Text>
                                 </>}
                           </TouchableOpacity>
                         </>

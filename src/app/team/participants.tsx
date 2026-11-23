@@ -1,3 +1,4 @@
+import { Modal } from '@/components/ui/CoreModal';
 import { useTeamReadQuery } from '@/core/hooks/useTeamReadQuery';
 import { TeamReadStatus } from '@/components/team/TeamReadStatus';
 import { TeamLeaderDataError } from '@/components/team/TeamLeaderDataError';
@@ -5,7 +6,7 @@ import { useTeamUi } from '@/core/contexts/TeamLeaderThemeContext';
 import React, { useMemo, useState } from 'react';
 import { TeamText as Text } from '@/components/team/TeamText';
 import { TeamPageHeading } from '@/components/team/TeamPageHeading';
-import { ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Download, ExternalLink, Search, X } from 'lucide-react-native';
@@ -219,7 +220,7 @@ export default function ParticipantsScreen() {
             <Pressable accessibilityRole="button" accessibilityLabel="Bulk add participants, coming soon" onHoverIn={() => setBulkHintVisible(true)} onHoverOut={() => setBulkHintVisible(false)} onPress={() => setBulkHintVisible(true)} style={{ minHeight: 40, minWidth: 100, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: bulkHintVisible ? ui.colors.surfaceMuted : ui.colors.surface, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ color: ui.colors.textMuted, fontSize: 11, fontWeight: '700' }}>{bulkHintVisible ? 'Coming soon' : 'Bulk add'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Export participants" onPress={openExport} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.primary, backgroundColor: ui.colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Download size={15} color={ui.colors.onPrimary} /><Text style={{ color: ui.colors.onPrimary, fontSize: 12, fontWeight: '700' }}>Export</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="Export participants" onPress={openExport} style={{ minHeight: 40, paddingHorizontal: 13, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.buttonPrimary, backgroundColor: ui.colors.buttonPrimary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 }}><Download size={15} color={ui.colors.buttonForeground} /><Text style={{ color: ui.colors.buttonForeground, fontSize: 12, fontWeight: '700' }}>Export</Text></Pressable>
           </View>} />
 
         <View style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 10, backgroundColor: ui.colors.surface, paddingHorizontal: 12 }}>

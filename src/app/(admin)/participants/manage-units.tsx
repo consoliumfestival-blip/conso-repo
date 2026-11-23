@@ -421,15 +421,15 @@ export default function ManageUnits() {
         <View className="flex-row bg-core-surface-white border border-ssf-border rounded-xl p-1">
           <TouchableOpacity
             onPress={() => setActiveTab('reassign')}
-            className={`px-4 py-2 rounded-lg ${activeTab === 'reassign' ? 'bg-ssf-primary' : 'bg-transparent'}`}
+            className={`px-4 py-2 rounded-lg ${activeTab === 'reassign' ? 'bg-button-primary' : 'bg-transparent'}`}
           >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'reassign' ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>Reassign</Text>
+            <Text className={`font-poppins-bold text-xs ${activeTab === 'reassign' ? 'text-button-foreground' : 'text-ssf-text'}`}>Reassign</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setActiveTab('history')}
-            className={`px-4 py-2 rounded-lg ${activeTab === 'history' ? 'bg-ssf-primary' : 'bg-transparent'}`}
+            className={`px-4 py-2 rounded-lg ${activeTab === 'history' ? 'bg-button-primary' : 'bg-transparent'}`}
           >
-            <Text className={`font-poppins-bold text-xs ${activeTab === 'history' ? 'text-core-on-primary-white' : 'text-ssf-text'}`}>Batch Logs</Text>
+            <Text className={`font-poppins-bold text-xs ${activeTab === 'history' ? 'text-button-foreground' : 'text-ssf-text'}`}>Batch Logs</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -879,11 +879,11 @@ export default function ManageUnits() {
                 className={`flex-1 py-3 rounded-xl items-center justify-center flex-row ${
                   previewReport.validIds.length > 300 && confirmInputText.toLowerCase() !== 'confirm'
                     ? 'bg-core-surface-strong-slate-200'
-                    : 'bg-ssf-primary'
+                    : 'bg-button-primary'
                 }`}
               >
-                <Play size={16} color={coreColor("white", 'onPrimary')} className="mr-2" />
-                <Text className="font-poppins-bold text-sm text-core-on-primary-white">Execute Batch</Text>
+                <Play size={16} color={coreColor("white", 'buttonForeground')} className="mr-2" />
+                <Text className="font-poppins-bold text-sm text-button-foreground">Execute Batch</Text>
               </TouchableOpacity>
             </View>
           </View>

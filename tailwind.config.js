@@ -48,6 +48,12 @@ module.exports = {
         video: '16 / 9',
       },
       colors: {
+        'button-primary': scoped('buttonPrimary', '#0F766E'),
+        'button-hover': scoped('buttonHover', '#0B5D56'),
+        'button-foreground': scoped('buttonForeground', '#FFFFFF'),
+        'button-soft': scoped('buttonSoft', '#E7F6F3'),
+        'button-border': scoped('buttonBorder', '#E2E8F0'),
+        'button-text': scoped('buttonText', '#0F766E'),
         core: utilityColors,
         'alviora-bg': '#011635',
         'alviora-surface': 'rgba(255, 255, 255, 0.05)',

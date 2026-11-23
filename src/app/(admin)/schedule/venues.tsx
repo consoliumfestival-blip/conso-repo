@@ -99,10 +99,10 @@ export default function VenuesManagement() {
         </View>
         <TouchableOpacity 
           onPress={() => { resetForm(); setIsModalOpen(true); }}
-          className="bg-ssf-primary px-4 py-2 rounded-xl flex-row items-center gap-x-2"
+          className="bg-button-primary px-4 py-2 rounded-xl flex-row items-center gap-x-2"
         >
-          <Plus size={16} color={ui.colors.onPrimary} />
-          <Text className="font-poppins-bold text-core-on-primary-white">Add Venue</Text>
+          <Plus size={16} color={ui.colors.buttonForeground} />
+          <Text className="font-poppins-bold text-button-foreground">Add Venue</Text>
         </TouchableOpacity>
       </View>
 

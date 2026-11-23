@@ -1,8 +1,9 @@
+import { Modal } from '@/components/ui/CoreModal';
+import { ui } from '@/constants/designSystem';
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput, Platform, useWindowDimensions, Modal
-} from 'react-native';
+  ActivityIndicator, Alert, TextInput, Platform, useWindowDimensions, } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle2, AlertCircle, LogOut, Info, X, Bell } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -451,10 +452,10 @@ export default function JudgeMarksPage() {
             <TouchableOpacity
               disabled={submitting || !pendingFinalScores}
               onPress={() => pendingFinalScores && void submitMarks(pendingFinalScores)}
-              className={`flex-1 h-11 rounded-xl items-center justify-center ${submitting ? 'bg-slate-400' : 'bg-slate-900'}`}
+              className={`flex-1 h-11 rounded-xl items-center justify-center ${submitting ? 'bg-slate-400' : 'bg-button-primary'}`}
             >
-              {submitting ? <ActivityIndicator color="#FFF" /> : (
-                <Text className="font-poppins-bold text-white">
+              {submitting ? <ActivityIndicator color={ui.colors.buttonForeground} /> : (
+                <Text className="font-poppins-bold text-button-foreground">
                   {blankMarkSummary.length ? 'Confirm 0 & Submit' : 'Submit Final'}
                 </Text>
               )}
@@ -509,7 +510,7 @@ export default function JudgeMarksPage() {
             accessibilityLabel="Retry loading participants"
             className="rounded-xl bg-red-600 py-3.5 items-center active:bg-red-700"
           >
-            <Text className="font-poppins-bold text-white">Retry</Text>
+            <Text className="font-poppins-bold text-button-foreground">Retry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -523,7 +524,7 @@ export default function JudgeMarksPage() {
 
   const GuidelinesModal = () => (
     <Modal visible={showGuidelines} transparent animationType="fade">
-      <View className="flex-1 bg-slate-900/40 justify-center px-4 py-10">
+      <View className="flex-1 bg-button-primary/40 justify-center px-4 py-10">
         <View 
           className="rounded-3xl overflow-hidden max-h-full flex-shrink-1 border border-slate-200 bg-white shadow-xl"
         >
@@ -571,8 +572,8 @@ export default function JudgeMarksPage() {
           </ScrollView>
           <View className="p-4 border-t border-slate-100 bg-slate-50">
             <TouchableOpacity onPress={() => setShowGuidelines(false)}>
-              <View className="bg-slate-900 rounded-xl py-3.5 items-center shadow-sm">
-                <Text className="font-poppins-bold text-white text-base">Got it</Text>
+              <View className="bg-button-primary rounded-xl py-3.5 items-center shadow-sm">
+                <Text className="font-poppins-bold text-button-foreground text-base">Got it</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -859,12 +860,12 @@ export default function JudgeMarksPage() {
                 onPress={handleSubmitAll}
                 disabled={submitting}
                 style={{ height: 52, flex: 2 }}
-                className="bg-slate-900 rounded-xl items-center justify-center shadow-sm active:bg-slate-800"
+                className="bg-button-primary rounded-xl items-center justify-center shadow-sm active:bg-button-hover"
               >
                 {submitting ? (
-                  <ActivityIndicator color="#FFF" />
+                  <ActivityIndicator color={ui.colors.buttonForeground} />
                 ) : (
-                  <Text className="font-poppins-bold text-white text-sm">✅ Submit All Marks</Text>
+                  <Text className="font-poppins-bold text-button-foreground text-sm">✅ Submit All Marks</Text>
                 )}
               </TouchableOpacity>
             ) : (
@@ -873,11 +874,11 @@ export default function JudgeMarksPage() {
                 onPress={() => setActiveRegIndex(prev => prev + 1)}
                 style={{ height: 52 }}
                 className={`flex-1 rounded-xl items-center justify-center ${
-                  activeRegIndex === registrations.length - 1 ? 'bg-slate-100 opacity-50' : 'bg-slate-900 shadow-sm active:bg-slate-800'
+                  activeRegIndex === registrations.length - 1 ? 'bg-slate-100 opacity-50' : 'bg-button-primary shadow-sm active:bg-button-hover'
                 }`}
               >
                 <Text className={`font-poppins-bold text-sm ${
-                  activeRegIndex === registrations.length - 1 ? 'text-slate-400' : 'text-white'
+                  activeRegIndex === registrations.length - 1 ? 'text-slate-400' : 'text-button-foreground'
                 }`}>Next ▶</Text>
               </TouchableOpacity>
             )}
@@ -967,7 +968,7 @@ export default function JudgeMarksPage() {
                 <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-ui-border">
                   <View className="flex-row items-center gap-x-3">
                     <View className="w-9 h-9 rounded-xl items-center justify-center" style={{ backgroundColor: '#06B6D4' }}>
-                      <Text className="font-poppins-black text-white text-base">{reg.code_letter}</Text>
+                      <Text className="font-poppins-black text-button-foreground text-base">{reg.code_letter}</Text>
                     </View>
                     <View>
                       <Text className="font-poppins-bold text-ui-text text-sm">Code: {reg.code_letter}</Text>
@@ -991,7 +992,7 @@ export default function JudgeMarksPage() {
                       grade === 'A+' ? 'text-green-400' :
                       grade === 'A' ? 'text-blue-400' :
                       grade === 'B' ? 'text-yellow-400' :
-                      grade === 'C' ? 'text-orange-400' : 'text-white/30'
+                      grade === 'C' ? 'text-orange-400' : 'text-button-foreground/30'
                     }`}>{isRegistrationComplete(reg.id) ? grade : '—'}</Text>
                   </View>
                 </View>
@@ -1063,11 +1064,11 @@ export default function JudgeMarksPage() {
           onPress={handleSubmitAll}
           disabled={submitting}
         >
-          <View className="bg-slate-900 rounded-xl py-4 items-center shadow-lg border border-slate-700 active:bg-slate-800">
+          <View className="bg-button-primary rounded-xl py-4 items-center shadow-lg border border-slate-700 active:bg-button-hover">
             {submitting ? (
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={ui.colors.buttonForeground} />
             ) : (
-              <Text className="font-poppins-bold text-white text-sm">
+              <Text className="font-poppins-bold text-button-foreground text-sm">
                 ✅ Submit All Marks & Close Session
               </Text>
             )}

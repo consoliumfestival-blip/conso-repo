@@ -421,6 +421,7 @@ export type ExportItemResult = {
   registration_id: string;
   item_id: string;
   points_awarded: number | null;
+  points_calculation?: { grade_points?: number; rank_points?: number } | null;
   rank: number | string | null;
   grade: string | null;
   published_at?: string | null;
@@ -468,7 +469,7 @@ export async function loadAdminPublishedItemResults(input: {
       let offset = 0;
       while (true) {
         const { data, error } = await supabase.from('results')
-          .select('id,registration_id,item_id,points_awarded,rank,grade,published_at,result_status')
+          .select('id,registration_id,item_id,points_awarded,points_calculation,rank,grade,published_at,result_status')
           .eq('tenant_id', input.tenantId)
           .eq('festival_id', input.festivalId)
           .eq('published', true)
@@ -512,7 +513,7 @@ export function downloadTeamSelectedResultsPdf(args: {
   const people = new Map(args.participants.map((person) => [person.id, person]));
   const items = new Map(args.items.map((item) => [item.id, item]));
   const results = new Map(args.results.map((result) => [`${result.registration_id}:${result.item_id}`, result]));
-  const groups = new Map<string, { teamKey: string; teamName: string; item: ExportItem; rows: { name: string; category: string; chest: string; points: string; rank: string; grade: string; general: string }[] }>();
+  const groups = new Map<string, { teamKey: string; teamName: string; item: ExportItem; rows: { name: string; category: string; chest: string; gradePoints: string; rankPoints: string; rank: string; grade: string; general: string }[] }>();
 
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
     if (!selectedItemIds.has(assignment.item_id) || !assignment.registration_id) return;
@@ -528,7 +529,8 @@ export function downloadTeamSelectedResultsPdf(args: {
       name: safeText(participant.name) || 'Unnamed participant',
       category: safeText(participant.category_code) || '—',
       chest: safeText(participant.chest_number) || '—',
-      points: result?.points_awarded == null ? '—' : String(result.points_awarded),
+      gradePoints: typeof result?.points_calculation?.grade_points === 'number' ? String(result.points_calculation.grade_points) : '—',
+      rankPoints: typeof result?.points_calculation?.rank_points === 'number' ? String(result.points_calculation.rank_points) : '—',
       rank: result?.rank == null ? '—' : String(result.rank),
       grade: safeText(result?.grade) || '—',
       general: assignment.entry_kind === 'general_team' ? 'Yes' : 'No',
@@ -570,17 +572,17 @@ export function downloadTeamSelectedResultsPdf(args: {
     cursorY += Math.max(5, titleLines.length * 3.8 + 1);
     autoTable(doc, {
       startY: cursorY,
-      head: [['Participant', 'Category', 'Chest No.', 'Points', 'Rank', 'Grade', 'General?']],
+      head: [['Participant', 'Category', 'Chest No.', 'Grade Pts', 'Rank Pts', 'Rank', 'Grade', 'General?']],
       body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name))
-        .map((row) => [row.name, row.category, row.chest, row.points, row.rank, row.grade, row.general]),
+        .map((row) => [row.name, row.category, row.chest, row.gradePoints, row.rankPoints, row.rank, row.grade, row.general]),
       margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: 13, bottom: PRINT_MARGIN + 4 },
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 7.1, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.4, overflow: 'linebreak', minCellHeight: 5.2, valign: 'middle' },
       headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
       columnStyles: {
-        0: { cellWidth: 75 }, 1: { cellWidth: 24 }, 2: { cellWidth: 24, halign: 'center' },
-        3: { cellWidth: 19, halign: 'center' }, 4: { cellWidth: 15, halign: 'center' },
-        5: { cellWidth: 17, halign: 'center' }, 6: { cellWidth: 16, halign: 'center' },
+        0: { cellWidth: 58 }, 1: { cellWidth: 23 }, 2: { cellWidth: 20, halign: 'center' },
+        3: { cellWidth: 18, halign: 'center' }, 4: { cellWidth: 18, halign: 'center' },
+        5: { cellWidth: 14, halign: 'center' }, 6: { cellWidth: 18, halign: 'center' }, 7: { cellWidth: 15, halign: 'center' },
       },
       rowPageBreak: 'avoid',
       didDrawPage: (hook) => { if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName || teamName)} · ${title}`); },

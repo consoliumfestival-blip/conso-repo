@@ -31,8 +31,39 @@
         flex: 1;
       }
     </style>
+    <style>
+      #portal-bootstrap-loader { display: none; }
+      html[data-private-loading] body { background: #FFFEF9 !important; }
+      html[data-private-loading] #portal-bootstrap-loader {
+        display: flex;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        align-items: center;
+        justify-content: center;
+        background: #FFFEF9;
+      }
+      .bootstrap-logo { position: relative; width: 134px; height: 133px; }
+      .bootstrap-logo img {
+        position: absolute;
+        opacity: 0;
+        animation: portal-wave 2s linear infinite;
+      }
+      @keyframes portal-wave {
+        0% { opacity: 0; transform: translateY(9px); }
+        11%, 75% { opacity: 1; transform: translateY(0); }
+        97%, 100% { opacity: 0; transform: translateY(0); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .bootstrap-logo img { animation: none; opacity: 1; }
+      }
+    </style>
     <script>
       (function () {
+        var path = location.pathname;
+        if (path === '/' || /^\/(leaderboard|participant-result|unavailable)(\/|$)/.test(path)) return;
+        document.documentElement.setAttribute('data-private-loading', '');
+
         var isTeamRoute = function () {
           return location.pathname === '/team' || location.pathname.indexOf('/team/') === 0;
         };
@@ -133,6 +164,15 @@
   </head>
 
   <body style="background-color: #050505;">
+    <div id="portal-bootstrap-loader" role="status" aria-label="Loading">
+      <div class="bootstrap-logo">
+        <img alt="" src="/ayatic-loader/wave-1.webp" style="left:0%;top:7.669173%;width:34.776119%;height:92.330827%;animation-delay:0ms" />
+        <img alt="" src="/ayatic-loader/wave-2.webp" style="left:18.059701%;top:0.150376%;width:31.641791%;height:99.849624%;animation-delay:220ms" />
+        <img alt="" src="/ayatic-loader/wave-3.webp" style="left:34.776119%;top:0%;width:37.462687%;height:99.849624%;animation-delay:440ms" />
+        <img alt="" src="/ayatic-loader/wave-4.webp" style="left:51.343284%;top:5.714286%;width:40.746269%;height:94.135338%;animation-delay:660ms" />
+        <img alt="" src="/ayatic-loader/wave-5.webp" style="left:66.119403%;top:24.210526%;width:33.880597%;height:75.789474%;animation-delay:880ms" />
+      </div>
+    </div>
     <script>
       if (location.pathname === '/team' || location.pathname.indexOf('/team/') === 0) {
         document.body.dataset.teamPortalPreviousBackground = document.body.style.backgroundColor;

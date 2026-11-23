@@ -29,11 +29,10 @@ export default function Root({ children }: PropsWithChildren) {
         <script dangerouslySetInnerHTML={{ __html: `
           (function(){var p=location.pathname;if(p==='/'||/^\\/(leaderboard|participant-result|unavailable)(\\/|$)/.test(p))return;
           document.documentElement.setAttribute('data-private-loading','');
-          var observer=new MutationObserver(function(){var root=document.getElementById('root');if(root&&root.childElementCount){document.documentElement.removeAttribute('data-private-loading');observer.disconnect();}});
-          observer.observe(document.documentElement,{childList:true,subtree:true});})();
+        })();
         ` }} />
       </head>
-      <body style={{ backgroundColor: '#011635' }}>
+      <body style={{ backgroundColor: '#FFFEF9' }}>
         <div id="portal-bootstrap-loader" role="status" aria-label="Loading">
           <div className="bootstrap-logo">{[
             [0,7.669173,34.776119,92.330827], [18.059701,0.150376,31.641791,99.849624],

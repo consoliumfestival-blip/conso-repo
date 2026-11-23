@@ -218,6 +218,9 @@ export default function RootLayout() {
   useEffect(() => {
     if ((fontsLoaded || fontError) && initialized) {
       SplashScreen.hideAsync();
+      if (Platform.OS === "web" && typeof document !== "undefined") {
+        document.documentElement.removeAttribute("data-private-loading");
+      }
     }
   }, [fontsLoaded, fontError, initialized]);
 

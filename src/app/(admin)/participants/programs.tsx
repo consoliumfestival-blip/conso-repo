@@ -555,8 +555,40 @@ export default function ProgramsScreen() {
           <View className="mb-2 mt-1 flex-row flex-wrap gap-1"><View className="rounded bg-core-surface-muted-slate-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[9px] text-core-text-slate-700">{card.item.participation_type === 'individual' ? 'Individual' : 'Group'}</Text></View>{!!card.item.item_type && <View className="rounded bg-core-surface-muted-slate-100 px-1.5 py-0.5"><Text className="font-poppins-bold text-[9px] text-core-text-slate-700">{card.item.item_type === 'stage' ? 'On Stage' : 'Off Stage'}</Text></View>}</View>
           {overLimitTeams > 0 && <View className="mb-1.5 flex-row items-start gap-1.5 rounded border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-1.5"><AlertTriangle size={12} color={coreColor('#B91C1C', 'danger')}/><Text className="flex-1 font-poppins-bold text-[10px] text-core-danger-red-700">{overLimitTeams} team(s) exceed limit {card.item.max_participants_per_team}. Deselect existing assignments in View participants.</Text></View>}
           <Text className="mb-2 font-poppins text-[10px] text-ui-text-muted">{card.item.item_code} · {card.kind === 'general_team' ? `${card.assigned_count} team entries` : `${card.assigned_count} assigned`}</Text>
-          <View className="flex-row gap-1.5"><TouchableOpacity disabled={saving} onPress={() => openCard(card, 'details')} style={{ minHeight: 34 }} className="flex-1 items-center justify-center rounded border border-ui-border px-1.5"><Text numberOfLines={1} className="font-poppins-bold text-[10px] text-ui-text">View participants</Text></TouchableOpacity><TouchableOpacity onPress={() => setItemToDeactivate(card.item)} accessibilityRole="button" accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`} style={{ minHeight: 34 }} className="flex-row items-center justify-center gap-1 rounded border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-1.5"><Trash2 size={12} color={coreColor('#B91C1C', 'danger')}/><Text className="font-poppins-bold text-[10px] text-core-danger-red-700">Delete</Text></TouchableOpacity></View>
-          <TouchableOpacity disabled={saving} onPress={() => openCard(card, 'assign')} style={{ minHeight: 34 }} className="mt-1.5 items-center justify-center rounded bg-button-primary px-2"><Text className="font-poppins-bold text-[10px] text-button-foreground">Assign participants</Text></TouchableOpacity>
+          <View className="flex-row gap-1">
+            <TouchableOpacity
+              disabled={saving}
+              onPress={() => openCard(card, 'details')}
+              accessibilityRole="button"
+              accessibilityLabel={`View participants assigned to ${card.item.item_name_en || card.item.item_code}`}
+              style={{ minHeight: 34 }}
+              className="flex-1 flex-row items-center justify-center gap-1 rounded border border-ui-border px-1"
+            >
+              <UsersRound size={12} color={coreColor('#334155', 'text')} />
+              <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-ui-text">View</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setItemToDeactivate(card.item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Deactivate ${card.item.item_name_en || card.item.item_code}`}
+              style={{ minHeight: 34 }}
+              className="flex-1 flex-row items-center justify-center gap-1 rounded border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-1"
+            >
+              <Trash2 size={12} color={coreColor('#B91C1C', 'danger')} />
+              <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-core-danger-red-700">Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              disabled={saving}
+              onPress={() => openCard(card, 'assign')}
+              accessibilityRole="button"
+              accessibilityLabel={`Assign participants to ${card.item.item_name_en || card.item.item_code}`}
+              style={{ minHeight: 34 }}
+              className="flex-1 flex-row items-center justify-center gap-1 rounded bg-button-primary px-1"
+            >
+              <Plus size={12} color={coreColor('#14532D', 'buttonForeground')} />
+              <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-button-foreground">Assign</Text>
+            </TouchableOpacity>
+          </View>
         </View>;
       })}</View>}
       <View className="mt-4 flex-row flex-wrap items-center justify-between gap-2">

@@ -63,10 +63,17 @@ export default function ParticipantsList() {
   const currentSelectionScope = `${tenantId ?? 'no-tenant'}:${userId ?? 'no-user'}`;
   const [selectionScope, setSelectionScope] = useState(currentSelectionScope);
   const { width } = useWindowDimensions();
+  const [cardsWidth, setCardsWidth] = useState(0);
   const [isBulkAddOpen, setIsBulkAddOpen] = useState(false);
   const isCompactParticipantLayout = width < 1200;
   const isCardLayout = width >= 768;
-  const cardColumns = width >= 1440 ? 4 : width >= 1100 ? 3 : width >= 820 ? 2 : 1;
+  const cardGap = 8;
+  const cardMinWidth = 252;
+  const cardsAvailableWidth = cardsWidth || width - 32;
+  const cardColumns = Math.max(1, Math.floor((cardsAvailableWidth + cardGap) / (cardMinWidth + cardGap)));
+  const cardWidth = Platform.OS === 'web'
+    ? `calc((100% - ${(cardColumns - 1) * cardGap}px) / ${cardColumns})` as any
+    : Math.floor((cardsAvailableWidth - (cardColumns - 1) * cardGap) / cardColumns);
   const phoneFilterWidth = width < 640
     ? Math.max(120, Math.floor((width - 32) / 2))
     : width < 1200
@@ -608,19 +615,20 @@ export default function ParticipantsList() {
             <Text className="text-ssf-text-muted font-poppins mb-4">No participants found.</Text>
           </View>
         ) : isCardLayout ? (
-          <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -5 }}>
+          <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: cardGap }}>
             {filteredParticipants.map((p: any) => {
               const isSelected = selected.has(p.id);
               const statColor = getStatusColor(p.status);
               return (
-                <View key={p.id} style={{ width: `${100 / cardColumns}%`, padding: 5 }}>
+                <View key={p.id} style={{ width: cardWidth }}>
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`${selectMode ? 'Select' : 'Open'} ${p.name}`}
                     activeOpacity={0.86}
                     onPress={() => selectMode ? toggleSelect(p.id, p.status) : router.push(`/(admin)/participants/${p.id}`)}
                     onLongPress={() => { if (!selectMode) setSelectMode(true); toggleSelect(p.id, p.status); }}
-                    style={{ minHeight: 148, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: isSelected ? ui.colors.primary : ui.colors.border, backgroundColor: isSelected ? ui.colors.primarySoft : ui.colors.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2 }}
+                    style={isSelected ? { borderColor: ui.colors.primary, backgroundColor: ui.colors.primarySoft } : undefined}
+                    className="rounded-lg border border-ui-border bg-core-surface-white p-2 shadow-sm"
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
                       {selectMode && <View style={{ paddingTop: 2 }}>{isSelected ? <CheckSquare size={18} color={ui.colors.primary} /> : <Square size={18} color={ui.colors.textSubtle} />}</View>}
@@ -642,18 +650,43 @@ export default function ParticipantsList() {
                         <Text className="font-poppins-bold text-[10px] text-core-success-emerald-700">Public profile</Text>
                       </TouchableOpacity>}
                     </View>
-                    {!selectMode && <View style={{ marginTop: 6, flexDirection: 'row', gap: 5 }}>
-                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Edit ${p.name}`} disabled={!!p.is_locked} onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#93C5FD', backgroundColor: '#DBEAFE', justifyContent: 'center', alignItems: 'center', opacity: p.is_locked ? 0.45 : 1 }}>
-                        <Text numberOfLines={1} style={{ color: '#1D4ED8', fontSize: 10, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
+                    {!selectMode && <View style={{ marginTop: 6, flexDirection: 'row', gap: 4 }}>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Edit ${p.name}`}
+                        disabled={!!p.is_locked}
+                        onPress={(event) => { event.stopPropagation(); router.push({ pathname: '/(admin)/participants/[id]', params: { id: p.id, open: 'edit' } } as any); }}
+                        style={{ flex: 1, minHeight: 34, opacity: p.is_locked ? 0.45 : 1 }}
+                        className="items-center justify-center rounded border border-ui-border bg-core-surface-white px-1"
+                      >
+                        <Text numberOfLines={1} style={{ color: ui.colors.text, fontSize: 9, fontWeight: '700' }}>{p.is_locked ? 'Locked' : 'Edit'}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Delete ${p.name}`} onPress={(event) => { event.stopPropagation(); setDeleteError(null); setDeleteTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, backgroundColor: '#DC2626', justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>Delete</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Delete ${p.name}`}
+                        onPress={(event) => { event.stopPropagation(); setDeleteError(null); setDeleteTarget({ id: p.id, name: p.name }); }}
+                        style={{ flex: 1, minHeight: 34 }}
+                        className="items-center justify-center rounded border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 px-1"
+                      >
+                        <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-core-danger-red-700">Delete</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Details for ${p.name}`} onPress={(event) => { event.stopPropagation(); router.push(`/(admin)/participants/${p.id}`); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: ui.colors.border, backgroundColor: ui.colors.surface, justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ color: ui.colors.text, fontSize: 10, fontWeight: '700' }}>Details</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Details for ${p.name}`}
+                        onPress={(event) => { event.stopPropagation(); router.push(`/(admin)/participants/${p.id}`); }}
+                        style={{ flex: 1, minHeight: 34 }}
+                        className="items-center justify-center rounded border border-ui-border bg-core-surface-white px-1"
+                      >
+                        <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-ui-text">Details</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Programs for ${p.name}`} onPress={(event) => { event.stopPropagation(); setProgramsTarget({ id: p.id, name: p.name }); }} style={{ flex: 1, minHeight: 42, borderRadius: 8, borderWidth: 1, borderColor: '#86EFAC', backgroundColor: '#DCFCE7', justifyContent: 'center', alignItems: 'center' }}>
-                        <Text style={{ color: '#15803D', fontSize: 10, fontWeight: '700' }}>Programs</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Programs for ${p.name}`}
+                        onPress={(event) => { event.stopPropagation(); setProgramsTarget({ id: p.id, name: p.name }); }}
+                        style={{ flex: 1, minHeight: 34 }}
+                        className="items-center justify-center rounded border border-button-border bg-button-primary px-1"
+                      >
+                        <Text numberOfLines={1} className="font-poppins-bold text-[9px] text-button-foreground">Programs</Text>
                       </TouchableOpacity>
                     </View>}
                   </TouchableOpacity>

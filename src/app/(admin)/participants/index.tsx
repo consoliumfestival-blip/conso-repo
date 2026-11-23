@@ -67,11 +67,6 @@ export default function ParticipantsList() {
   const isCompactParticipantLayout = width < 1200;
   const isCardLayout = width >= 768;
   const cardColumns = width >= 1440 ? 4 : width >= 1100 ? 3 : width >= 820 ? 2 : 1;
-  const competitionFilterWidth = width < 640
-    ? Math.max(180, width - 24)
-    : width < 1200
-      ? Math.floor((width - 52) / 3)
-      : 280;
   const phoneFilterWidth = width < 640
     ? Math.max(120, Math.floor((width - 32) / 2))
     : width < 1200
@@ -106,7 +101,6 @@ export default function ParticipantsList() {
   useEffect(() => { const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300); return () => clearTimeout(timer); }, [searchQuery]);
   const searchPending = searchQuery !== debouncedSearch;
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-  const [selectedCompetition, setSelectedCompetition] = useState<string>('All');
   const [selectedStatus, setSelectedStatus] = useState<string>('All');
   const [selectedGender, setSelectedGender] = useState<string>('All');
   const [page, setPage] = useState(0);
@@ -130,38 +124,6 @@ export default function ParticipantsList() {
         'All',
         ...(categoryQuery.data ?? []),
       ];
-  const itemOptions = [
-    { id: 'All', label: 'All items' },
-    ...(activeItems as any[])
-      .filter((item: any) => item?.id)
-      .map((item: any) => ({
-        id: item.id,
-        label: item.item_code ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}` : item.item_name_en || item.item_name_ml || 'Unnamed item',
-      }))
-      .sort((a, b) => a.label.localeCompare(b.label)),
-  ];
-  const itemRecords = (activeItems as any[]).length > 0
-    ? (activeItems as any[])
-    : itemOptions.map((item: any) => ({ id: item.id, item_code: item.label, item_name_en: null, item_name_ml: null, category_codes: [null] }));
-  const competitionOptions = [
-    { id: 'All', label: 'All competitions', itemId: null as string | null, categoryCode: null as string | null },
-    ...itemRecords.flatMap((item: any) => {
-      if (!item?.id) return [];
-      const rawCategories = Array.isArray(item.category_codes)
-        ? item.category_codes
-        : item.category_codes ? [item.category_codes] : [null];
-      const itemLabel = item.item_code
-        ? `${item.item_code} · ${item.item_name_en || item.item_name_ml || 'Unnamed item'}${item.category_codes?.length ? ` · ${item.category_codes.join(', ')}` : ''}`
-        : item.item_name_en || item.item_name_ml || 'Unnamed item';
-      return rawCategories.map((categoryCode: string | null, index: number) => ({
-        id: `${item.id}::${categoryCode || 'ALL'}::${index}`,
-        label: categoryCode ? `${itemLabel} · ${categoryCode}` : itemLabel,
-        itemId: item.id as string,
-        categoryCode: categoryCode || null,
-      }));
-    }).sort((a, b) => a.label.localeCompare(b.label)),
-  ];
-  const selectedCompetitionDetails = competitionOptions.find((option) => option.id === selectedCompetition);
   const statuses = ['All', 'Pending', 'Approved', 'Rejected'];
   const genders = ['All', 'Boys', 'Girls'];
   const filters: AdminParticipantFilters = {
@@ -169,21 +131,20 @@ export default function ParticipantsList() {
     status: selectedStatus === 'All' ? null : selectedStatus,
     gender: selectedGender === 'All' ? null : selectedGender,
     festivalId: activeFestival?.id ?? null,
-    itemId: selectedCompetition === 'All' ? null : selectedCompetitionDetails?.itemId ?? null,
-    competitionCategory: selectedCompetitionDetails?.categoryCode ?? null,
+    itemId: null,
+    competitionCategory: null,
   };
-  const invalidCompetition = selectedCompetition !== 'All' && (!selectedCompetitionDetails?.itemId || !activeFestival?.id || !tenantId);
-  const scopeKey = JSON.stringify([currentSelectionScope, filters, selectedCompetition, searchQuery]);
+  const scopeKey = JSON.stringify([currentSelectionScope, filters, searchQuery]);
   operationScope.current = scopeKey;
   const pageQuery = useQuery({
     queryKey: ['participants', 'admin-page', tenantId, userId, filters, page],
     queryFn: ({ signal }) => loadAdminParticipantPage(filters, page, 50, signal),
-    enabled: !!userId && !invalidCompetition && !searchPending,
+    enabled: !!userId && !searchPending,
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const filteredParticipants = invalidCompetition ? [] : pageQuery.data?.participants ?? [];
-  const resultCount = invalidCompetition ? 0 : pageQuery.data?.count ?? 0;
+  const filteredParticipants = pageQuery.data?.participants ?? [];
+  const resultCount = pageQuery.data?.count ?? 0;
   const isLoadingList = searchPending || pageQuery.isLoading;
   const listError = pageQuery.error;
   const retryList = () => pageQuery.refetch();
@@ -289,7 +250,7 @@ export default function ParticipantsList() {
       setIsExporting(true);
       const { downloadItemVerificationPdf, downloadParticipantsCsv, downloadTeamItemParticipantsPdf, downloadTeamParticipantSlipsPdf } = await import('@/services/participantExportService');
       if (exportKind === 'csv') {
-        const csvParticipants = invalidCompetition ? [] : await loadAllAdminParticipants(filters);
+        const csvParticipants = await loadAllAdminParticipants(filters);
         if (exportScope !== operationScope.current || !selectionScopeMatchesSession()) throw new Error('Filters or session changed. Please retry the export.');
         await downloadParticipantsCsv(csvParticipants.map((participant: any): ExportParticipant => ({
           id: participant.id, name: participant.name, chest_number: participant.chest_number,
@@ -419,7 +380,7 @@ export default function ParticipantsList() {
     const scope = scopeKey;
     setIsSelectingAll(true);
     try {
-      const rows = invalidCompetition ? [] : await loadAllAdminParticipants(filters, true);
+      const rows = await loadAllAdminParticipants(filters, true);
       if (scope === operationScope.current && selectionScopeMatchesSession()) setSelected(new Set(rows.map((p: any) => p.id)));
     } catch (error: any) {
       if (Platform.OS === 'web') window.alert(error?.message || 'Unable to select all participants.');
@@ -460,23 +421,13 @@ export default function ParticipantsList() {
     }
   };
 
-  const hasActiveFilters =
-    selectedCompetition !== 'All' || selectedCategory !== 'All' || selectedStatus !== 'All' || selectedGender !== 'All';
+  const hasActiveFilters = selectedCategory !== 'All' || selectedStatus !== 'All' || selectedGender !== 'All';
 
   const clearFilters = () => {
     setPage(0);
-    setSelectedCompetition('All');
     setSelectedCategory('All');
     setSelectedStatus('All');
     setSelectedGender('All');
-  };
-
-  const selectCompetition = (value: string) => {
-    setPage(0);
-    setSelectedCompetition(value);
-    // A competition already contains its item category; avoid a stale
-    // standalone category filter producing an empty or misleading export.
-    setSelectedCategory('All');
   };
 
   const headerActionSize = width < 640 ? 'h-10 px-2.5' : 'h-9 px-2';
@@ -547,16 +498,6 @@ export default function ParticipantsList() {
           )}
         </View>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: width < 640 ? 6 : 8, paddingTop: width < 640 ? 8 : 10 }}>
-          <CompactFilter
-            label="Competition"
-            items={competitionOptions}
-            selectedValue={selectedCompetition}
-            onSelect={selectCompetition}
-            width={competitionFilterWidth}
-            searchable
-            autoFocusSearch={false}
-            keepInViewport
-          />
           <CompactFilter
             label="Category"
             items={categories}

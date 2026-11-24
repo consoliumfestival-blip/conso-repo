@@ -130,6 +130,7 @@ export default function IndividualRankingsPage() {
       participant_name: string;
       chest_number: string;
       organisation_name: string;
+      rank: number;
       total_points: number;
       gradeSummary: Record<string, number>;
       wins: number;
@@ -156,7 +157,7 @@ export default function IndividualRankingsPage() {
 
     // 2. Aggregation Layer
     dedupedResults.forEach(r => {
-      const key = r.chest_number || r.participant_name || r.result_id;
+      const key = r.participant_id || r.chest_number || r.result_id;
       if (!key) return;
 
       if (!groups[key]) {
@@ -165,6 +166,7 @@ export default function IndividualRankingsPage() {
           participant_name: r.participant_name || `Chest #${r.chest_number}`,
           chest_number: r.chest_number || '—',
           organisation_name: r.organisation_name || 'Unassigned Unit',
+          rank: 0,
           total_points: 0,
           gradeSummary: {},
           wins: 0,
@@ -195,7 +197,9 @@ export default function IndividualRankingsPage() {
       }
     });
 
-    const sortedList = Object.values(groups).sort((a, b) => b.total_points - a.total_points);
+    const sortedList = Object.values(groups)
+      .sort((a, b) => b.total_points - a.total_points)
+      .map((participant, index) => ({ ...participant, rank: index + 1 }));
 
     return sortedList.filter(p => {
       const query = searchQuery.trim().toLowerCase();
@@ -274,10 +278,10 @@ export default function IndividualRankingsPage() {
     if (isMobile) {
       return (
         <View style={{ gap: 12 }}>
-          {participantRankings.map((p, index) => (
+          {participantRankings.map((p) => (
             <View key={p.participant_id || `${p.chest_number}:${p.participant_name}`} style={styles.mobileRowCard}>
               <View style={styles.mobileRowHeader}>
-                <RankBadge rank={index + 1} />
+                <RankBadge rank={p.rank} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.unitName}>{p.participant_name}</Text>
                   <Text style={styles.unitMeta}>Chest #{p.chest_number} • {p.organisation_name}</Text>
@@ -331,10 +335,10 @@ export default function IndividualRankingsPage() {
           <Text style={[styles.th, { flex: 1.1, textAlign: 'right' }]}>Total Points</Text>
           <Text style={[styles.th, { flex: 1.0, textAlign: 'center' }]}>Qualification</Text>
         </View>
-        {participantRankings.map((p, index) => (
+        {participantRankings.map((p) => (
           <View key={p.participant_id || `${p.chest_number}:${p.participant_name}`} style={styles.tableRow}>
             <View style={{ flex: 0.6 }}>
-              <RankBadge rank={index + 1} />
+              <RankBadge rank={p.rank} />
             </View>
             <View style={{ flex: 2.2, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={styles.avatar}>

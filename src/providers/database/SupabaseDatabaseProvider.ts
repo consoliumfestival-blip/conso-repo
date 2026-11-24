@@ -1529,11 +1529,34 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     tenantId?: string | null,
     festivalId?: string | null,
   ): Promise<ListResult<T>> {
-    const { data, error } = await supabase.rpc('get_admin_published_results', {
-      p_tenant_id: tenantId ?? null,
-      p_festival_id: festivalId ?? null,
-    });
-    return { data: (data as T[]) ?? [], error: normalizeError(error) };
+    const pageSize = 500;
+    const rows: T[] = [];
+    let expectedCount: number | null = null;
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error, count } = await supabase.rpc('get_admin_published_results', {
+        p_tenant_id: tenantId ?? null,
+        p_festival_id: festivalId ?? null,
+      }, from === 0 ? { count: 'exact' } : undefined)
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('result_id', { ascending: false })
+        .range(from, from + pageSize - 1);
+
+      if (error) return { data: [], error: normalizeError(error) };
+      if (from === 0) expectedCount = count;
+      const page = (data as T[]) ?? [];
+      rows.push(...page);
+
+      if (expectedCount !== null && rows.length >= expectedCount) break;
+      if (page.length < pageSize) {
+        if (expectedCount !== null) {
+          return { data: [], error: { code: 'RESULTS_TRUNCATED', message: 'Unable to load all published results.' } };
+        }
+        break;
+      }
+    }
+
+    return { data: rows, error: null };
   }
 
   async updateResultVisibility(

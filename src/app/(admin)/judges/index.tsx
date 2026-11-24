@@ -703,7 +703,7 @@ export default function JudgesPage() {
               <ArrowLeft size={18} color={coreColor("#334155", 'text')} />
             </TouchableOpacity>
             <View>
-              <Text className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ui-text`}>Judge Panel</Text>
+              <Text className={`${width < 768 ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ui-text`}>Judge Panel</Text>
               <Text className="font-poppins text-sm text-ui-text-muted mt-0.5">
                 {judges.length} judge{judges.length !== 1 ? 's' : ''} registered
               </Text>

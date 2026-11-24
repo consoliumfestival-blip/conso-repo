@@ -82,6 +82,15 @@ export async function loadAdminExportTeams(festivalId: string) {
   }
 }
 
+export async function loadAdminTeamItemStages(tenantId: string, festivalId: string) {
+  const { data, error } = await supabase.from('schedules')
+    .select('item_id, venue_id, venues(id, name)')
+    .eq('tenant_id', tenantId)
+    .eq('festival_id', festivalId);
+  if (error) throw error;
+  return (data ?? []) as { item_id: string | null; venue_id: string | null; venues: { id: string; name: string | null } | null }[];
+}
+
 export async function loadAdminExportRegistrations(festivalId: string, itemId: string | null) {
   const rows: any[] = [];
   let lastId: string | null = null;

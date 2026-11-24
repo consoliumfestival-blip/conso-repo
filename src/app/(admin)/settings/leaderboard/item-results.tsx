@@ -24,6 +24,36 @@ import { FestivalResult, ResultStatus } from '../../../../services/resultVisibil
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../../../../core/config/supabase';
 
+const resultDisplayName = (result: FestivalResult) => result.is_group
+  ? (result.organisation_name && result.organisation_name !== 'Unassigned' ? result.organisation_name : 'Group entry')
+  : result.result_status === 'published' && result.participant_name
+    ? result.participant_name
+    : result.chest_number ? `Chest #${result.chest_number}` : '?';
+
+function GroupMembers({ registrationId, festivalId, tenantId }: { registrationId: string; festivalId: string; tenantId: string }) {
+  const membersQuery = useQuery({
+    queryKey: ['admin-item-result-group-members', tenantId, festivalId, registrationId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('group_members')
+        .select('participant_id, member_order, registration:registrations!inner(festival_id,tenant_id), participant:participants!inner(name,chest_number,festival_id,tenant_id)')
+        .eq('registration_id', registrationId)
+        .eq('registration.festival_id', festivalId)
+        .eq('registration.tenant_id', tenantId)
+        .eq('participant.festival_id', festivalId)
+        .eq('participant.tenant_id', tenantId)
+        .order('member_order', { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as { participant_id: string; participant: { name: string; chest_number: string | null } }[];
+    },
+  });
+  if (membersQuery.isLoading) return <ActivityIndicator size="small" color={colors.teal} />;
+  if (membersQuery.isError) return <TouchableOpacity accessibilityRole="button" onPress={() => void membersQuery.refetch()}><Text style={styles.nestedMeta}>Could not load members. Retry</Text></TouchableOpacity>;
+  if (!membersQuery.data?.length) return <Text style={styles.nestedMeta}>No members found for this group.</Text>;
+  return <View style={{ gap: 4, paddingLeft: 16, paddingVertical: 5 }}>
+    {membersQuery.data.map(({ participant_id, participant }) => <Text key={participant_id} style={styles.nestedMeta}>• {participant.name}{participant.chest_number ? ` · #${participant.chest_number}` : ''}</Text>)}
+  </View>;
+}
+
 const colors = {
   navy: ui.colors.primaryHover,
   blue: ui.colors.primary,
@@ -114,6 +144,7 @@ export default function ItemResultsPage() {
   const [previewGroup, setPreviewGroup] = useState<ItemGroup | null>(null);
   const { view: resultView, setView: setResultView } = useContext(ItemResultsViewContext);
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [expandedGroupResultId, setExpandedGroupResultId] = useState<string | null>(null);
   React.useEffect(() => setExpandedItemId(null), [resultView]);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   React.useEffect(() => {
@@ -313,10 +344,12 @@ export default function ItemResultsPage() {
           <ActivityIndicator color={coreColor(colors.teal, 'primaryText')} />
           <Text style={styles.loadingText}>Loading item results...</Text>
         </View>
-      ) : resultsError ? (
+      ) : resultsError && !filteredQuery.data ? (
         <View style={styles.loadingBox}>
-          <Text style={styles.errorText}>Unable to load admin results.</Text>
-          <Text style={styles.loadingText}>{resultsError.message}</Text>
+          <Text style={styles.errorText}>Could not load complete results.</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => void refetchResults()}>
+            <Text style={styles.loadingText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : groupedResults.length === 0 ? (
         <View style={styles.loadingBox}>
@@ -349,7 +382,7 @@ export default function ItemResultsPage() {
                     <View style={styles.expandedActionRow}>{renderItemActions(group, isAllPublic, isAllPublicHidden)}</View>
                     <View style={styles.resultsTableHeader}>
                       <Text style={[styles.tableHeading, styles.rankColumn]}>Rank</Text>
-                      <Text style={[styles.tableHeading, styles.participantColumn]}>Participant</Text>
+                      <Text style={[styles.tableHeading, styles.participantColumn]}>Team / Participant</Text>
                       <Text style={[styles.tableHeading, styles.organisationColumn]}>Organisation</Text>
                       <Text style={[styles.tableHeading, styles.gradeColumn]}>Grade</Text>
                       <Text style={[styles.tableHeading, styles.pointsColumn]}>Points</Text>
@@ -359,10 +392,11 @@ export default function ItemResultsPage() {
                     {[...group.results].sort((a, b) => (a.rank || 99) - (b.rank || 99)).map((result) => {
                     const status = (result.result_status ?? 'draft') as ResultStatus;
                     return (
-                      <View key={result.result_id} style={styles.resultsTableRow}>
+                      <React.Fragment key={result.result_id}>
+                      <View style={styles.resultsTableRow}>
                         <Text style={[styles.tableCell, styles.rankColumn]}>{result.rank ? `#${result.rank}` : '—'}</Text>
                         <View style={styles.participantColumn}>
-                          <Text style={styles.tableParticipantName} numberOfLines={1}>{status === 'published' && result.participant_name ? result.participant_name : result.chest_number ? `Chest #${result.chest_number}` : '?'}</Text>
+                          {result.is_group && result.registration_id ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Show members of ${resultDisplayName(result)}`} accessibilityState={{ expanded: expandedGroupResultId === result.result_id }} onPress={() => setExpandedGroupResultId(expandedGroupResultId === result.result_id ? null : result.result_id)}><Text style={styles.tableParticipantName} numberOfLines={1}>{resultDisplayName(result)} ▾</Text></TouchableOpacity> : <Text style={styles.tableParticipantName} numberOfLines={1}>{resultDisplayName(result)}</Text>}
                         </View>
                         <Text style={[styles.tableCell, styles.organisationColumn]} numberOfLines={1}>{result.organisation_name || '—'}</Text>
                         <Text style={[styles.tableCell, styles.gradeColumn]}>{result.grade || '—'}</Text>
@@ -374,6 +408,8 @@ export default function ItemResultsPage() {
                           {result.public_visible === true && <TouchableOpacity onPress={() => handleSingleVisibility(result.result_id, 'hidden')} style={[styles.nestedActionBtn, { backgroundColor: ui.colors.dangerSoft }]} accessibilityRole="button" accessibilityLabel="Hide result publicly"><EyeOff size={14} color={ui.colors.danger} /></TouchableOpacity>}
                         </View>
                       </View>
+                      {result.is_group && result.registration_id && expandedGroupResultId === result.result_id && festivalId && tenant_id ? <View style={[styles.resultsTableRow, { paddingLeft: 42 }]}><GroupMembers registrationId={result.registration_id} festivalId={festivalId} tenantId={tenant_id} /></View> : null}
+                      </React.Fragment>
                     );
                   })}
                   </>}
@@ -427,9 +463,7 @@ export default function ItemResultsPage() {
                             </View>
                             <View style={{ flex: 1 }}>
                               <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                <Text style={styles.nestedParticipantName}>
-                                  {status === 'published' && r.participant_name ? r.participant_name : r.chest_number ? `Chest #${r.chest_number}` : '?' }
-                                </Text>
+                                {r.is_group && r.registration_id ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Show members of ${resultDisplayName(r)}`} accessibilityState={{ expanded: expandedGroupResultId === r.result_id }} onPress={() => setExpandedGroupResultId(expandedGroupResultId === r.result_id ? null : r.result_id)}><Text style={styles.nestedParticipantName}>{resultDisplayName(r)} ▾</Text></TouchableOpacity> : <Text style={styles.nestedParticipantName}>{resultDisplayName(r)}</Text>}
                                 <ResultStatusBadge status={status} />
                                 <PublicVisibilityBadge visible={r.public_visible === true} />
                               </View>
@@ -438,6 +472,7 @@ export default function ItemResultsPage() {
                                 {r.grade && <Text style={[styles.nestedMeta, { color: coreColor('#0F172A', 'overlay'), fontWeight: '700' }]}>• Grade {r.grade}</Text>}
                                 <Text style={[styles.nestedMeta, { color: coreColor('#0F766E', 'primaryText'), fontWeight: '700' }]}>• {r.points_awarded} pts</Text>
                               </View>
+                              {r.is_group && r.registration_id && expandedGroupResultId === r.result_id && festivalId && tenant_id ? <GroupMembers registrationId={r.registration_id} festivalId={festivalId} tenantId={tenant_id} /> : null}
                             </View>
                           </View>
                           {/* Individual Overrides */}
@@ -515,12 +550,11 @@ export default function ItemResultsPage() {
                          </Text>
                        </View>
                        <View style={{ flex: 1, minWidth: 150 }}>
-                         <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 13, color: colors.text }}>
-                           {r.result_status === 'published' && r.participant_name ? r.participant_name : r.chest_number ? `Chest #${r.chest_number}` : '?' }
-                         </Text>
+                         {r.is_group && r.registration_id ? <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Show members of ${resultDisplayName(r)}`} accessibilityState={{ expanded: expandedGroupResultId === r.result_id }} onPress={() => setExpandedGroupResultId(expandedGroupResultId === r.result_id ? null : r.result_id)}><Text style={{ fontFamily: "Outfit_700Bold", fontSize: 13, color: colors.text }}>{resultDisplayName(r)} ▾</Text></TouchableOpacity> : <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 13, color: colors.text }}>{resultDisplayName(r)}</Text>}
                          <Text style={{ fontFamily: "Outfit_400Regular", fontSize: 11, color: colors.muted }}>
                            {r.organisation_name}
                          </Text>
+                         {r.is_group && r.registration_id && expandedGroupResultId === r.result_id && festivalId && tenant_id ? <GroupMembers registrationId={r.registration_id} festivalId={festivalId} tenantId={tenant_id} /> : null}
                        </View>
                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                          {r.grade && <Text style={{ fontFamily: "Outfit_700Bold", fontSize: 12, color: coreColor(colors.navy, 'primaryText') }}>Grade {r.grade}</Text>}

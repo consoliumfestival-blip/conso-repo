@@ -34,6 +34,7 @@ export type ExportAssignment = {
   participant_id: string;
   item_id: string;
   entry_kind?: string | null;
+  is_group?: boolean;
   registration_status?: string | null;
   is_verified?: boolean | null;
   organisation_id?: string | null;
@@ -513,7 +514,9 @@ export function downloadTeamSelectedResultsPdf(args: {
   const people = new Map(args.participants.map((person) => [person.id, person]));
   const items = new Map(args.items.map((item) => [item.id, item]));
   const results = new Map(args.results.map((result) => [`${result.registration_id}:${result.item_id}`, result]));
-  const groups = new Map<string, { teamKey: string; teamName: string; item: ExportItem; rows: { name: string; category: string; chest: string; gradePoints: string; rankPoints: string; rank: string; grade: string; general: string }[] }>();
+  type ResultRow = { name: string; category: string; chest: string; gradePoints: string; rankPoints: string; points: string; rank: string; grade: string; general: string; sortKey: string; group: boolean; member: boolean };
+  const groups = new Map<string, { teamKey: string; teamName: string; item: ExportItem; rows: ResultRow[] }>();
+  const shownGroupRegistrations = new Set<string>();
 
   args.assignments.filter(registrationIsActive).forEach((assignment) => {
     if (!selectedItemIds.has(assignment.item_id) || !assignment.registration_id) return;
@@ -525,15 +528,30 @@ export function downloadTeamSelectedResultsPdf(args: {
     const teamKey = assignment.organisation_id || participant.organisation_id || teamName;
     const groupKey = args.groupByTeam ? `${teamKey}:${item.id}` : item.id;
     const group = groups.get(groupKey) ?? { teamKey, teamName, item, rows: [] };
+    const groupEntry = assignment.is_group === true;
+    const groupSortKey = groupEntry ? assignment.registration_id : safeText(participant.chest_number) || safeText(participant.name);
+    if (groupEntry && !shownGroupRegistrations.has(assignment.registration_id)) {
+      group.rows.push({
+        name: `Team: ${safeText(teamName)}`, category: safeText(item.category_codes?.join(', ')) || '—', chest: '—',
+        gradePoints: typeof result?.points_calculation?.grade_points === 'number' ? String(result.points_calculation.grade_points) : '—',
+        rankPoints: typeof result?.points_calculation?.rank_points === 'number' ? String(result.points_calculation.rank_points) : '—',
+        points: typeof result?.points_awarded === 'number' ? String(result.points_awarded) : '—',
+        rank: result?.rank == null ? '—' : String(result.rank), grade: safeText(result?.grade) || '—',
+        general: assignment.entry_kind === 'general_team' ? 'Yes' : 'No', sortKey: groupSortKey, group: true, member: false,
+      });
+      shownGroupRegistrations.add(assignment.registration_id);
+    }
     group.rows.push({
-      name: safeText(participant.name) || 'Unnamed participant',
+      name: `${groupEntry ? '  Member: ' : ''}${safeText(participant.name) || 'Unnamed participant'}`,
       category: safeText(participant.category_code) || '—',
       chest: safeText(participant.chest_number) || '—',
-      gradePoints: typeof result?.points_calculation?.grade_points === 'number' ? String(result.points_calculation.grade_points) : '—',
-      rankPoints: typeof result?.points_calculation?.rank_points === 'number' ? String(result.points_calculation.rank_points) : '—',
-      rank: result?.rank == null ? '—' : String(result.rank),
-      grade: safeText(result?.grade) || '—',
+      gradePoints: groupEntry ? '—' : typeof result?.points_calculation?.grade_points === 'number' ? String(result.points_calculation.grade_points) : '—',
+      rankPoints: groupEntry ? '—' : typeof result?.points_calculation?.rank_points === 'number' ? String(result.points_calculation.rank_points) : '—',
+      points: groupEntry || typeof result?.points_awarded !== 'number' ? '—' : String(result.points_awarded),
+      rank: groupEntry || result?.rank == null ? '—' : String(result.rank),
+      grade: groupEntry ? '—' : safeText(result?.grade) || '—',
       general: assignment.entry_kind === 'general_team' ? 'Yes' : 'No',
+      sortKey: groupSortKey, group: groupEntry, member: groupEntry,
     });
     groups.set(groupKey, group);
   });
@@ -572,17 +590,18 @@ export function downloadTeamSelectedResultsPdf(args: {
     cursorY += Math.max(5, titleLines.length * 3.8 + 1);
     autoTable(doc, {
       startY: cursorY,
-      head: [['Participant', 'Category', 'Chest No.', 'Grade Pts', 'Rank Pts', 'Rank', 'Grade', 'General?']],
-      body: rows.sort((a, b) => a.chest.localeCompare(b.chest, undefined, { numeric: true }) || a.name.localeCompare(b.name))
-        .map((row) => [row.name, row.category, row.chest, row.gradePoints, row.rankPoints, row.rank, row.grade, row.general]),
+      head: [['Team / Participant', 'Category', 'Chest', 'Grade Pts', 'Rank Pts', 'Points', 'Rank', 'Grade', 'General?']],
+      body: rows.sort((a, b) => Number(b.group) - Number(a.group) || a.sortKey.localeCompare(b.sortKey, undefined, { numeric: true }) || Number(a.member) - Number(b.member) || a.chest.localeCompare(b.chest, undefined, { numeric: true }))
+        .map((row) => [row.name, row.category, row.chest, row.gradePoints, row.rankPoints, row.points, row.rank, row.grade, row.general]),
       margin: { left: PRINT_MARGIN, right: PRINT_MARGIN, top: 13, bottom: PRINT_MARGIN + 4 },
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 7.1, textColor: INK, lineColor: GRID, lineWidth: 0.2, cellPadding: 1.4, overflow: 'linebreak', minCellHeight: 5.2, valign: 'middle' },
       headStyles: { fillColor: [255, 255, 255], textColor: INK, fontStyle: 'bold', lineWidth: 0.3 },
       columnStyles: {
-        0: { cellWidth: 58 }, 1: { cellWidth: 23 }, 2: { cellWidth: 20, halign: 'center' },
-        3: { cellWidth: 18, halign: 'center' }, 4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 14, halign: 'center' }, 6: { cellWidth: 18, halign: 'center' }, 7: { cellWidth: 15, halign: 'center' },
+        0: { cellWidth: 52 }, 1: { cellWidth: 20 }, 2: { cellWidth: 18, halign: 'center' },
+        3: { cellWidth: 16, halign: 'center' }, 4: { cellWidth: 16, halign: 'center' },
+        5: { cellWidth: 17, halign: 'center' }, 6: { cellWidth: 12, halign: 'center' },
+        7: { cellWidth: 16, halign: 'center' }, 8: { cellWidth: 13, halign: 'center' },
       },
       rowPageBreak: 'avoid',
       didDrawPage: (hook) => { if (hook.pageNumber > 1) drawRepeatedHeader(doc, `${safeText(args.teamName || teamName)} · ${title}`); },

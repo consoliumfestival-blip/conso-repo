@@ -50,6 +50,17 @@ test('admin published results include every page beyond the API row limit', asyn
   assert.deepEqual(calls, [[0, 499], [500, 999], [1000, 1499], [1500, 1999]]);
 });
 
+test('admin published results include all rows across twenty 500-row pages', async () => {
+  const rows = Array.from({ length: 10001 }, (_, result_id) => ({ result_id }));
+  const { provider, calls } = createProvider(rows);
+  const result = await provider.listAdminPublishedResults('tenant', 'festival');
+  assert.equal(result.error, null);
+  assert.equal(result.data.length, rows.length);
+  assert.equal(result.data[10000].result_id, 10000);
+  assert.equal(calls.length, 21);
+  assert.deepEqual(calls[20], [10000, 10499]);
+});
+
 test('admin published results never expose partial standings after a page error', async () => {
   const { provider } = createProvider(Array.from({ length: 1200 }, (_, result_id) => ({ result_id })), 500);
   const result = await provider.listAdminPublishedResults('tenant', 'festival');

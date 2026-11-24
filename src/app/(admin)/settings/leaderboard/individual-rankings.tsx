@@ -258,11 +258,13 @@ export default function IndividualRankingsPage() {
       );
     }
 
-    if (resultsError) {
+    if (resultsError && festivalResults.length === 0) {
       return (
         <View style={styles.loadingBox}>
-          <Text style={styles.errorText}>Unable to load admin rankings.</Text>
-          <Text style={styles.loadingText}>{resultsError.message}</Text>
+          <Text style={styles.errorText}>Could not load complete rankings.</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => void refetchResults()}>
+            <Text style={styles.loadingText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       );
     }

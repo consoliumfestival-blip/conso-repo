@@ -298,6 +298,7 @@ export default function ReportsAndPrintouts() {
         return ids.filter((id) => personById.has(id)).map((id) => ({
           registration_id: registration.id, participant_id: id, item_id: registration.item_id,
           entry_kind: registration.entry_kind,
+          is_group: !registration.participant_id,
           registration_status: registration.status, is_verified: registration.is_verified,
           organisation_id: registration.organisation_id || personById.get(id)?.organisation_id,
           organisation_name: personById.get(id)?.organisation_name,

@@ -26,6 +26,7 @@ export type ExportItem = {
   item_name_en?: string | null;
   item_name_ml?: string | null;
   category_codes?: string[] | null;
+  item_type?: 'stage' | 'offstage' | string | null;
   participation_type?: string | null;
 };
 

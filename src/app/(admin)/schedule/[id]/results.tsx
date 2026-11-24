@@ -424,20 +424,20 @@ export default function ResultsPage() {
       };
     });
 
-    // 2. Sort to assign ranks (standard competition ranking: 1, 2, 2, 4)
+    // 2. Assign consecutive ranks to distinct scores (1, 2, 2, 3).
     const sorted = [...scores].sort((a, b) => b.avg - a.avg);
     
-    let currentRank = 1;
+    let currentRank = 0;
     let previousAvg = -1;
     const rankMapping: Record<string, string> = {};
     
-    sorted.forEach((item, index) => {
+    sorted.forEach((item) => {
       if (item.avg === 0) {
         rankMapping[item.id] = '-';
         return;
       }
       if (item.avg !== previousAvg) {
-        currentRank = index + 1;
+        currentRank += 1;
       }
       previousAvg = item.avg;
       

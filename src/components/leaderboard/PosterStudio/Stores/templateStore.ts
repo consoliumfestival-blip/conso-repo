@@ -25,6 +25,18 @@ export interface TemplateVariables {
   [key: string]: string | undefined;
 }
 
+export interface BatchFrameItem {
+  itemId: string;
+  resultId: string;
+  itemName: string;
+  itemNameMl: string;
+  categoryName: string;
+  resultNo: string;
+  publicVisible: boolean;
+  variables: TemplateVariables;
+  customLayers?: LayerData[];
+}
+
 export interface BackgroundTransform {
   scale: number;
   x: number;
@@ -80,6 +92,12 @@ interface TemplateStore {
   
   currentResultId: string | null;
   setCurrentResultId: (id: string | null) => void;
+  currentItemId: string | null;
+  setCurrentItemId: (id: string | null) => void;
+  currentResultPublicVisible: boolean;
+  setCurrentResultPublicVisible: (visible: boolean) => void;
+  assetsRefreshTick: number;
+  bumpAssetsRefreshTick: () => void;
   saveResultOverride: () => Promise<void>;
   loadResultOverride: (resultId: string) => Promise<boolean>;
   updateStableLayout: () => void;
@@ -90,6 +108,15 @@ interface TemplateStore {
 
   resultNumberMode: ResultNumberMode;
   cycleResultNumberMode: () => void;
+
+  batchItems: BatchFrameItem[];
+  isMultiFrameMode: boolean;
+  setBatchItems: (items: BatchFrameItem[]) => void;
+  toggleBatchItem: (item: BatchFrameItem) => void;
+  removeBatchItem: (itemId: string) => void;
+  updateBatchItemVariables: (itemId: string, patch: Partial<TemplateVariables>) => void;
+  updateBatchItemLayers: (itemId: string, layers: LayerData[]) => void;
+  setIsMultiFrameMode: (v: boolean) => void;
 }
 
 
@@ -106,15 +133,15 @@ export const DEFAULT_STARTER_TEMPLATE: TemplateData = {
   isLocal: true,
   isPublishable: false,
   layers: [
-    { id: 'l1', type: 'text', version: '1.0', name: 'Result No', text: '{result_no}', x: 340, y: 80, width: 400, height: 60, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 64, fontFamily: 'Authenia Textured', fontWeight: 400, fill: '#000000', align: 'center', zIndex: 1, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'result_no' },
-    { id: 'l2', type: 'text', version: '1.0', name: 'Category', text: '{category_name}', x: 240, y: 140, width: 600, height: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 34, fontFamily: 'Inter', fontWeight: 600, fill: '#64748B', align: 'center', zIndex: 2, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'category_name' },
-    { id: 'l3', type: 'text', version: '1.0', name: 'Event Name', text: '{event_name}', x: 90, y: 220, width: 900, height: 220, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 96, fontFamily: 'Noto Sans Malayalam', fontWeight: 900, fill: '#000000', align: 'center', overflowMode: 'auto-shrink', zIndex: 3, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'event_name' },
-    { id: 'l4', type: 'text', version: '1.0', name: '1st Place Name', text: '{name_1}', x: 180, y: 480, width: 760, height: 70, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 54, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', zIndex: 4, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_1' },
-    { id: 'l5', type: 'text', version: '1.0', name: '1st Place Unit', text: '{unit_1}', x: 180, y: 550, width: 760, height: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 30, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', zIndex: 5, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_1' },
-    { id: 'l6', type: 'text', version: '1.0', name: '2nd Place Name', text: '{name_2}', x: 180, y: 660, width: 760, height: 70, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 54, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', zIndex: 6, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_2' },
-    { id: 'l7', type: 'text', version: '1.0', name: '2nd Place Unit', text: '{unit_2}', x: 180, y: 730, width: 760, height: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 30, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', zIndex: 7, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_2' },
-    { id: 'l8', type: 'text', version: '1.0', name: '3rd Place Name', text: '{name_3}', x: 180, y: 840, width: 760, height: 70, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 54, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', zIndex: 8, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_3' },
-    { id: 'l9', type: 'text', version: '1.0', name: '3rd Place Unit', text: '{unit_3}', x: 180, y: 910, width: 760, height: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 30, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', zIndex: 9, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_3' },
+    { id: 'l1', type: 'text', version: '1.0', name: 'Result No', text: '{result_no}', x: 340, y: 72, width: 400, height: 64, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 44, fontFamily: 'Authenia Textured', fontWeight: 400, fill: '#000000', align: 'center', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 1, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'result_no' },
+    { id: 'l2', type: 'text', version: '1.0', name: 'Category', text: '{category_name}', x: 190, y: 146, width: 700, height: 42, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 24, fontFamily: 'Inter', fontWeight: 600, fill: '#64748B', align: 'center', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 2, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'category_name' },
+    { id: 'l3', type: 'text', version: '1.0', name: 'Event Name', text: '{event_name}', x: 90, y: 204, width: 900, height: 130, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 48, fontFamily: 'Noto Sans Malayalam', fontWeight: 900, fill: '#000000', align: 'center', overflowMode: 'auto-shrink', maxLines: 2, zIndex: 3, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'event_name' },
+    { id: 'l4', type: 'text', version: '1.0', name: '1st Place Name', text: '{name_1}', x: 160, y: 390, width: 760, height: 48, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 34, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 4, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_1' },
+    { id: 'l5', type: 'text', version: '1.0', name: '1st Place Unit', text: '{unit_1}', x: 160, y: 440, width: 760, height: 36, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 22, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 5, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_1' },
+    { id: 'l6', type: 'text', version: '1.0', name: '2nd Place Name', text: '{name_2}', x: 160, y: 530, width: 760, height: 48, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 34, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 6, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_2' },
+    { id: 'l7', type: 'text', version: '1.0', name: '2nd Place Unit', text: '{unit_2}', x: 160, y: 580, width: 760, height: 36, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 22, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 7, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_2' },
+    { id: 'l8', type: 'text', version: '1.0', name: '3rd Place Name', text: '{name_3}', x: 160, y: 670, width: 760, height: 48, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 34, fontFamily: 'Noto Sans Malayalam', fontWeight: 800, fill: '#000000', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 8, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'name_3' },
+    { id: 'l9', type: 'text', version: '1.0', name: '3rd Place Unit', text: '{unit_3}', x: 160, y: 720, width: 760, height: 36, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, fontSize: 22, fontFamily: 'Noto Sans Malayalam', fontWeight: 500, fill: '#475569', align: 'left', overflowMode: 'auto-shrink', maxLines: 1, zIndex: 9, isVisible: true, isLocked: false, lockProfile: 'editable', dynamicBinding: 'unit_3' },
   ],
 };
 
@@ -152,9 +179,72 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   hasUnsavedChanges: false,
   draftRecoveryAvailable: false,
   currentResultId: null,
+  currentItemId: null,
+  currentResultPublicVisible: false,
+  assetsRefreshTick: 0,
   stableLayout: null,
+  batchItems: [],
+  isMultiFrameMode: false,
+
+  setBatchItems: (items) =>
+    set((s) => ({
+      batchItems: items.slice(0, 6).map((item) => ({
+        ...item,
+        variables: withComputedVars(item.variables, s.typographyMode),
+      })),
+    })),
+
+  toggleBatchItem: (item) =>
+    set((s) => {
+      const exists = s.batchItems.some((b) => b.itemId === item.itemId);
+      if (exists) {
+        return { batchItems: s.batchItems.filter((b) => b.itemId !== item.itemId) };
+      }
+      if (s.batchItems.length >= 6) {
+        return s;
+      }
+      return {
+        batchItems: [
+          ...s.batchItems,
+          { ...item, variables: withComputedVars(item.variables, s.typographyMode) },
+        ],
+      };
+    }),
+
+  removeBatchItem: (itemId) =>
+    set((s) => ({
+      batchItems: s.batchItems.filter((b) => b.itemId !== itemId),
+    })),
+
+  updateBatchItemVariables: (itemId, patch) =>
+    set((s) => ({
+      batchItems: s.batchItems.map((b) => {
+        if (b.itemId !== itemId) return b;
+        const merged: TemplateVariables = { ...b.variables };
+        Object.entries(patch).forEach(([k, v]) => {
+          merged[k] = v;
+        });
+        return {
+          ...b,
+          resultNo: patch.result_no !== undefined ? String(patch.result_no) : b.resultNo,
+          variables: withComputedVars(merged, s.typographyMode),
+        };
+      }),
+    })),
+
+  updateBatchItemLayers: (itemId, customLayers) =>
+    set((s) => ({
+      batchItems: s.batchItems.map((b) =>
+        b.itemId === itemId ? { ...b, customLayers } : b
+      ),
+    })),
+
+  setIsMultiFrameMode: (isMultiFrameMode) => set({ isMultiFrameMode }),
 
   setCurrentResultId: (id) => set({ currentResultId: id }),
+  setCurrentItemId: (id) => set({ currentItemId: id }),
+  setCurrentResultPublicVisible: (currentResultPublicVisible) => set({ currentResultPublicVisible }),
+  bumpAssetsRefreshTick: () => set((s) => ({ assetsRefreshTick: s.assetsRefreshTick + 1 })),
 
   setActiveTemplate: (t: TemplateData | null) => set({ activeTemplate: t, publishStatus: t?.status ?? 'draft', hasUnsavedChanges: false, stableLayout: t?.layers || null }),
   updateTemplateMeta: (patch) =>
@@ -210,34 +300,22 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   },
 
   loadDraftOnStart: async (templateId?: string) => {
-    // Helper: detect if layers are the old default template (small fonts)
-    // and auto-upgrade them to the new starter typography
+    // Non-destructive layer normalizer: preserves all saved layers and ensures
+    // bound text layers default to auto-shrink when overflowMode is unset.
     const upgradeOldDefaultLayers = (layers: LayerData[]): LayerData[] => {
-      if (!layers || layers.length === 0) return DEFAULT_STARTER_TEMPLATE.layers.map(l => ({ ...l }));
-      
-      // Detect old default v1: layers contain old IDs like l3_unit, l4_unit, l5_unit
-      const oldIds = ['l3_unit', 'l4_unit', 'l5_unit'];
-      const hasOldIds = layers.some(l => oldIds.includes(l.id));
-      
-      // Detect old default v1: name layers have tiny fonts (old used 56px or 48px)
-      const nameLayers = layers.filter(l => l.dynamicBinding && ['name_1', 'name_2', 'name_3'].includes(l.dynamicBinding));
-      const hasOldSmallNames = nameLayers.length > 0 && nameLayers.every(l => (l.fontSize || 0) <= 48);
-      const unitLayers = layers.filter(l => l.dynamicBinding && ['unit_1', 'unit_2', 'unit_3'].includes(l.dynamicBinding));
-      const hasOldSmallUnits = unitLayers.length > 0 && unitLayers.every(l => (l.fontSize || 0) <= 24);
-      
-      // Detect intermediate version: name layers have embedded rank numbers like "1   {name_1}"
-      const hasEmbeddedRanks = nameLayers.some(l => l.text && /^\d\s+\{/.test(l.text));
-      
-      // Detect missing separate rank layers (l4r, l6r, l8r) — if they don't exist, need upgrade
-      const hasSeparateRanks = layers.some(l => ['l4r', 'l6r', 'l8r'].includes(l.id) || l.name === '1st Rank' || l.name === '2nd Rank' || l.name === '3rd Rank');
-      const needsRankLayers = nameLayers.length > 0 && !hasSeparateRanks;
-      
-      if (hasOldIds || (hasOldSmallNames && hasOldSmallUnits) || hasEmbeddedRanks || needsRankLayers) {
-        console.log('[PosterStudio] Detected old default layers, upgrading to new starter typography');
-        return DEFAULT_STARTER_TEMPLATE.layers.map(l => ({ ...l }));
+      if (!layers || layers.length === 0) {
+        return DEFAULT_STARTER_TEMPLATE.layers.map((l) => ({ ...l }));
       }
-      
-      return layers;
+      return layers.map((l) => {
+        if (
+          l.type === 'text' &&
+          !l.overflowMode &&
+          (l.dynamicBinding || (l.text && l.text.includes('{')))
+        ) {
+          return { ...l, overflowMode: 'auto-shrink' as const };
+        }
+        return l;
+      });
     };
 
     try {

@@ -12,8 +12,8 @@ import RulerOverlay from './RulerOverlay';
 import MultiSelectToolbar from '../Toolbar/MultiSelectToolbar';
 import InlineTextEditor from '../Layers/InlineTextEditor';
 import { useViewportManager } from '../Hooks/useViewportManager';
-import { measureText } from '../Utils/fontLoader';
-import { resolveTemplateVariables } from '../Utils/resolver';
+import { computeAutoShrinkFontSize } from '../Utils/fontLoader';
+import { resolveLayerText } from '../Utils/resolver';
 
 interface StudioCanvasProps {
   canvasWidth: number;
@@ -94,8 +94,8 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
     }
   }, [layer.fontFamily]);
 
-  const resolvedText = resolveTemplateVariables(layer.text, variables);
-  const draggable = layer.lockProfile !== 'fully-locked' && layer.lockProfile !== 'semi-locked';
+  const resolvedText = resolveLayerText(layer, variables);
+  const draggable = !layer.isLocked && layer.lockProfile !== 'fully-locked' && layer.lockProfile !== 'semi-locked';
 
   useEffect(() => {
     if (isSelected && trRef.current && shapeRef.current) {
@@ -138,15 +138,23 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
     }
   };
 
-  let displayFontSize = layer.fontSize || 24;
-  let scaleForShrink = 1;
-  
-  if (layer.overflowMode === 'auto-shrink' && layer.width && fontsLoaded) {
-    const metrics = measureText(resolvedText, `"${layer.fontFamily || 'Inter'}", "Noto Sans Malayalam"`, displayFontSize, layer.fontWeight || 400);
-    if (metrics.width > layer.width) {
-      scaleForShrink = Math.max(0.2, layer.width / metrics.width);
-    }
-  }
+  const baseFontSize = layer.fontSize || 24;
+  const effectiveOverflow = layer.overflowMode || (layer.dynamicBinding || layer.text?.includes('{') ? 'auto-shrink' : undefined);
+  const fontFamilyStack = `"${layer.fontFamily || 'Poppins'}", "Noto Sans Malayalam", "Inter", sans-serif`;
+
+  const displayFontSize =
+    effectiveOverflow === 'auto-shrink' && layer.width && fontsLoaded
+      ? computeAutoShrinkFontSize({
+          text: resolvedText,
+          fontFamily: fontFamilyStack,
+          baseFontSize,
+          fontWeight: layer.fontWeight || 600,
+          maxWidth: layer.width,
+          maxHeight: layer.height,
+          maxLines: layer.maxLines,
+          lineHeight: layer.lineHeight || 1.2,
+        })
+      : baseFontSize;
 
   return (
     <>
@@ -158,7 +166,7 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
         height={layer.height || undefined}
         text={resolvedText}
         fontSize={displayFontSize}
-        fontFamily={`"${layer.fontFamily || 'Poppins'}", "Noto Sans Malayalam", "Inter", sans-serif`}
+        fontFamily={fontFamilyStack}
         fontStyle={`${layer.fontWeight || 600} ${layer.fontStyle || 'normal'}`}
         textDecoration={layer.textDecoration || ''}
         fill={layer.fill || '#000000'}
@@ -171,11 +179,11 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
         align={layer.align || 'left'}
         lineHeight={layer.lineHeight || 1.2}
         letterSpacing={layer.letterSpacing || 0}
-        wrap={layer.overflowMode === 'clip' ? 'none' : 'word'}
-        ellipsis={layer.overflowMode === 'ellipsis'}
+        wrap={effectiveOverflow === 'clip' ? 'none' : 'word'}
+        ellipsis={effectiveOverflow === 'ellipsis'}
         rotation={layer.rotation || 0}
-        scaleX={(layer.scaleX || 1) * scaleForShrink}
-        scaleY={(layer.scaleY || 1) * scaleForShrink}
+        scaleX={layer.scaleX || 1}
+        scaleY={layer.scaleY || 1}
         opacity={isEditing ? 0 : (layer.opacity ?? 1)}
         visible={layer.isVisible !== false}
         draggable={draggable}

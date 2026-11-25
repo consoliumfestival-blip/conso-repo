@@ -92,10 +92,12 @@ export default function PublishApproval() {
     if (error) {
       console.error('[PublishApproval] Failed to publish template:', error);
       enqueue({ type: 'publish', payload: { template_id: activeTemplate.id, status: 'published' } });
+      alert('Failed to publish template: ' + error.message);
+      return;
     }
 
     setPublishStatus('published');
-    alert('✅ Template published successfully.\n\nTo generate posters for your events, please go to the "Batch Auto-Fill" tab on the right sidebar and click "Queue All Exports".');
+    alert('✅ Template published successfully.\n\nUse the Results panel on the right dock to generate single posters or load up to 6 frames in Multi-Frame Grid.');
   };
 
   return (

@@ -96,8 +96,8 @@ export default function StudioContextMenu({ x, y, targetId, targetType, onClose,
       <div style={styles.divider} />
 
       <button style={styles.menuItem} onClick={() => handleAction(() => toggleLock(layer.id))}>
-        <span style={styles.icon}>{layer.lockProfile === 'fully-locked' ? '🔓' : '🔒'}</span> 
-        {layer.lockProfile === 'fully-locked' ? 'Unlock' : 'Lock'}
+        <span style={styles.icon}>{(layer.isLocked || layer.lockProfile === 'fully-locked') ? '🔓' : '🔒'}</span> 
+        {(layer.isLocked || layer.lockProfile === 'fully-locked') ? 'Unlock' : 'Lock'}
       </button>
 
       <button style={styles.menuItem} onClick={() => handleAction(() => toggleVisibility(layer.id))}>

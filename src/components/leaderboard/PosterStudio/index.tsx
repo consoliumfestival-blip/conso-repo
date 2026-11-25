@@ -36,7 +36,9 @@ import { RESULT_NUMBER_PRESETS, NEXT_RESULT_MODE } from './Utils/resultNumberPre
 import CreateTemplateModal from './Templates/CreateTemplateModal';
 import { supabase } from '../../../core/config/supabase';
 import OffscreenRenderer from './Canvas/OffscreenRenderer';
+import MultiFrameGrid from './Canvas/MultiFrameGrid';
 import { uploadService } from '../../../services/storage/uploadService';
+import { dataUrlToBlob, saveGeneratedPosterAsset } from './Utils/generatedAssetSaver';
 import { useRouter } from 'expo-router';
 import { fontService, FontMetadata } from '../../../services/fontService';
 import { loadFont } from './Utils/fontLoader';
@@ -64,7 +66,30 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
 
   const { zoomLevel, setZoom, fitToViewport, gridVisible, setGridVisible, gridSnap, setGridSnap, gridSize, setGridSize, rulerVisible, setRulerVisible, safeZoneVisible, setSafeZoneVisible, failedFonts } = useCanvasStore();
   const { layers, selectedIds } = useLayerStore();
-  const { activeTemplate, hasUnsavedChanges, saveDraft, draftRecoveryAvailable, restoreDraft, clearDraft, lastSavedAt, variables, currentResultId, saveResultOverride, typographyMode, toggleTypographyMode, resultNumberMode, cycleResultNumberMode } = useTemplateStore();
+  const {
+    activeTemplate,
+    hasUnsavedChanges,
+    saveDraft,
+    draftRecoveryAvailable,
+    restoreDraft,
+    clearDraft,
+    lastSavedAt,
+    variables,
+    currentResultId,
+    currentItemId,
+    currentResultPublicVisible,
+    setCurrentItemId,
+    setCurrentResultPublicVisible,
+    bumpAssetsRefreshTick,
+    isMultiFrameMode,
+    setIsMultiFrameMode,
+    batchItems,
+    saveResultOverride,
+    typographyMode,
+    toggleTypographyMode,
+    resultNumberMode,
+    cycleResultNumberMode,
+  } = useTemplateStore();
   const safeVariables = variables || {};
   const { data: dbTemplates } = useGetPosterTemplates(festivalId);
   const { isOnline } = useOfflineStore();
@@ -358,10 +383,11 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       id: primaryId, type: 'text', version: '1.0',
       name: 'Event Name Primary',
       text: '{event_name_primary}',
-      x: cx - 440, y: cy - 120, width: 880, height: 120,
+      x: cx - 440, y: cy - 100, width: 880, height: 90,
       rotation: 0, scaleX: 1, scaleY: 1, opacity: 1,
-      fontSize: 96, fontFamily: 'Poppins', fontWeight: 900,
-      fill: '#000000', align: 'center', lineHeight: 1.1, letterSpacing: 2,
+      fontSize: 52, fontFamily: 'Poppins', fontWeight: 900,
+      fill: '#000000', align: 'center', lineHeight: 1.1, letterSpacing: 1,
+      overflowMode: 'auto-shrink', maxLines: 2,
       zIndex: maxZ, isVisible: true, isLocked: false, lockProfile: 'editable',
       dynamicBinding: 'event_name_primary',
     });
@@ -369,10 +395,11 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       id: secondaryId, type: 'text', version: '1.0',
       name: 'Event Name Secondary',
       text: '{event_name_secondary}',
-      x: cx - 440, y: cy + 20, width: 880, height: 80,
+      x: cx - 440, y: cy + 4, width: 880, height: 64,
       rotation: 0, scaleX: 1, scaleY: 1, opacity: 1,
-      fontSize: 52, fontFamily: 'Poppins', fontWeight: 400,
+      fontSize: 32, fontFamily: 'Poppins', fontWeight: 400,
       fill: '#333333', align: 'center', lineHeight: 1.2, letterSpacing: 0,
+      overflowMode: 'auto-shrink', maxLines: 1,
       zIndex: maxZ + 1, isVisible: true, isLocked: false, lockProfile: 'editable',
       dynamicBinding: 'event_name_secondary',
     });
@@ -405,92 +432,49 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     useLayerStore.getState().setLayers(newLayers);
   };
 
-  const handleCapture = useCallback(async (captureFunc: () => string) => {
+  const handleCapture = useCallback(async (captureFunc: (ratio?: number) => string) => {
     if (!activeTemplate) return;
     try {
       const dataUrl = captureFunc();
-
-      // Convert dataURL → Blob
-      const arr = dataUrl.split(',');
-      const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
-      const bstr = atob(arr[1]);
-      let n = bstr.length;
-      const u8arr = new Uint8Array(n);
-      while (n--) u8arr[n] = bstr.charCodeAt(n);
-      const blob = new Blob([u8arr], { type: mime });
-
-      // --- FALLBACK ACTIONS (Auto-Download + WhatsApp Share) ---
-      try {
-        // 1. Auto-Download
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        const timestamp = Date.now();
-        a.download = `poster_${timestamp}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-
-        // 2. WhatsApp Share (Clipboard + Open Tab)
-        if (typeof window !== 'undefined' && navigator.clipboard && (window as any).ClipboardItem) {
-          const clipboardItem = new (window as any).ClipboardItem({
-            'image/png': blob.type === 'image/png' ? blob : blob.slice(0, blob.size, 'image/png')
-          });
-          await navigator.clipboard.write([clipboardItem]);
-          
-          // Open WhatsApp
-          const waUrl = `https://wa.me/?text=${encodeURIComponent('Please paste (Ctrl+V) the poster image from your clipboard.')}`;
-          window.open(waUrl, '_blank');
-        }
-      } catch (fallbackErr) {
-        console.error('Fallback actions failed:', fallbackErr);
-      }
-      // ---------------------------------------------------------
-
-      // Upload to R2
-      const uploaded = await uploadService.uploadGeneratedAsset(blob, festivalId, tenantId);
-
-      // Unique hash for this render (groups resolutions in Media Center)
-      const renderHash = `${activeTemplate.id}_${currentResultId || 'base'}_${Date.now()}`;
+      const blob = dataUrlToBlob(dataUrl);
       const eventName = safeVariables['event_name'] || 'Festival Event';
 
-      // Save to generated_assets — both hd and standard point to same URL for now
-      const { error: dbError } = await supabase.from('generated_assets').insert([
-        {
-          tenant_id: tenantId,
-          festival_id: festivalId,
-          template_id: activeTemplate.id,
-          result_id: currentResultId || null,
-          public_url: uploaded.file_url,
-          storage_path: uploaded.object_key,
-          resolution: 'hd',
-          asset_type: 'poster',
-          render_hash: renderHash,
-        },
-        {
-          tenant_id: tenantId,
-          festival_id: festivalId,
-          template_id: activeTemplate.id,
-          result_id: currentResultId || null,
-          public_url: uploaded.file_url,
-          storage_path: uploaded.object_key,
-          resolution: 'standard',
-          asset_type: 'poster',
-          render_hash: renderHash,
-        },
-      ]);
-
-      if (dbError) throw new Error(dbError.message);
+      const res = await saveGeneratedPosterAsset({
+        blob,
+        tenantId,
+        festivalId,
+        templateId: activeTemplate.id,
+        eventId: currentItemId,
+        resultId: currentResultId,
+        eventName,
+        publicVisible: currentResultPublicVisible,
+      });
 
       queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
+      bumpAssetsRefreshTick();
       useTemplateStore.getState().updateStableLayout();
-      alert('✅ Poster published to Media Center!');
+      alert(
+        res.visibilityStatus === 'published'
+          ? '✅ Poster generated & auto-published to Public Media Center!'
+          : '✅ Poster generated & saved as Draft in Media Center (result is not public yet).'
+      );
     } catch (e: any) {
       console.error(e);
       alert('Failed to generate poster: ' + (e?.message || 'Unknown error'));
     } finally {
       setIsGenerating(false);
     }
-  }, [activeTemplate, festivalId, tenantId, currentResultId, safeVariables]);
+  }, [
+    activeTemplate,
+    festivalId,
+    tenantId,
+    currentResultId,
+    currentItemId,
+    currentResultPublicVisible,
+    safeVariables,
+    queryClient,
+    bumpAssetsRefreshTick,
+  ]);
 
   return (
     <ErrorBoundary>
@@ -578,6 +562,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                <button
                  onClick={async () => {
                    useTemplateStore.getState().setCurrentResultId(null);
+                   setCurrentItemId(null);
+                   setCurrentResultPublicVisible(false);
                    const activeTemplate = useTemplateStore.getState().activeTemplate;
                    if (activeTemplate) {
                      useLayerStore.getState().setLayers(activeTemplate.layers);
@@ -647,6 +633,30 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
             )}
           </div>
           <div style={{ ...styles.topbarRight, flexWrap: 'wrap' }}>
+            {/* Multi-Frame Grid Toggle */}
+            {activeTemplate && (
+              <button
+                onClick={() => {
+                  if (!isMultiFrameMode && batchItems.length === 0) {
+                    setActiveDockPanel('results');
+                    setIsDockOpen(true);
+                  }
+                  setIsMultiFrameMode(!isMultiFrameMode);
+                }}
+                style={{
+                  ...styles.topBtn,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: isMultiFrameMode ? '#0284C7' : 'transparent',
+                  color: isMultiFrameMode ? '#FFFFFF' : '#38BDF8',
+                  borderColor: '#38BDF8',
+                }}
+              >
+                ⧉ Multi-Frame ({batchItems.length}/6)
+              </button>
+            )}
+
             {/* Viewport Dropdown */}
             <div style={{ position: 'relative' }}>
               <button
@@ -676,16 +686,30 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   const currentBg = activeTemplate?.background_url || '';
                   
                   if (activeTemplate?.isPublishable && activeTemplate.id && activeTemplate.id !== 'starter-template') {
-                    await supabase
+                    const updatePayload: Record<string, any> = {
+                      layers: currentLayers,
+                      background_url: currentBg,
+                      background_transform: activeTemplate.background_transform || null,
+                      width: activeTemplate.width,
+                      height: activeTemplate.height,
+                      aspect_ratio: activeTemplate.aspect_ratio,
+                    };
+                    let { error: updateError } = await supabase
                       .from('poster_templates')
-                      .update({
-                        layers: currentLayers,
-                        background_url: currentBg,
-                        width: activeTemplate.width,
-                        height: activeTemplate.height,
-                        aspect_ratio: activeTemplate.aspect_ratio,
-                      })
+                      .update(updatePayload)
                       .eq('id', activeTemplate.id);
+                    if (updateError && (updateError.code === '42703' || updateError.message?.includes('background_transform'))) {
+                      delete updatePayload.background_transform;
+                      ({ error: updateError } = await supabase
+                        .from('poster_templates')
+                        .update(updatePayload)
+                        .eq('id', activeTemplate.id));
+                    }
+                    if (updateError) {
+                      alert('Failed to save template: ' + updateError.message);
+                      setIsSaving(false);
+                      return;
+                    }
                     queryClient.invalidateQueries({ queryKey: ['poster-templates', festivalId] });
                   } else {
                     const templateName = window.prompt('Enter a name to save this new template:', 'Custom Template');
@@ -896,7 +920,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         {/* ---- CANVAS CENTER ---- */}
         <div style={styles.canvasArea}>
           {/* ---- CANVA STYLE FLOATING CONTEXT TOOLBAR ---- */}
-          {activeTemplate && (
+          {activeTemplate && !isMultiFrameMode && (
             <div style={{...styles.contextToolbarPill, display: selectedLayer && selectedLayer.type === 'text' ? 'flex' : 'none'}}>
               {selectedLayer && selectedLayer.type === 'text' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -930,6 +954,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 )}
               </div>
             </div>
+          ) : isMultiFrameMode ? (
+            <MultiFrameGrid festivalId={festivalId} tenantId={tenantId} />
           ) : (
             <div style={styles.canvasWrapper} onContextMenu={(e) => {
               // If a layer is selected and we right-click on the canvas, it could be for the layer

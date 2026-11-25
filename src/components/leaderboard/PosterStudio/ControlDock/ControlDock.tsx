@@ -1,6 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
 import React from 'react';
 import { useLayerStore } from '../Stores/layerStore';
+import { useTemplateStore } from '../Stores/templateStore';
 import TransformBlock from '../Properties/TransformBlock';
 import TypographyBlock from '../Properties/TypographyBlock';
 import EffectsBlock from '../Properties/EffectsBlock';
@@ -25,6 +26,7 @@ export default function ControlDock({
   activePanel, onClose, festivalId, tenantId, currentTemplateId, setCurrentTemplateId, setShowCreateModal 
 }: ControlDockProps) {
   const { selectedIds, layers } = useLayerStore();
+  const { variables } = useTemplateStore();
   const selectedLayer = selectedIds.length === 1 ? layers.find(l => l.id === selectedIds[0]) : null;
 
   // If no panel is explicitly open via tool rail, and a layer is selected, 
@@ -70,7 +72,7 @@ export default function ControlDock({
             {selectedLayer.type === 'text' && <TypographyBlock layer={selectedLayer} />}
             <TransformBlock layer={selectedLayer} />
             <EffectsBlock layer={selectedLayer} />
-            {selectedLayer.type === 'text' && <VariableBindingPanel />}
+            {selectedLayer.type === 'text' && <VariableBindingPanel variables={variables} />}
           </div>
         )}
 

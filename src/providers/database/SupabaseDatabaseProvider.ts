@@ -1599,7 +1599,60 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       .from('results')
       .update(updatePayload)
       .eq('id', resultId);
+    if (!error) {
+      await this.syncPosterVisibilityForResults([resultId], status === 'published');
+    }
     return { data: undefined, error: normalizeError(error) };
+  }
+
+  private async syncPosterVisibilityForResults(resultIds: string[], targetPublic: boolean): Promise<void> {
+    try {
+      const { data: rows } = await supabase
+        .from('results')
+        .select('id, festival_id, item_id, published, result_status, public_visible')
+        .in('id', resultIds);
+
+      if (!rows || rows.length === 0) return;
+
+      const itemGroups = new Map<string, { festivalId: string; itemId: string }>();
+      for (const r of rows as any[]) {
+        if (r.festival_id && r.item_id) {
+          itemGroups.set(`${r.festival_id}:${r.item_id}`, { festivalId: r.festival_id, itemId: r.item_id });
+        }
+      }
+
+      for (const { festivalId, itemId } of itemGroups.values()) {
+        let isItemPublic = targetPublic;
+        if (!targetPublic) {
+          const { data: pubCheck } = await supabase
+            .from('results')
+            .select('id')
+            .eq('festival_id', festivalId)
+            .eq('item_id', itemId)
+            .eq('published', true)
+            .eq('result_status', 'published')
+            .eq('public_visible', true)
+            .limit(1);
+          isItemPublic = Boolean(pubCheck && pubCheck.length > 0);
+        }
+
+        const nextVisibility = isItemPublic ? 'published' : 'draft';
+        await supabase
+          .from('generated_assets')
+          .update({ visibility_status: nextVisibility })
+          .eq('festival_id', festivalId)
+          .eq('event_id', itemId)
+          .eq('is_current', true);
+      }
+
+      await supabase
+        .from('generated_assets')
+        .update({ visibility_status: targetPublic ? 'published' : 'draft' })
+        .in('result_id', resultIds)
+        .eq('is_current', true);
+    } catch {
+      // Best-effort sync; ignore pre-migration schema errors
+    }
   }
 
   async bulkUpdateResultVisibility(
@@ -1634,6 +1687,9 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       .from('results')
       .update(updatePayload)
       .in('id', resultIds);
+    if (!error) {
+      await this.syncPosterVisibilityForResults(resultIds, status === 'published');
+    }
     return { data: undefined, error: normalizeError(error) };
   }
 

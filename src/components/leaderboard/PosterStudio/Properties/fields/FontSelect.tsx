@@ -7,6 +7,7 @@ import { ML_FONTS, EN_FONTS, loadFont, FontDefinition } from '../../Utils/fontLo
 import { fontService, FontMetadata } from '../../../../../services/fontService';
 import { storageService } from '../../../../../services/storage/storageService';
 import { useAuthStore } from '../../../../../core/store/authStore';
+import { useFestival } from '../../../../../core/hooks/useFestival';
 import { useLocalSearchParams } from 'expo-router';
 import FontManagerPanel from '../FontManagerPanel';
 import { Search, Check, ChevronDown } from 'lucide-react';
@@ -22,8 +23,11 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
   const theme = useCoreAppearance();
   const themeVariables = theme ? coreVariables(theme.colors) : {};
   const { tenant_id } = useAuthStore();
+  const { useActiveFestival } = useFestival();
+  const { data: activeFestival } = useActiveFestival();
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const festivalId = Array.isArray(id) ? id[0] : id;
+  const paramFestivalId = Array.isArray(id) ? id[0] : id;
+  const festivalId = activeFestival?.id || paramFestivalId;
 
   const [customFonts, setCustomFonts] = useState<any[]>([]);
   const [showManager, setShowManager] = useState(false);

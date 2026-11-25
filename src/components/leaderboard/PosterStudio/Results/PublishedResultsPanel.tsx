@@ -2,17 +2,15 @@ import { coreColor } from '@/constants/coreTheme';
 /**
  * PublishedResultsPanel
  * --------------------
- * Phase 6: Published Results Engine
- * 
- * Loads all published festival results using the existing resultVisibilityService.
- * When a result is clicked, auto-binds its data to the templateStore variables
- * so the canvas re-renders the poster instantly.
- * 
- * Architecture rules: No direct DB calls. Uses service layer only.
+ * Loads published festival results (both publicly visible and internal/not-yet-public)
+ * grouped cleanly per competition item (1 card = 1 competition), assigns item-level
+ * sequential result numbers (1, 2, 3...), and supports both single-frame binding and
+ * multi-frame batch selection (up to 6 frames simultaneously).
  */
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { resultVisibilityService, FestivalResult } from '../../../../services/resultVisibilityService';
-import { useTemplateStore, TemplateVariables } from '../Stores/templateStore';
+import { festivalCategoryService } from '../../../../services/festivalCategoryService';
+import { useTemplateStore, BatchFrameItem, TemplateVariables } from '../Stores/templateStore';
 import { supabase } from '../../../../core/config/supabase';
 import { CATEGORIES, SAHITHYOLSAV_CATEGORY_ALIASES } from '../../../../constants/categories';
 
@@ -21,50 +19,111 @@ interface PublishedResultsPanelProps {
   tenantId: string;
 }
 
-type GroupedResults = {
-  item_name: string;
+interface CompetitionItemGroup {
+  itemId: string;
+  primaryResultId: string;
+  itemName: string;
+  itemNameMl: string;
+  categoryNameEn: string;
+  categoryNameMl: string;
+  publicVisible: boolean;
+  earliestPublishedAt: string;
+  resultNo: string;
   results: FestivalResult[];
-};
+  isExported: boolean;
+  exportedVisibility: 'published' | 'draft' | null;
+  variables: TemplateVariables;
+}
 
 export default function PublishedResultsPanel({ festivalId, tenantId }: PublishedResultsPanelProps) {
-  const [results, setResults] = useState<FestivalResult[]>([]);
+  const [rawResults, setRawResults] = useState<FestivalResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'pending' | 'exported'>('pending');
-  const { setVariables, setCurrentResultId, loadResultOverride } = useTemplateStore();
+  const [visibilityFilter, setVisibilityFilter] = useState<'all' | 'public' | 'not_public'>('all');
+
+  const {
+    setVariables,
+    setCurrentResultId,
+    setCurrentItemId,
+    setCurrentResultPublicVisible,
+    loadResultOverride,
+    batchItems,
+    setBatchItems,
+    toggleBatchItem,
+    setIsMultiFrameMode,
+    assetsRefreshTick,
+  } = useTemplateStore();
+
   const [itemCategories, setItemCategories] = useState<Record<string, { name_en: string; name_ml: string }>>({});
-  const [exportedResultIds, setExportedResultIds] = useState<Set<string>>(new Set());
+  const [exportedItemMap, setExportedItemMap] = useState<Map<string, 'published' | 'draft'>>(new Map());
+  const [exportedResultMap, setExportedResultMap] = useState<Map<string, 'published' | 'draft'>>(new Map());
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [data, itemsResult, assetsResult] = await Promise.all([
+      const fetchAssets = async () => {
+        const res = await supabase
+          .from('generated_assets')
+          .select('id, result_id, event_id, visibility_status, is_current')
+          .eq('festival_id', festivalId);
+        if (res.error && (res.error.code === '42703' || res.error.message?.includes('column'))) {
+          return await supabase
+            .from('generated_assets')
+            .select('id, result_id, event_id')
+            .eq('festival_id', festivalId);
+        }
+        return res;
+      };
+
+      const [data, itemsResult, customCategories, assetsResult] = await Promise.all([
         resultVisibilityService.listFestivalResults(tenantId, festivalId),
         supabase.from('items').select('id, category_codes').eq('festival_id', festivalId),
-        supabase.from('generated_assets').select('result_id').eq('festival_id', festivalId).not('result_id', 'is', null)
+        festivalCategoryService.list(festivalId, true).catch(() => []),
+        fetchAssets(),
       ]);
-      
-      // ONLY show results that are published and publicly visible
-      const published = data.filter(r => r.published && r.public_visible);
-      setResults(published);
 
+      // Include all internally published results (public_visible true OR false)
+      const published = data.filter((r) => r.published === true);
+      setRawResults(published);
+
+      const itemExpMap = new Map<string, 'published' | 'draft'>();
+      const resExpMap = new Map<string, 'published' | 'draft'>();
       if (assetsResult.data) {
-        setExportedResultIds(new Set(assetsResult.data.map((a: any) => a.result_id)));
+        (assetsResult.data as any[]).forEach((a) => {
+          if (a.is_current === false) return;
+          const status: 'published' | 'draft' = a.visibility_status === 'draft' ? 'draft' : 'published';
+          if (a.event_id) itemExpMap.set(a.event_id, status);
+          if (a.result_id) resExpMap.set(a.result_id, status);
+        });
       }
+      setExportedItemMap(itemExpMap);
+      setExportedResultMap(resExpMap);
+
+      const customCatLookup = new Map<string, string>();
+      (customCategories || []).forEach((c: any) => {
+        if (c.code) customCatLookup.set(String(c.code).toLowerCase(), c.name || c.code);
+      });
 
       const catMap: Record<string, { name_en: string; name_ml: string }> = {};
       if (itemsResult.data) {
         itemsResult.data.forEach((item: any) => {
           const codes = item.category_codes || [];
           if (codes.length > 0) {
-            const firstCode = codes[0];
-            const catObj = CATEGORIES.find(c => c.code.toUpperCase() === firstCode.toUpperCase() || SAHITHYOLSAV_CATEGORY_ALIASES[firstCode.toUpperCase()] === c.code);
+            const firstCode = String(codes[0]);
+            const lowerCode = firstCode.toLowerCase();
+            const customName = customCatLookup.get(lowerCode);
+            const catObj = CATEGORIES.find(
+              (c) =>
+                c.code.toUpperCase() === firstCode.toUpperCase() ||
+                SAHITHYOLSAV_CATEGORY_ALIASES[firstCode.toUpperCase()] === c.code
+            );
             catMap[item.id] = {
-              name_en: catObj ? catObj.name_en : firstCode,
-              name_ml: catObj ? catObj.name_ml : firstCode,
+              name_en: customName || (catObj ? catObj.name_en : firstCode.toUpperCase()),
+              name_ml: catObj ? catObj.name_ml : customName || firstCode,
             };
           } else {
             catMap[item.id] = { name_en: '', name_ml: '' };
@@ -81,173 +140,370 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, assetsRefreshTick]);
 
-  // Auto-bind selected result to template variables
-  const handleSelectResult = useCallback((result: FestivalResult) => {
-    setSelectedId(result.result_id);
+  // Group into one CompetitionItemGroup per item_id, with item-level 1, 2, 3... numbering
+  const itemGroups = useMemo<CompetitionItemGroup[]>(() => {
+    const groupedMap = new Map<string, FestivalResult[]>();
+    rawResults.forEach((r) => {
+      const key = r.item_id || r.result_id;
+      const list = groupedMap.get(key) || [];
+      list.push(r);
+      groupedMap.set(key, list);
+    });
 
-    // Gather ranked results for this item (same item_name, sorted by rank)
-    const itemResults = results
-      .filter(r => r.item_id === result.item_id)
-      .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+    type TempGroup = Omit<CompetitionItemGroup, 'resultNo' | 'variables'>;
+    const tempGroups: TempGroup[] = [];
 
-    const getByRank = (rank: number) =>
-      itemResults.find(r => r.rank === rank)?.participant_name || '';
+    groupedMap.forEach((rows, itemId) => {
+      const sortedRows = [...rows].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+      const firstRow = sortedRows[0];
+      const publicVisible = sortedRows.some((r) => r.public_visible === true);
 
-    // Build variable map matching templateStore.TemplateVariables schema
-    const rawId = String(result.registration_id || result.result_id || '');
-    const shortRefId = rawId.split('-')[0].toUpperCase();
+      let earliestPublishedAt = '';
+      sortedRows.forEach((r) => {
+        if (r.published_at && (!earliestPublishedAt || r.published_at < earliestPublishedAt)) {
+          earliestPublishedAt = r.published_at;
+        }
+      });
 
-    const categoryNameObj = result.item_id ? itemCategories[result.item_id] : null;
-
-    const vars: Record<string, string> = {
-      event_name: result.item_name,
-      category_name: categoryNameObj?.name_en || '',
-      category_name_ml: categoryNameObj?.name_ml || '',
-      result_no: result.public_result_no ? String(result.public_result_no) : '',
-    };
-
-    for (let i = 1; i <= 5; i++) {
-      const winners = itemResults.filter((r: any) => r.rank === i);
-      if (winners.length > 0) {
-        vars[`name_${i}`] = winners.map((w: any) => w.participant_name.toUpperCase()).join(' & ');
-        vars[`unit_${i}`] = winners.map((w: any) => w.organisation_name || '').join(' & ');
-        vars[`grade_${i}`] = winners[0].grade || '';
-        vars[`points_${i}`] = String(winners[0].points_awarded || '');
-      } else {
-        vars[`name_${i}`] = '';
-        vars[`unit_${i}`] = '';
-        vars[`grade_${i}`] = '';
-        vars[`points_${i}`] = '';
+      let exportedVisibility: 'published' | 'draft' | null = exportedItemMap.get(itemId) ?? null;
+      if (!exportedVisibility) {
+        for (const r of sortedRows) {
+          const v = exportedResultMap.get(r.result_id);
+          if (v) {
+            exportedVisibility = v;
+            break;
+          }
+        }
       }
-    }
 
-    setVariables(vars);
-    setCurrentResultId(result.result_id);
-    loadResultOverride(result.result_id);
-  }, [results, itemCategories, setVariables, setCurrentResultId, loadResultOverride]);
+      const categoryObj = itemCategories[itemId] || { name_en: '', name_ml: '' };
 
-  // Group by item for display
-  const filtered = results.filter(r => {
-    const isExported = exportedResultIds.has(r.result_id);
-    if (activeTab === 'exported' && !isExported) return false;
-    if (activeTab === 'pending' && isExported) return false;
+      tempGroups.push({
+        itemId,
+        primaryResultId: firstRow.result_id,
+        itemName: firstRow.item_name || firstRow.item_name_ml || 'Event',
+        itemNameMl: firstRow.item_name_ml || '',
+        categoryNameEn: categoryObj.name_en,
+        categoryNameMl: categoryObj.name_ml,
+        publicVisible,
+        earliestPublishedAt,
+        results: sortedRows,
+        isExported: exportedVisibility !== null,
+        exportedVisibility,
+      });
+    });
 
-    const query = searchQuery.toLowerCase();
-    return r.item_name?.toLowerCase().includes(query) ||
-           r.participant_name?.toLowerCase().includes(query) ||
-           r.organisation_name?.toLowerCase().includes(query);
+    // Assign item-level sequential result numbers (1, 2, 3...):
+    // Public items first in earliest-publish order (matching item-results.tsx), then non-public items.
+    const publicSorted = tempGroups
+      .filter((g) => g.publicVisible)
+      .sort((a, b) => {
+        const cmp = (a.earliestPublishedAt || '9999').localeCompare(b.earliestPublishedAt || '9999');
+        return cmp !== 0 ? cmp : a.itemName.localeCompare(b.itemName);
+      });
+
+    const draftSorted = tempGroups
+      .filter((g) => !g.publicVisible)
+      .sort((a, b) => {
+        const cmp = (a.earliestPublishedAt || '9999').localeCompare(b.earliestPublishedAt || '9999');
+        return cmp !== 0 ? cmp : a.itemName.localeCompare(b.itemName);
+      });
+
+    const orderMap = new Map<string, string>();
+    let seq = 1;
+    publicSorted.forEach((g) => orderMap.set(g.itemId, String(seq++)));
+    draftSorted.forEach((g) => orderMap.set(g.itemId, String(seq++)));
+
+    return [...publicSorted, ...draftSorted].map((g) => {
+      const resultNo = orderMap.get(g.itemId) || '';
+      const vars: TemplateVariables = {
+        event_name: g.itemName,
+        category_name: g.categoryNameEn,
+        category_name_ml: g.categoryNameMl,
+        result_no: resultNo,
+      };
+
+      for (let i = 1; i <= 5; i++) {
+        const winners = g.results.filter((r) => r.rank === i);
+        if (winners.length > 0) {
+          vars[`name_${i}`] = winners.map((w) => (w.participant_name || '').trim().toUpperCase()).join(' & ');
+          vars[`unit_${i}`] = winners.map((w) => w.organisation_name || '').join(' & ');
+          vars[`grade_${i}`] = winners[0].grade || '';
+          vars[`points_${i}`] = String(winners[0].points_awarded || '');
+        } else {
+          vars[`name_${i}`] = '';
+          vars[`unit_${i}`] = '';
+          vars[`grade_${i}`] = '';
+          vars[`points_${i}`] = '';
+        }
+      }
+
+      return {
+        ...g,
+        resultNo,
+        variables: vars,
+      };
+    });
+  }, [rawResults, itemCategories, exportedItemMap, exportedResultMap]);
+
+  const toBatchFrameItem = (group: CompetitionItemGroup): BatchFrameItem => ({
+    itemId: group.itemId,
+    resultId: group.primaryResultId,
+    itemName: group.itemName,
+    itemNameMl: group.itemNameMl,
+    categoryName: group.categoryNameEn,
+    resultNo: group.resultNo,
+    publicVisible: group.publicVisible,
+    variables: group.variables,
   });
 
-  // Deduplicate by item_id to show one card per event
-  const uniqueItems = Array.from(
-    new Map(filtered.map(r => [r.item_id, r])).values()
+  const handleSelectItem = useCallback(
+    (group: CompetitionItemGroup) => {
+      setSelectedItemId(group.itemId);
+      setVariables(group.variables);
+      setCurrentResultId(group.primaryResultId);
+      setCurrentItemId(group.itemId);
+      setCurrentResultPublicVisible(group.publicVisible);
+      setIsMultiFrameMode(false);
+      loadResultOverride(group.primaryResultId);
+    },
+    [
+      setVariables,
+      setCurrentResultId,
+      setCurrentItemId,
+      setCurrentResultPublicVisible,
+      setIsMultiFrameMode,
+      loadResultOverride,
+    ]
   );
+
+  const filteredGroups = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return itemGroups.filter((g) => {
+      if (activeTab === 'exported' && !g.isExported) return false;
+      if (activeTab === 'pending' && g.isExported) return false;
+      if (visibilityFilter === 'public' && !g.publicVisible) return false;
+      if (visibilityFilter === 'not_public' && g.publicVisible) return false;
+      if (!query) return true;
+      return (
+        g.itemName.toLowerCase().includes(query) ||
+        g.itemNameMl.toLowerCase().includes(query) ||
+        g.resultNo.includes(query) ||
+        g.results.some(
+          (r) =>
+            r.participant_name?.toLowerCase().includes(query) ||
+            r.organisation_name?.toLowerCase().includes(query)
+        )
+      );
+    });
+  }, [itemGroups, activeTab, visibilityFilter, searchQuery]);
+
+  const pendingGroups = useMemo(
+    () => itemGroups.filter((g) => !g.isExported),
+    [itemGroups]
+  );
+
+  const handleLoadSixFrames = () => {
+    const sourceList = filteredGroups.length > 0 && activeTab === 'pending' ? filteredGroups : pendingGroups;
+    const picks = sourceList.slice(0, 6).map(toBatchFrameItem);
+    if (picks.length === 0) {
+      alert('No pending items available to load into Multi-Frame Grid.');
+      return;
+    }
+    setBatchItems(picks);
+    setIsMultiFrameMode(true);
+  };
+
+  const batchItemIdSet = useMemo(() => new Set(batchItems.map((b) => b.itemId)), [batchItems]);
 
   return (
     <div style={styles.root}>
       {/* Tabs */}
       <div style={styles.tabsRow}>
-        <button 
+        <button
           style={activeTab === 'pending' ? styles.tabActive : styles.tabInactive}
           onClick={() => setActiveTab('pending')}
         >
-          Pending
+          Pending ({itemGroups.filter((g) => !g.isExported).length})
         </button>
-        <button 
+        <button
           style={activeTab === 'exported' ? styles.tabActive : styles.tabInactive}
           onClick={() => setActiveTab('exported')}
         >
-          Exported
+          Exported ({itemGroups.filter((g) => g.isExported).length})
         </button>
         <button onClick={load} style={styles.refreshBtn} title="Refresh">↻</button>
       </div>
 
+      {/* Multi-Frame Quick Actions */}
+      <div style={styles.batchActionsBar}>
+        <button onClick={handleLoadSixFrames} style={styles.loadBatchBtn}>
+          ⚡ Load {Math.min(6, Math.max(1, pendingGroups.length))} Pending Frames
+        </button>
+        {batchItems.length > 0 && (
+          <button
+            onClick={() => setIsMultiFrameMode(true)}
+            style={styles.openGridBtn}
+            title="Open Multi-Frame Grid"
+          >
+            ⧉ Grid ({batchItems.length}/6)
+          </button>
+        )}
+      </div>
+
+      {/* Visibility Sub-Filter */}
+      <div style={styles.filterRow}>
+        {(['all', 'public', 'not_public'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setVisibilityFilter(v)}
+            style={visibilityFilter === v ? styles.filterChipActive : styles.filterChip}
+          >
+            {v === 'all' ? 'All' : v === 'public' ? '🌐 Public' : '📝 Not Public'}
+          </button>
+        ))}
+      </div>
+
       <div style={styles.body}>
-          {/* Search */}
-          <div style={styles.searchRow}>
-            <input
-              type="text"
-              placeholder="Search results or events…"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={styles.searchInput}
-            />
+        {/* Search */}
+        <div style={styles.searchRow}>
+          <input
+            type="text"
+            placeholder="Search event, #no, winner or unit…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={styles.searchInput}
+          />
+        </div>
+
+        {loading && (
+          <div style={styles.statusRow}>
+            <span style={styles.loadingText}>Loading results…</span>
           </div>
+        )}
 
-          {loading && (
-            <div style={styles.statusRow}>
-              <span style={styles.loadingText}>Loading results…</span>
-            </div>
-          )}
+        {error && (
+          <div style={styles.errorRow}>
+            <span>⚠ {error}</span>
+            <button onClick={load} style={styles.retryBtn}>Retry</button>
+          </div>
+        )}
 
-          {error && (
-            <div style={styles.errorRow}>
-              <span>⚠ {error}</span>
-              <button onClick={load} style={styles.retryBtn}>Retry</button>
-            </div>
-          )}
+        {!loading && !error && filteredGroups.length === 0 && (
+          <div style={styles.statusRow}>
+            <span style={styles.emptyText}>No results found in this view.</span>
+          </div>
+        )}
 
-          {!loading && !error && uniqueItems.length === 0 && (
-            <div style={styles.statusRow}>
-              <span style={styles.emptyText}>No results found in this view.</span>
-            </div>
-          )}
+        {/* Item Cards */}
+        <div style={styles.grid}>
+          {filteredGroups.map((group) => {
+            const isSelected = selectedItemId === group.itemId;
+            const isInBatch = batchItemIdSet.has(group.itemId);
 
-          {/* Results Grid */}
-          <div style={styles.grid}>
-            {uniqueItems.map(result => {
-              const isSelected = selectedId === result.result_id;
-              // Find all participants for this item
-              const itemResults = results
-                .filter(r => r.item_id === result.item_id)
-                .sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
-
-              return (
-                <div
-                  key={result.result_id}
-                  onClick={() => handleSelectResult(result)}
-                  style={{
-                    ...styles.card,
-                    borderColor: isSelected ? coreColor('#0d9488', 'border') : coreColor('#2a2a2a', 'border'),
-                    backgroundColor: isSelected ? coreColor('#115e59', 'primary') : coreColor('#1f1f1f', 'surfaceStrong'),
-                    boxShadow: isSelected ? '0 0 0 2px #14b8a6' : '0 1px 4px rgba(0,0,0,0.5)',
-                  }}
-                >
-                  {/* Event Name */}
-                  <div style={styles.cardEventName}>{result.item_name}</div>
-                  {result.item_name_ml && (
-                    <div style={styles.cardEventNameMl}>{result.item_name_ml}</div>
-                  )}
-
-                  {/* Ranked participants */}
-                  <div style={styles.cardRanks}>
-                    {itemResults.slice(0, 3).map(r => (
-                      <div key={r.result_id} style={styles.rankRow}>
-                        <span style={{ ...styles.rankBadge, backgroundColor: r.rank === 1 ? coreColor('#422006', 'warningAction') : r.rank === 2 ? coreColor('#1e293b', 'surfaceStrong') : coreColor('#3f2c00', 'dangerSoft') }}>
-                          {r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`}
-                        </span>
-                        <span style={styles.participantName}>{r.participant_name || '—'}</span>
-                        <span style={styles.orgName}>{r.organisation_name}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Footer */}
-                  <div style={styles.cardFooter}>
-                    <span style={{ ...styles.statusPill, backgroundColor: activeTab === 'exported' ? coreColor('#064e3b', 'successAction') : coreColor('#451a1a', 'surfaceStrong'), color: activeTab === 'exported' ? coreColor('#34d399', 'success') : coreColor('#fca5a5', 'danger') }}>
-                      {activeTab === 'exported' ? '✓ Poster Exported' : '⏳ Poster Pending'}
-                    </span>
-                    {isSelected && (
-                      <span style={styles.bindingIndicator}>⚡ Bound to template</span>
+            return (
+              <div
+                key={group.itemId}
+                onClick={() => handleSelectItem(group)}
+                style={{
+                  ...styles.card,
+                  borderColor: isSelected ? coreColor('#0d9488', 'border') : isInBatch ? coreColor('#38bdf8', 'info') : coreColor('#2a2a2a', 'border'),
+                  backgroundColor: isSelected ? coreColor('#115e59', 'primary') : coreColor('#1f1f1f', 'surfaceStrong'),
+                  boxShadow: isSelected ? '0 0 0 2px #14b8a6' : '0 1px 4px rgba(0,0,0,0.5)',
+                }}
+              >
+                {/* Header: Result # + Event Name + Multi-frame checkbox */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                      <span style={styles.resultNoBadge}>#{group.resultNo}</span>
+                      <span
+                        style={{
+                          ...styles.visBadge,
+                          backgroundColor: group.publicVisible ? coreColor('#064e3b', 'successAction') : '#334155',
+                          color: group.publicVisible ? coreColor('#34d399', 'success') : '#cbd5e1',
+                        }}
+                      >
+                        {group.publicVisible ? '🌐 Public' : '📝 Draft Only'}
+                      </span>
+                    </div>
+                    <div style={styles.cardEventName}>{group.itemName}</div>
+                    {group.itemNameMl && group.itemNameMl !== group.itemName && (
+                      <div style={styles.cardEventNameMl}>{group.itemNameMl}</div>
                     )}
                   </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isInBatch && batchItems.length >= 6) {
+                        alert('Maximum 6 frames can be loaded simultaneously in Multi-Frame Grid.');
+                        return;
+                      }
+                      toggleBatchItem(toBatchFrameItem(group));
+                    }}
+                    style={{
+                      ...styles.frameToggleBtn,
+                      backgroundColor: isInBatch ? '#0284c7' : '#0f172a',
+                      borderColor: isInBatch ? '#38bdf8' : '#334155',
+                      color: isInBatch ? '#ffffff' : '#94a3b8',
+                    }}
+                    title={isInBatch ? 'Remove from 6-Frame Grid' : 'Add to 6-Frame Grid'}
+                  >
+                    {isInBatch ? '✓ Grid' : '+ Frame'}
+                  </button>
                 </div>
-              );
-            })}
-          </div>
+
+                {/* Ranked participants */}
+                <div style={styles.cardRanks}>
+                  {group.results.slice(0, 3).map((r) => (
+                    <div key={r.result_id} style={styles.rankRow}>
+                      <span
+                        style={{
+                          ...styles.rankBadge,
+                          backgroundColor:
+                            r.rank === 1 ? '#422006' : r.rank === 2 ? '#1e293b' : '#3f2c00',
+                        }}
+                      >
+                        {r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : `#${r.rank}`}
+                      </span>
+                      <span style={styles.participantName}>{r.participant_name || '—'}</span>
+                      <span style={styles.orgName}>{r.organisation_name}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div style={styles.cardFooter}>
+                  <span
+                    style={{
+                      ...styles.statusPill,
+                      backgroundColor: group.isExported
+                        ? group.exportedVisibility === 'draft'
+                          ? '#1e293b'
+                          : '#064e3b'
+                        : '#451a1a',
+                      color: group.isExported
+                        ? group.exportedVisibility === 'draft'
+                          ? '#93c5fd'
+                          : '#34d399'
+                        : '#fca5a5',
+                    }}
+                  >
+                    {group.isExported
+                      ? group.exportedVisibility === 'draft'
+                        ? '✓ Saved as Draft'
+                        : '✓ Published Poster'
+                      : '⏳ Poster Pending'}
+                  </span>
+                  {isSelected && <span style={styles.bindingIndicator}>⚡ Bound</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
+      </div>
     </div>
   );
 }
@@ -257,33 +513,152 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   tabsRow: {
     display: 'flex',
     padding: '0 16px',
     borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
-    gap: 16,
+    gap: 14,
     alignItems: 'center',
     flexShrink: 0,
   },
   tabActive: {
-    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 600, color: coreColor('#38bdf8', 'info'), borderBottom: `2px solid ${coreColor('#38bdf8', 'border')}`, cursor: 'pointer'
+    background: 'none',
+    border: 'none',
+    padding: '12px 0',
+    fontSize: 12,
+    fontWeight: 700,
+    color: coreColor('#38bdf8', 'info'),
+    borderBottom: `2px solid ${coreColor('#38bdf8', 'border')}`,
+    cursor: 'pointer',
   },
   tabInactive: {
-    background: 'none', border: 'none', padding: '12px 0', fontSize: 13, fontWeight: 500, color: coreColor('#94A3B8', 'textSubtle'), borderBottom: '2px solid transparent', cursor: 'pointer'
+    background: 'none',
+    border: 'none',
+    padding: '12px 0',
+    fontSize: 12,
+    fontWeight: 500,
+    color: coreColor('#94A3B8', 'textSubtle'),
+    borderBottom: '2px solid transparent',
+    cursor: 'pointer',
   },
-  refreshBtn: { background: 'none', border: 'none', cursor: 'pointer', color: coreColor('#94A3B8', 'textSubtle'), fontSize: 16, padding: '4px', borderRadius: 6, marginLeft: 'auto' },
-  body: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 60 },
-  searchRow: { padding: '10px 16px', borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`, flexShrink: 0 },
+  refreshBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: coreColor('#94A3B8', 'textSubtle'),
+    fontSize: 16,
+    padding: '4px',
+    borderRadius: 6,
+    marginLeft: 'auto',
+  },
+  batchActionsBar: {
+    display: 'flex',
+    gap: 6,
+    padding: '10px 16px 6px 16px',
+    flexShrink: 0,
+  },
+  loadBatchBtn: {
+    flex: 1,
+    padding: '8px 10px',
+    borderRadius: 6,
+    border: 'none',
+    backgroundColor: '#0F766E',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  openGridBtn: {
+    padding: '8px 10px',
+    borderRadius: 6,
+    border: '1px solid #38bdf8',
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    color: '#38bdf8',
+    fontSize: 11,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  filterRow: {
+    display: 'flex',
+    gap: 6,
+    padding: '4px 16px 8px 16px',
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
+    flexShrink: 0,
+  },
+  filterChip: {
+    padding: '4px 8px',
+    borderRadius: 999,
+    border: '1px solid #334155',
+    backgroundColor: 'transparent',
+    color: coreColor('#94A3B8', 'textSubtle'),
+    fontSize: 10,
+    fontWeight: 600,
+    cursor: 'pointer',
+  },
+  filterChipActive: {
+    padding: '4px 8px',
+    borderRadius: 999,
+    border: '1px solid #38bdf8',
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    color: '#38bdf8',
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
+  body: {
+    flex: 1,
+    overflowY: 'auto',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingBottom: 60,
+  },
+  searchRow: {
+    padding: '10px 16px',
+    borderBottom: `1px solid ${coreColor('#2a2a2a', 'border')}`,
+    flexShrink: 0,
+  },
   searchInput: {
-    width: '100%', height: 32, padding: '0 12px', borderRadius: 6, border: `1px solid ${coreColor('#2a2a2a', 'border')}`, fontSize: 12, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), color: coreColor('#E2E8F0', 'text'), outline: 'none', boxSizing: 'border-box',
+    width: '100%',
+    height: 32,
+    padding: '0 12px',
+    borderRadius: 6,
+    border: `1px solid ${coreColor('#2a2a2a', 'border')}`,
+    fontSize: 12,
+    backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'),
+    color: coreColor('#E2E8F0', 'text'),
+    outline: 'none',
+    boxSizing: 'border-box',
   },
-  statusRow: { padding: '24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  statusRow: {
+    padding: '24px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   loadingText: { fontSize: 13, color: coreColor('#94A3B8', 'textSubtle') },
   emptyText: { fontSize: 13, color: coreColor('#64748B', 'textMuted'), textAlign: 'center', lineHeight: 1.6 },
-  errorRow: { padding: '12px 16px', backgroundColor: coreColor('#451a1a', 'surfaceStrong'), display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, color: coreColor('#fca5a5', 'danger') },
-  retryBtn: { padding: '4px 10px', borderRadius: 6, border: `1px solid ${coreColor('#7f1d1d', 'border')}`, backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), cursor: 'pointer', fontSize: 12, color: coreColor('#fca5a5', 'danger'), fontWeight: 600 },
+  errorRow: {
+    padding: '12px 16px',
+    backgroundColor: coreColor('#451a1a', 'surfaceStrong'),
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    fontSize: 13,
+    color: coreColor('#fca5a5', 'danger'),
+  },
+  retryBtn: {
+    padding: '4px 10px',
+    borderRadius: 6,
+    border: `1px solid ${coreColor('#7f1d1d', 'border')}`,
+    backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'),
+    cursor: 'pointer',
+    fontSize: 12,
+    color: coreColor('#fca5a5', 'danger'),
+    fontWeight: 600,
+  },
   grid: { display: 'flex', flexDirection: 'column', gap: 8, padding: 16 },
   card: {
     borderRadius: 8,
@@ -295,14 +670,76 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: 6,
   },
+  resultNoBadge: {
+    fontSize: 10,
+    fontWeight: 800,
+    color: coreColor('#38bdf8', 'info'),
+    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    padding: '2px 6px',
+    borderRadius: 4,
+  },
+  visBadge: {
+    fontSize: 9,
+    fontWeight: 700,
+    padding: '2px 6px',
+    borderRadius: 999,
+  },
+  frameToggleBtn: {
+    padding: '4px 8px',
+    borderRadius: 6,
+    border: '1px solid',
+    fontSize: 10,
+    fontWeight: 700,
+    cursor: 'pointer',
+    flexShrink: 0,
+  },
   cardEventName: { fontSize: 12, fontWeight: 600, color: coreColor('#E2E8F0', 'text'), lineHeight: 1.2 },
-  cardEventNameMl: { fontSize: 11, color: coreColor('#94A3B8', 'textSubtle'), fontFamily: 'Noto Sans Malayalam, sans-serif' },
+  cardEventNameMl: {
+    fontSize: 11,
+    color: coreColor('#94A3B8', 'textSubtle'),
+    fontFamily: 'Noto Sans Malayalam, sans-serif',
+  },
   cardRanks: { display: 'flex', flexDirection: 'column', gap: 2 },
   rankRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  rankBadge: { width: 22, height: 22, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 },
-  participantName: { flex: 1, fontSize: 11, fontWeight: 600, color: coreColor('#CBD5E1', 'text'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  orgName: { fontSize: 9, color: coreColor('#64748B', 'textMuted'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80 },
-  cardFooter: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 },
-  statusPill: { fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 999, letterSpacing: '0.02em' },
+  rankBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: 12,
+    flexShrink: 0,
+  },
+  participantName: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: 600,
+    color: coreColor('#CBD5E1', 'text'),
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  orgName: {
+    fontSize: 9,
+    color: coreColor('#64748B', 'textMuted'),
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    maxWidth: 80,
+  },
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  statusPill: {
+    fontSize: 9,
+    fontWeight: 700,
+    padding: '2px 6px',
+    borderRadius: 999,
+    letterSpacing: '0.02em',
+  },
   bindingIndicator: { fontSize: 9, fontWeight: 700, color: coreColor('#38bdf8', 'info') },
 };

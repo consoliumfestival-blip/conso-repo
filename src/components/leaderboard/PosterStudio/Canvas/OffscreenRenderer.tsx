@@ -1,6 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Stage, Layer, Text, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Text, Image as KonvaImage, Rect } from 'react-konva';
 import useImage from 'use-image';
+import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
+import { computeAutoShrinkFontSize, loadFont, ML_FONTS, EN_FONTS } from '../Utils/fontLoader';
+import { resolveLayerText } from '../Utils/resolver';
 
 function BackgroundImage({ src, width, height, transform }: { src: string; width: number; height: number; transform?: any }) {
   const [image] = useImage(src, 'anonymous');
@@ -20,21 +23,12 @@ function BackgroundImage({ src, width, height, transform }: { src: string; width
 export interface OffscreenRendererProps {
   layers: any[];
   variables: Record<string, string | undefined>;
-  onReady: (captureFunc: () => string) => void;
+  onReady: (captureFunc: (ratio?: number) => string) => void;
   width?: number;
   height?: number;
   backgroundUrl?: string;
   backgroundTransform?: any;
 }
-
-const resolveVariables = (text: string, vars: Record<string, string | undefined>) => {
-  return text.replace(/\{([^}]+)\}/g, (_match, key) => {
-    const val = vars[key];
-    return val !== undefined && val !== null ? val : '';
-  });
-};
-
-import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
 
 export default function OffscreenRenderer({
   layers,
@@ -51,17 +45,22 @@ export default function OffscreenRenderer({
   onReadyRef.current = onReady;
 
   const resolvedBgUrl = useResolvedImageUrl(backgroundUrl);
-  const [bgImage, bgStatus] = useImage(resolvedBgUrl || '', 'anonymous');
+  const [, bgStatus] = useImage(resolvedBgUrl || '', 'anonymous');
 
   useEffect(() => {
     let isMounted = true;
 
-    // Wait for background image (using the original backgroundUrl for presence check, but waiting on status)
-    if (backgroundUrl && bgStatus !== 'loaded') {
-      if (bgStatus === 'failed') {
-        console.warn('[OffscreenRenderer] BG image failed, continuing anyway');
-      } else {
-        return; // still loading
+    // Wait for background URL resolution and image load if a background URL is configured
+    if (backgroundUrl) {
+      if (!resolvedBgUrl) {
+        return; // still resolving r2:// presigned URL
+      }
+      if (bgStatus !== 'loaded') {
+        if (bgStatus === 'failed') {
+          console.warn('[OffscreenRenderer] BG image failed, continuing anyway');
+        } else {
+          return; // still loading
+        }
       }
     }
 
@@ -77,13 +76,18 @@ export default function OffscreenRenderer({
         )
       );
 
-      console.info('[OffscreenRenderer] Loading fonts:', usedFamilies);
+      // ── STEP 2: Preload known fonts via loadFont() so stylesheets & FontFace are registered ──
+      const knownFonts = [...ML_FONTS, ...EN_FONTS];
+      await Promise.allSettled(
+        usedFamilies.map((family) => {
+          const def = knownFonts.find((f) => f.family === family);
+          return def ? loadFont(def) : Promise.resolve('loaded');
+        })
+      );
 
-      // ── STEP 2: Wait for document.fonts.ready (fonts editor already loaded) ──
       try { await document.fonts.ready; } catch (_) {}
 
       // ── STEP 3: Explicitly request each weight variant via document.fonts.load ──
-      // This is instant for already-cached fonts (editor already loaded them)
       const weights = ['400', '700', '900', '300', '600', '800'];
       const fontLoadPromises = usedFamilies.flatMap((family) =>
         weights.map((w) =>
@@ -91,38 +95,40 @@ export default function OffscreenRenderer({
         )
       );
       await Promise.allSettled(fontLoadPromises);
-      console.info('[OffscreenRenderer] Font loading complete for:', usedFamilies);
 
-      // ── STEP 5: Force Konva stage redraw with loaded fonts ──
+      // ── STEP 4: Force Konva stage redraw with loaded fonts ──
       if (isMounted && stageRef.current && layerRef.current) {
         layerRef.current.batchDraw();
       }
 
-      // ── STEP 6: Wait for paint settle, then capture ──
+      // ── STEP 5: Wait for paint settle, then capture ──
       setTimeout(() => {
         if (!isMounted || !stageRef.current) return;
 
-        // Force another redraw right before capture
         if (layerRef.current) layerRef.current.batchDraw();
 
-        console.info('[OffscreenRenderer] All fonts ready — capturing stage');
-        const capture = () => {
+        const capture = (ratio?: number) => {
+          const maxDim = Math.max(width, height, 1);
+          const maxSafeRatio = 4096 / maxDim;
+          const requestedRatio = ratio ?? Math.min(2, maxSafeRatio);
+          const effectiveRatio = Math.max(0.25, Math.min(requestedRatio, maxSafeRatio));
           const dataUrl = stageRef.current.toDataURL({
-            pixelRatio: 4,
+            pixelRatio: effectiveRatio,
             mimeType: 'image/jpeg',
             quality: 0.95,
           });
-          console.info('[OffscreenRenderer] Captured dataURL length:', dataUrl?.length ?? 0);
           return dataUrl;
         };
         onReadyRef.current(capture);
-      }, 800); // short settle after batchDraw
+      }, 450);
     };
 
     run();
     return () => { isMounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [layers, variables, backgroundUrl, bgStatus]);
+  }, [layers, variables, backgroundUrl, resolvedBgUrl, bgStatus, width, height]);
+
+  const sortedLayers = [...layers].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
 
   return (
     <div
@@ -137,19 +143,22 @@ export default function OffscreenRenderer({
     >
       <Stage width={width} height={height} ref={stageRef}>
         <Layer ref={layerRef}>
+          {/* Base white canvas matching StudioCanvas */}
+          <Rect width={width} height={height} fill="#FFFFFF" listening={false} />
+
           {/* Background image */}
-          {backgroundUrl && (
+          {resolvedBgUrl && (
             <BackgroundImage
-              src={resolvedBgUrl || ''}
+              src={resolvedBgUrl}
               width={width}
               height={height}
               transform={backgroundTransform}
             />
           )}
 
-          {/* Layers */}
-          {layers.map((layer) => {
-            if (!layer.isVisible && layer.isVisible !== undefined) return null;
+          {/* Sorted Layers */}
+          {sortedLayers.map((layer) => {
+            if (layer.isVisible === false) return null;
 
             if (layer.type === 'background') {
               return (
@@ -163,40 +172,64 @@ export default function OffscreenRenderer({
             }
 
             if (layer.type === 'text') {
-              const resolvedText = resolveVariables(layer.text || '', variables);
+              const resolvedText = resolveLayerText(layer, variables);
 
               // Mirror exact fontStyle string used by StudioCanvas
-              const weight = layer.fontWeight ? String(layer.fontWeight) : '400';
+              const weight = layer.fontWeight ? String(layer.fontWeight) : '600';
               const italic = String(layer.fontStyle || '').includes('italic');
               let konvaFontStyle = weight;
               if (italic) konvaFontStyle = `${weight} italic`;
               if (weight === '400' && !italic) konvaFontStyle = 'normal';
 
-              // Mirror exact fontFamily fallback chain used by StudioCanvas
               const fontFamily = `"${layer.fontFamily || 'Poppins'}", "Noto Sans Malayalam", "Inter", sans-serif`;
+              const baseFontSize = layer.fontSize || 24;
+              const effectiveOverflow =
+                layer.overflowMode ||
+                (layer.dynamicBinding || layer.text?.includes('{') ? 'auto-shrink' : undefined);
+
+              const displayFontSize =
+                effectiveOverflow === 'auto-shrink' && layer.width
+                  ? computeAutoShrinkFontSize({
+                      text: resolvedText,
+                      fontFamily,
+                      baseFontSize,
+                      fontWeight: layer.fontWeight || 600,
+                      maxWidth: layer.width,
+                      maxHeight: layer.height,
+                      maxLines: layer.maxLines,
+                      lineHeight: layer.lineHeight || 1.2,
+                    })
+                  : baseFontSize;
 
               return (
                 <Text
                   key={layer.id}
                   x={layer.x}
                   y={layer.y}
-                  width={layer.width}
-                  height={layer.height}
+                  width={layer.width || undefined}
+                  height={layer.height || undefined}
                   text={resolvedText}
-                  fontSize={layer.fontSize || 24}
+                  fontSize={displayFontSize}
                   fontFamily={fontFamily}
                   fontStyle={konvaFontStyle}
                   fill={layer.fill || '#000000'}
+                  stroke={layer.stroke || undefined}
+                  strokeWidth={layer.strokeWidth || 0}
+                  shadowColor={layer.shadowColor || undefined}
+                  shadowBlur={layer.shadowBlur || 0}
+                  shadowOffsetX={layer.shadowOffsetX || 0}
+                  shadowOffsetY={layer.shadowOffsetY || 0}
                   align={layer.align || 'left'}
                   verticalAlign={layer.verticalAlign || 'top'}
                   lineHeight={layer.lineHeight || 1.2}
                   letterSpacing={layer.letterSpacing || 0}
                   textDecoration={layer.textDecoration || ''}
+                  wrap={effectiveOverflow === 'clip' ? 'none' : 'word'}
+                  ellipsis={effectiveOverflow === 'ellipsis'}
                   opacity={layer.opacity ?? 1}
                   rotation={layer.rotation ?? 0}
                   scaleX={layer.scaleX ?? 1}
                   scaleY={layer.scaleY ?? 1}
-                  wrap="word"
                 />
               );
             }

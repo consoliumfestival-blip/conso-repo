@@ -46,7 +46,7 @@ export function useProtectedRoute() {
   const inTeamLogin = inTeamGroup && pathname === '/team/login';
   const isTeamLeader = role === 'team_leader';
   const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
-  const isAnnouncerLink = /^\/announcer\/[0-9a-f]{64}\/?$/i.test(pathname);
+  const isAnnouncerLink = /^\/announcer\/(?:session\/)?[0-9a-f]{64}\/?$/i.test(pathname);
   const isReadonlyPortal = /^\/festival-view\/[0-9a-f-]{36}\/?$/i.test(pathname);
   const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal && !isReadonlyPortal);
   const isInstalledAdmin = Boolean(user && role === 'admin' && !is_superadmin);

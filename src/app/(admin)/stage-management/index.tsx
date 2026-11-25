@@ -841,7 +841,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Venue / Category</Text>
             <Text style={{ flex: 1 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Date & Time</Text>
             <Text style={{ flex: 1.3 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted">Workflow</Text>
-            <Text style={{ width: 235 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
+            <Text style={{ width: 300 }} className="font-poppins-bold text-[10px] uppercase tracking-wider text-ui-text-muted text-right">Actions</Text>
           </View>
           {filteredSchedules.map((schedule: any) => (
             <View key={schedule.id} className="min-h-16 px-4 py-2 flex-row items-center border-b border-ui-border bg-core-surface-white">
@@ -872,7 +872,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
               <View style={{ flex: 1.3 }} className="pr-3">
                 <ScheduleWorkflowBadges status={schedule.status} isShuffleLocked={schedule.is_shuffle_locked} registrations={getRegistrationsForSchedule(allRegistrations, schedule)} summary={optimizedRead ? summariesBySchedule.get(schedule.id) : undefined} />
               </View>
-              <View style={{ width: 235 }} className="flex-row justify-end gap-x-2">
+              <View style={{ width: 300 }} className="flex-row justify-end gap-x-2">
                 <TouchableOpacity
                   onPress={() => router.push(`/stage-management/${schedule.id}/checkin` as any)}
                   className="h-8 px-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
@@ -884,6 +884,12 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   className="h-8 px-3 rounded-lg bg-button-primary items-center justify-center"
                 >
                   <Text className="font-poppins-bold text-[9px] text-button-foreground">Code Letters</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push(`/stage-management/${schedule.id}/topics` as any)}
+                  className="h-8 px-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
+                >
+                  <Text className="font-poppins-bold text-[9px] text-ui-text">Topics</Text>
                 </TouchableOpacity>
                 <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
               </View>
@@ -923,6 +929,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <View className="mt-4 gap-2 border-t border-ui-border pt-3">
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/checkin` as any); }} className="h-12 flex-row items-center justify-between rounded-xl bg-button-primary px-4"><Text className="font-poppins-bold text-sm text-button-foreground">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'buttonForeground')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/code-letter` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/topics` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Topic Draw</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showStatusChoices }} onPress={() => setShowStatusChoices((value) => !value)} className="h-11 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-xs text-ui-text">Change status</Text><ChevronRight size={16} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               {showStatusChoices ? <View className="flex-row flex-wrap gap-2 pb-1">
                 {(['scheduled', 'ongoing', 'completed'] as const).map((status) => <TouchableOpacity key={status} accessibilityRole="button" accessibilityState={{ disabled: normalizeScheduleLifecycleStatus(actionSchedule.status) === status }} disabled={normalizeScheduleLifecycleStatus(actionSchedule.status) === status || stage.isSettingScheduleStatus} onPress={() => changeActionStatus(status)} className={`min-h-11 flex-1 items-center justify-center rounded-lg border border-ui-border px-2 ${normalizeScheduleLifecycleStatus(actionSchedule.status) === status ? 'bg-ui-muted opacity-60' : 'bg-core-surface-white'}`}><Text numberOfLines={1} className="font-poppins-bold text-[10px] text-ui-text">{getScheduleLifecycleLabel(status)}</Text></TouchableOpacity>)}

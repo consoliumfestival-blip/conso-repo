@@ -8,7 +8,7 @@ import { SsfCard } from '../../../components/ui/SsfCard';
 import { SsfButton } from '../../../components/ui/SsfButton';
 
 import { useSchedule } from '../../../core/hooks/useSchedule';
-import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, FileText, Share2, Copy, MessageCircle } from 'lucide-react-native';
+import { Calendar, MapPin, Plus, Clock, RotateCcw, UserCheck, Edit, Trash2, Search, X, LogIn, Shuffle, FilePenLine, Trophy, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, FileText, Share2, Copy, MessageCircle, ListChecks } from 'lucide-react-native';
 import { scheduleOverviewService, ScheduleWorkflowSummary } from '../../../services/scheduleOverviewService';
 import { participantService } from '../../../services/participantService';
 import { chanceSheetService } from '../../../services/chanceSheetService';
@@ -1339,6 +1339,22 @@ export default function ScheduleDashboard() {
                     <Share2 size={14} color={coreColor('#0F766E', 'buttonText')} />
                   </TouchableOpacity>
                   <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Configure topic draw for ${schedule.items?.item_name_en || 'event'}`}
+                    onPress={() => {
+                      if (schedule.is_shuffle_locked) {
+                        if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
+                        else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
+                        return;
+                      }
+                      router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
+                    }}
+                    className={`h-8 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2 ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
+                  >
+                    <ListChecks size={13} color={ui.colors.primaryText} />
+                    <Text className="font-poppins-bold text-[9px] text-ui-text">Topics</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     className={`h-8 w-8 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
                     onPress={() => {
                       if (schedule.is_shuffle_locked) {
@@ -1412,6 +1428,18 @@ export default function ScheduleDashboard() {
                     label: 'Share stage details',
                     icon: <Share2 size={15} color={coreColor('#0F766E', 'primaryText')} />,
                     onPress: () => void openScheduleShare(schedule),
+                  },
+                  {
+                    label: schedule.is_shuffle_locked ? 'Configure topic draw (locked)' : 'Configure topic draw',
+                    icon: <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} />,
+                    onPress: () => {
+                      if (schedule.is_shuffle_locked) {
+                        if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
+                        else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
+                        return;
+                      }
+                      router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
+                    },
                   },
                   {
                     label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',

@@ -41,12 +41,14 @@ export default function JudgeMarksPage() {
     const labels = new Map((data ?? []).map((row: any) => [row.id, {
       code_letter: row.code_letter,
       chest_number: row.participants?.chest_number ?? null,
+      topic_text: row.topic_text ?? null,
     }]));
     setRegistrations((current) => current.map((row) => {
       const label = labels.get(row.id);
       return label ? {
         ...row,
         code_letter: label.code_letter,
+        topic_text: label.topic_text,
         participants: { ...row.participants, chest_number: label.chest_number },
       } : row;
     }));
@@ -727,6 +729,7 @@ export default function JudgeMarksPage() {
                   <View>
                     <Text className="font-poppins-bold text-slate-900 text-sm">Code: {activeReg?.code_letter}</Text>
                     <Text className="font-poppins text-xs text-slate-500 mt-0.5">Chest number: {activeReg?.participants?.chest_number || '—'}</Text>
+                    {activeReg?.topic_text ? <Text accessibilityLabel="Selected topic" className="mt-1 font-poppins-bold text-sm text-slate-900">Topic: {activeReg.topic_text}</Text> : null}
                     <Text className="font-poppins text-xs text-slate-500 mt-0.5">
                       {allDone ? '🎉 Marked completely' : '⚠️ Pending scores'}
                     </Text>
@@ -973,6 +976,7 @@ export default function JudgeMarksPage() {
                     <View>
                       <Text className="font-poppins-bold text-ui-text text-sm">Code: {reg.code_letter}</Text>
                       <Text className="font-poppins text-ui-text-muted text-xs mt-0.5">Chest number: {reg.participants?.chest_number || '—'}</Text>
+                      {reg.topic_text ? <Text accessibilityLabel="Selected topic" className="font-poppins-bold text-ui-text text-xs mt-1">Topic: {reg.topic_text}</Text> : null}
                       {allDone && (
                         <View className="flex-row items-center gap-x-1 mt-0.5">
                           <CheckCircle2 size={12} color="#10B981" />

@@ -1289,20 +1289,29 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   async getJudgeRegistrationsByToken<T>(token: string): Promise<ListResult<T>> {
     // Token-bound RPC. The judge, schedule, tenant and festival are derived
     // server-side from the approved token; the caller cannot choose a schedule.
-    const { data, error } = await supabase.rpc('get_judge_registrations', {
+    const [{ data, error }, { data: topicRows, error: topicError }] = await Promise.all([
+      supabase.rpc('get_judge_registrations', {
       p_token: token.toUpperCase().trim(),
-    });
+      }),
+      supabase.rpc('get_judge_topic_assignments', {
+        p_token: token.toUpperCase().trim(),
+      }),
+    ]);
 
-    if (error) {
-      console.error('[getJudgeRegistrationsByToken] RPC error:', error);
-      return { data: [], error: normalizeError(error) };
+    if (error || topicError) {
+      const requestError = error || topicError;
+      console.error('[getJudgeRegistrationsByToken] RPC error:', requestError);
+      return { data: [], error: normalizeError(requestError) };
     }
+
+    const topicByRegistration = new Map(((topicRows as any[]) ?? []).map((row) => [row.registration_id, row.topic_text]));
 
     const mapped = ((data as any[]) ?? []).map((row) => ({
       id: row.id,
       item_id: row.item_id,
       tenant_id: row.tenant_id,
       code_letter: row.code_letter,
+      topic_text: topicByRegistration.get(row.id) ?? null,
       existing_mark: row.existing_mark ?? null,
       participants: {
         name: row.participant_name,

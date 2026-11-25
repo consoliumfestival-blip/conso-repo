@@ -15,6 +15,7 @@ import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 import { useScheduleParticipantConflictPreview } from '@/core/hooks/useScheduleParticipantConflictPreview';
 import { ScheduleParticipantConflictWarning } from '@/components/schedule/ScheduleParticipantConflictWarning';
+import { ScheduleTopicSetupModal } from '@/components/schedule/ScheduleTopicSetupModal';
 
 export default function EditSchedule() {
   const { id } = useLocalSearchParams();
@@ -37,6 +38,8 @@ export default function EditSchedule() {
   const [endTimeStr, setEndTimeStr] = useState('10:00');
   const [judgeCount, setJudgeCount] = useState(3);
   const [isPublicVisible, setIsPublicVisible] = useState(false);
+  const [isTopicDrawEnabled, setIsTopicDrawEnabled] = useState(false);
+  const [showTopicSetup, setShowTopicSetup] = useState(false);
 
   const participantConflictCandidates = React.useMemo(() => {
     if (!itemId || !startDate || !startTimeStr || !endDate || !endTimeStr) return [];
@@ -79,6 +82,7 @@ export default function EditSchedule() {
       
       setJudgeCount(schedule.expected_judge_count || 3);
       setIsPublicVisible(schedule.is_public_visible !== false);
+      setIsTopicDrawEnabled(schedule.topic_draw_enabled === true);
     }
   }, [schedule]);
 
@@ -153,6 +157,7 @@ export default function EditSchedule() {
           status: schedule?.status || 'scheduled',
           expected_judge_count: judgeCount,
           substage_config: normalizedSubstages(substages),
+          topic_draw_enabled: isTopicDrawEnabled,
           ...(schedule.is_public_visible !== undefined ? { is_public_visible: isPublicVisible } : {}),
         }
       });
@@ -302,6 +307,27 @@ export default function EditSchedule() {
           <Switch accessibilityLabel="Show schedule publicly" value={isPublicVisible} onValueChange={setIsPublicVisible} />
         </View>
 
+        <View className="flex-row items-center justify-between gap-3 rounded-lg border border-ui-border p-3">
+          <View className="flex-1">
+            <Text className="font-poppins-bold text-sm text-ui-text">Topic Draw</Text>
+            <Text className="font-poppins text-xs text-ui-text-muted">Draw a topic for each participant in Stage Management.</Text>
+          </View>
+          <Switch
+            accessibilityLabel="Enable Topic Draw for this schedule"
+            value={isTopicDrawEnabled}
+            onValueChange={(enabled) => {
+              setIsTopicDrawEnabled(enabled);
+              if (enabled) setShowTopicSetup(true);
+              else setShowTopicSetup(false);
+            }}
+          />
+        </View>
+        {isTopicDrawEnabled ? (
+          <TouchableOpacity accessibilityRole="button" onPress={() => setShowTopicSetup(true)} className="h-10 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Topics</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {supportsSubstages(items?.find((item: any) => item.id === itemId))
           ? <SubstageEditor stages={substages} onChange={setSubstages} /> : null}
 
@@ -360,6 +386,12 @@ export default function EditSchedule() {
           />
         </View>
       </SsfCard>
+
+      <ScheduleTopicSetupModal
+        visible={showTopicSetup}
+        scheduleId={scheduleId}
+        onClose={() => setShowTopicSetup(false)}
+      />
     </ScrollView>
   );
 }

@@ -17,6 +17,8 @@ import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { categorySubstageDefault, normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 import { useScheduleParticipantConflictPreview } from '@/core/hooks/useScheduleParticipantConflictPreview';
 import { ScheduleParticipantConflictWarning } from '@/components/schedule/ScheduleParticipantConflictWarning';
+import { ScheduleTopicSetupModal, type ScheduleTopicDraft } from '@/components/schedule/ScheduleTopicSetupModal';
+import { scheduleTopicDrawService } from '@/services/scheduleTopicDrawService';
 
 export default function CreateSchedule() {
   const router = useRouter();
@@ -51,6 +53,9 @@ export default function CreateSchedule() {
 
   const [judgeCount, setJudgeCount] = useState(3);
   const [isPublicVisible, setIsPublicVisible] = useState(false);
+  const [isTopicDrawEnabled, setIsTopicDrawEnabled] = useState(false);
+  const [showTopicSetup, setShowTopicSetup] = useState(false);
+  const [topicDrafts, setTopicDrafts] = useState<ScheduleTopicDraft[]>([]);
   
   // Custom dropdown state
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
@@ -137,16 +142,25 @@ export default function CreateSchedule() {
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.localStorage.setItem('ssf_last_schedule_date', startDate);
       }
-      await createSchedule({
+      const createdSchedule = await createSchedule({
         item_id: itemId,
         venue_id: venueId || null,
         start_time: startDateTime.toISOString(),
         end_time: endDateTime.toISOString(),
         status: 'scheduled',
         expected_judge_count: judgeCount,
+        topic_draw_enabled: isTopicDrawEnabled,
         ...(supportsSubstages(selectedItem) ? { substage_config: normalizedSubstages(substages) } : {}),
         ...(isPublicVisible ? { is_public_visible: true } : {}),
       });
+      const validTopicDrafts = topicDrafts.filter((topic) => topic.topic_text.trim());
+      if (isTopicDrawEnabled && validTopicDrafts.length) {
+        try {
+          await scheduleTopicDrawService.saveTopics(createdSchedule.id, validTopicDrafts);
+        } catch (topicError: any) {
+          showAlert('Schedule saved', `Topic Draw is enabled, but topics could not be saved. Open Edit Schedule to retry. ${topicError?.message || ''}`);
+        }
+      }
       goBack();
     } catch (error: any) {
       if ((error?.code === '23505' || String(error?.message ?? '').includes('duplicate key value'))
@@ -249,6 +263,27 @@ export default function CreateSchedule() {
           <Switch accessibilityLabel="Show schedule publicly" value={isPublicVisible} onValueChange={setIsPublicVisible} />
         </View>
 
+        <View className="flex-row items-center justify-between gap-3 rounded-lg border border-ui-border p-3">
+          <View className="flex-1">
+            <Text className="font-poppins-bold text-sm text-ssf-text">Topic Draw</Text>
+            <Text className="font-poppins text-xs text-ssf-text-muted">Allow Stage Management to draw a topic for each participant.</Text>
+          </View>
+          <Switch
+            accessibilityLabel="Enable Topic Draw for this schedule"
+            value={isTopicDrawEnabled}
+            onValueChange={(enabled) => {
+              setIsTopicDrawEnabled(enabled);
+              if (enabled) setShowTopicSetup(true);
+              else setShowTopicSetup(false);
+            }}
+          />
+        </View>
+        {isTopicDrawEnabled ? (
+          <TouchableOpacity accessibilityRole="button" onPress={() => setShowTopicSetup(true)} className="h-10 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white">
+            <Text className="font-poppins-bold text-xs text-ui-primary-text">Topics{topicDrafts.length ? ` · ${topicDrafts.length}` : ''}</Text>
+          </TouchableOpacity>
+        ) : null}
+
         {supportsSubstages(selectedItem) ? <SubstageEditor stages={substages} onChange={setSubstages} /> : null}
 
         {/* Judge Count Selector */}
@@ -297,6 +332,13 @@ export default function CreateSchedule() {
           className="mt-4"
         />
       </SsfCard>
+
+      <ScheduleTopicSetupModal
+        visible={showTopicSetup}
+        draftTopics={topicDrafts}
+        onDraftTopicsChange={setTopicDrafts}
+        onClose={() => setShowTopicSetup(false)}
+      />
     </ScrollView>
   );
 }

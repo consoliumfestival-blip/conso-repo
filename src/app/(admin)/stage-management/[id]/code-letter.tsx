@@ -2,18 +2,19 @@ import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform, TextInput, useWindowDimensions } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SsfCard } from '../../../../components/ui/SsfCard';
 import { SsfButton } from '../../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../../core/hooks/useStageManagement';
 import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
-import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users } from 'lucide-react-native';
+import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users, ListChecks } from 'lucide-react-native';
 import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '../../../../core/utils/codeLetters';
 
 export default function CodeLetterGeneration() {
   const { id } = useLocalSearchParams();
   const scheduleId = Array.isArray(id) ? id[0] : id;
+  const router = useRouter();
   const goBack = useGoBack('/stage-management');
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -235,6 +236,9 @@ export default function CodeLetterGeneration() {
             <Text className="font-poppins-black text-base text-ssf-text">Code Letters</Text>
             <Text numberOfLines={1} className="font-poppins text-xs text-ssf-text-muted">{schedule.items?.item_name_en}</Text>
           </View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/topics` as any)} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2.5">
+            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[10px] text-ui-primary-text">Topics</Text>
+          </TouchableOpacity>
         </View>
 
         {isShuffleLocked ? (
@@ -332,6 +336,9 @@ export default function CodeLetterGeneration() {
             <Text className="text-2xl font-poppins-black text-ssf-text">Code Letters</Text>
             <Text className="font-poppins text-ssf-text-muted">{schedule.items?.item_name_en}</Text>
           </View>
+          <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/topics` as any)} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3">
+            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-xs text-ui-primary-text">Topic Draw</Text>
+          </TouchableOpacity>
         </View>
 
         {isShuffleLocked && (

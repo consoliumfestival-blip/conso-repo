@@ -85,7 +85,9 @@ const toMinutes = (value: TimeParts): number | null => {
 
 const toDateTime = (date: string, value: TimeParts): Date | null => {
   const normalized = to24Hour(value);
-  return normalized ? new Date(`${date}T${normalized}:00`) : null;
+  if (!normalized || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const result = new Date(`${date}T${normalized}:00`);
+  return Number.isFinite(result.getTime()) && toLocalDate(result) === date ? result : null;
 };
 
 const getBreakTimeError = (entry: BreakRule): string | null => {
@@ -186,7 +188,7 @@ const showMessage = (title: string, message: string) => {
 export default function BulkCreateSchedule() {
   const router = useRouter();
   const { width } = useWindowDimensions();
-  const { venues, schedules, createSchedules } = useSchedule();
+  const { venues, schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, createSchedules } = useSchedule();
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival } = useActiveFestival();
   const { data: items = [], isLoading } = useItems(festival?.id);
@@ -198,7 +200,7 @@ export default function BulkCreateSchedule() {
   const [venueId, setVenueId] = React.useState('');
   const [date, setDate] = React.useState(() => toLocalDate(new Date()));
   const [startTime, setStartTime] = React.useState<TimeParts>(defaultStartTime);
-  const [bufferMinutes, setBufferMinutes] = React.useState('0');
+  const [bufferMinutes, setBufferMinutes] = React.useState('1');
   const [judgeCount, setJudgeCount] = React.useState('3');
   const [breaks, setBreaks] = React.useState<BreakRule[]>([]);
   const [durationOverrides, setDurationOverrides] = React.useState<Record<string, string>>({});
@@ -248,18 +250,30 @@ export default function BulkCreateSchedule() {
       .sort((a: any, b: any) => String(a.item_code || '').localeCompare(String(b.item_code || '')));
   }, [items, category, scheduleFilter, schedules, search]);
 
-  const selectedItems = React.useMemo(
-    () => items
-      .filter((item: any) => selectedIds.has(item.id))
-      .sort((a: any, b: any) => String(a.item_code || '').localeCompare(String(b.item_code || ''))),
-    [items, selectedIds],
-  );
+  // Set keeps selection order. Sorting here would move an earlier slot whenever
+  // a newly selected item has a lower code.
+  const selectedItems = React.useMemo(() => {
+    const itemsById = new Map(items.map((item: any) => [item.id, item]));
+    return Array.from(selectedIds)
+      .map((id) => itemsById.get(id))
+      .filter((item): item is (typeof items)[number] => Boolean(item));
+  }, [items, selectedIds]);
+  const parsedBufferMinutes = Number(bufferMinutes);
+  const effectiveBufferMinutes = Number.isFinite(parsedBufferMinutes)
+    ? Math.max(1, Math.trunc(parsedBufferMinutes))
+    : 1;
+  const parsedJudgeCount = Number(judgeCount);
+  const invalidJudgeCount = !Number.isInteger(parsedJudgeCount) || parsedJudgeCount < 1 || parsedJudgeCount > 5;
+  const invalidDurations = selectedItems.some((item: any) => {
+    const value = Number(durationOverrides[item.id] ?? item.duration_minutes ?? 15);
+    return !Number.isFinite(value) || !Number.isInteger(value) || value < 1;
+  });
 
   const preview = React.useMemo<PreviewRow[]>(() => {
     const startDateTime = toDateTime(date, startTime);
-    if (!date || !startDateTime) return [];
+    if (!date || !startDateTime || invalidDurations) return [];
     let cursor = startDateTime;
-    const buffer = Math.max(0, Number(bufferMinutes) || 0);
+    const buffer = effectiveBufferMinutes;
     const validBreaks = breaks
       .map((entry) => {
         const start = toDateTime(date, entry.startTime);
@@ -293,7 +307,7 @@ export default function BulkCreateSchedule() {
       cursor = new Date(end.getTime() + buffer * 60_000);
       return { item, start, end, duration, conflict, duplicate, shiftedBy };
     });
-  }, [breaks, bufferMinutes, date, durationOverrides, schedules, selectedItems, startTime, venueId]);
+  }, [breaks, effectiveBufferMinutes, date, durationOverrides, invalidDurations, schedules, selectedItems, startTime, venueId]);
 
   const selectableVisibleItems = visibleItems.filter(
     (item: any) => !schedules.some((schedule: any) => schedule.item_id === item.id),
@@ -363,8 +377,20 @@ export default function BulkCreateSchedule() {
   };
 
   const handleCreateAll = async () => {
+    if (isLoadingSchedules || isErrorSchedules) {
+      showMessage('Schedules unavailable', 'Reload the existing schedules before bulk creation.');
+      return;
+    }
+    if (selectedItems.length > 200) {
+      showMessage('Too many items', 'Select no more than 200 items in one bulk request.');
+      return;
+    }
+    if (invalidJudgeCount || invalidDurations) {
+      showMessage('Invalid values', 'Judges must be a whole number from 1 to 5, and each duration must be a positive whole number.');
+      return;
+    }
     if (!festival?.id || !date || !to24Hour(startTime) || preview.length === 0) {
-      showMessage('Missing details', 'Select items, date, and a complete start time (hour, minute, and AM/PM).');
+      showMessage('Missing details', 'Select items, a valid date, and a complete start time (hour, minute, and AM/PM).');
       return;
     }
     if (hasInvalidBreaks || hasOverlappingBreaks) {
@@ -396,8 +422,8 @@ export default function BulkCreateSchedule() {
           start_time: row.start.toISOString(),
           end_time: row.end.toISOString(),
           status: 'scheduled',
-          buffer_minutes: Math.max(0, Number(bufferMinutes) || 0),
-          expected_judge_count: Math.max(1, Number(judgeCount) || 3),
+          buffer_minutes: effectiveBufferMinutes,
+          expected_judge_count: parsedJudgeCount,
           bulk_break_context: breakContext,
       }));
       const createdRows = await createSchedules({ festivalId: festival.id, payloads });
@@ -432,6 +458,12 @@ export default function BulkCreateSchedule() {
 
   return (
     <ScrollView className="flex-1 bg-ui-bg px-3 py-3">
+      {isErrorSchedules ? (
+        <View className="mb-3 flex-row items-center gap-x-2 rounded-lg border border-core-danger-soft-red-200 bg-core-danger-soft-red-50 p-3">
+          <Text className="flex-1 font-poppins text-xs text-core-danger-red-700">Existing schedules could not be loaded. Bulk creation is paused to prevent duplicates.</Text>
+          <SsfButton label="Retry" size="sm" variant="outline" onPress={() => { void refetchSchedules(); }} />
+        </View>
+      ) : isLoadingSchedules ? <Text className="mb-3 font-poppins text-xs text-ui-text-muted">Loading existing schedules…</Text> : null}
       <View className="flex-row items-center justify-between mb-5">
         <View className="flex-row items-center">
           <TouchableOpacity onPress={() => router.back()} className="h-10 w-10 rounded-xl bg-core-surface-white border border-ui-border items-center justify-center mr-3">
@@ -769,6 +801,14 @@ export default function BulkCreateSchedule() {
         </View>
       )}
 
+      {(selectedItems.length > 200 || invalidJudgeCount || invalidDurations) && (
+        <Text className="mb-3 font-poppins text-xs text-core-danger-red-700">
+          {selectedItems.length > 200 ? 'Select no more than 200 items. ' : ''}
+          {invalidJudgeCount ? 'Judges must be a whole number from 1 to 5. ' : ''}
+          {invalidDurations ? 'Each selected item needs a positive whole-number duration.' : ''}
+        </Text>
+      )}
+
       <View className="bg-core-surface-white border border-ui-border rounded-xl p-4 flex-row items-center justify-between gap-4 mb-16">
         <View>
           <Text className="font-poppins-black text-ui-text">{selectedItems.length} items selected</Text>
@@ -785,7 +825,7 @@ export default function BulkCreateSchedule() {
           label={isSaving ? 'Creating...' : `Create ${selectedItems.length} Schedules`}
           icon={isSaving ? undefined : <WandSparkles size={15} color={ui.colors.onPrimary} />}
           onPress={handleCreateAll}
-          disabled={isSaving || selectedItems.length === 0 || !to24Hour(startTime) || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks}
+          disabled={isSaving || isLoadingSchedules || isErrorSchedules || selectedItems.length === 0 || selectedItems.length > 200 || !toDateTime(date, startTime) || invalidJudgeCount || invalidDurations || hasDuplicates || hasInvalidBreaks || hasOverlappingBreaks}
         />
       </View>
     </ScrollView>

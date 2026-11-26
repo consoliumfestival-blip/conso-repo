@@ -1073,6 +1073,16 @@ export default function JudgesPage() {
                     ) : (
                       <Text className="font-poppins text-xs text-core-text-muted-gray-400 italic mb-2">No judges assigned</Text>
                     )}
+                    {schedule.venue_id ? (
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        accessibilityLabel={`Open stage topic display link for ${schedule.venues?.name || 'stage'}`}
+                        onPress={() => router.push(`/stage-management/display/${schedule.venue_id}` as any)}
+                        className="mt-2 self-start rounded-lg border border-ui-border bg-core-surface-white px-3 py-2"
+                      >
+                        <Text className="font-poppins-bold text-xs text-ui-text">Stage display link & QR</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     
                     <TouchableOpacity 
                       className="mt-3 flex-row items-center justify-center gap-x-1 border border-dashed border-core-border-gray-300 py-2 rounded-lg"
@@ -1134,6 +1144,16 @@ export default function JudgesPage() {
                       <View className="bg-core-info-soft-blue-50 self-start px-2.5 py-1 rounded-lg border border-core-info-soft-blue-100">
                         <Text className="font-poppins text-[10px] text-core-info-blue-700" numberOfLines={1}>{schedule.venues?.name || 'N/A'}</Text>
                       </View>
+                      {schedule.venue_id ? (
+                        <TouchableOpacity
+                          accessibilityRole="button"
+                          accessibilityLabel={`Open stage topic display link for ${schedule.venues?.name || 'stage'}`}
+                          onPress={() => router.push(`/stage-management/display/${schedule.venue_id}` as any)}
+                          className="mt-2 self-start rounded-lg border border-ui-border bg-core-surface-white px-2 py-1.5"
+                        >
+                          <Text className="font-poppins-bold text-[10px] text-ui-text">Stage display & QR</Text>
+                        </TouchableOpacity>
+                      ) : null}
                     </View>
                     <View className="flex-1 gap-y-2">
                       {schedule.assigned_judge_ids && schedule.assigned_judge_ids.length > 0 ? (

@@ -19,6 +19,7 @@ import { useScheduleParticipantConflictPreview } from '@/core/hooks/useScheduleP
 import { ScheduleParticipantConflictWarning } from '@/components/schedule/ScheduleParticipantConflictWarning';
 import { ScheduleTopicSetupModal, type ScheduleTopicDraft } from '@/components/schedule/ScheduleTopicSetupModal';
 import { scheduleTopicDrawService } from '@/services/scheduleTopicDrawService';
+import { DEFAULT_TOPIC_DURATION_MINUTES, topicDurationMinutesToSeconds, topicPoolsMatch } from '@/core/utils/scheduleTopicSetup';
 
 export default function CreateSchedule() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function CreateSchedule() {
   const { width } = useWindowDimensions();
   const isCompactLayout = width < 640;
   
-  const { venues, schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, createSchedule, isCreatingSchedule } = useSchedule();
+  const { venues, schedules, isLoadingSchedules, isErrorSchedules, refetchSchedules, createSchedule, isCreatingSchedule, updateSchedule } = useSchedule();
   const { useActiveFestival, useItems } = useFestival();
   const { data: festival } = useActiveFestival();
   const { data: items, isLoading: isLoadingItems } = useItems(festival?.id);
@@ -56,6 +57,10 @@ export default function CreateSchedule() {
   const [isTopicDrawEnabled, setIsTopicDrawEnabled] = useState(false);
   const [showTopicSetup, setShowTopicSetup] = useState(false);
   const [topicDrafts, setTopicDrafts] = useState<ScheduleTopicDraft[]>([]);
+  const [topicDurationMinutes, setTopicDurationMinutes] = useState(String(DEFAULT_TOPIC_DURATION_MINUTES));
+  const [pendingTopicSetupScheduleId, setPendingTopicSetupScheduleId] = useState<string | null>(null);
+  const [topicSetupError, setTopicSetupError] = useState('');
+  const [isFinishingTopicSetup, setIsFinishingTopicSetup] = useState(false);
   
   // Custom dropdown state
   const [isItemDropdownOpen, setIsItemDropdownOpen] = useState(false);
@@ -103,7 +108,38 @@ export default function CreateSchedule() {
     }
   };
 
+  const finishCreatedScheduleTopicSetup = async (scheduleId: string, durationSeconds: number) => {
+    const state = await scheduleTopicDrawService.getState(scheduleId);
+    if (!topicPoolsMatch(state.topics, topicDrafts)
+      || state.participant_duration_seconds !== durationSeconds) {
+      await scheduleTopicDrawService.saveTopics(scheduleId, topicDrafts, durationSeconds);
+    }
+    await updateSchedule({ id: scheduleId, payload: { topic_draw_enabled: true } });
+  };
+
   const handleSave = async () => {
+    const topicDurationSeconds = isTopicDrawEnabled
+      ? topicDurationMinutesToSeconds(topicDurationMinutes)
+      : null;
+    if (isTopicDrawEnabled && topicDurationSeconds === null) {
+      return showAlert('Invalid participant time', 'Enter a whole number of minutes from 1 to 1,440.');
+    }
+
+    if (pendingTopicSetupScheduleId) {
+      setTopicSetupError('');
+      setIsFinishingTopicSetup(true);
+      try {
+        await finishCreatedScheduleTopicSetup(pendingTopicSetupScheduleId, topicDurationSeconds!);
+        setPendingTopicSetupScheduleId(null);
+        goBack();
+      } catch (error: any) {
+        setTopicSetupError(`The schedule was created, but Topic Draw setup is still incomplete. Retry to finish it. ${error?.message || ''}`);
+      } finally {
+        setIsFinishingTopicSetup(false);
+      }
+      return;
+    }
+
     if (!itemId || !startDate || !startTimeStr || !endDate || !endTimeStr) {
       return showAlert('Error', 'Please fill all fields');
     }
@@ -149,16 +185,23 @@ export default function CreateSchedule() {
         end_time: endDateTime.toISOString(),
         status: 'scheduled',
         expected_judge_count: judgeCount,
-        topic_draw_enabled: isTopicDrawEnabled,
+        // Keep Topic Draw off until its topic pool and duration are saved.
+        topic_draw_enabled: false,
+        ...(topicDurationSeconds !== null ? { topic_draw_duration_seconds: topicDurationSeconds } : {}),
         ...(supportsSubstages(selectedItem) ? { substage_config: normalizedSubstages(substages) } : {}),
         ...(isPublicVisible ? { is_public_visible: true } : {}),
       });
-      const validTopicDrafts = topicDrafts.filter((topic) => topic.topic_text.trim());
-      if (isTopicDrawEnabled && validTopicDrafts.length) {
+      if (isTopicDrawEnabled) {
+        setPendingTopicSetupScheduleId(createdSchedule.id);
+        setIsFinishingTopicSetup(true);
         try {
-          await scheduleTopicDrawService.saveTopics(createdSchedule.id, validTopicDrafts);
+          await finishCreatedScheduleTopicSetup(createdSchedule.id, topicDurationSeconds!);
+          setPendingTopicSetupScheduleId(null);
         } catch (topicError: any) {
-          showAlert('Schedule saved', `Topic Draw is enabled, but topics could not be saved. Open Edit Schedule to retry. ${topicError?.message || ''}`);
+          setTopicSetupError(`The schedule was created, but Topic Draw setup is still incomplete. Retry to finish it. ${topicError?.message || ''}`);
+          return;
+        } finally {
+          setIsFinishingTopicSetup(false);
         }
       }
       goBack();
@@ -271,6 +314,7 @@ export default function CreateSchedule() {
           <Switch
             accessibilityLabel="Enable Topic Draw for this schedule"
             value={isTopicDrawEnabled}
+            disabled={!!pendingTopicSetupScheduleId || isFinishingTopicSetup}
             onValueChange={(enabled) => {
               setIsTopicDrawEnabled(enabled);
               if (enabled) setShowTopicSetup(true);
@@ -325,10 +369,11 @@ export default function CreateSchedule() {
           error={participantConflictPreview.error as Error | null}
         />
 
+        {topicSetupError ? <Text accessibilityLiveRegion="polite" className="font-poppins text-xs text-core-danger-red-700">{topicSetupError}</Text> : null}
         <SsfButton 
-          label={isCreatingSchedule ? 'Saving...' : 'Create Schedule'}
+          label={isFinishingTopicSetup ? 'Saving Topic Draw...' : pendingTopicSetupScheduleId ? 'Retry Topic Draw Setup' : isCreatingSchedule ? 'Saving...' : 'Create Schedule'}
           onPress={handleSave} 
-          disabled={isCreatingSchedule || isLoadingSchedules || isErrorSchedules || !!(conflicts && Platform.OS !== 'web')}
+          disabled={isCreatingSchedule || isFinishingTopicSetup || (!pendingTopicSetupScheduleId && (isLoadingSchedules || isErrorSchedules || !!(conflicts && Platform.OS !== 'web')))}
           className="mt-4"
         />
       </SsfCard>
@@ -336,7 +381,9 @@ export default function CreateSchedule() {
       <ScheduleTopicSetupModal
         visible={showTopicSetup}
         draftTopics={topicDrafts}
+        draftDurationMinutes={topicDurationMinutes}
         onDraftTopicsChange={setTopicDrafts}
+        onDraftDurationMinutesChange={setTopicDurationMinutes}
         onClose={() => setShowTopicSetup(false)}
       />
     </ScrollView>

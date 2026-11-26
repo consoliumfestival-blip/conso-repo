@@ -1,24 +1,41 @@
 import { Modal } from '@/components/ui/CoreModal';
 import { SsfButton } from '@/components/ui/SsfButton';
 import { scheduleTopicDrawService, type ScheduleTopic } from '@/services/scheduleTopicDrawService';
+import {
+  DEFAULT_TOPIC_DURATION_MINUTES,
+  MAX_TOPIC_DURATION_MINUTES,
+  topicDurationMinutesToSeconds,
+} from '@/core/utils/scheduleTopicSetup';
 import { Plus, Trash2, X } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export type ScheduleTopicDraft = { id?: string; topic_text: string; is_active?: boolean };
+const EMPTY_TOPIC_DRAFTS: ScheduleTopicDraft[] = [];
 
 type Props = {
   visible: boolean;
   scheduleId?: string | null;
   draftTopics?: ScheduleTopicDraft[];
+  draftDurationMinutes?: string;
   onDraftTopicsChange?: (topics: ScheduleTopicDraft[]) => void;
+  onDraftDurationMinutesChange?: (minutes: string) => void;
   onClose: () => void;
 };
 
 const containsArabic = (value: string) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/.test(value);
 
-export function ScheduleTopicSetupModal({ visible, scheduleId, draftTopics = [], onDraftTopicsChange, onClose }: Props) {
+export function ScheduleTopicSetupModal({
+  visible,
+  scheduleId,
+  draftTopics = EMPTY_TOPIC_DRAFTS,
+  draftDurationMinutes = String(DEFAULT_TOPIC_DURATION_MINUTES),
+  onDraftTopicsChange,
+  onDraftDurationMinutesChange,
+  onClose,
+}: Props) {
   const [topics, setTopics] = useState<ScheduleTopicDraft[]>(draftTopics);
+  const [durationMinutes, setDurationMinutes] = useState(draftDurationMinutes);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -28,20 +45,24 @@ export function ScheduleTopicSetupModal({ visible, scheduleId, draftTopics = [],
     setError('');
     if (!scheduleId) {
       setTopics(draftTopics.length ? draftTopics : [{ topic_text: '' }]);
+      setDurationMinutes(draftDurationMinutes);
       return;
     }
     let current = true;
     setLoading(true);
     scheduleTopicDrawService.getState(scheduleId)
       .then((state) => {
-        if (current) setTopics(state.topics.map((topic: ScheduleTopic) => ({ id: topic.id, topic_text: topic.topic_text, is_active: topic.is_active })));
+        if (current) {
+          setTopics(state.topics.map((topic: ScheduleTopic) => ({ id: topic.id, topic_text: topic.topic_text, is_active: topic.is_active })));
+          setDurationMinutes(String(Math.floor(state.participant_duration_seconds / 60)));
+        }
       })
       .catch((loadError: any) => {
         if (current) setError(loadError?.message || 'Could not load topics.');
       })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
-  }, [visible, scheduleId, draftTopics]);
+  }, [visible, scheduleId, draftTopics, draftDurationMinutes]);
 
   const updateTopic = (index: number, topic_text: string) => {
     setTopics((current) => current.map((topic, currentIndex) => currentIndex === index ? { ...topic, topic_text } : topic));
@@ -53,12 +74,17 @@ export function ScheduleTopicSetupModal({ visible, scheduleId, draftTopics = [],
 
   const save = async () => {
     setError('');
+    const durationSeconds = topicDurationMinutesToSeconds(durationMinutes);
+    if (durationSeconds === null) {
+      setError(`Enter a whole number of minutes from 1 to ${MAX_TOPIC_DURATION_MINUTES.toLocaleString()}.`);
+      return;
+    }
     const cleanTopics = topics.map((topic) => ({ ...topic, topic_text: topic.topic_text.trim() })).filter((topic) => topic.topic_text);
-    if (scheduleId && cleanTopics.length) {
+    if (scheduleId) {
       setSaving(true);
       try {
         const persisted = cleanTopics.map((topic) => topic.id ? topic : ({ topic_text: topic.topic_text }));
-        const saved = await scheduleTopicDrawService.saveTopics(scheduleId, persisted as any);
+        const saved = await scheduleTopicDrawService.saveTopics(scheduleId, persisted as any, durationSeconds);
         setTopics(saved);
         onClose();
       } catch (saveError: any) {
@@ -69,6 +95,7 @@ export function ScheduleTopicSetupModal({ visible, scheduleId, draftTopics = [],
       return;
     }
     onDraftTopicsChange?.(cleanTopics.map(({ id, topic_text }) => ({ ...(id ? { id } : {}), topic_text })));
+    onDraftDurationMinutesChange?.(durationMinutes);
     onClose();
   };
 
@@ -91,6 +118,21 @@ export function ScheduleTopicSetupModal({ visible, scheduleId, draftTopics = [],
             <View className="min-h-36 items-center justify-center"><ActivityIndicator /><Text className="mt-2 font-poppins text-xs text-ui-text-muted">Loading topics…</Text></View>
           ) : (
             <ScrollView className="px-4 py-3" keyboardShouldPersistTaps="handled">
+              <View className="mb-3">
+                <Text className="mb-1 font-poppins-bold text-xs text-ui-text">Time per participant (minutes) *</Text>
+                <TextInput
+                  value={durationMinutes}
+                  onChangeText={setDurationMinutes}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  maxLength={4}
+                  accessibilityLabel="Time per participant in minutes"
+                  placeholder="5"
+                  placeholderTextColor="#64748B"
+                  className="h-10 rounded-lg border border-ui-border bg-core-surface-white px-3 font-poppins text-sm text-ui-text"
+                />
+                <Text className="mt-1 font-poppins text-[10px] text-ui-text-muted">From 1 minute to 24 hours. The timer starts when the topic is shown.</Text>
+              </View>
               {topics.map((topic, index) => {
                 const rtl = containsArabic(topic.topic_text);
                 return (

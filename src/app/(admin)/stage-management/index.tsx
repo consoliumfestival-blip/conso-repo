@@ -22,6 +22,7 @@ import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '../
 import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import type { StageRegistrationSummary } from '../../../services/stageManagementService';
 import { stageManagementService } from '../../../services/stageManagementService';
+import { StageTopicControlModal } from '@/components/stage/StageTopicControlModal';
 import { useQuery } from '@tanstack/react-query';
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
@@ -160,7 +161,10 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [showStatusChoices, setShowStatusChoices] = React.useState(false);
   const [scheduleFilterNow, setScheduleFilterNow] = React.useState(() => Date.now());
   const [copiedVenueId, setCopiedVenueId] = React.useState<string | null>(null);
+  const [topicVenueId, setTopicVenueId] = React.useState<string | null>(null);
   const actionSchedule = schedules.find((row: any) => row.id === actionScheduleId) ?? null;
+  const topicVenue = venues.find((venue: any) => venue.id === topicVenueId);
+  const topicVenueSchedules = schedules.filter((schedule: any) => schedule.venue_id === topicVenueId);
 
   React.useEffect(() => {
     const interval = setInterval(() => setScheduleFilterNow(Date.now()), 60_000);
@@ -458,6 +462,22 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                       <Text className={`ml-1.5 font-poppins-bold text-xs ${copied ? 'text-core-success-green-700' : 'text-ui-text'}`}>{copied ? 'Copied' : 'Copy link'}</Text>
                     </TouchableOpacity>
                   </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open topic display link for ${venue.name}`}
+                    onPress={() => router.push(`/stage-management/display/${venue.id}` as any)}
+                    className="mt-2 h-9 items-center justify-center rounded-lg border border-white/80 bg-core-surface-white"
+                  >
+                    <Text className="font-poppins-bold text-xs text-ui-text">Topic display link & QR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Manage topics for ${venue.name}`}
+                    onPress={() => setTopicVenueId(venue.id)}
+                    className="mt-2 h-9 items-center justify-center rounded-lg border border-white/80 bg-core-surface-white"
+                  >
+                    <Text className="font-poppins-bold text-xs text-ui-text">Draw & Show Next</Text>
+                  </TouchableOpacity>
                 </SsfCard>
               );
             })}
@@ -886,7 +906,8 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   <Text className="font-poppins-bold text-[9px] text-button-foreground">Code Letters</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => router.push(`/stage-management/${schedule.id}/topics` as any)}
+                  onPress={() => schedule.venue_id && setTopicVenueId(schedule.venue_id)}
+                  disabled={!schedule.venue_id}
                   className="h-8 px-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
                 >
                   <Text className="font-poppins-bold text-[9px] text-ui-text">Topics</Text>
@@ -929,7 +950,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <View className="mt-4 gap-2 border-t border-ui-border pt-3">
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/checkin` as any); }} className="h-12 flex-row items-center justify-between rounded-xl bg-button-primary px-4"><Text className="font-poppins-bold text-sm text-button-foreground">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'buttonForeground')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/code-letter` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/topics` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Topic Draw</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { setTopicVenueId(actionSchedule.venue_id); setActionScheduleId(null); }} disabled={!actionSchedule.venue_id} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Topic Draw & Show Next</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showStatusChoices }} onPress={() => setShowStatusChoices((value) => !value)} className="h-11 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-xs text-ui-text">Change status</Text><ChevronRight size={16} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               {showStatusChoices ? <View className="flex-row flex-wrap gap-2 pb-1">
                 {(['scheduled', 'ongoing', 'completed'] as const).map((status) => <TouchableOpacity key={status} accessibilityRole="button" accessibilityState={{ disabled: normalizeScheduleLifecycleStatus(actionSchedule.status) === status }} disabled={normalizeScheduleLifecycleStatus(actionSchedule.status) === status || stage.isSettingScheduleStatus} onPress={() => changeActionStatus(status)} className={`min-h-11 flex-1 items-center justify-center rounded-lg border border-ui-border px-2 ${normalizeScheduleLifecycleStatus(actionSchedule.status) === status ? 'bg-ui-muted opacity-60' : 'bg-core-surface-white'}`}><Text numberOfLines={1} className="font-poppins-bold text-[10px] text-ui-text">{getScheduleLifecycleLabel(status)}</Text></TouchableOpacity>)}
@@ -939,6 +960,19 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
         </View> : null}
       </View>
     </Modal>
+    {topicVenueId && topicVenue ? (
+      <StageTopicControlModal
+        key={topicVenueId}
+        venueId={topicVenueId}
+        venueName={topicVenue.name}
+        schedules={topicVenueSchedules}
+        onClose={() => setTopicVenueId(null)}
+        onOpenLink={() => {
+          setTopicVenueId(null);
+          router.push(`/stage-management/display/${topicVenueId}` as any);
+        }}
+      />
+    ) : null}
     </>
   );
 }

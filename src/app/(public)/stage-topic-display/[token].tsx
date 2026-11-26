@@ -89,7 +89,7 @@ export default function StageTopicDisplay() {
             </View>
           ) : (
             <Text style={{ color: '#111827', fontSize: compact ? 22 : 32, textAlign: 'center' }}>
-              {!validToken ? 'Invalid display link' : query.isPending ? 'Loading display…' : query.isError ? 'Display unavailable. Reconnecting…' : state ? 'Waiting for topic' : 'Invalid display link'}
+              {!validToken ? 'Invalid display link' : query.isPending ? 'Loading display…' : query.isError ? 'Display unavailable. Reconnecting…' : state?.has_topics ? 'Topics available' : state ? 'Waiting for topics' : 'Invalid display link'}
             </Text>
           )}
         </ScrollView>

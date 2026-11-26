@@ -3,9 +3,11 @@ import { SsfButton } from '@/components/ui/SsfButton';
 import { stageTopicSecondsRemaining } from '@/core/utils/stageTopicCountdown';
 import { scheduleTopicDrawService, type ScheduleTopicDrawState, type StageTopicDisplayState } from '@/services/scheduleTopicDrawService';
 import { stageManagementService, type StageRegistrationRow, type StageScheduleRow } from '@/services/stageManagementService';
+import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
+import QRCode from 'react-native-qrcode-svg';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
-import { Alert, Platform, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, Share, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 function confirmDraw(redraw: boolean, judgingStarted: boolean): Promise<boolean> {
   const details = [
@@ -21,29 +23,31 @@ function confirmDraw(redraw: boolean, judgingStarted: boolean): Promise<boolean>
 }
 
 export function StageTopicControlModal({
-  venueId, venueName, schedules, onClose, onOpenLink,
+  venueId, venueName, schedules, onClose, onOpenLink, portal = false,
 }: {
   venueId: string;
   venueName: string;
   schedules: StageScheduleRow[];
   onClose: () => void;
-  onOpenLink: () => void;
+  onOpenLink?: () => void;
+  portal?: boolean;
 }) {
   const { height } = useWindowDimensions();
   const queryClient = useQueryClient();
   const [scheduleId, setScheduleId] = React.useState(schedules[0]?.id ?? '');
   const [registrationId, setRegistrationId] = React.useState('');
   const [search, setSearch] = React.useState('');
-  const [busy, setBusy] = React.useState<'draw' | 'next' | 'pause' | ''>('');
+  const [busy, setBusy] = React.useState<'draw' | 'next' | 'pause' | 'topic' | ''>('');
+  const [showLink, setShowLink] = React.useState(false);
   const [actionError, setActionError] = React.useState('');
   const [notice, setNotice] = React.useState('');
   const [now, setNow] = React.useState(() => Date.now());
   const serverOffsetMs = React.useRef(0);
-  const stageKey = ['admin-stage-topic-display', venueId];
-  const topicKey = ['schedule-topic-draw-state', scheduleId];
+  const stageKey = [portal ? 'portal-stage-topic-display' : 'admin-stage-topic-display', venueId];
+  const topicKey = [portal ? 'portal-schedule-topic-draw-state' : 'schedule-topic-draw-state', venueId, scheduleId];
   const stageQuery = useQuery<StageTopicDisplayState>({
     queryKey: stageKey,
-    queryFn: () => scheduleTopicDrawService.getStageDisplayState(venueId),
+    queryFn: () => portal ? scheduleTopicDrawService.getPortalDisplayState(venueId) : scheduleTopicDrawService.getStageDisplayState(venueId),
     refetchInterval: 5000,
   });
   React.useEffect(() => {
@@ -57,13 +61,15 @@ export function StageTopicControlModal({
   }, [stageQuery.data]);
   const topicQuery = useQuery<ScheduleTopicDrawState>({
     queryKey: topicKey,
-    queryFn: () => scheduleTopicDrawService.getState(scheduleId),
+    queryFn: () => portal ? scheduleTopicDrawService.getPortalState(venueId, scheduleId) : scheduleTopicDrawService.getState(scheduleId),
     enabled: !!scheduleId,
     refetchInterval: 5000,
   });
   const registrationsQuery = useQuery<StageRegistrationRow[]>({
     queryKey: ['stage-topic-draw-registrations', scheduleId],
-    queryFn: () => stageManagementService.getRegistrations({ scheduleId }),
+    queryFn: async () => portal
+      ? (await stageManagementService.getVenuePortalScheduleDetailV2(venueId, '', scheduleId)).registrations
+      : stageManagementService.getRegistrations({ scheduleId }),
     enabled: !!scheduleId,
   });
   const schedule = schedules.find((item) => item.id === scheduleId);
@@ -81,6 +87,27 @@ export function StageTopicControlModal({
     return !needle || [item.code_letter, item.participant_name, item.participant_chest_number]
       .some((part) => part?.toLowerCase().includes(needle));
   });
+  const displayUrl = stageQuery.data?.display_token
+    ? getCurrentOriginAppUrl(`/stage-topic-display/${stageQuery.data.display_token}`)
+    : null;
+  const copyDisplayLink = async () => {
+    if (!displayUrl) return;
+    try {
+      if (Platform.OS === 'web' && navigator.clipboard?.writeText) await navigator.clipboard.writeText(displayUrl);
+      else await Share.share({ message: displayUrl, url: displayUrl });
+      setNotice('Display link copied.');
+    } catch (error: any) { setActionError(error?.message || 'Could not share the display link.'); }
+  };
+  const toggleTopic = async (topicId: string, active: boolean) => {
+    if (!scheduleId || busy) return;
+    setBusy('topic'); setActionError('');
+    try {
+      if (portal) await scheduleTopicDrawService.setPortalActive(venueId, scheduleId, topicId, active);
+      else await scheduleTopicDrawService.setActive(scheduleId, topicId, active);
+      await queryClient.invalidateQueries({ queryKey: topicKey });
+    } catch (error: any) { setActionError(error?.message || 'Could not update this topic.'); }
+    finally { setBusy(''); }
+  };
 
   const draw = async () => {
     if (!scheduleId || !registrationId || !topicQuery.data?.enabled || !activeTopics || busy) return;
@@ -91,7 +118,8 @@ export function StageTopicControlModal({
     setActionError('');
     setNotice('');
     try {
-      await scheduleTopicDrawService.draw(scheduleId, registrationId, redraw, judgingStarted);
+      if (portal) await scheduleTopicDrawService.drawPortalTopic(venueId, scheduleId, registrationId, redraw, judgingStarted);
+      else await scheduleTopicDrawService.draw(scheduleId, registrationId, redraw, judgingStarted);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: topicKey }),
         queryClient.invalidateQueries({ queryKey: stageKey }),
@@ -110,7 +138,9 @@ export function StageTopicControlModal({
     setBusy('next');
     setActionError('');
     try {
-      const next = await scheduleTopicDrawService.showNextStageTopic(venueId, stageQuery.data.version);
+      const next = portal
+        ? await scheduleTopicDrawService.showNextPortalTopic(venueId, stageQuery.data.version)
+        : await scheduleTopicDrawService.showNextStageTopic(venueId, stageQuery.data.version);
       queryClient.setQueryData(stageKey, next);
     } catch (error: any) {
       setActionError(error?.message || 'Could not show the next topic.');
@@ -124,9 +154,9 @@ export function StageTopicControlModal({
     setBusy('pause');
     setActionError('');
     try {
-      const next = await scheduleTopicDrawService.setStageDisplayPaused(
-        venueId, !stageQuery.data.paused, stageQuery.data.version,
-      );
+      const next = portal
+        ? await scheduleTopicDrawService.setPortalDisplayPaused(venueId, !stageQuery.data.paused, stageQuery.data.version)
+        : await scheduleTopicDrawService.setStageDisplayPaused(venueId, !stageQuery.data.paused, stageQuery.data.version);
       queryClient.setQueryData(stageKey, next);
     } catch (error: any) {
       setActionError(error?.message || 'Could not change display state.');
@@ -176,8 +206,13 @@ export function StageTopicControlModal({
                   <View className="flex-row flex-wrap gap-2">
                     <SsfButton label="Show Next" size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy || stageQuery.data.paused || !stageQuery.data.ready.length} />
                     <SsfButton label={stageQuery.data.paused ? 'Resume' : 'Pause'} size="sm" variant="outline" onPress={() => { void togglePause(); }} isLoading={busy === 'pause'} disabled={!!busy} />
-                    <SsfButton label="Link & QR" size="sm" variant="outline" onPress={onOpenLink} disabled={!!busy} />
+                    <SsfButton label="Link & QR" size="sm" variant="outline" onPress={() => portal ? setShowLink((value) => !value) : onOpenLink?.()} disabled={!!busy || (portal && !displayUrl)} />
                   </View>
+                  {showLink && displayUrl ? <View className="items-center gap-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
+                    <QRCode value={displayUrl} size={150} />
+                    <Text selectable className="font-poppins text-xs text-ui-text-muted">{displayUrl}</Text>
+                    <SsfButton label="Copy link" size="sm" onPress={() => { void copyDisplayLink(); }} />
+                  </View> : null}
                 </View>
               ) : null}
             <Text className="font-poppins-bold text-sm text-ui-text">Draw a topic</Text>
@@ -201,6 +236,12 @@ export function StageTopicControlModal({
                 <Text className="font-poppins text-xs text-ui-text-muted">
                   {activeTopics} active topics · {Math.round(topicQuery.data.participant_duration_seconds / 60)} min per participant
                 </Text>
+                <View className="gap-1">
+                  {topicQuery.data.topics.map((topic) => <View key={topic.id} className="flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3 py-1.5">
+                    <Text className="min-w-0 flex-1 font-poppins text-xs text-ui-text">{topic.topic_text}</Text>
+                    <SsfButton label={topic.is_active ? 'Disable' : 'Enable'} size="sm" variant="outline" disabled={!!busy} onPress={() => { void toggleTopic(topic.id, !topic.is_active); }} />
+                  </View>)}
+                </View>
                 <TextInput
                   value={search}
                   onChangeText={setSearch}

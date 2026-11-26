@@ -32,6 +32,8 @@ import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgres
 import { SubstageEditor } from '@/components/schedule/SubstageEditor';
 import { normalizedSubstages, supportsSubstages, validateSubstages, type ScheduleSubstage } from '@/core/utils/scheduleSubstages';
 import { ScheduleJudgesModal } from '@/components/schedule/ScheduleJudgesModal';
+import { ScheduleTopicSetupModal } from '@/components/schedule/ScheduleTopicSetupModal';
+import { scheduleTopicDrawService, type ScheduleTopicDrawState } from '@/services/scheduleTopicDrawService';
 
 const normalizeCategory = (value: string) => {
   const norm = value.trim().toUpperCase();
@@ -184,6 +186,9 @@ export default function ScheduleDashboard() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
   const [mobileActionMenuId, setMobileActionMenuId] = React.useState<string | null>(null);
+  const [topicSetupScheduleId, setTopicSetupScheduleId] = React.useState<string | null>(null);
+  const [topicSetupInitialState, setTopicSetupInitialState] = React.useState<ScheduleTopicDrawState | undefined>();
+  const [topicActionLoadingId, setTopicActionLoadingId] = React.useState<string | null>(null);
   const [postponedExpanded, setPostponedExpanded] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState('All');
   const [selectedCategory, setSelectedCategory] = React.useState('All');
@@ -335,6 +340,27 @@ export default function ScheduleDashboard() {
     setAssignmentSubstagesChanged(false);
     setAssignmentSubstages([]);
     setAssignmentSchedule(schedule);
+  };
+
+  const openScheduleTopics = async (schedule: any) => {
+    if (!schedule?.id || topicActionLoadingId) return;
+    setTopicActionLoadingId(schedule.id);
+    try {
+      const state = await scheduleTopicDrawService.getState(schedule.id);
+      setTopicSetupInitialState(state);
+      setTopicSetupScheduleId(schedule.id);
+    } catch (error: any) {
+      const detail = error?.message || 'Could not load topics.';
+      if (Platform.OS === 'web') window.alert(`Topics unavailable\n\n${detail}`);
+      else Alert.alert('Topics unavailable', detail);
+    } finally {
+      setTopicActionLoadingId(null);
+    }
+  };
+
+  const closeScheduleTopics = () => {
+    setTopicSetupScheduleId(null);
+    setTopicSetupInitialState(undefined);
   };
 
   const closeScheduleAssignment = () => {
@@ -1341,18 +1367,12 @@ export default function ScheduleDashboard() {
                   <TouchableOpacity
                     accessibilityRole="button"
                     accessibilityLabel={`Configure topic draw for ${schedule.items?.item_name_en || 'event'}`}
-                    onPress={() => {
-                      if (schedule.is_shuffle_locked) {
-                        if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
-                        else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
-                        return;
-                      }
-                      router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
-                    }}
-                    className={`h-8 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2 ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
+                    onPress={() => { void openScheduleTopics(schedule); }}
+                    disabled={!!topicActionLoadingId}
+                    className={`h-8 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2 ${topicActionLoadingId ? 'opacity-50' : ''}`}
                   >
                     <ListChecks size={13} color={ui.colors.primaryText} />
-                    <Text className="font-poppins-bold text-[9px] text-ui-text">Topics</Text>
+                    <Text className="font-poppins-bold text-[9px] text-ui-text">{topicActionLoadingId === schedule.id ? 'Loading…' : 'Topics'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     className={`h-8 w-8 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center ${schedule.is_shuffle_locked ? 'opacity-50' : ''}`}
@@ -1430,16 +1450,9 @@ export default function ScheduleDashboard() {
                     onPress: () => void openScheduleShare(schedule),
                   },
                   {
-                    label: schedule.is_shuffle_locked ? 'Configure topic draw (locked)' : 'Configure topic draw',
+                    label: 'Configure topic draw',
                     icon: <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} />,
-                    onPress: () => {
-                      if (schedule.is_shuffle_locked) {
-                        if (Platform.OS === 'web') window.alert('Cannot edit schedule after event is locked.');
-                        else Alert.alert('Locked', 'Cannot edit schedule after event is locked.');
-                        return;
-                      }
-                      router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
-                    },
+                    onPress: () => { void openScheduleTopics(schedule); },
                   },
                   {
                     label: schedule.is_shuffle_locked ? 'Edit (locked)' : 'Edit schedule',
@@ -1867,6 +1880,14 @@ export default function ScheduleDashboard() {
           onUpdateRequiredCount={saveRequiredJudgeCount}
         />
       ) : null}
+      <ScheduleTopicSetupModal
+        visible={!!topicSetupScheduleId}
+        scheduleId={topicSetupScheduleId}
+        initialState={topicSetupInitialState}
+        enableOnSave={topicSetupInitialState?.enabled === false}
+        onSaved={() => { void refetchSchedules(); }}
+        onClose={closeScheduleTopics}
+      />
     </>
   );
 }

@@ -22,6 +22,8 @@ type Props = {
   draftDurationMinutes?: string;
   onDraftTopicsChange?: (topics: ScheduleTopicDraft[]) => void;
   onDraftDurationMinutesChange?: (minutes: string) => void;
+  enableOnSave?: boolean;
+  onSaved?: () => void;
   onClose: () => void;
 };
 
@@ -35,6 +37,8 @@ export function ScheduleTopicSetupModal({
   draftDurationMinutes = String(DEFAULT_TOPIC_DURATION_MINUTES),
   onDraftTopicsChange,
   onDraftDurationMinutesChange,
+  enableOnSave = false,
+  onSaved,
   onClose,
 }: Props) {
   const [topics, setTopics] = useState<ScheduleTopicDraft[]>(draftTopics);
@@ -115,13 +119,20 @@ export function ScheduleTopicSetupModal({
       return;
     }
     const cleanTopics = topics.map((topic) => ({ ...topic, topic_text: topic.topic_text.trim() })).filter((topic) => topic.topic_text);
+    if (enableOnSave && cleanTopics.length === 0) {
+      setError('Add at least one topic before enabling Topic Draw.');
+      return;
+    }
     if (scheduleId) {
       setSaving(true);
       try {
         const persisted = cleanTopics.map((topic) => topic.id ? topic : ({ topic_text: topic.topic_text }));
-        const saved = await scheduleTopicDrawService.saveTopics(scheduleId, persisted as any, durationSeconds);
+        const saved = enableOnSave
+          ? await scheduleTopicDrawService.saveTopicsAndEnable(scheduleId, persisted as any, durationSeconds)
+          : await scheduleTopicDrawService.saveTopics(scheduleId, persisted as any, durationSeconds);
         setTopics(saved);
         await queryClient.invalidateQueries({ queryKey: ['schedule-topic-draw-state', scheduleId] });
+        onSaved?.();
         onClose();
       } catch (saveError: any) {
         setError(saveError?.message || 'Could not save topics.');
@@ -155,6 +166,7 @@ export function ScheduleTopicSetupModal({
           ) : (
             <ScrollView className="px-4 py-3" keyboardShouldPersistTaps="handled">
               <View className="mb-3">
+                {enableOnSave ? <Text className="mb-2 font-poppins text-xs text-ui-text-muted">Saving will enable Topic Draw for this schedule. Code letters remain locked.</Text> : null}
                 <Text className="mb-1 font-poppins-bold text-xs text-ui-text">Time per participant (minutes) *</Text>
                 <TextInput
                   value={durationMinutes}

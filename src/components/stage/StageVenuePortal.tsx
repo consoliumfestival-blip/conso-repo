@@ -46,6 +46,7 @@ import { useCodeLetterUpdates } from '@/core/hooks/useCodeLetterUpdates';
 import { ConsoliumLogo } from '@/components/ui/ConsoliumLogo';
 import { applyPortalPwaMetadata } from '@/core/utils/portalPwaMetadata';
 import { PwaInstallCard } from '@/components/ui/PwaInstallCard';
+import { StageTopicControlModal } from '@/components/stage/StageTopicControlModal';
 import { ScheduleLifecycleActions } from '@/components/schedule/ScheduleLifecycleActions';
 import { getScheduleLifecycleLabel, normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle';
 import { substageForChest } from '@/core/utils/scheduleSubstages';
@@ -171,6 +172,7 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
   const [editingEntry, setEditingEntry] = React.useState<PortalRegistration | null>(null);
   const [letterDraft, setLetterDraft] = React.useState('');
   const [letterError, setLetterError] = React.useState('');
+  const [showTopicControls, setShowTopicControls] = React.useState(false);
 
   React.useEffect(() => {
     const interval = setInterval(() => setScheduleSortNow(Date.now()), 60_000);
@@ -721,9 +723,12 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
             <Text className="mt-1 font-poppins text-sm text-ssf-text-muted">{filteredSchedules.length} scheduled events</Text>
           </View>
         </View>
+        <View className="flex-row items-center gap-2">
+        {venueQuery.isSuccess ? <SsfButton label="Topics" size="sm" variant="outline" onPress={() => setShowTopicControls(true)} /> : null}
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stage events" onPress={refresh} disabled={venueQuery.isRefetching} className={`${isMobile ? 'h-11 w-11' : 'h-9 w-9'} items-center justify-center rounded-xl border border-ssf-border bg-core-surface-white`}>
           <RefreshCw size={16} color={coreColor("#475569", 'text')} />
         </TouchableOpacity>
+        </View>
       </View>
 
       <View className="mb-4"><PwaInstallCard appName={venueQuery.data?.venue.name || 'Stage Management'} /></View>
@@ -811,6 +816,13 @@ export default function StageVenuePortal({ venueId, optimizedRead = false }: { v
         </View>
       )}
     </ScrollView>
+    {showTopicControls && venueQuery.data ? <StageTopicControlModal
+      venueId={venueId}
+      venueName={venueQuery.data.venue.name}
+      schedules={schedules}
+      portal
+      onClose={() => setShowTopicControls(false)}
+    /> : null}
     <Modal visible={isMobile && !!actionSchedule} transparent animationType="slide" onRequestClose={() => setActionScheduleId(null)}>
       <View className="flex-1 justify-end bg-core-surface-strong-black/50">
         <Pressable accessibilityLabel="Close event actions" onPress={() => setActionScheduleId(null)} className="absolute inset-0" />

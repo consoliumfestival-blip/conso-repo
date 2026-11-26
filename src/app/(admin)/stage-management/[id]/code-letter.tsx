@@ -10,6 +10,8 @@ import { useParticipants } from '../../../../core/hooks/useParticipants';
 import { useGoBack } from '../../../../core/hooks/useGoBack';
 import { ArrowLeft, RefreshCw, Lock, AlertTriangle, XCircle, Edit2, Users, ListChecks } from 'lucide-react-native';
 import { codeLetterTarget, codeLetterPreview, compareCodeLetters } from '../../../../core/utils/codeLetters';
+import { ScheduleTopicSetupModal } from '@/components/schedule/ScheduleTopicSetupModal';
+import { scheduleTopicDrawService, type ScheduleTopicDrawState } from '@/services/scheduleTopicDrawService';
 
 export default function CodeLetterGeneration() {
   const { id } = useLocalSearchParams();
@@ -45,6 +47,9 @@ export default function CodeLetterGeneration() {
   const [editingReg, setEditingReg] = useState<any>(null);
   const [newLetter, setNewLetter] = useState<string>('');
   const [editError, setEditError] = useState<string>('');
+  const [showTopicSetup, setShowTopicSetup] = useState(false);
+  const [topicSetupState, setTopicSetupState] = useState<ScheduleTopicDrawState | undefined>();
+  const [openingTopics, setOpeningTopics] = useState(false);
 
   // Lock Modal State
   const [showLockModal, setShowLockModal] = useState(false);
@@ -72,6 +77,26 @@ export default function CodeLetterGeneration() {
     if (isLocking) return;
     setShowLockModal(false);
     setLockCountdown(10);
+  };
+
+  const openTopics = async () => {
+    if (!scheduleId || openingTopics) return;
+    setOpeningTopics(true);
+    try {
+      const topicState = await scheduleTopicDrawService.getState(scheduleId);
+      if (!topicState.enabled) {
+        router.push(`/(admin)/schedule/${scheduleId}/edit` as any);
+        return;
+      }
+      setTopicSetupState(topicState);
+      setShowTopicSetup(true);
+    } catch (error: any) {
+      const detail = error?.message || 'Could not check Topic Draw settings.';
+      if (Platform.OS === 'web') window.alert(`Topics unavailable\n\n${detail}`);
+      else Alert.alert('Topics unavailable', detail);
+    } finally {
+      setOpeningTopics(false);
+    }
   };
 
 
@@ -236,8 +261,8 @@ export default function CodeLetterGeneration() {
             <Text className="font-poppins-black text-base text-ssf-text">Code Letters</Text>
             <Text numberOfLines={1} className="font-poppins text-xs text-ssf-text-muted">{schedule.items?.item_name_en}</Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/topics` as any)} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2.5">
-            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[10px] text-ui-primary-text">Topics</Text>
+          <TouchableOpacity accessibilityRole="button" disabled={openingTopics} onPress={() => { void openTopics(); }} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-2.5">
+            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-[10px] text-ui-primary-text">{openingTopics ? 'Loading…' : 'Topics'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -336,8 +361,8 @@ export default function CodeLetterGeneration() {
             <Text className="text-2xl font-poppins-black text-ssf-text">Code Letters</Text>
             <Text className="font-poppins text-ssf-text-muted">{schedule.items?.item_name_en}</Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" onPress={() => router.push(`/stage-management/${scheduleId}/topics` as any)} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3">
-            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-xs text-ui-primary-text">Topic Draw</Text>
+          <TouchableOpacity accessibilityRole="button" disabled={openingTopics} onPress={() => { void openTopics(); }} className="h-10 flex-row items-center gap-1.5 rounded-lg border border-ui-border bg-core-surface-white px-3">
+            <ListChecks size={15} color={coreColor('#0F766E', 'primaryText')} /><Text className="font-poppins-bold text-xs text-ui-primary-text">{openingTopics ? 'Loading…' : 'Topics'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -510,6 +535,12 @@ export default function CodeLetterGeneration() {
           </View>
         </View>
       </Modal>
+      <ScheduleTopicSetupModal
+        visible={showTopicSetup}
+        scheduleId={scheduleId}
+        initialState={topicSetupState}
+        onClose={() => { setShowTopicSetup(false); setTopicSetupState(undefined); }}
+      />
     </View>
   );
 }

@@ -23,6 +23,8 @@ import { formatScheduleTime } from '@/core/utils/scheduleTime';
 import type { StageRegistrationSummary } from '../../../services/stageManagementService';
 import { stageManagementService } from '../../../services/stageManagementService';
 import { StageTopicControlModal } from '@/components/stage/StageTopicControlModal';
+import { ScheduleTopicSetupModal } from '@/components/schedule/ScheduleTopicSetupModal';
+import { scheduleTopicDrawService, type ScheduleTopicDrawState } from '@/services/scheduleTopicDrawService';
 import { useQuery } from '@tanstack/react-query';
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
@@ -162,6 +164,9 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [scheduleFilterNow, setScheduleFilterNow] = React.useState(() => Date.now());
   const [copiedVenueId, setCopiedVenueId] = React.useState<string | null>(null);
   const [topicVenueId, setTopicVenueId] = React.useState<string | null>(null);
+  const [topicSetupScheduleId, setTopicSetupScheduleId] = React.useState<string | null>(null);
+  const [topicSetupInitialState, setTopicSetupInitialState] = React.useState<ScheduleTopicDrawState | undefined>();
+  const [topicActionLoadingId, setTopicActionLoadingId] = React.useState<string | null>(null);
   const actionSchedule = schedules.find((row: any) => row.id === actionScheduleId) ?? null;
   const topicVenue = venues.find((venue: any) => venue.id === topicVenueId);
   const topicVenueSchedules = schedules.filter((schedule: any) => schedule.venue_id === topicVenueId);
@@ -194,6 +199,32 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
     } catch (error: any) {
       Alert.alert('Copy failed', error.message || 'Unable to copy the stage link.');
     }
+  };
+
+  const openScheduleTopics = async (schedule: any) => {
+    if (!schedule?.id || topicActionLoadingId) return;
+    setTopicActionLoadingId(schedule.id);
+    setActionScheduleId(null);
+    try {
+      const topicState = await scheduleTopicDrawService.getState(schedule.id);
+      if (!topicState.enabled) {
+        router.push(`/(admin)/schedule/${schedule.id}/edit` as any);
+        return;
+      }
+      setTopicSetupInitialState(topicState);
+      setTopicSetupScheduleId(schedule.id);
+    } catch (error: any) {
+      const detail = error?.message || 'Could not check Topic Draw settings.';
+      if (Platform.OS === 'web') window.alert(`Topics unavailable\n\n${detail}`);
+      else Alert.alert('Topics unavailable', detail);
+    } finally {
+      setTopicActionLoadingId(null);
+    }
+  };
+
+  const closeScheduleTopicSetup = () => {
+    setTopicSetupScheduleId(null);
+    setTopicSetupInitialState(undefined);
   };
 
   const categoriesList = ['All', 'LP', 'UP', 'HS', 'HSS', 'JUNIOR', 'SENIOR', 'CAMPUS', 'GENERAL'];
@@ -906,11 +937,12 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                   <Text className="font-poppins-bold text-[9px] text-button-foreground">Code Letters</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => schedule.venue_id && setTopicVenueId(schedule.venue_id)}
-                  disabled={!schedule.venue_id}
+                  accessibilityRole="button"
+                  onPress={() => { void openScheduleTopics(schedule); }}
+                  disabled={topicActionLoadingId === schedule.id || !!topicActionLoadingId}
                   className="h-8 px-3 rounded-lg border border-ui-border bg-core-surface-white items-center justify-center"
                 >
-                  <Text className="font-poppins-bold text-[9px] text-ui-text">Topics</Text>
+                  <Text className="font-poppins-bold text-[9px] text-ui-text">{topicActionLoadingId === schedule.id ? 'Loading…' : 'Topics'}</Text>
                 </TouchableOpacity>
                 <ScheduleLifecycleActions scheduleName={schedule.items?.item_name_en || 'Event'} status={schedule.status} disabled={stage.isSettingScheduleStatus} onStatusChange={(status, expectedStatus) => stage.setScheduleStatus({ scheduleId: schedule.id, status, expectedStatus })} />
               </View>
@@ -950,7 +982,8 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <View className="mt-4 gap-2 border-t border-ui-border pt-3">
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/checkin` as any); }} className="h-12 flex-row items-center justify-between rounded-xl bg-button-primary px-4"><Text className="font-poppins-bold text-sm text-button-foreground">Check-in</Text><ChevronRight size={17} color={coreColor('#FFFFFF', 'buttonForeground')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" onPress={() => { setActionScheduleId(null); router.push(`/stage-management/${actionSchedule.id}/code-letter` as any); }} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Code Letters</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" onPress={() => { setTopicVenueId(actionSchedule.venue_id); setActionScheduleId(null); }} disabled={!actionSchedule.venue_id} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Topic Draw & Show Next</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { void openScheduleTopics(actionSchedule); }} disabled={!!topicActionLoadingId} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Manage Topics</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
+              <TouchableOpacity accessibilityRole="button" onPress={() => { setTopicVenueId(actionSchedule.venue_id); setActionScheduleId(null); }} disabled={!actionSchedule.venue_id} className="h-12 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-sm text-ui-text">Draw & Show Next</Text><ChevronRight size={17} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showStatusChoices }} onPress={() => setShowStatusChoices((value) => !value)} className="h-11 flex-row items-center justify-between rounded-xl border border-ui-border bg-core-surface-white px-4"><Text className="font-poppins-bold text-xs text-ui-text">Change status</Text><ChevronRight size={16} color={coreColor('#64748B', 'textMuted')} /></TouchableOpacity>
               {showStatusChoices ? <View className="flex-row flex-wrap gap-2 pb-1">
                 {(['scheduled', 'ongoing', 'completed'] as const).map((status) => <TouchableOpacity key={status} accessibilityRole="button" accessibilityState={{ disabled: normalizeScheduleLifecycleStatus(actionSchedule.status) === status }} disabled={normalizeScheduleLifecycleStatus(actionSchedule.status) === status || stage.isSettingScheduleStatus} onPress={() => changeActionStatus(status)} className={`min-h-11 flex-1 items-center justify-center rounded-lg border border-ui-border px-2 ${normalizeScheduleLifecycleStatus(actionSchedule.status) === status ? 'bg-ui-muted opacity-60' : 'bg-core-surface-white'}`}><Text numberOfLines={1} className="font-poppins-bold text-[10px] text-ui-text">{getScheduleLifecycleLabel(status)}</Text></TouchableOpacity>)}
@@ -973,6 +1006,12 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
         }}
       />
     ) : null}
+    <ScheduleTopicSetupModal
+      visible={!!topicSetupScheduleId}
+      scheduleId={topicSetupScheduleId}
+      initialState={topicSetupInitialState}
+      onClose={closeScheduleTopicSetup}
+    />
     </>
   );
 }

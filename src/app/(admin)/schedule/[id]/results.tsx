@@ -114,6 +114,13 @@ export default function ResultsPage() {
   // ── Mode selection ────────────────────────────────────────────────────────
   // 'none' = not chosen, 'marks' = judges used system, 'direct' = direct entry
   const [mode, setMode] = useState<'none' | 'marks' | 'direct'>('none');
+  const [participantSearch, setParticipantSearch] = useState('');
+  const visibleRegistrations = React.useMemo(() => {
+    const term = participantSearch.trim().toLocaleLowerCase();
+    if (mode !== 'direct' || !term) return registrations;
+    return registrations.filter((reg: any) => [reg.code_letter, reg.participants?.chest_number, reg.participants?.name]
+      .some(value => String(value ?? '').toLocaleLowerCase().includes(term)));
+  }, [registrations, participantSearch, mode]);
   const [manualGeneralSize, setManualGeneralSize] = useState<number | null>(null);
 
   // ── Result state ──────────────────────────────────────────────────────────
@@ -873,7 +880,12 @@ export default function ResultsPage() {
         </SsfCard>
         )}
 
-        {(registrations as any[])?.map(reg => {
+        {mode === 'direct' && <View className="mb-3 h-10 flex-row items-center rounded-lg border border-ui-border bg-core-surface-white px-3">
+          <TextInput value={participantSearch} onChangeText={setParticipantSearch} placeholder="Search name, chest number or code letter" accessibilityLabel="Search participants by name, chest number or code letter" className="h-full flex-1 font-poppins text-sm text-ui-text outline-none" />
+          {!!participantSearch && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear participant search" onPress={() => setParticipantSearch('')} className="h-9 w-9 items-center justify-center"><Text className="font-poppins-bold text-sm text-ui-text-muted">×</Text></TouchableOpacity>}
+        </View>}
+        {mode === 'direct' && participantSearch.trim() && visibleRegistrations.length === 0 && <Text className="mb-3 text-center font-poppins text-xs text-ui-text-muted">No participants match this search.</Text>}
+        {visibleRegistrations.map((reg: any) => {
           const entry = results[reg.id];
           const judgeMarks = getJudgeMarks(reg.id);
           const markSummary = mode === 'direct' ? getDirectMarkSummary(reg.id) : getMarkSummary(reg.id);

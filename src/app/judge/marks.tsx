@@ -29,6 +29,13 @@ export default function JudgeMarksPage() {
   const [gradingNotice, setGradingNotice] = useState('');
   const [session, setSession] = useState<any>(null);
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const visibleRegistrations = React.useMemo(() => {
+    const term = participantSearch.trim().toLocaleLowerCase();
+    if (!term) return registrations;
+    return registrations.filter(reg => [reg.code_letter, reg.participants?.chest_number]
+      .some(value => String(value ?? '').toLocaleLowerCase().includes(term)));
+  }, [registrations, participantSearch]);
   const [marks, setMarks] = useState<Record<string, Record<string, number>>>({});
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -655,14 +662,19 @@ export default function JudgeMarksPage() {
               {Object.keys(marks).length}/{registrations.length} Marked
             </Text>
           </View>
+          <View className="mx-3 mb-2 h-10 flex-row items-center rounded-lg border border-slate-200 bg-white px-3">
+            <TextInput value={participantSearch} onChangeText={setParticipantSearch} placeholder="Search chest number or code letter" accessibilityLabel="Search participants by chest number or code letter" className="h-full flex-1 font-poppins text-sm text-slate-800 outline-none" />
+            {!!participantSearch && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear participant search" onPress={() => setParticipantSearch('')} className="h-9 w-9 items-center justify-center"><Text className="font-poppins-bold text-sm text-slate-500">×</Text></TouchableOpacity>}
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12 }}>
-            {registrations.map((reg, idx) => {
-              const isCurrent = idx === activeRegIndex;
+            {visibleRegistrations.map((reg) => {
+              const originalIndex = registrations.findIndex(row => row.id === reg.id);
+              const isCurrent = originalIndex === activeRegIndex;
               const isRegMarked = isRegistrationComplete(reg.id);
               return (
                 <TouchableOpacity
                   key={reg.id}
-                  onPress={() => setActiveRegIndex(idx)}
+                  onPress={() => setActiveRegIndex(originalIndex)}
                   style={{
                     width: 48,
                     height: 48,
@@ -956,7 +968,7 @@ export default function JudgeMarksPage() {
             </Text>
           </View>
         ) : (
-          registrations.map(reg => {
+          visibleRegistrations.map(reg => {
             const total = getTotal(reg.id);
             const grade = calculateGrade(total, eventTotalMarks, gradeContext);
             const allDone = isRegistrationComplete(reg.id);

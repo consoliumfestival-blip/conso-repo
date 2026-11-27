@@ -1,4 +1,9 @@
 import { useCanvasStore } from '../Stores/canvasStore';
+import {
+  buildGoogleFontsCss2Url,
+  getFontLoadSampleText,
+  parseFontWeights,
+} from './googleFontCss2';
 
 export interface FontDefinition {
   family: string;
@@ -83,6 +88,136 @@ function fontIdentity(font: FontDefinition): string {
   return `${font.family}|${font.cacheKey || font.url || font.family}|${font.weights || ''}`;
 }
 
+const GOOGLE_FONT_TIMEOUT_MS = 8000;
+let googlePreconnectInjected = false;
+
+function ensureGoogleFontPreconnect() {
+  if (googlePreconnectInjected || typeof document === 'undefined' || !document.head) return;
+  googlePreconnectInjected = true;
+  const hosts = [
+    { href: 'https://fonts.googleapis.com', crossOrigin: false },
+    { href: 'https://fonts.gstatic.com', crossOrigin: true },
+  ];
+  for (const host of hosts) {
+    if (document.head.querySelector(`link[rel="preconnect"][href="${host.href}"]`)) continue;
+    const link = document.createElement('link');
+    link.rel = 'preconnect';
+    link.href = host.href;
+    if (host.crossOrigin) link.crossOrigin = 'anonymous';
+    document.head.appendChild(link);
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
+function loadGoogleFontStylesheet(url: string, linkId: string, timeoutMs = GOOGLE_FONT_TIMEOUT_MS): Promise<void> {
+  if (typeof document === 'undefined' || !document.head) {
+    return Promise.reject(new Error('Document head is unavailable'));
+  }
+  const existing = document.head.querySelector(`link[data-poster-font-id="${linkId}"]`) as HTMLLinkElement | null;
+  if (existing && existing.dataset.loaded === '1') {
+    return Promise.resolve();
+  }
+  if (existing && existing.dataset.loaded === '0') {
+    existing.remove();
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    link.crossOrigin = 'anonymous';
+    link.dataset.posterFontId = linkId;
+    link.dataset.loaded = '0';
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      link.onload = null;
+      link.onerror = null;
+    };
+
+    const timer = setTimeout(() => {
+      cleanup();
+      link.remove();
+      reject(new Error(`Google Font stylesheet timed out: ${url}`));
+    }, timeoutMs);
+
+    link.onload = () => {
+      cleanup();
+      link.dataset.loaded = '1';
+      resolve();
+    };
+    link.onerror = () => {
+      cleanup();
+      link.remove();
+      reject(new Error(`Google Font stylesheet failed: ${url}`));
+    };
+
+    document.head.appendChild(link);
+  });
+}
+
+async function loadGoogleFontViaCss2(font: FontDefinition): Promise<'loaded' | 'failed'> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return 'failed';
+  ensureGoogleFontPreconnect();
+
+  const weights = parseFontWeights(font.weights);
+  const primaryWeight = weights.includes(400) ? 400 : weights[0];
+  const sampleText = getFontLoadSampleText(font.category);
+
+  // Fast path: already available in document.fonts (e.g. bundled Poppins/Inter/Montserrat or cached)
+  if (document.fonts && typeof document.fonts.check === 'function') {
+    try {
+      if (document.fonts.check(`${primaryWeight} 24px "${font.family}"`, sampleText)) {
+        loadedFonts.add(font.family);
+        return 'loaded';
+      }
+    } catch {
+      // Proceed to stylesheet load
+    }
+  }
+
+  const cssUrl = buildGoogleFontsCss2Url(font.family, font.weights);
+  const linkId = font.family.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + weights.join('_');
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await loadGoogleFontStylesheet(cssUrl, linkId, GOOGLE_FONT_TIMEOUT_MS);
+      if (document.fonts && typeof document.fonts.load === 'function') {
+        const weightsToPrime = weights.length <= 2 ? weights : [primaryWeight, weights[weights.length - 1]];
+        await withTimeout(
+          Promise.all(weightsToPrime.map((w) => document.fonts.load(`${w} 24px "${font.family}"`, sampleText))),
+          GOOGLE_FONT_TIMEOUT_MS,
+          `Font face load (${font.family})`,
+        );
+      }
+      loadedFonts.add(font.family);
+      return 'loaded';
+    } catch (err) {
+      if (attempt === 1) {
+        console.warn(`[PosterStudio] Google Font failed to load: ${font.family}`, err);
+        useCanvasStore.getState().addFailedFont(font.family);
+        return 'failed';
+      }
+    }
+  }
+  return 'failed';
+}
+
 export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed'> {
   const identity = fontIdentity(font);
   if (loadedFontKeys.has(identity)) return 'loaded';
@@ -92,52 +227,24 @@ export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed
     return fontLoadCache.get(identity)!;
   }
 
-  const promise = new Promise<'loaded' | 'failed'>((resolve) => {
-    const isGoogleFont = font.url?.includes('fonts.gstatic');
-    
-    if (isGoogleFont) {
-      try {
-        const webFontLoader = typeof window !== 'undefined' ? require('webfontloader') : null;
-        if (!webFontLoader) {
-          resolve('failed');
-          return;
-        }
-        const weightsStr = font.weights ? `:${font.weights}` : ':400,700';
-        webFontLoader.load({
-          google: {
-            families: [`${font.family}${weightsStr}`]
-          },
-          active: () => {
-            loadedFonts.add(font.family);
-            resolve('loaded');
-          },
-          inactive: () => {
-            console.warn(`[PosterStudio] WebFont failed to load: ${font.family}`);
-            if (typeof window !== 'undefined') useCanvasStore.getState().addFailedFont(font.family);
-            resolve('failed');
-          }
-        });
-      } catch {
-        resolve('failed');
-      }
-    } else {
-      (async () => {
+  const isGoogleFont = Boolean(font.url?.includes('fonts.gstatic') || font.url?.includes('fonts.googleapis'));
+  const promise = isGoogleFont
+    ? loadGoogleFontViaCss2(font)
+    : (async (): Promise<'loaded' | 'failed'> => {
         try {
           const url = font.resolveUrl ? await font.resolveUrl() : font.url;
           if (!url) throw new Error('Font source URL is missing.');
           const fontFace = new FontFace(font.family, `url(${url})`, { weight: font.weightRange || 'normal' });
-          await fontFace.load();
+          await withTimeout(fontFace.load(), GOOGLE_FONT_TIMEOUT_MS, `Custom font load (${font.family})`);
           (document.fonts as any).add(fontFace);
           loadedFonts.add(font.family);
-          resolve('loaded');
-        } catch {
-          console.warn(`[PosterStudio] Font failed to load: ${font.family}`);
+          return 'loaded';
+        } catch (err) {
+          console.warn(`[PosterStudio] Font failed to load: ${font.family}`, err);
           if (typeof window !== 'undefined') useCanvasStore.getState().addFailedFont(font.family);
-          resolve('failed');
+          return 'failed';
         }
       })();
-    }
-  });
 
   fontLoadCache.set(identity, promise);
   promise.then((status) => {

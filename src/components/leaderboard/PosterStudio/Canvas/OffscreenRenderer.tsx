@@ -3,6 +3,7 @@ import { Stage, Layer, Group, Text, Image as KonvaImage, Rect } from 'react-konv
 import { resolveImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
 import { storageService } from '../../../../services/storage/storageService';
 import { loadFont, ML_FONTS, EN_FONTS } from '../Utils/fontLoader';
+import { resolveClosestFontWeight } from '../Utils/googleFontCss2';
 import { resolveLayerText } from '../Utils/resolver';
 import { getTextLayerBackgroundRenderProps, getTextLayerRenderProps } from '../Utils/textLayerRenderer';
 import { getLayerGroupIssues, getRenderableLayers } from '../Utils/layerTree';
@@ -151,7 +152,10 @@ async function prepareFonts(layers: readonly LayerData[], variables: Record<stri
   const fontRequests = new Map<string, { css: string; text: string }>();
   textLayers.forEach((layer) => {
     const family = layer.fontFamily || 'Poppins';
-    const weight = layer.fontWeight || 600;
+    const definition = knownFonts.find((font) => font.family === family);
+    const weight = definition
+      ? resolveClosestFontWeight(layer.fontWeight || 600, definition.weights)
+      : (layer.fontWeight || 600);
     const size = layer.fontSize || 24;
     const key = `${weight}|${family}`;
     const current = fontRequests.get(key);

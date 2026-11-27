@@ -4,7 +4,7 @@ import { normalizeScheduleLifecycleStatus } from '@/core/utils/scheduleLifecycle
 import { Modal } from '@/components/ui/CoreModal';
 import { ui } from '@/constants/designSystem';
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Clipboard, Share, TextInput, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Clipboard, Linking, TextInput, useWindowDimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Users,
@@ -679,13 +679,36 @@ export default function JudgesPage() {
     }
   };
 
-  const shareToken = async () => {
-    if (generatedToken && selectedJudgeForToken) {
-      const schedule = schedules?.find((s: any) => s.id === selectedScheduleId);
-      await Share.share({
-        message: `السلام عليكم ${selectedJudgeForToken.name},\n\nYour judge access code for "${schedule?.items?.item_name_ml ?? 'the event'}" is:\n\n🔑 ${generatedToken}\n\nVisit the Judge Portal to enter marks.\n\nThis code is for single use only.`,
-      });
+  const shareToken = () => {
+    if (!generatedToken || !selectedJudgeForToken) return;
+
+    const schedule = schedules?.find((s: any) => s.id === selectedScheduleId);
+    const portalUrl = getCurrentOriginAppUrl(`/judge?code=${encodeURIComponent(generatedToken)}`);
+    if (!portalUrl) {
+      setErrorMessage('The Judge Portal link is unavailable. Please open the portal from a secure app URL.');
+      return;
     }
+
+    const message = `السلام عليكم ${selectedJudgeForToken.name},\n\nOpen this Judge Portal link for "${schedule?.items?.item_name_ml ?? 'the event'}":\n${portalUrl}\n\nYour one-time access code is included in the link, so you do not need to type it. Tap “Enter Portal” to continue. The code expires after one use.`;
+    let judgePhone = String(selectedJudgeForToken.phone ?? '').replace(/\D/g, '');
+    if (judgePhone.length === 10) judgePhone = `91${judgePhone}`;
+    const whatsappRecipient = judgePhone ? `/${judgePhone}` : '/';
+    const whatsappUrl = `https://wa.me${whatsappRecipient}?text=${encodeURIComponent(message)}`;
+    setErrorMessage(null);
+
+    if (Platform.OS === 'web') {
+      const opened = window.open(whatsappUrl, '_blank');
+      if (!opened) {
+        setErrorMessage('Allow pop-ups to open WhatsApp.');
+        return;
+      }
+      opened.opener = null;
+      return;
+    }
+
+    void Linking.openURL(whatsappUrl).catch((error: any) => {
+      setErrorMessage(error?.message || 'Unable to open WhatsApp.');
+    });
   };
 
   return (

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script>if (location.pathname === "/festival-results.html") history.replaceState(null, "", "/results" + location.search + location.hash);</script>
+    <title>Results · Consoulium 2k26</title>
+    <meta name="theme-color" content="#050816" />
+    <link rel="icon" href="/brand/favicon.ico" />
+    <script src="/festival-curtain.js?v=20261127"></script>
+    <link rel="stylesheet" href="/festival-pages.css?v=20261127" />
+  </head>
+  <body data-page="results">
+    <div class="sub-page">
+      <main class="sub-main">
+        <div class="sub-hero">
+          <div>
+            <span class="sub-eyebrow">Official Festival Updates</span>
+            <h1>Results</h1>
+            <p class="sub-lede">Published competition results and verified scores across Consoulium 2k26.</p>
+          </div>
+          <span class="meta-pill" id="updated"></span>
+        </div>
+        <div class="glass-tools">
+          <input id="search" type="search" placeholder="Search competitions, codes, units, or participants" aria-label="Search results" />
+          <button class="glass-btn" id="refresh" type="button">Refresh</button>
+        </div>
+        <div class="filter-chips" id="filters" aria-label="Filter by category"></div>
+        <div id="content" class="glass-grid" aria-live="polite">
+          <div class="empty">Loading published results…</div>
+        </div>
+      </main>
+    </div>
+    <script src="/festival-subpage-shell.js?v=20261127" defer></script>
+    <script src="/festival-cursor.js?v=20261127" defer></script>
+    <script src="/festival-pages.js?v=20261127" defer></script>
+  </body>
+</html>

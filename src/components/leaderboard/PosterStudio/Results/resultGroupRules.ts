@@ -3,7 +3,6 @@ export interface PosterResultRow {
   participant_id?: string | null;
   organisation_id?: string | null;
   rank: number | null;
-  public_result_no?: number | null;
   participant_name?: string | null;
   organisation_name?: string | null;
   grade?: string | null;
@@ -16,27 +15,18 @@ export interface OfficialResultNumber {
   conflict: boolean;
 }
 
+export function resolvePublicOrder(value: number | undefined): OfficialResultNumber {
+  if (value === undefined) return { value: '', conflict: false };
+  if (!Number.isSafeInteger(value) || value < 1) return { value: '', conflict: true };
+  return { value: String(value), conflict: false };
+}
+
 export function isPosterEligibleWinner(row: Pick<PosterResultRow, 'rank' | 'points_awarded'>): boolean {
   return row.rank !== null
     && row.rank >= 1
     && row.rank <= 5
     && typeof row.points_awarded === 'number'
     && row.points_awarded > 0;
-}
-
-export function resolveOfficialResultNumber(
-  rows: readonly Pick<PosterResultRow, 'public_result_no'>[],
-): OfficialResultNumber {
-  const assignedValues = rows
-    .map((row) => row.public_result_no)
-    .filter((number): number is number => number !== null && number !== undefined);
-  const hasInvalidNumber = assignedValues.some((number) => !Number.isSafeInteger(number) || number < 1);
-  const numbers = [...new Set(
-    assignedValues.filter((number) => Number.isSafeInteger(number) && number > 0),
-  )];
-
-  if (hasInvalidNumber || numbers.length > 1) return { value: '', conflict: true };
-  return { value: numbers.length === 1 ? String(numbers[0]) : '', conflict: false };
 }
 
 export function getOfficialResultNumberLabel(
@@ -77,7 +67,7 @@ export function buildRankVariables(rows: readonly PosterResultRow[]): Record<str
 }
 
 /** Stable source marker for warning users when official result data changes after generation. */
-export function fingerprintOfficialResults(rows: readonly PosterResultRow[]): string {
+export function fingerprintOfficialResults(rows: readonly PosterResultRow[], publicOrder?: number): string {
   const canonical = rows
     .map((row) => ({
       resultId: row.result_id ?? '',
@@ -88,10 +78,9 @@ export function fingerprintOfficialResults(rows: readonly PosterResultRow[]): st
       organisationName: row.organisation_name ?? '',
       grade: row.grade ?? '',
       points: row.points_awarded ?? null,
-      publicResultNo: row.public_result_no ?? null,
       registrationId: row.registration_id ?? '',
     }))
     .sort((a, b) => (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER)
       || a.resultId.localeCompare(b.resultId));
-  return JSON.stringify(canonical);
+  return JSON.stringify({ rows: canonical, publicOrder: publicOrder ?? null });
 }

@@ -55,7 +55,7 @@ import { loadFont } from './Utils/fontLoader';
 import { storageService } from '../../../services/storage/storageService';
 import { useAuthStore } from '../../../core/store/authStore';
 import { resultVisibilityService } from '../../../services/resultVisibilityService';
-import { buildRankVariables, fingerprintOfficialResults, resolveOfficialResultNumber } from './Results/resultGroupRules';
+import { buildRankVariables, fingerprintOfficialResults, resolvePublicOrder } from './Results/resultGroupRules';
 import { isPosterDesignSnapshot } from './Database/posterDesignSnapshot';
 import type { PosterAssetReference, PosterDeliveryScope, PosterDesignSnapshot, PosterSourceAssetBlob } from './Database/posterDesignSnapshot';
 import { canAccessPosterSnapshot } from './Utils/posterSnapshotAccess';
@@ -325,8 +325,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         }
       }
 
-      const resultRows = await resultVisibilityService.listPosterStudioResults(scope.tenantId, scope.festivalId);
-      const matchingRows = resultRows.filter((row) => row.published === true && (
+      const resultData = await resultVisibilityService.listPosterStudioPublicResults(scope.tenantId, scope.festivalId);
+      const matchingRows = resultData.rows.filter((row) => row.published === true && (
         typeof asset.event_id === 'string' && asset.event_id
           ? row.item_id === asset.event_id
           : typeof asset.result_id === 'string' && row.result_id === asset.result_id
@@ -334,7 +334,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       const selectedResult = matchingRows.find((row) => row.result_id === asset.result_id) ?? matchingRows[0];
       const variables = selectedResult ? {
         event_name: selectedResult.item_name,
-        result_no: resolveOfficialResultNumber(matchingRows).value,
+        result_no: resolvePublicOrder(resultData.publicOrderByGroupKey.get(selectedResult?.item_id || (selectedResult?.result_id ? `result:${selectedResult.result_id}` : ''))).value,
         ...buildRankVariables(matchingRows),
       } : {};
       const recreatedTemplate: TemplateData = {
@@ -530,16 +530,18 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
 
     let cancelled = false;
     setEditSourceStatus('checking');
-    void resultVisibilityService.listPosterStudioResults(tenantId, festivalId)
-      .then((results) => {
+    void resultVisibilityService.listPosterStudioPublicResults(tenantId, festivalId)
+      .then((resultData) => {
         if (cancelled) return;
-        const officialRows = results.filter((row) => row.published === true && (
+        const officialRows = resultData.rows.filter((row) => row.published === true && (
           editSourceSnapshot.itemId
             ? row.item_id === editSourceSnapshot.itemId
             : row.result_id === editSourceSnapshot.resultId
         ));
+        const itemKey = editSourceSnapshot.itemId || `result:${editSourceSnapshot.resultId}`;
+        const order = resultData.publicOrderByGroupKey.get(itemKey);
         setEditSourceStatus(
-          fingerprintOfficialResults(officialRows) === editSourceSnapshot.sourceResultFingerprint
+          fingerprintOfficialResults(officialRows, order) === editSourceSnapshot.sourceResultFingerprint
             ? 'current'
             : 'changed',
         );
@@ -993,8 +995,8 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         throw new Error('The active account or festival changed. Reopen this poster from Media Center.');
       }
 
-      const results = await resultVisibilityService.listPosterStudioResults(tenantId, festivalId);
-      const officialRows = results.filter((row) => row.published === true && (
+      const resultData = await resultVisibilityService.listPosterStudioPublicResults(tenantId, festivalId);
+      const officialRows = resultData.rows.filter((row) => row.published === true && (
         editSourceSnapshot.itemId
           ? row.item_id === editSourceSnapshot.itemId
           : row.result_id === editSourceSnapshot.resultId
@@ -1002,11 +1004,13 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       if (officialRows.length === 0) throw new Error('No current official result rows are available for this poster.');
 
       const current = useTemplateStore.getState();
-      const nextFingerprint = fingerprintOfficialResults(officialRows);
+      const itemKey = editSourceSnapshot.itemId || `result:${editSourceSnapshot.resultId}`;
+      const publicOrder = resultData.publicOrderByGroupKey.get(itemKey);
+      const nextFingerprint = fingerprintOfficialResults(officialRows, publicOrder);
       current.setVariables({
         ...current.variables,
         ...buildRankVariables(officialRows),
-        result_no: resolveOfficialResultNumber(officialRows).value,
+        result_no: resolvePublicOrder(publicOrder).value,
       });
       current.setSourceResultFingerprint(nextFingerprint);
       current.markUnsaved();

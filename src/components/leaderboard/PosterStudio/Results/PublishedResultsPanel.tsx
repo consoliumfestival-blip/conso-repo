@@ -3,8 +3,8 @@ import { coreColor } from '@/constants/coreTheme';
  * PublishedResultsPanel
  * --------------------
  * Loads published festival results (both publicly visible and internal/not-yet-public)
- * grouped cleanly per competition item (1 card = 1 competition), uses the stored
- * official result number, and supports both single-frame binding and
+ * grouped cleanly per competition item (1 card = 1 competition), uses the
+ * Public Item Results order, and supports both single-frame binding and
  * multi-frame batch selection (up to 6 frames simultaneously).
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -13,7 +13,7 @@ import { festivalCategoryService } from '../../../../services/festivalCategorySe
 import { useTemplateStore, BatchFrameItem, TemplateVariables } from '../Stores/templateStore';
 import { supabase } from '../../../../core/config/supabase';
 import { CATEGORIES, SAHITHYOLSAV_CATEGORY_ALIASES } from '../../../../constants/categories';
-import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, isPosterEligibleWinner, resolveOfficialResultNumber } from './resultGroupRules';
+import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, isPosterEligibleWinner, resolvePublicOrder } from './resultGroupRules';
 
 interface PublishedResultsPanelProps {
   festivalId: string;
@@ -40,6 +40,7 @@ interface CompetitionItemGroup {
 
 export default function PublishedResultsPanel({ festivalId, tenantId }: PublishedResultsPanelProps) {
   const [rawResults, setRawResults] = useState<FestivalResult[]>([]);
+  const [publicOrderByGroupKey, setPublicOrderByGroupKey] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -83,16 +84,17 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
         return res;
       };
 
-      const [data, itemsResult, customCategories, assetsResult] = await Promise.all([
-        resultVisibilityService.listPosterStudioResults(tenantId, festivalId),
+      const [publicResults, itemsResult, customCategories, assetsResult] = await Promise.all([
+        resultVisibilityService.listPosterStudioPublicResults(tenantId, festivalId),
         supabase.from('items').select('id, category_codes').eq('festival_id', festivalId),
         festivalCategoryService.list(festivalId, true).catch(() => []),
         fetchAssets(),
       ]);
 
       // Include all internally published results (public_visible true OR false)
-      const published = data.filter((r) => r.published === true);
+      const published = publicResults.rows.filter((r) => r.published === true);
       setRawResults(published);
+      setPublicOrderByGroupKey(publicResults.publicOrderByGroupKey);
 
       const itemExpMap = new Map<string, 'published' | 'draft'>();
       const resExpMap = new Map<string, 'published' | 'draft'>();
@@ -146,7 +148,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
     load();
   }, [load, assetsRefreshTick]);
 
-  // Group into one CompetitionItemGroup per item_id and use the stored official number.
+  // Group into one CompetitionItemGroup per item_id and use the Public Item Results order.
   const itemGroups = useMemo<CompetitionItemGroup[]>(() => {
     const groupedMap = new Map<string, FestivalResult[]>();
     rawResults.forEach((r) => {
@@ -156,13 +158,15 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       groupedMap.set(key, list);
     });
 
-    type TempGroup = Omit<CompetitionItemGroup, 'resultNo' | 'resultNoConflict' | 'sourceResultFingerprint' | 'variables'>;
+    type TempGroup = Omit<CompetitionItemGroup, 'variables'>;
     const tempGroups: TempGroup[] = [];
 
     groupedMap.forEach((rows, itemId) => {
       const sortedRows = [...rows].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
       const firstRow = sortedRows[0];
       const publicVisible = sortedRows.some((r) => r.public_visible === true);
+      const publicGroupKey = firstRow.item_id || `result:${firstRow.result_id}`;
+      const publicNumber = resolvePublicOrder(publicOrderByGroupKey.get(publicGroupKey));
 
       let earliestPublishedAt = '';
       sortedRows.forEach((r) => {
@@ -192,6 +196,9 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
         categoryNameEn: categoryObj.name_en,
         categoryNameMl: categoryObj.name_ml,
         publicVisible,
+        resultNo: publicNumber.value,
+        resultNoConflict: publicNumber.conflict,
+        sourceResultFingerprint: fingerprintOfficialResults(sortedRows, Number(publicNumber.value) || undefined),
         earliestPublishedAt,
         results: sortedRows,
         isExported: exportedVisibility !== null,
@@ -204,8 +211,8 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       .filter((g) => g.publicVisible)
       .sort((a, b) => {
         const officialOrder = compareOfficialResultNumbers(
-          resolveOfficialResultNumber(a.results),
-          resolveOfficialResultNumber(b.results),
+          resolvePublicOrder(Number(a.resultNo) || undefined),
+          resolvePublicOrder(Number(b.resultNo) || undefined),
         );
         if (officialOrder !== 0) return officialOrder;
         const cmp = (a.earliestPublishedAt || '9999').localeCompare(b.earliestPublishedAt || '9999');
@@ -220,8 +227,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       });
 
     return [...publicSorted, ...draftSorted].map((g) => {
-      const officialNumber = resolveOfficialResultNumber(g.results);
-      const resultNo = officialNumber.value;
+      const resultNo = g.resultNo;
       const vars: TemplateVariables = {
         event_name: g.itemName,
         category_name: g.categoryNameEn,
@@ -233,12 +239,12 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       return {
         ...g,
         resultNo,
-        resultNoConflict: officialNumber.conflict,
-        sourceResultFingerprint: fingerprintOfficialResults(g.results),
+        resultNoConflict: g.resultNoConflict,
+        sourceResultFingerprint: g.sourceResultFingerprint,
         variables: vars,
       };
     });
-  }, [rawResults, itemCategories, exportedItemMap, exportedResultMap]);
+  }, [rawResults, itemCategories, exportedItemMap, exportedResultMap, publicOrderByGroupKey]);
 
   const toBatchFrameItem = (group: CompetitionItemGroup): BatchFrameItem => ({
     itemId: group.itemId,
@@ -247,7 +253,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
     itemNameMl: group.itemNameMl,
     categoryName: group.categoryNameEn,
     resultNo: group.resultNo,
-  resultNoConflict: group.resultNoConflict,
+    resultNoConflict: group.resultNoConflict,
     sourceResultFingerprint: group.sourceResultFingerprint,
     publicVisible: group.publicVisible,
     variables: group.variables,

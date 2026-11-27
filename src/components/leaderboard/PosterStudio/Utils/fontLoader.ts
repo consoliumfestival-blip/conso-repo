@@ -5,12 +5,13 @@ export interface FontDefinition {
   url?: string;
   resolveUrl?: () => Promise<string>;
   cacheKey?: string;
+  weightRange?: string;
   category?: string;
   weights?: string;
 }
 
 export const ML_FONTS: FontDefinition[] = [
-  { family: 'Noto Sans Malayalam', url: 'https://fonts.gstatic.com/', category: 'Malayalam', weights: '300,400,500,600,700' },
+  { family: 'Noto Sans Malayalam', url: '/assets/noto-sans-malayalam-malayalam-wght-normal-C3telsSh.woff2', weightRange: '100 900', category: 'Malayalam', weights: '300,400,500,600,700' },
   { family: 'Noto Serif Malayalam', url: 'https://fonts.gstatic.com/', category: 'Malayalam', weights: '300,400,500,600,700' },
   { family: 'Manjari', url: 'https://fonts.gstatic.com/', category: 'Malayalam', weights: '100,400,700' },
   { family: 'Baloo Chettan 2', url: 'https://fonts.gstatic.com/', category: 'Malayalam', weights: '400,500,600,700' },
@@ -124,7 +125,7 @@ export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed
         try {
           const url = font.resolveUrl ? await font.resolveUrl() : font.url;
           if (!url) throw new Error('Font source URL is missing.');
-          const fontFace = new FontFace(font.family, `url(${url})`);
+          const fontFace = new FontFace(font.family, `url(${url})`, { weight: font.weightRange || 'normal' });
           await fontFace.load();
           (document.fonts as any).add(fontFace);
           loadedFonts.add(font.family);

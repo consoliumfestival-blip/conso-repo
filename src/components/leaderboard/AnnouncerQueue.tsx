@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Clipboard, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { ActivityIndicator, Clipboard, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/core/config/supabase';
 import { ui } from '@/constants/designSystem';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { PortalManagementPageLoading } from '@/components/layout/PortalManagementPage';
+import { SsfInput } from '@/components/ui/SsfInput';
+import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 
 type Entry = { item_id: string; queue_position: number; announced_at: string | null };
 type Item = { id: string; name: string; item_code?: string | null; category_codes?: string[] };
@@ -220,8 +221,8 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
     <Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 16 }}>Announcer setup</Text>
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{token ? 'Session active until you close it' : 'Create a session to share announcer access'} · {pending} pending · {announced.size} announced</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-      <View style={{ flex: 1, minWidth: 120 }}><Text style={{ color: ui.colors.textMuted }}>Results per batch</Text><Picker accessibilityLabel="Results per batch" selectedValue={batchSize} onValueChange={(value: 5 | 10) => { setBatchSize(value); setSelected([]); setManualOrder(false); }}><Picker.Item label="5 results" value={5} /><Picker.Item label="10 results" value={10} /></Picker></View>
-      <View style={{ flex: 2, minWidth: 190 }}><Text style={{ color: ui.colors.textMuted }}>Suspense · first to last team</Text><Picker accessibilityLabel="Suspense mode" selectedValue={mode} onValueChange={(value: SuspenseMode) => { setMode(value); setFallbackFromMode(null); setPriority('team'); setChoosePriority(false); }}>{(Object.keys(modeLabels) as SuspenseMode[]).map(value => <Picker.Item key={value} label={modeLabels[value]} value={value} />)}</Picker></View>
+      <View style={{ flex: 1, minWidth: 180, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Results per batch</Text><SsfSelectMenu accessibilityLabel="Results per batch" value={String(batchSize)} options={[{ label: '5 results', value: '5' }, { label: '10 results', value: '10' }]} onValueChange={value => { setBatchSize(Number(value) as 5 | 10); setSelected([]); setManualOrder(false); }} /></View>
+      <View style={{ flex: 2, minWidth: 220, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Suspense · first to last team</Text><SsfSelectMenu accessibilityLabel="Suspense mode" value={mode} options={(Object.keys(modeLabels) as SuspenseMode[]).map(value => ({ label: modeLabels[value], value }))} onValueChange={value => { setMode(value as SuspenseMode); setFallbackFromMode(null); setPriority('team'); setChoosePriority(false); }} /></View>
     </View>
     {strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.candidate_count} eligible results considered · projected batch spread {strategy.data.batch_spread} points{mode === 'auto' ? '' : ' · limit ' + modeLimits[mode] + ' points'}</Text>}
     {mode === 'auto' && fallbackFromMode && <Text accessibilityRole="alert" style={{ color: ui.colors.textMuted, fontSize: 12 }}>No order was found within {modeLimits[fallbackFromMode as Exclude<SuspenseMode, 'auto'>]} points. Auto is now using the closest spread found for this batch.</Text>}
@@ -229,10 +230,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
     {session.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Unable to load session. <Text onPress={() => void session.refetch()}>Retry</Text></Text>}
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Choose the team to prioritize. Review the system&apos;s next results, then send them to the announcer. Announcing does not publish results.</Text>
     {queue.error ? <Pressable onPress={() => void queue.refetch()}><Text style={{ color: ui.colors.danger }}>Queue unavailable. Tap to retry.</Text></Pressable> : <>
-      <Picker accessibilityLabel="Festival team" enabled={!save.isPending && teams.isSuccess} selectedValue={teamId} onValueChange={selectTeam}>
-        <Picker.Item label="Choose a team" value="" />
-        {teams.data?.map(team => <Picker.Item key={team.id} label={team.name} value={team.id} />)}
-      </Picker>
+      <View style={{ gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Team to prioritize</Text><SsfSelectMenu accessibilityLabel="Festival team" value={teamId} placeholder="Choose a team" searchable keepInViewport options={[{ label: 'Choose a team', value: '' }, ...(teams.data ?? []).map(team => ({ label: team.name, value: team.id }))]} onValueChange={selectTeam} active={!!teamId} /></View>
       {teams.isLoading && <ActivityIndicator color={ui.colors.primary} />}
       {teams.isError && <Pressable onPress={() => void teams.refetch()}><Text style={{ color: ui.colors.danger }}>Unable to load teams. Tap to retry.</Text></Pressable>}
       {teams.isSuccess && teams.data.length === 0 && <Text style={{ color: ui.colors.textMuted }}>No teams found for this festival.</Text>}
@@ -247,7 +245,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       {!!teamId && strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.target_reaches_first ? `The selected team ${strategy.data.items.find(item => item.target_is_first)?.target_tied_first ? 'shares first place' : 'reaches first place'} at position ${strategy.data.target_first_step}.` : 'The selected team does not reach first place within this batch based on available results.'} {strategy.data.target_is_first_at_batch_end ? strategy.data.target_tied_first_at_batch_end ? 'It shares first place at the end of this batch.' : 'It remains first at the end of this batch.' : `Projected spread at batch end: ${strategy.data.items.at(-1)?.spread ?? 0} points.`}</Text>}
       {!!teamId && strategy.data && strategy.data.lookahead_steps > 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Looking ahead at {strategy.data.lookahead_steps} more available results: the selected team is projected first at {strategy.data.lookahead_target_first_checkpoints} checkpoints; widest projected spread is {strategy.data.lookahead_max_spread} points. This is recalculated after the current batch.</Text>}
       {!!teamId && strategy.data?.selection_note && <Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{strategy.data.selection_note}</Text>}
-      {!!teamId && candidates.isSuccess && candidates.data.length > 0 && <TextInput accessibilityLabel="Search eligible results" value={candidateSearch} onChangeText={setCandidateSearch} placeholder="Search results by name, code, or category" placeholderTextColor={ui.colors.textMuted} style={{ minHeight: 40, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 10, color: ui.colors.text, fontSize: 13 }} />}
+      {!!teamId && candidates.isSuccess && candidates.data.length > 0 && <SsfInput label="Find a result" className="mb-0" accessibilityLabel="Search eligible results" value={candidateSearch} onChangeText={setCandidateSearch} placeholder="Search by name, code, or category" returnKeyType="search" style={{ minHeight: 44, borderRadius: 10 }} />}
       <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled contentContainerStyle={{ gap: 8 }}>
         {visibleItems.map(item => {
           const checked = selected.includes(item.id);
@@ -294,7 +292,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       {link && <View style={{ gap: 6 }}>
         <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Announcer link · active until closed by Admin</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TextInput accessibilityLabel="Announcer link" value={link} editable={false} selectTextOnFocus style={{ flex: 1, minWidth: 0, minHeight: 40, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 10, color: ui.colors.text, fontSize: 12 }} />
+          <SsfInput accessibilityLabel="Announcer link" value={link} editable={false} selectTextOnFocus className="mb-0 flex-1" style={{ minHeight: 40, borderRadius: 10, fontSize: 12 }} />
           <Pressable accessibilityRole="button" accessibilityLabel="Copy link" onPress={() => void copy(link)} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, backgroundColor: ui.colors.primary }}><Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>Copy</Text></Pressable>
         </View>
       </View>}

@@ -48,6 +48,7 @@ export type StageTopicDisplayState = {
     id: string;
     schedule_id: string;
     registration_id: string;
+    draw_id: string;
   })[];
 };
 
@@ -94,9 +95,13 @@ export const scheduleTopicDrawService = {
     return data as StageTopicDisplayState;
   },
 
-  async showNextPortalTopic(venueId: string, expectedVersion: number): Promise<StageTopicDisplayState> {
-    const { data, error } = await supabase.rpc('stage_portal_topic_show_next', {
+  async showNextPortalTopic(venueId: string, expectedVersion: number, selected: StageTopicDisplayState['ready'][number]): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('stage_portal_topic_show_selected', {
       p_venue_id: venueId, p_expected_version: expectedVersion,
+      p_schedule_id: selected.schedule_id, p_registration_id: selected.registration_id,
+      p_queue_id: selected.id, p_draw_id: selected.draw_id,
+      p_expected_code_letter: selected.code_letter, p_expected_topic_text: selected.topic_text,
+      p_expected_item_name: selected.item_name,
     });
     throwOnError(error);
     return data as StageTopicDisplayState;
@@ -214,10 +219,14 @@ export const scheduleTopicDrawService = {
     return data as StageTopicDisplayState;
   },
 
-  async showNextStageTopic(venueId: string, expectedVersion: number): Promise<StageTopicDisplayState> {
-    const { data, error } = await supabase.rpc('admin_stage_topic_show_next', {
+  async showNextStageTopic(venueId: string, expectedVersion: number, selected: StageTopicDisplayState['ready'][number]): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('admin_stage_topic_show_selected', {
       p_venue_id: venueId,
       p_expected_version: expectedVersion,
+      p_schedule_id: selected.schedule_id, p_registration_id: selected.registration_id,
+      p_queue_id: selected.id, p_draw_id: selected.draw_id,
+      p_expected_code_letter: selected.code_letter, p_expected_topic_text: selected.topic_text,
+      p_expected_item_name: selected.item_name,
     });
     throwOnError(error);
     return data as StageTopicDisplayState;

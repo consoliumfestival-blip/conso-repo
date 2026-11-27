@@ -1,6 +1,7 @@
 import { Modal } from '@/components/ui/CoreModal';
 import { SsfButton } from '@/components/ui/SsfButton';
 import { stageTopicSecondsRemaining } from '@/core/utils/stageTopicCountdown';
+import { selectedReadyTopic } from '@/core/utils/stageTopicSelection';
 import { scheduleTopicDrawService, type ScheduleTopicDrawState, type StageTopicDisplayState } from '@/services/scheduleTopicDrawService';
 import { stageManagementService, type StageRegistrationRow, type StageScheduleRow } from '@/services/stageManagementService';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
@@ -8,6 +9,13 @@ import QRCode from 'react-native-qrcode-svg';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { Alert, Platform, Pressable, ScrollView, Share, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+
+function errorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'string' && error.trim()) return error;
+  if (error && typeof error === 'object' && 'message' in error
+    && typeof error.message === 'string' && error.message.trim()) return error.message;
+  return fallback;
+}
 
 function confirmDraw(redraw: boolean, judgingStarted: boolean): Promise<boolean> {
   const details = [
@@ -75,6 +83,8 @@ export function StageTopicControlModal({
   const schedule = schedules.find((item) => item.id === scheduleId);
   const selected = registrationsQuery.data?.find((item) => item.id === registrationId);
   const assignment = topicQuery.data?.assignments.find((item) => item.registration_id === registrationId);
+  const selectedPreview = selectedReadyTopic(stageQuery.data?.ready ?? [], scheduleId, registrationId,
+    assignment?.id, selected?.code_letter, assignment?.topic_text);
   const activeTopics = topicQuery.data?.topics.filter((item) => item.is_active).length ?? 0;
   const onScreen = stageQuery.data?.on_screen;
   const remaining = onScreen ? stageTopicSecondsRemaining(
@@ -113,20 +123,22 @@ export function StageTopicControlModal({
     if (!scheduleId || !registrationId || !topicQuery.data?.enabled || !activeTopics || busy) return;
     const redraw = !!assignment;
     const judgingStarted = !!topicQuery.data.judging_started;
-    if (!await confirmDraw(redraw, judgingStarted)) return;
     setBusy('draw');
     setActionError('');
     setNotice('');
     try {
+      if (!await confirmDraw(redraw, judgingStarted)) return;
       if (portal) await scheduleTopicDrawService.drawPortalTopic(venueId, scheduleId, registrationId, redraw, judgingStarted);
       else await scheduleTopicDrawService.draw(scheduleId, registrationId, redraw, judgingStarted);
-      await Promise.all([
+      const [refreshed] = await Promise.all([
+        stageQuery.refetch(),
         queryClient.invalidateQueries({ queryKey: topicKey }),
-        queryClient.invalidateQueries({ queryKey: stageKey }),
       ]);
-      setNotice(selected?.code_letter?.trim()
-        ? 'Topic drawn and ready for Show Next.'
-        : 'Topic saved, but not ready for the stage display. Assign a code letter and re-draw this participant.');
+      setNotice(refreshed.isError
+        ? 'Topic saved. Refresh the stage display to check whether it is ready.'
+        : refreshed.data?.ready.some(item => item.schedule_id === scheduleId && item.registration_id === registrationId)
+          ? 'Topic drawn and ready for Show Next.'
+          : 'Topic saved, but it is not in the ready queue. Check the code letter and assigned stage before drawing again.');
     } catch (error: any) {
       setActionError(error?.message || 'Could not draw a topic.');
     } finally {
@@ -134,16 +146,42 @@ export function StageTopicControlModal({
     }
   };
   const showNext = async () => {
-    if (!stageQuery.data || busy) return;
+    if (busy) return;
+    setNotice('');
+    if (stageQuery.isError) {
+      setActionError(`Show Next unavailable: ${errorMessage(stageQuery.error, 'Could not load stage display. Retry stage display.')}`);
+      return;
+    }
+    if (!stageQuery.data || stageQuery.isPending || stageQuery.isFetching) {
+      setActionError('Stage display is still loading. Wait for it to finish, then try Show Next again.');
+      return;
+    }
+    if (stageQuery.data.paused) {
+      setActionError('The stage display is paused. Press Resume before Show Next.');
+      return;
+    }
+    if (!schedule || !selected) {
+      setActionError('Select the event and participant whose topic should be shown.');
+      return;
+    }
+    if (topicQuery.isError || registrationsQuery.isError || topicQuery.isFetching || registrationsQuery.isFetching) {
+      setActionError('The selected event or participant is still loading or could not be refreshed. Retry before Show Next.');
+      return;
+    }
+    if (!selectedPreview) {
+      setActionError('The selected participant has no matching unpublished draw ready at this stage. Refresh the preview and check the code letter and current draw. No other event will be shown.');
+      return;
+    }
     setBusy('next');
     setActionError('');
     try {
       const next = portal
-        ? await scheduleTopicDrawService.showNextPortalTopic(venueId, stageQuery.data.version)
-        : await scheduleTopicDrawService.showNextStageTopic(venueId, stageQuery.data.version);
+        ? await scheduleTopicDrawService.showNextPortalTopic(venueId, stageQuery.data.version, selectedPreview)
+        : await scheduleTopicDrawService.showNextStageTopic(venueId, stageQuery.data.version, selectedPreview);
       queryClient.setQueryData(stageKey, next);
+      setNotice(`Shown: ${selectedPreview.item_name} · Code ${selectedPreview.code_letter} · ${selectedPreview.topic_text}`);
     } catch (error: any) {
-      setActionError(error?.message || 'Could not show the next topic.');
+      setActionError(`Show Next failed: ${errorMessage(error, 'The request failed without an error description. Check your connection and retry stage display.')}`);
       await stageQuery.refetch();
     } finally {
       setBusy('');
@@ -174,15 +212,21 @@ export function StageTopicControlModal({
           <View className="flex-row items-start justify-between border-b border-ui-border px-4 py-3">
             <View className="min-w-0 flex-1">
               <Text className="font-poppins-bold text-base text-ui-text">Stage topics · {venueName}</Text>
-              <Text className="font-poppins text-xs text-ui-text-muted">Draw prepares the next topic. Show Next changes the audience screen.</Text>
+              <Text className="font-poppins text-xs text-ui-text-muted">Select an event and participant. Show Next displays only their current drawn topic.</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close topic controls" onPress={onClose} className="ml-2 rounded-lg border border-ui-border px-3 py-1.5">
               <Text className="font-poppins-bold text-sm text-ui-text">✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
-            {stageQuery.isPending ? <Text className="font-poppins text-xs text-ui-text-muted">Loading stage display…</Text>
-              : stageQuery.isError ? <Text className="font-poppins text-xs text-core-danger-red-700">{(stageQuery.error as Error)?.message}</Text>
+            {!!actionError && <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" selectable className="font-poppins text-xs text-core-danger-red-700">{actionError}</Text>}
+            {(stageQuery.isPending || stageQuery.isError || !stageQuery.data) && <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
+              <SsfButton label="Show Next" size="sm" disabled={!!busy} onPress={() => { void showNext(); }} />
+              <Text className="font-poppins text-xs text-ui-text-muted">{stageQuery.isError ? 'Stage display could not be refreshed. Retry to enable Show Next.' : 'Loading stage display…'}</Text>
+              <SsfButton label="Retry stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
+            </View>}
+            {stageQuery.isPending ? null
+              : stageQuery.isError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" selectable className="font-poppins text-xs text-core-danger-red-700">Stage display: {errorMessage(stageQuery.error, 'The request failed without an error description. Check your connection and retry.')}</Text>
               : stageQuery.data ? (
                 <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
                   <Text className="font-poppins-bold text-sm text-ui-text">
@@ -191,23 +235,25 @@ export function StageTopicControlModal({
                       : 'Audience screen waiting'}
                   </Text>
                   <Text className="font-poppins text-xs text-ui-text-muted">
-                    {stageQuery.data.ready.length
-                      ? `Ready next: ${stageQuery.data.ready[0].item_name} · ${stageQuery.data.ready[0].code_letter} · ${stageQuery.data.ready[0].topic_text}`
-                      : 'No topic ready next.'}
+                    {`Selected event: ${schedule?.item_name_en || schedule?.item_code || 'Choose an event'}`}
                   </Text>
+                  <Text className="font-poppins text-xs text-ui-text-muted">{selected ? `Selected participant: ${selected.participant_name || 'Participant'} · Code ${selected.code_letter || 'Not assigned'}` : 'Choose a participant below to preview their drawn topic.'}</Text>
+                  <Text selectable className="font-poppins-bold text-sm text-ui-text">{selectedPreview ? `Ready to show: ${selectedPreview.item_name} · Code ${selectedPreview.code_letter} · ${selectedPreview.topic_text}` : 'No matching unpublished topic ready for this selection.'}</Text>
                   {onScreen && !stageQuery.data.paused ? (
                     <Text className="font-poppins-bold text-sm text-ui-text">On-screen timer: {timer}</Text>
                   ) : null}
-                  {stageQuery.data.ready.length ? (
+                  {selectedPreview ? (
                     <Text className="font-poppins text-xs text-ui-text-muted">
-                      Next duration: {Math.floor(stageQuery.data.ready[0].duration_seconds / 60)} min
+                      Selected duration: {Math.floor(selectedPreview.duration_seconds / 60)} min
                     </Text>
                   ) : null}
                   <View className="flex-row flex-wrap gap-2">
-                    <SsfButton label="Show Next" size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy || stageQuery.data.paused || !stageQuery.data.ready.length} />
+                    <SsfButton label="Show Next" size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy} />
+                    <SsfButton label="Refresh stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
                     <SsfButton label={stageQuery.data.paused ? 'Resume' : 'Pause'} size="sm" variant="outline" onPress={() => { void togglePause(); }} isLoading={busy === 'pause'} disabled={!!busy} />
                     <SsfButton label="Link & QR" size="sm" variant="outline" onPress={() => portal ? setShowLink((value) => !value) : onOpenLink?.()} disabled={!!busy || (portal && !displayUrl)} />
                   </View>
+                  {stageQuery.data.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Resume the display before Show Next. The selected topic will not be shown until you press Show Next.</Text> : null}
                   {showLink && displayUrl ? <View className="items-center gap-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
                     <QRCode value={displayUrl} size={150} />
                     <Text selectable className="font-poppins text-xs text-ui-text-muted">{displayUrl}</Text>
@@ -215,6 +261,14 @@ export function StageTopicControlModal({
                   </View> : null}
                 </View>
               ) : null}
+            {topicQuery.isError && <View className="gap-2">
+              <Text accessibilityRole="alert" selectable className="font-poppins text-xs text-core-danger-red-700">Event topics: {errorMessage(topicQuery.error, 'Could not load event topics.')}</Text>
+              <SsfButton label="Retry event topics" size="sm" variant="outline" disabled={!!busy} isLoading={topicQuery.isFetching} onPress={() => { void topicQuery.refetch(); }} />
+            </View>}
+            {registrationsQuery.isError && <View className="gap-2">
+              <Text accessibilityRole="alert" selectable className="font-poppins text-xs text-core-danger-red-700">Participants: {errorMessage(registrationsQuery.error, 'Could not load participants.')}</Text>
+              <SsfButton label="Retry participants" size="sm" variant="outline" disabled={!!busy} isLoading={registrationsQuery.isFetching} onPress={() => { void registrationsQuery.refetch(); }} />
+            </View>}
             <Text className="font-poppins-bold text-sm text-ui-text">Draw a topic</Text>
             <Text className="font-poppins text-xs text-ui-text-muted">Choose an event at this stage.</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
@@ -223,7 +277,8 @@ export function StageTopicControlModal({
                   key={item.id}
                   accessibilityRole="button"
                   accessibilityState={{ selected: item.id === scheduleId }}
-                  onPress={() => { setScheduleId(item.id); setRegistrationId(''); setSearch(''); setNotice(''); }}
+                  disabled={!!busy}
+                  onPress={() => { setScheduleId(item.id); setRegistrationId(''); setSearch(''); setNotice(''); setActionError(''); }}
                   className={`rounded-lg border px-3 py-2 ${item.id === scheduleId ? 'border-ui-primary bg-ui-muted' : 'border-ui-border bg-core-surface-white'}`}
                 >
                   <Text className="font-poppins-bold text-xs text-ui-text">{item.item_name_en || item.item_code || 'Event'}</Text>
@@ -254,7 +309,8 @@ export function StageTopicControlModal({
                       key={item.id}
                       accessibilityRole="button"
                       accessibilityState={{ selected: item.id === registrationId }}
-                      onPress={() => setRegistrationId(item.id)}
+                      disabled={!!busy}
+                      onPress={() => { setRegistrationId(item.id); setNotice(''); setActionError(''); }}
                       className={`mb-1.5 rounded-lg border px-3 py-2 ${item.id === registrationId ? 'border-ui-primary bg-ui-muted' : 'border-ui-border bg-core-surface-white'}`}
                     >
                       <Text className="font-poppins-bold text-xs text-ui-text">
@@ -270,9 +326,8 @@ export function StageTopicControlModal({
                 <SsfButton label={assignment ? 'Re-draw topic' : 'Draw topic'} size="sm" onPress={() => { void draw(); }} isLoading={busy === 'draw'} disabled={!!busy || !selected || !activeTopics} />
               </>
             ) : topicQuery.isPending ? <Text className="font-poppins text-xs text-ui-text-muted">Loading topic setup…</Text>
-              : topicQuery.isError ? <Text className="font-poppins text-xs text-core-danger-red-700">{(topicQuery.error as Error)?.message}</Text>
+              : topicQuery.isError ? null
               : schedule ? <Text className="font-poppins text-xs text-ui-text-muted">Enable Topic Draw in Schedule Edit first.</Text> : null}
-            {actionError ? <Text className="font-poppins text-xs text-core-danger-red-700">{actionError}</Text> : null}
             {notice ? <Text className="font-poppins text-xs text-ui-text">{notice}</Text> : null}
           </ScrollView>
         </View>

@@ -1,0 +1,811 @@
+.custom-ayatic-v2,
+.custom-scene-v11,
+.custom-stage-v41,
+.custom-stage-green-v2 {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout style;
+  transform: translateZ(0);
+}
+
+/* Keep body transparent and layer .sky cleanly between html canvas and #main
+   so scroll-driven --sky-1..--sky-3 gradients animate across the sky rather than
+   being covered by body's opaque :root background while only bottom water strips update. */
+html {
+  background: var(--sky-2);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body {
+  background: transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.sky {
+  z-index: 0;
+}
+
+.sky__grid,
+.sky__spot {
+  display: none;
+  background-image: none;
+}
+
+#main {
+  position: relative;
+  z-index: 1;
+}
+
+/* After the locked .journey animation finishes, restore the exact snapshot
+   solid --sky-2 background progression (#C44E78 -> #241F50 -> #080D1E) for
+   .race and .night fallback instead of exposing the 3-stop .sky / stars layer. */
+.race,
+.night {
+  background: var(--sky-2);
+}
+
+/* Lightweight 3D Ayatic Codex hero wordmark container */
+.hero {
+  padding-top: calc(var(--nav-h) + var(--nav-top) + clamp(8px, 2vh, 20px));
+  padding-bottom: clamp(16px, 2vh, 24px);
+}
+
+.marquee {
+  padding-block: clamp(20px, 3.2vw, 48px);
+}
+
+.hero .hero__title {
+  width: 100%;
+}
+
+.hero__title-3d {
+  display: block;
+  width: min(100%, clamp(280px, 38vw, 480px));
+  aspect-ratio: 600 / 368;
+  margin-left: clamp(6px, 0.8vw, 14px);
+}
+
+@media (min-width: 1200px) {
+  .hero__title-3d {
+    width: min(100%, clamp(440px, 38vw, 620px), 68vh);
+  }
+}
+
+.hero__title-3d-mount {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 899px) {
+  .hero {
+    min-height: calc(100svh - 116px);
+    padding-top: calc(var(--nav-h) + var(--nav-top) + clamp(2px, 1vh, 10px));
+    padding-bottom: 10px;
+    gap: 12px;
+    justify-content: space-between;
+    background:
+      radial-gradient(85% 42% at 88% 16%, rgba(37, 99, 235, 0.075) 0%, transparent 65%),
+      radial-gradient(75% 38% at 12% 62%, rgba(109, 40, 217, 0.06) 0%, transparent 65%),
+      transparent;
+  }
+
+  .hero .hero__grid {
+    flex: 0 0 auto;
+    justify-content: flex-start;
+    gap: 14px;
+  }
+
+  .hero__title-3d {
+    width: min(100%, 356px);
+    margin-left: 6px;
+  }
+
+  .hero .lanes {
+    --lanes-h: clamp(180px, 49vw, 220px);
+  }
+
+  .hero .hero__pitch {
+    padding-top: 0;
+    gap: 0;
+  }
+
+  .hero .hero__lede {
+    display: none;
+  }
+
+  .hero .hero__ctas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .hero .hero__ctas .btn {
+    width: 100%;
+    justify-content: center;
+    padding-inline: 14px;
+    white-space: nowrap;
+  }
+
+  /* Compact 2+1 mobile event strip (Date, Venue + Live Countdown) filling bottom naturally */
+  .hero .hero__info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(32, 33, 36, 0.12);
+  }
+
+  .hero .hero__info > div {
+    border-left: 0;
+    padding: 0;
+    gap: 2px;
+  }
+
+  .hero .hero__info > div:nth-child(2) {
+    border-left: 1px solid rgba(32, 33, 36, 0.12);
+    padding-left: 12px;
+  }
+
+  .hero .hero__info dt {
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+  }
+
+  .hero .hero__info dd {
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .hero .hero__cal {
+    display: none;
+  }
+
+  .hero .hero__info > div:last-child {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, rgba(109, 40, 217, 0.06), rgba(37, 99, 235, 0.08), rgba(16, 185, 129, 0.06));
+    border: 1px solid rgba(37, 99, 235, 0.16);
+  }
+
+  .hero .hero__info > div:last-child dt {
+    margin: 0;
+    color: #1e293b;
+  }
+
+  .hero .countdown--compact {
+    font-size: 0.86rem;
+    font-weight: 700;
+  }
+
+  .marquee {
+    padding-top: 6px;
+    padding-bottom: 12px;
+  }
+}
+
+.custom-stage-green-v2,
+.custom-stage-v41 {
+  contain: strict;
+}
+
+/* Isolate layout/style recalc during scroll-lock sky updates and eliminate
+   expensive live backdrop-filter blur passes over the scrolling canvas. */
+.journey .chapter__copy,
+.journey .chapter__scene,
+.race,
+.register,
+.footer {
+  contain: layout style;
+}
+
+.journey .journey__far {
+  will-change: transform;
+}
+
+.journey .chapter__points li {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: color-mix(in srgb, var(--sky-2) 86%, transparent);
+}
+
+@media (max-width: 960px), (hover: none) {
+  .nav__shell:before {
+    -webkit-backdrop-filter: blur(8px) saturate(1.15);
+    backdrop-filter: blur(8px) saturate(1.15);
+  }
+}
+
+/* Compact, lightweight footer with Consoulium logo slot & social SVG links */
+.footer.footer--compact {
+  padding: clamp(28px, 4.5vw, 52px) var(--gutter) clamp(24px, 3.5vw, 40px);
+  gap: clamp(18px, 2.8vw, 28px);
+}
+
+.footer__top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 28px;
+  border-top: 1px solid #ffffff20;
+  padding-top: 22px;
+}
+
+.footer__brand-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.footer__logo-box {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: #ffffff10;
+  border: 1px solid #ffffff26;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.footer__logo-box img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  display: block;
+}
+
+.footer__brand-meta {
+  display: grid;
+  gap: 2px;
+}
+
+.footer__brand-meta .footer__wordmark {
+  font-size: 1.05rem;
+  line-height: 1.15;
+  color: #fff;
+}
+
+.footer__sub {
+  font-size: 0.78rem;
+  color: #9aa3ba;
+  line-height: 1.3;
+}
+
+.footer__links--compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 20px;
+  font-size: 0.88rem;
+}
+
+.footer__social-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer__social-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #e8eaed;
+  background: #ffffff0d;
+  border: 1px solid #ffffff24;
+  transition: transform 0.25s var(--ease-out), background-color 0.25s, color 0.25s, border-color 0.25s;
+}
+
+.footer__social-btn:hover {
+  transform: translateY(-2px);
+  color: #fff;
+  background: #ffffff1f;
+  border-color: #ffffff4d;
+}
+
+.footer__social-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .footer.footer--compact {
+    padding: 24px var(--gutter) 22px;
+    gap: 16px;
+  }
+
+  .footer__top-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+    padding-top: 18px;
+  }
+
+  .footer__links--compact {
+    gap: 4px 16px;
+    font-size: 0.84rem;
+  }
+
+  .footer.footer--compact .footer__base {
+    gap: 12px;
+    font-size: 0.78rem;
+  }
+}
+
+/* The supplied first-frame artwork replaces the original palm illustration. */
+.journey .chapter:first-child .palm { display: none; }
+
+/* Allow .palm trees near chapter seams to render completely unclipped above adjacent
+   chapter water boundaries without altering animations or scene layering. */
+.journey .chapter,
+.journey .chapter__scene {
+  z-index: auto;
+}
+
+.journey .chapter__copy {
+  z-index: 20;
+}
+
+.journey .chapter__scene > svg.scene {
+  position: relative;
+  z-index: 1;
+}
+
+.journey .custom-stage-green-v2,
+.journey .custom-stage-v41,
+.journey .custom-scene-v11 {
+  z-index: 12;
+}
+
+.journey .chapter__scene > svg.scene--palms {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Use the same clean top-left copy layout across all four .journey stages,
+   and scale the scrolling-lock typography slightly smaller on 1200px+ screens
+   for a minimal, consistent look without touching mobile, tablet, or layout. */
+@media (min-width: 1200px) {
+  .journey .chapter__verb {
+    font-size: clamp(1rem, 0.9rem + 0.25vw, 1.2rem);
+  }
+
+  .journey .chapter__title {
+    font-size: clamp(2.1rem, 1.15rem + 1.75vw, 3rem);
+  }
+
+  .journey .chapter__points li {
+    font-size: 0.8125rem;
+  }
+
+  .journey .journey__time {
+    font-size: clamp(1rem, 0.9rem + 0.25vw, 1.2rem);
+  }
+}
+
+/* Trim only the extra phone copy offset below the fixed navigation. */
+@media (max-width: 760px) {
+  .journey .chapter__copy {
+    padding-top: calc(var(--nav-h) + clamp(4px, 1.5vh, 16px));
+  }
+}
+
+.nav.is-compact {
+  --shell-w: min(1220px, calc(100vw - 24px));
+}
+
+.nav.is-compact .nav__shell {
+  gap: 10px;
+}
+
+.nav.is-compact .nav__wordmark {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scale(0.7);
+}
+
+.nav__links {
+  margin-left: auto;
+  margin-right: auto;
+  min-width: 0;
+}
+
+@media (max-width: 1220px) {
+  .nav__shell {
+    gap: 8px;
+  }
+
+  .nav__link {
+    padding: 8px 9px;
+    font-size: 0.84rem;
+  }
+
+  .nav__menu-label {
+    display: none;
+  }
+
+  .nav__menu {
+    justify-content: center;
+    width: 44px;
+    margin-left: 0;
+    padding: 0;
+  }
+}
+
+@media (max-width: 1040px) {
+  .nav.is-compact {
+    --shell-w: min(1180px, calc(100vw - 24px));
+  }
+
+  .nav .nav__links {
+    display: flex;
+    margin-inline: auto;
+  }
+
+  .nav__link[data-id="speakers"],
+  .nav__link[data-id="team"],
+  .nav__link[data-id="register"] {
+    display: none;
+  }
+
+  .nav__cta {
+    margin-left: 0;
+  }
+
+  .nav__menu {
+    position: fixed;
+    right: 16px;
+    bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+    width: 52px;
+    height: 52px;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(20, 22, 30, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+    pointer-events: auto;
+    z-index: 900;
+  }
+
+  .nav.is-compact .nav__menu,
+  .nav__menu.is-open,
+  .nav__menu:hover {
+    background: rgba(20, 22, 30, 0.96);
+  }
+}
+
+@media (max-width: 860px) {
+  .nav.is-compact .nav__shell {
+    padding: 0 6px 0 14px;
+    gap: 8px;
+  }
+
+  .nav .nav__mark-text {
+    font-size: 0.86rem;
+  }
+
+  .nav__link {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+
+  .nav .nav__cta,
+  .nav.is-compact .nav__cta {
+    height: 38px;
+    padding: 0 5px 0 12px;
+    font-size: 0.78rem;
+    gap: 6px;
+  }
+
+  .nav .nav__cta-arrow {
+    width: 26px;
+    height: 26px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 720px) {
+  /* Keep the top header bar visible on phones; size Student Portal neatly inside the pill and move only the menu icon to bottom-right thumb reach. */
+  .nav.is-compact {
+    --shell-w: calc(100vw - 24px);
+    --shell-h: 50px;
+    --shell-top: 10px;
+  }
+
+  .nav .nav__links {
+    display: none;
+  }
+
+  .nav .nav__shell {
+    gap: 8px;
+  }
+
+  .nav.is-compact .nav__shell {
+    padding: 0 6px 0 12px;
+    gap: 8px;
+  }
+
+  .nav .nav__brand {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+    overflow: hidden;
+  }
+
+  .nav .nav__wordmark {
+    font-size: 1rem;
+    gap: 6px;
+  }
+
+  .nav .nav__mark {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    gap: 6px;
+  }
+
+  .nav .nav__mark svg {
+    width: 13px;
+    height: 13px;
+    flex: none;
+  }
+
+  .nav .nav__mark-text {
+    display: inline-block;
+    margin-left: 0;
+    font-size: 0.82rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav .nav__cta,
+  .nav.is-compact .nav__cta {
+    margin-left: auto;
+    flex: none;
+    white-space: nowrap;
+    height: 34px;
+    padding: 0 5px 0 11px;
+    gap: 6px;
+    font-size: 0.76rem;
+  }
+
+  .nav .nav__cta-arrow {
+    width: 24px;
+    height: 24px;
+    font-size: 0.76rem;
+  }
+
+  .journey .journey__clock {
+    padding-right: 68px;
+  }
+}
+
+@media (max-width: 380px) {
+  .nav .nav__mark svg {
+    width: 11px;
+    height: 11px;
+  }
+
+  .nav__mark-text {
+    display: inline-block;
+    font-size: 0.76rem;
+    margin-left: 0;
+  }
+
+  .nav__logo-img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .nav .nav__cta,
+  .nav.is-compact .nav__cta {
+    height: 32px;
+    padding: 0 4px 0 10px;
+    gap: 5px;
+    font-size: 0.72rem;
+  }
+
+  .nav .nav__cta-arrow {
+    width: 22px;
+    height: 22px;
+    font-size: 0.72rem;
+  }
+}
+
+/* Keep a modest breathing gap between mobile chapters without excess panoramic width. */
+@media (max-width: 760px) and (aspect-ratio <= 1) {
+  .journey .chapter {
+    width: 118vw;
+  }
+
+  /* Span the final Ayatic Codex + CONSOULIUM scene cleanly across both the empty
+     third chapter and the fourth chapter on mobile portrait without clipping. */
+  .journey .chapter--scale .custom-scene-v11 {
+    left: -100%;
+    right: 0;
+    width: 200%;
+  }
+}
+
+/* Balance tall portrait phones (e.g. 393x852) without shrinking shorter phones (<780px). */
+@media (max-width: 760px) and (min-height: 780px) {
+  .journey .journey__pin {
+    --strip: clamp(56px, 7.5vh, 80px);
+  }
+
+  .journey .chapter__copy {
+    padding-top: calc(var(--nav-h) + clamp(24px, 6.5vh, 64px));
+    gap: 12px;
+  }
+
+  .journey .chapter__points {
+    display: flex;
+  }
+}
+
+/* Modern lightweight non-interactive night backdrop behind Leaderboard & Footer */
+.night__atmosphere {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(64% 38% at 50% var(--horizon, 60%), rgba(109, 40, 217, 0.22) 0%, rgba(37, 99, 235, 0.12) 45%, transparent 100%),
+    radial-gradient(42% 28% at 18% calc(var(--horizon, 60%) - 6%), rgba(225, 29, 72, 0.11) 0%, transparent 72%),
+    radial-gradient(42% 28% at 82% calc(var(--horizon, 60%) - 6%), rgba(16, 185, 129, 0.11) 0%, transparent 72%),
+    linear-gradient(180deg, #050816 0%, #0a1026 36%, #11193b var(--horizon, 60%), #070c1f calc(var(--horizon, 60%) + 1px), #03050d 100%);
+}
+
+.night__codex-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  display: block;
+  pointer-events: none;
+}
+
+.night__horizon-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--horizon, 60%);
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(109, 40, 217, 0.35) 18%,
+    rgba(96, 165, 250, 0.55) 50%,
+    rgba(245, 158, 11, 0.35) 82%,
+    transparent 100%
+  );
+}
+
+/* Omit horizontal scroll .journey section on phones; keep all other UI/logic untouched */
+@media (max-width: 760px) {
+  .journey {
+    display: none !important;
+  }
+}
+
+/* Header main logo from footer + full-screen mobile menu drawer scaling */
+img.nav__logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  flex: none;
+}
+
+.nav__mark {
+  gap: 8px;
+}
+
+.nav__mark-text {
+  margin-left: 0;
+}
+
+.menu__venue:hover {
+  text-decoration: none;
+}
+
+@media (min-width: 900px) {
+  .menu__inner {
+    padding-top: calc(var(--nav-top) + 58px + clamp(16px, 3vh, 36px));
+    padding-bottom: clamp(20px, 3.5vh, 44px);
+  }
+
+  .menu__label {
+    font-size: clamp(1.75rem, min(3.4vw, 4.4vh), 3.6rem);
+  }
+}
+
+@media (max-width: 899px) {
+  .menu__inner {
+    min-height: 100dvh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 74px);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+  }
+
+  .menu__pages {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .menu__eyebrow {
+    margin-bottom: 8px;
+  }
+
+  .menu__list {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: repeat(8, minmax(0, 1fr));
+  }
+
+  .menu__link {
+    width: 100%;
+    height: 100%;
+    padding-block: 2px;
+    grid-template-columns: 2.2em minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .menu__label {
+    font-size: clamp(1.7rem, min(7.2vw, 4.3vh), 3rem);
+  }
+
+  .menu__blurb {
+    display: none;
+  }
+
+  .menu__aside {
+    display: none;
+  }
+}

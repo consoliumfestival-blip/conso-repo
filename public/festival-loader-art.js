@@ -10,58 +10,6 @@
           return n
         }
         function ring(cls) { return el('g', { class: 'ld-ring ' + (cls || '') }, svg) }
-        ;[58, 92, 126, 160, 188].forEach(function (r) {
-          el('circle', { r: r, fill: 'none', stroke: '#DADCE0', 'stroke-width': 1, class: 'ld-guide' }, svg)
-        })
-        var g, i, a, n
-        // ring 1: blue sparkles
-        g = ring('ld-ring--spin')
-        for (i = 0; i < 8; i++) {
-          a = (i / 8) * 360
-          n = el('g', { transform: 'rotate(' + a + ') translate(0 -38)' }, g)
-          el('path', { class: 'ld-petal', d: 'M0 -16C2.6 -2.6 2.6 -2.6 16 0 2.6 2.6 2.6 2.6 0 16 -2.6 2.6 -2.6 2.6 -16 0 -2.6 -2.6 -2.6 -2.6 0 -16Z', fill: C.b }, n)
-        }
-        // ring 2: green half-circle chips
-        g = ring('ld-ring--spin-rev')
-        for (i = 0; i < 12; i++) {
-          a = (i / 12) * 360
-          n = el('g', { transform: 'rotate(' + a + ') translate(0 -75)' }, g)
-          var chip = el('g', { class: 'ld-petal' }, n)
-          el('circle', { r: 10, fill: '#fff', stroke: C.g, 'stroke-width': 3.2 }, chip)
-          el('path', { d: 'M-11.6 0A11.6 11.6 0 0 0 11.6 0Z', fill: C.g }, chip)
-        }
-        // ring 3: yellow petals
-        g = ring('ld-ring--spin')
-        for (i = 0; i < 16; i++) {
-          a = (i / 16) * 360
-          n = el('g', { transform: 'rotate(' + a + ') translate(0 -109)' }, g)
-          el('path', { class: 'ld-petal', d: 'M0 -17C9 -8 9 6 0 14 -9 6 -9 -8 0 -17Z', fill: C.y }, n)
-        }
-        // ring 4: red rays
-        g = ring('ld-ring--spin-rev')
-        for (i = 0; i < 24; i++) {
-          a = (i / 24) * 360
-          n = el('g', { transform: 'rotate(' + a + ') translate(0 -143)' }, g)
-          el('rect', { class: 'ld-petal', x: -3, y: -12, width: 6, height: 24, rx: 3, fill: C.r }, n)
-        }
-        // ring 5: 5-color dots
-        g = ring('ld-ring--spin')
-        var keys5 = ['p', 'r', 'b', 'g', 'y']
-        for (i = 0; i < 40; i++) {
-          a = (i / 40) * 360
-          n = el('g', { transform: 'rotate(' + a + ') translate(0 -174)' }, g)
-          el('circle', { class: 'ld-petal', r: i % 2 ? 2.4 : 4, fill: C[keys5[i % 5]] }, n)
-        }
-        // centre: the purple/yellow flower glyph
-        var core = el('g', { class: 'ld-ring ld-core' }, svg)
-        var cg = el('g', { class: 'ld-petal' }, core)
-        for (i = 0; i < 8; i++) {
-          a = (i / 8) * Math.PI * 2
-          el('circle', { cx: Math.cos(a) * 10.5, cy: Math.sin(a) * 10.5, r: 5.4, fill: C.p }, cg)
-        }
-        el('circle', { r: 10.5, fill: C.p }, cg)
-        el('circle', { r: 4.8, fill: '#fff' }, cg)
-
         // The five racing bands used for the reveal.
         var heads = {
           p: '<circle cx="50" cy="50" r="48" fill="#6D28D9"/><circle cx="50" cy="50" r="28" fill="none" stroke="#fff" stroke-width="8"/><circle cx="50" cy="50" r="12" fill="#fff"/>',

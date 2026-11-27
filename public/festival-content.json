@@ -1,0 +1,384 @@
+{
+  "gallery": [
+    {
+      "id": "gal-01",
+      "span": "hero",
+      "orientation": "landscape",
+      "accent": "#6D28D9",
+      "image": "/brand/gallery/g-01.webp",
+      "thumb": "/brand/gallery/g-01-thumb.webp",
+      "width": 1600,
+      "height": 1138,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 1"
+    },
+    {
+      "id": "gal-02",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#E11D48",
+      "image": "/brand/gallery/g-02.webp",
+      "thumb": "/brand/gallery/g-02-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 2"
+    },
+    {
+      "id": "gal-03",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#2563EB",
+      "image": "/brand/gallery/g-03.webp",
+      "thumb": "/brand/gallery/g-03-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 3"
+    },
+    {
+      "id": "gal-04",
+      "span": "tall",
+      "orientation": "portrait",
+      "accent": "#10B981",
+      "image": "/brand/gallery/g-04.webp",
+      "thumb": "/brand/gallery/g-04-thumb.webp",
+      "width": 900,
+      "height": 1600,
+      "thumbWidth": 495,
+      "thumbHeight": 880,
+      "alt": "Consoulium 2k26 gallery photo 4"
+    },
+    {
+      "id": "gal-05",
+      "span": "wide",
+      "orientation": "landscape",
+      "accent": "#F59E0B",
+      "image": "/brand/gallery/g-05.webp",
+      "thumb": "/brand/gallery/g-05-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 5"
+    },
+    {
+      "id": "gal-06",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#6D28D9",
+      "image": "/brand/gallery/g-06.webp",
+      "thumb": "/brand/gallery/g-06-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 6"
+    },
+    {
+      "id": "gal-07",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#E11D48",
+      "image": "/brand/gallery/g-07.webp",
+      "thumb": "/brand/gallery/g-07-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 7"
+    },
+    {
+      "id": "gal-08",
+      "span": "md",
+      "orientation": "landscape",
+      "accent": "#2563EB",
+      "image": "/brand/gallery/g-08.webp",
+      "thumb": "/brand/gallery/g-08-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 8"
+    },
+    {
+      "id": "gal-09",
+      "span": "md",
+      "orientation": "landscape",
+      "accent": "#10B981",
+      "image": "/brand/gallery/g-09.webp",
+      "thumb": "/brand/gallery/g-09-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 9"
+    },
+    {
+      "id": "gal-10",
+      "span": "wide",
+      "orientation": "landscape",
+      "accent": "#F59E0B",
+      "image": "/brand/gallery/g-10.webp",
+      "thumb": "/brand/gallery/g-10-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 10"
+    },
+    {
+      "id": "gal-11",
+      "span": "tall",
+      "orientation": "portrait",
+      "accent": "#6D28D9",
+      "image": "/brand/gallery/g-11.webp",
+      "thumb": "/brand/gallery/g-11-thumb.webp",
+      "width": 900,
+      "height": 1600,
+      "thumbWidth": 495,
+      "thumbHeight": 880,
+      "alt": "Consoulium 2k26 gallery photo 11"
+    },
+    {
+      "id": "gal-12",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#E11D48",
+      "image": "/brand/gallery/g-12.webp",
+      "thumb": "/brand/gallery/g-12-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 12"
+    },
+    {
+      "id": "gal-13",
+      "span": "sm",
+      "orientation": "landscape",
+      "accent": "#2563EB",
+      "image": "/brand/gallery/g-13.webp",
+      "thumb": "/brand/gallery/g-13-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 13"
+    },
+    {
+      "id": "gal-14",
+      "span": "full",
+      "orientation": "landscape",
+      "accent": "#10B981",
+      "image": "/brand/gallery/g-14.webp",
+      "thumb": "/brand/gallery/g-14-thumb.webp",
+      "width": 1280,
+      "height": 910,
+      "thumbWidth": 880,
+      "thumbHeight": 626,
+      "alt": "Consoulium 2k26 gallery photo 14"
+    }
+  ],
+  "news": [
+    {
+      "id": "news-01",
+      "kicker": "കൺസോളിയം ’26 ആർട്സ് ഫെസ്റ്റിവലിന് തുടക്കമായി",
+      "title": "മത്സരം ശത്രുത വളർത്താനുള്ളതല്ല, സാഹോദര്യം വർധിപ്പിക്കാൻ: ശ്രീചിത്രൻ എം. ജെ",
+      "edition": "Imprint · Feed 01",
+      "category": "Inaugural",
+      "layout": "featured",
+      "date": "2026-11-26T10:30:00+05:30",
+      "featured": true,
+      "accent": "#6D28D9",
+      "thumb": "/brand/news/f1-stage-top.jpg",
+      "thumbSecondary": "/brand/news/f1-stage-podium.jpg",
+      "posterDesktop": "/brand/news/imprint-feed-01-landscape.png",
+      "posterMobile": "/brand/news/imprint-feed-01-portrait.jpg",
+      "bullets": [
+        "‘ആയാതിക് കോഡെക്സ്’ എന്ന പ്രമേയത്തിൽ നടക്കുന്ന ഫെസ്റ്റിവൽ ഞായറാഴ്ച സമാപിക്കും",
+        "പത്ത് കാമ്പസുകളിൽ നിന്നായി നാനൂറ് മത്സരങ്ങളിൽ അറുനൂറിലേറെ വിദ്യാർത്ഥികൾ പങ്കെടുക്കും"
+      ],
+      "summary": "‘ആയാതിക് കോഡെക്സ്’ എന്ന പ്രമേയത്തിൽ ബുഖാരി കാമ്പസിൽ ആരംഭിച്ച കൺസോളിയം ’26 ആർട്സ് ഫെസ്റ്റിവലിൽ പത്ത് കാമ്പസുകളിൽ നിന്നായി നാനൂറ് മത്സരങ്ങളിൽ അറുനൂറിലേറെ വിദ്യാർത്ഥികൾ പങ്കെടുക്കും.",
+      "body": "കൺസോളിയം ’26 ആർട്സ് ഫെസ്റ്റിവലിന് ബുഖാരി കാമ്പസിൽ തുടക്കമായി. മത്സരം ശത്രുത വളർത്താനുള്ളതല്ല, സാഹോദര്യം വർധിപ്പിക്കാനാണെന്ന് മുഖ്യാതിഥി ശ്രീചിത്രൻ എം. ജെ ഉദ്ഘാടന പ്രസംഗത്തിൽ വ്യക്തമാക്കി."
+    },
+    {
+      "id": "news-02",
+      "title": "വെർച്വൽ നരേഷൻ: സ്വാതന്ത്ര്യസമര ശേഷിപ്പുകൾ തേടി അഞ്ചു യാത്രകൾ",
+      "edition": "Imprint · Feed 02",
+      "category": "Special Feature",
+      "layout": "photo",
+      "date": "2026-11-27T11:00:00+05:30",
+      "featured": false,
+      "accent": "#2563EB",
+      "thumb": "/brand/news/f2-panel.jpg",
+      "posterDesktop": "/brand/news/imprint-feed-02-landscape.png",
+      "posterMobile": "/brand/news/imprint-feed-02-portrait.jpg",
+      "tags": [
+        "പാലക്കാട് കോട്ട",
+        "ഹജൂർ കച്ചേരി",
+        "തലശ്ശേരി കോട്ട",
+        "പയ്യന്നൂർ",
+        "ഫോർട്ട് കൊച്ചി"
+      ],
+      "summary": "പാലക്കാട് കോട്ട, ഹജൂർ കച്ചേരി, തലശ്ശേരി കോട്ട, പയ്യന്നൂർ ഉപ്പു സത്യാഗ്രഹ സ്മാരകം, ഫോർട്ട് കൊച്ചി ജയിൽ ഓഫ് ഫ്രീഡം സ്ട്രഗിൾ എന്നിവയിലൂടെ കൊളോണിയൽ കാലഘട്ടത്തിലെ സമരചരിത്രം അടയാളപ്പെടുത്തുന്ന പ്രത്യേക അവതരണം.",
+      "body": "1790-ൽ ബ്രിട്ടീഷ് ഭരണകേന്ദ്രമായി മാറിയ പാലക്കാട് കോട്ട മുതൽ ഫോർട്ട് കൊച്ചിയിലെ ജയിൽ ഓഫ് ഫ്രീഡം സ്ട്രഗിൾ വരെയുള്ള അഞ്ച് ചരിത്ര ശേഷിപ്പുകളിലൂടെയുള്ള വെർച്വൽ നരേഷൻ അവതരണം."
+    },
+    {
+      "id": "news-03",
+      "title": "“മതപ്രബോധനം അതിർത്തികൾ ഭേദിച്ച് വ്യാപിക്കണം”",
+      "edition": "Imprint · Feed 01",
+      "category": "Keynote",
+      "layout": "quote",
+      "author": "ശൈഖുന അബൂഹനീഫൽ ഫൈസി തെന്നല",
+      "authorRole": "പ്രിൻസിപ്പൽ, ബുഖാരി ദഅ്‌വ കോളേജ്",
+      "date": "2026-11-26T09:30:00+05:30",
+      "featured": false,
+      "accent": "#E11D48",
+      "thumb": "/brand/news/f1-usthad.jpg",
+      "posterDesktop": "/brand/news/imprint-feed-01-landscape.png",
+      "posterMobile": "/brand/news/imprint-feed-01-portrait.jpg",
+      "summary": "മതപ്രബോധനം അതിർത്തികൾ ഭേദിച്ച് വ്യാപിക്കണം. അതിനാൽ പുതിയകാലത്തെ മതവിദ്യാർത്ഥികൾ മാതൃഭാഷയ്ക്ക് പുറമെ വൈദേശിക ഭാഷകളിലും നിപുണരായിരിക്കണം.",
+      "body": "പ്രിൻസിപ്പൽ ശൈഖുന അബൂഹനീഫൽ ഫൈസി തെന്നല കൺസോളിയം ഉദ്ഘാടന വേദിയിൽ നൽകിയ സന്ദേശം."
+    },
+    {
+      "id": "news-04",
+      "title": "'നമ്മളെന്ന കവിത ജനിക്കുന്നു': സരണി കവിത പതിപ്പ് പ്രകാശിതമായി",
+      "edition": "Imprint · Feed 01",
+      "category": "Publications",
+      "layout": "publication",
+      "date": "2026-11-26T16:00:00+05:30",
+      "featured": false,
+      "accent": "#10B981",
+      "thumb": "/brand/news/f1-sarani-cover.jpg",
+      "posterDesktop": "/brand/news/imprint-feed-01-landscape.png",
+      "posterMobile": "/brand/news/imprint-feed-01-portrait.jpg",
+      "summary": "സാബിക് മുഖപത്രം സരണി കവിത പതിപ്പ് കൺസോളിയം ഉദ്ഘാടന വേദിയിൽ ശൈഖുന തെന്നല ഉസ്താദ് മുഖ്യാതിഥി ശ്രീചിത്രൻ എം. ജെക്ക് നൽകി പ്രകാശനം ചെയ്തു. വിദ്യാർത്ഥികൾ രചിച്ച നാൽപതോളം കവിതകൾ ഉൾക്കൊള്ളിച്ചാണ് മാസിക തയ്യാറാക്കിയത്.",
+      "body": "വിദ്യാർത്ഥികൾ രചിച്ച നാൽപതോളം കവിതകൾ ഉൾക്കൊള്ളിച്ചാണ് സാബിക് മുഖപത്രം സരണി കവിത പതിപ്പ് തയ്യാറാക്കിയത്."
+    }
+  ],
+  "media": [
+    {
+      "id": "media-01",
+      "title": "Ayatic Codex Official Theme Motion Teaser",
+      "format": "Broadcast",
+      "duration": "01:45",
+      "date": "2026-11-26",
+      "accent": "#6D28D9",
+      "poster": "/brand/gallery-01.svg",
+      "url": "/explore",
+      "summary": "Visual introduction to the cosmic order, rhythm, and five philosophical emblems of Consoulium 2k26."
+    },
+    {
+      "id": "media-02",
+      "title": "Five Houses Reveal Reel · Meet the Units",
+      "format": "Reels & Video",
+      "duration": "00:58",
+      "date": "2026-11-26",
+      "accent": "#E11D48",
+      "poster": "/brand/gallery-02.svg",
+      "url": "/standings",
+      "summary": "Dynamic spotlight on La-Cosmix, Al-Cognix, El-Clarix, Lo-Glifix, and Der-Zenix heading into launch day."
+    },
+    {
+      "id": "media-03",
+      "title": "Day 01 Inaugural Keynote Highlights",
+      "format": "Broadcast",
+      "duration": "04:20",
+      "date": "2026-11-26",
+      "accent": "#2563EB",
+      "poster": "/brand/gallery-03.svg",
+      "url": "/news",
+      "summary": "Excerpts and reflections from scholars and campus leaders at Bukhari Campus auditorium."
+    },
+    {
+      "id": "media-04",
+      "title": "Consoulium Official Emblem · High-Res Mark (512px)",
+      "format": "Press Kit",
+      "duration": "PNG · 512px",
+      "date": "2026-11-25",
+      "accent": "#10B981",
+      "poster": "/brand/consolium-icon-512.png",
+      "downloadUrl": "/brand/consolium-icon-512.png",
+      "summary": "Official square icon mark for press releases, event coverage, and digital partner badges."
+    },
+    {
+      "id": "media-05",
+      "title": "Consoulium Transparent Crest Mark",
+      "format": "Press Kit",
+      "duration": "PNG · 192px",
+      "date": "2026-11-25",
+      "accent": "#F59E0B",
+      "poster": "/brand/consolium-logo-footer.png",
+      "downloadUrl": "/brand/consolium-logo-footer.png",
+      "summary": "Transparent dark-mode crest overlay ready for broadcast lower-thirds and digital posters."
+    }
+  ],
+  "brochure": {
+    "title": "Consoulium 2k26 Official Prospectus & Codex Guide",
+    "edition": "5th Edition · Ayatic Codex",
+    "dates": "26–29 November 2026",
+    "venue": "Bukhari Campus, Kondotty",
+    "pdfUrl": "",
+    "chapters": [
+      {
+        "id": "theme",
+        "number": "01",
+        "title": "Theme: Ayatic Codex",
+        "accent": "#6D28D9",
+        "subtitle": "Reading Creation’s Signs & Harmonious Order",
+        "body": "Consoulium 2026 unveils its 5th edition theme, Ayatic Codex — a four-day convergence of literature, sacred art, debate, and philosophical inquiry. Every stage and discipline invites young scholars to read the intricate signs (Ayat) woven through language, rhythm, and human craft.",
+        "highlights": [
+          "5th Annual Edition hosted at Bukhari Campus, Kondotty",
+          "100+ literary, stage, linguistic, and creative events",
+          "Multi-lingual competitions across Arabic, English, Urdu & Malayalam"
+        ]
+      },
+      {
+        "id": "units",
+        "number": "02",
+        "title": "The Five Intellectual Houses",
+        "accent": "#E11D48",
+        "subtitle": "La-Cosmix · Al-Cognix · El-Clarix · Lo-Glifix · Der-Zenix",
+        "body": "Every competitor represents one of the five signature houses of Consoulium 2k26. Each house embodies a classical epistemic pillar reflected in its emblem, color, and philosophical motto.",
+        "highlights": [
+          "La-Cosmix (Nizam) — Purple · Cosmic order, discipline, and balance",
+          "Al-Cognix (Tafakkur) — Crimson · Deep contemplation & inquiry",
+          "El-Clarix (Basira) — Sapphire · Clarity, vision, and sharp focus",
+          "Lo-Glifix (Ayat) — Emerald · Discerning signs & interpretive depth",
+          "Der-Zenix (Marifa) — Amber · Spiritual knowledge & realization"
+        ]
+      },
+      {
+        "id": "rules",
+        "number": "03",
+        "title": "Competition Structure & Scoring",
+        "accent": "#2563EB",
+        "subtitle": "Transparent Code-Letter Judging & Real-Time Standings",
+        "body": "Competitions are structured across junior, senior, and general categories. Entries are anonymized with verified code letters before jury evaluation. Grades (A+, A, B) and podium ranks (1st, 2nd, 3rd) contribute directly to each house’s standing.",
+        "highlights": [
+          "1st Place: 5 pts · 2nd Place: 3 pts · 3rd Place: 1 pt (+ grade bonuses)",
+          "Group items carry elevated championship weightage",
+          "Instant sync to the public Results & Standings portal upon verification"
+        ]
+      },
+      {
+        "id": "venues",
+        "number": "04",
+        "title": "Bukhari Campus Venues & 4-Day Flow",
+        "accent": "#10B981",
+        "subtitle": "Four Days Across Curated Stages",
+        "body": "Stages across Bukhari Campus are organized to minimize clash times and allow guests to follow keynote debates, calligraphy exhibitions, and evening cultural showcases smoothly.",
+        "highlights": [
+          "Day 01 (26 Nov): Inaugural Codex Assembly & Opening Preliminaries",
+          "Day 02 (27 Nov): Stage Eloquence, Qiraat & Off-Stage Pavilions",
+          "Day 03 (28 Nov): Finals Marathons, Group Panels & Live Quiz",
+          "Day 04 (29 Nov): Grand Convocation, Championship Tally & Awards"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script>if (location.pathname === "/festival-media.html") history.replaceState(null, "", "/media" + location.search + location.hash);</script>
+    <title>Media · Consoulium 2k26</title>
+    <meta name="theme-color" content="#050816" />
+    <link rel="icon" href="/brand/favicon.ico" />
+    <script src="/festival-curtain.js?v=20261127"></script>
+    <link rel="stylesheet" href="/festival-pages.css?v=20261127" />
+  </head>
+  <body data-page="media">
+    <div class="sub-page">
+      <main class="sub-main">
+        <div class="sub-hero">
+          <div>
+            <span class="sub-eyebrow">Broadcasts · Reels · Press Kit</span>
+            <h1>Media</h1>
+            <p class="sub-lede">Festival highlights, video reels, broadcasts, and official Consoulium 2k26 brand marks.</p>
+          </div>
+          <span class="meta-pill" id="updated"></span>
+        </div>
+        <div class="glass-tools">
+          <input id="search" type="search" placeholder="Search videos, reels, or press assets" aria-label="Search media" />
+          <button class="glass-btn" id="refresh" type="button">Refresh</button>
+        </div>
+        <div class="filter-chips" id="filters" aria-label="Filter media by format"></div>
+        <div id="content" class="media-grid" aria-live="polite">
+          <div class="empty">Loading media assets…</div>
+        </div>
+      </main>
+    </div>
+    <script src="/festival-subpage-shell.js?v=20261127" defer></script>
+    <script src="/festival-cursor.js?v=20261127" defer></script>
+    <script src="/festival-pages.js?v=20261127" defer></script>
+  </body>
+</html>

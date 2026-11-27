@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050b1c"/>
+      <stop offset="100%" stop-color="#0f2b5c"/>
+    </linearGradient>
+    <radialGradient id="g1" cx="72%" cy="28%" r="62%">
+      <stop offset="0%" stop-color="#2563EB" stop-opacity="0.48"/>
+      <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="22%" cy="78%" r="58%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="720" fill="url(#bg)"/>
+  <rect width="1200" height="720" fill="url(#grid)"/>
+  <rect width="1200" height="720" fill="url(#g1)"/>
+  <rect width="1200" height="720" fill="url(#g2)"/>
+  <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5">
+    <circle cx="600" cy="360" r="201.6"/>
+    <circle cx="600" cy="360" r="145.2" stroke-dasharray="6 6"/>
+    <circle cx="600" cy="360" r="84.7" stroke="#60A5FA" stroke-opacity="0.55"/>
+    <rect x="442.8" y="202.8" width="314.5" height="314.5" transform="rotate(45 600 360)" stroke="#2563EB" stroke-opacity="0.45"/>
+    <line x1="0" y1="532.8" x2="1200" y2="532.8" stroke="#10B981" stroke-opacity="0.35"/>
+  </g>
+  <path d="M600 303.6 C612.1 347.9 612.1 347.9 656.4 360 C612.1 372.1 612.1 372.1 600 416.4 C587.9 372.1 587.9 372.1 543.6 360 C587.9 347.9 587.9 347.9 600 303.6 Z" fill="#ffffff" fill-opacity="0.82"/>
+  <g transform="translate(48 48)">
+    <circle cx="8" cy="8" r="5" fill="#2563EB"/>
+    <circle cx="24" cy="8" r="5" fill="#10B981"/>
+    <circle cx="40" cy="8" r="5" fill="#60A5FA"/>
+  </g>
+</svg>

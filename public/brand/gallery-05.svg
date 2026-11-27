@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#140c04"/>
+      <stop offset="100%" stop-color="#422509"/>
+    </linearGradient>
+    <radialGradient id="g1" cx="72%" cy="28%" r="62%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.48"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="g2" cx="22%" cy="78%" r="58%">
+      <stop offset="0%" stop-color="#E11D48" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#E11D48" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M 48 0 L 0 0 0 48" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="900" height="1100" fill="url(#bg)"/>
+  <rect width="900" height="1100" fill="url(#grid)"/>
+  <rect width="900" height="1100" fill="url(#g1)"/>
+  <rect width="900" height="1100" fill="url(#g2)"/>
+  <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5">
+    <circle cx="450" cy="550" r="252.0"/>
+    <circle cx="450" cy="550" r="181.4" stroke-dasharray="6 6"/>
+    <circle cx="450" cy="550" r="105.8" stroke="#6D28D9" stroke-opacity="0.55"/>
+    <rect x="253.4" y="353.4" width="393.1" height="393.1" transform="rotate(45 450 550)" stroke="#F59E0B" stroke-opacity="0.45"/>
+    <line x1="0" y1="814.0" x2="900" y2="814.0" stroke="#E11D48" stroke-opacity="0.35"/>
+  </g>
+  <path d="M450 479.4 C465.1 534.9 465.1 534.9 520.6 550 C465.1 565.1 465.1 565.1 450 620.6 C434.9 565.1 434.9 565.1 379.4 550 C434.9 534.9 434.9 534.9 450 479.4 Z" fill="#ffffff" fill-opacity="0.82"/>
+  <g transform="translate(48 48)">
+    <circle cx="8" cy="8" r="5" fill="#F59E0B"/>
+    <circle cx="24" cy="8" r="5" fill="#E11D48"/>
+    <circle cx="40" cy="8" r="5" fill="#6D28D9"/>
+  </g>
+</svg>

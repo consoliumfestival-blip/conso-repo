@@ -34,7 +34,7 @@ async function invokeShowNext(overrides = {}, portal = false, failure) {
     schedule: { id: selection.schedule_id }, selected: { id: selection.registration_id }, selectedPreview: selection,
     setNotice: notice => notices.push(notice), setActionError: error => errors.push(error), setBusy: () => {},
     portal, venueId: 'stage', queryClient: { setQueryData: () => {} }, stageKey: ['stage'],
-    scheduleTopicDrawService: Object.fromEntries(['showNextPortalTopic', 'showNextStageTopic'].map(name => [name, async (...args) => {
+    scheduleTopicDrawService: Object.fromEntries(['showSavedPortalDraw', 'showSavedStageDraw'].map(name => [name, async (...args) => {
       calls.push({ name, args }); if (failure) throw failure; return { version: 46 };
     }])), ...overrides,
   };
@@ -46,7 +46,7 @@ async function invokeShowNext(overrides = {}, portal = false, failure) {
 test('Show Next sends the selected preview through admin and portal paths, never the queue head', async () => {
   for (const portal of [false, true]) {
     const result = await invokeShowNext({}, portal);
-    assert.deepEqual(result.calls, [{ name: portal ? 'showNextPortalTopic' : 'showNextStageTopic', args: ['stage', 45, selection] }]);
+    assert.deepEqual(result.calls, [{ name: portal ? 'showSavedPortalDraw' : 'showSavedStageDraw', args: ['stage', 45, selection] }]);
     assert.ok(result.notices.includes('Shown: Arabic Speech · Code B · Selected topic'));
   }
 });

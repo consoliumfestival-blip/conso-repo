@@ -18,6 +18,26 @@ export type ScheduleTopicAssignment = {
   is_current: boolean;
 };
 
+export type ScheduleTopicDrawResult = {
+  assignment_id: string;
+  registration_id: string;
+  topic_id: string;
+  topic_text: string;
+  drawn_at: string;
+  judging_started: boolean;
+  replaced_assignment_id: string | null;
+};
+
+export type StageTopicDrawPreview = {
+  schedule_id: string;
+  registration_id: string;
+  draw_id: string;
+  item_name: string;
+  code_letter: string;
+  topic_text: string;
+  duration_seconds: number;
+};
+
 export type ScheduleTopicDrawState = {
   enabled: boolean;
   participant_duration_seconds: number;
@@ -86,11 +106,23 @@ export const scheduleTopicDrawService = {
       p_confirm_redraw: confirmRedraw, p_confirm_judging_started: confirmJudgingStarted,
     });
     throwOnError(error);
-    return data;
+    return data as ScheduleTopicDrawResult;
   },
 
   async getPortalDisplayState(venueId: string): Promise<StageTopicDisplayState> {
     const { data, error } = await supabase.rpc('stage_portal_topic_display_state', { p_venue_id: venueId });
+    throwOnError(error);
+    return data as StageTopicDisplayState;
+  },
+
+  async showSavedPortalDraw(venueId: string, expectedVersion: number, selected: StageTopicDrawPreview): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('stage_portal_topic_show_draw', {
+      p_venue_id: venueId, p_expected_version: expectedVersion,
+      p_schedule_id: selected.schedule_id, p_registration_id: selected.registration_id,
+      p_draw_id: selected.draw_id, p_expected_code_letter: selected.code_letter,
+      p_expected_topic_text: selected.topic_text, p_expected_item_name: selected.item_name,
+      p_expected_duration_seconds: selected.duration_seconds,
+    });
     throwOnError(error);
     return data as StageTopicDisplayState;
   },
@@ -176,15 +208,7 @@ export const scheduleTopicDrawService = {
       p_confirm_judging_started: confirmJudgingStarted,
     });
     throwOnError(error);
-    return data as {
-      assignment_id: string;
-      registration_id: string;
-      topic_id: string;
-      topic_text: string;
-      drawn_at: string;
-      judging_started: boolean;
-      replaced_assignment_id: string | null;
-    };
+    return data as ScheduleTopicDrawResult;
   },
 
   async setDisplayedAssignment(scheduleId: string, assignmentId: string | null) {
@@ -227,6 +251,18 @@ export const scheduleTopicDrawService = {
       p_queue_id: selected.id, p_draw_id: selected.draw_id,
       p_expected_code_letter: selected.code_letter, p_expected_topic_text: selected.topic_text,
       p_expected_item_name: selected.item_name,
+    });
+    throwOnError(error);
+    return data as StageTopicDisplayState;
+  },
+
+  async showSavedStageDraw(venueId: string, expectedVersion: number, selected: StageTopicDrawPreview): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('admin_stage_topic_show_draw', {
+      p_venue_id: venueId, p_expected_version: expectedVersion,
+      p_schedule_id: selected.schedule_id, p_registration_id: selected.registration_id,
+      p_draw_id: selected.draw_id, p_expected_code_letter: selected.code_letter,
+      p_expected_topic_text: selected.topic_text, p_expected_item_name: selected.item_name,
+      p_expected_duration_seconds: selected.duration_seconds,
     });
     throwOnError(error);
     return data as StageTopicDisplayState;

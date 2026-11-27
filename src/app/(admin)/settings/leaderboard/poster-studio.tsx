@@ -1,16 +1,19 @@
 import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { useAuthStore } from '../../../../core/store/authStore';
 import PosterStudio from '../../../../components/leaderboard/PosterStudio/index';
 
 export default function PosterStudioScreen() {
+  const { festivalId: routeFestivalId } = useLocalSearchParams<{ festivalId?: string | string[] }>();
   const { useActiveFestival } = useFestival();
   const { data: festival } = useActiveFestival();
   const { tenant_id } = useAuthStore();
 
   const tenantId = tenant_id;
-  const festivalId = festival?.id;
+  const requestedFestivalId = Array.isArray(routeFestivalId) ? routeFestivalId[0] : routeFestivalId;
+  const festivalId = requestedFestivalId || festival?.id;
 
   if (!tenantId || !festivalId) {
     return (

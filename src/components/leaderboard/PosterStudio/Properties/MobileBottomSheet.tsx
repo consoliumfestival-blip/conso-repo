@@ -7,11 +7,12 @@ import { LayerData } from '../Stores/layerStore';
 interface MobileBottomSheetProps {
   selectedLayer: LayerData | null;
   onClose: () => void;
+  hidden?: boolean;
 }
 
 type Tab = 'transform' | 'typography' | 'style' | 'variable';
 
-export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBottomSheetProps) {
+export default function MobileBottomSheet({ selectedLayer, onClose, hidden = false }: MobileBottomSheetProps) {
   const [activeTab, setActiveTab] = useState<Tab>('transform');
   const [sheetHeight, setSheetHeight] = useState(60); // vh
   const [isDragging, setIsDragging] = useState(false);
@@ -37,7 +38,7 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
     const handleResize = () => {
       const keyboardHeight = window.innerHeight - (vv.height + vv.offsetTop);
       if (sheetRef.current) {
-        sheetRef.current.style.bottom = `${Math.max(0, keyboardHeight)}px`;
+        sheetRef.current.style.bottom = `calc(${92 + Math.max(0, keyboardHeight)}px + env(safe-area-inset-bottom))`;
       }
     };
     vv.addEventListener('resize', handleResize);
@@ -65,7 +66,7 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
     }
   }, [sheetHeight, onClose]);
 
-  if (!visible || !selectedLayer) return null;
+  if (hidden || !visible || !selectedLayer) return null;
 
   const tabs: Tab[] = ['transform', ...(selectedLayer.type === 'text' ? ['typography' as Tab] : []), 'variable'];
 
@@ -73,7 +74,7 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
     <>
       {/* Backdrop */}
       <div
-        style={{ position: 'fixed', inset: 0, zIndex: 9000, backgroundColor: 'transparent' }}
+        style={{ position: 'fixed', inset: '0 0 calc(92px + env(safe-area-inset-bottom)) 0', zIndex: 9000, backgroundColor: 'transparent' }}
         onClick={() => { setVisible(false); onClose(); }}
       />
       {/* Sheet */}
@@ -83,8 +84,9 @@ export default function MobileBottomSheet({ selectedLayer, onClose }: MobileBott
           position: 'fixed',
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: 'calc(92px + env(safe-area-inset-bottom))',
           height: `${sheetHeight}vh`,
+          maxHeight: 'calc(100dvh - 112px - env(safe-area-inset-bottom))',
           zIndex: 9001,
           backgroundColor: coreColor('#FFFFFF', 'surface'),
           borderTopLeftRadius: 20,

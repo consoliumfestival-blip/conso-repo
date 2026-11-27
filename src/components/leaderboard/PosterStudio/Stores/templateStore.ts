@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { LayerData, useLayerStore } from './layerStore';
+import { useHistoryStore } from './historyStore';
 import { supabase } from '../../../../core/config/supabase';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { useOfflineStore } from './offlineStore';
@@ -32,6 +33,8 @@ export interface BatchFrameItem {
   itemNameMl: string;
   categoryName: string;
   resultNo: string;
+  resultNoConflict?: boolean;
+  sourceResultFingerprint?: string;
   publicVisible: boolean;
   variables: TemplateVariables;
   customLayers?: LayerData[];
@@ -76,6 +79,15 @@ interface TemplateStore {
   loadStarterTemplate: () => void;
   resetLayersToStarter: () => void;
   loadDraftOnStart: (templateId?: string) => Promise<void>;
+  restorePosterDesign: (input: {
+    template: TemplateData;
+    layers: LayerData[];
+    variables: TemplateVariables;
+    itemId: string | null;
+    resultId: string | null;
+    sourceResultFingerprint: string;
+    typographyMode: TypographyMode;
+  }) => void;
 
   setActiveTemplate: (t: TemplateData | null) => void;
   updateTemplateMeta: (patch: Partial<TemplateData>) => void;
@@ -96,10 +108,12 @@ interface TemplateStore {
   setCurrentItemId: (id: string | null) => void;
   currentResultPublicVisible: boolean;
   setCurrentResultPublicVisible: (visible: boolean) => void;
+  sourceResultFingerprint: string;
+  setSourceResultFingerprint: (fingerprint: string) => void;
   assetsRefreshTick: number;
   bumpAssetsRefreshTick: () => void;
   saveResultOverride: () => Promise<void>;
-  loadResultOverride: (resultId: string) => Promise<boolean>;
+  loadResultOverride: (resultId: string, isActive?: () => boolean) => Promise<boolean>;
   updateStableLayout: () => void;
 
   typographyMode: TypographyMode;
@@ -181,6 +195,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   currentResultId: null,
   currentItemId: null,
   currentResultPublicVisible: false,
+  sourceResultFingerprint: '',
   assetsRefreshTick: 0,
   stableLayout: null,
   batchItems: [],
@@ -244,6 +259,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   setCurrentResultId: (id) => set({ currentResultId: id }),
   setCurrentItemId: (id) => set({ currentItemId: id }),
   setCurrentResultPublicVisible: (currentResultPublicVisible) => set({ currentResultPublicVisible }),
+  setSourceResultFingerprint: (sourceResultFingerprint) => set({ sourceResultFingerprint }),
   bumpAssetsRefreshTick: () => set((s) => ({ assetsRefreshTick: s.assetsRefreshTick + 1 })),
 
   setActiveTemplate: (t: TemplateData | null) => set({ activeTemplate: t, publishStatus: t?.status ?? 'draft', hasUnsavedChanges: false, stableLayout: t?.layers || null }),
@@ -283,6 +299,26 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   loadStarterTemplate: () => {
     set({ activeTemplate: DEFAULT_STARTER_TEMPLATE, hasUnsavedChanges: false });
     useLayerStore.getState().setLayers(DEFAULT_STARTER_TEMPLATE.layers);
+  },
+
+  restorePosterDesign: (input) => {
+    const layers = JSON.parse(JSON.stringify(input.layers)) as LayerData[];
+    useLayerStore.setState({ layers, selectedIds: [] });
+    useHistoryStore.getState().clear();
+    set({
+      activeTemplate: { ...input.template, layers },
+      variables: JSON.parse(JSON.stringify(input.variables)) as TemplateVariables,
+      typographyMode: input.typographyMode,
+      currentItemId: input.itemId,
+      currentResultId: input.resultId,
+      sourceResultFingerprint: input.sourceResultFingerprint,
+      publishStatus: input.template.status,
+      hasUnsavedChanges: false,
+      draftRecoveryAvailable: false,
+      lastSavedAt: new Date(),
+      stableLayout: JSON.parse(JSON.stringify(layers)) as LayerData[],
+      versionHistory: [],
+    });
   },
 
   resetLayersToStarter: () => {
@@ -471,7 +507,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     }
   },
 
-  loadResultOverride: async (resultId: string) => {
+  loadResultOverride: async (resultId: string, isActive) => {
     const { activeTemplate, stableLayout, currentResultId } = get();
     if (!activeTemplate) return false;
 
@@ -486,6 +522,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
     try {
       const id = `${activeTemplate.id || 'demo-template-1'}_${resultId}`;
       const overrideDoc = await db.result_overrides.get(id);
+      if (isActive && !isActive()) return false;
 
       if (overrideDoc) {
         // Deep copy baseLayers to avoid mutating the store
@@ -520,6 +557,7 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
       }
     } catch (e) {
       console.error('[PosterStudio] Failed to load result override', e);
+      if (isActive && !isActive()) return false;
       useLayerStore.getState().setLayers(JSON.parse(JSON.stringify(baseLayers)));
       return false;
     }

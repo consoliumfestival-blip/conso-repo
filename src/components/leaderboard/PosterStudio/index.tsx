@@ -8,10 +8,11 @@ import EffectsBlock from './Properties/EffectsBlock';
 import MobileBottomSheet from './Properties/MobileBottomSheet';
 import TextToolbar from './Toolbar/TextToolbar';
 import { useCanvasStore } from './Stores/canvasStore';
-import { useLayerStore } from './Stores/layerStore';
+import { LayerSchema, useLayerStore, type LayerData } from './Stores/layerStore';
+import { getLayerGroupIssues } from './Utils/layerTree';
 import CanvasSizeBlock from './Properties/CanvasSizeBlock';
 import BackgroundBlock from './Properties/BackgroundBlock';
-import { useTemplateStore } from './Stores/templateStore';
+import { useTemplateStore, type TemplateData } from './Stores/templateStore';
 import { useOfflineStore } from './Stores/offlineStore';
 import { useHistoryStore } from './Stores/historyStore';
 import { useKeyboardShortcuts } from './Hooks/useKeyboardShortcuts';
@@ -28,6 +29,16 @@ import { useContextMenu } from './Hooks/useContextMenu';
 
 export type DockPanelType = 'templates' | 'text' | 'assets' | 'layers' | 'background' | 'results' | 'properties' | null;
 
+const MOBILE_TOOL_ITEMS = [
+  { panel: 'templates', label: 'Templates', Icon: LayoutTemplate },
+  { panel: 'results', label: 'Results', Icon: Trophy },
+  { panel: 'assets', label: 'Assets', Icon: Image },
+  { panel: 'layers', label: 'Layers', Icon: Layers },
+  { panel: 'background', label: 'Background', Icon: Palette },
+  { panel: 'text', label: 'Text', Icon: Type },
+  { panel: 'properties', label: 'Properties', Icon: SlidersHorizontal },
+] as const;
+
 import ErrorBoundary from './ErrorBoundary';
 import DiagnosticsOverlay from './DiagnosticsOverlay';
 import { validateTemplateHealth, ValidationIssue } from './Utils/validation';
@@ -38,17 +49,28 @@ import { supabase } from '../../../core/config/supabase';
 import OffscreenRenderer from './Canvas/OffscreenRenderer';
 import MultiFrameGrid from './Canvas/MultiFrameGrid';
 import { uploadService } from '../../../services/storage/uploadService';
-import { dataUrlToBlob, saveGeneratedPosterAsset } from './Utils/generatedAssetSaver';
-import { useRouter } from 'expo-router';
+import { dataUrlToBlob } from './Utils/generatedAssetSaver';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { fontService, FontMetadata } from '../../../services/fontService';
 import { loadFont } from './Utils/fontLoader';
 import { storageService } from '../../../services/storage/storageService';
+import { useAuthStore } from '../../../core/store/authStore';
+import { resultVisibilityService } from '../../../services/resultVisibilityService';
+import { buildRankVariables, fingerprintOfficialResults, resolveOfficialResultNumber } from './Results/resultGroupRules';
+import { isPosterDesignSnapshot } from './Database/posterDesignSnapshot';
+import type { PosterAssetReference, PosterDeliveryScope, PosterDesignSnapshot, PosterSourceAssetBlob } from './Database/posterDesignSnapshot';
+import { canAccessPosterSnapshot } from './Utils/posterSnapshotAccess';
+import { getPosterDelivery, savePendingPosterDelivery } from './Database/posterDeliveryRepository';
+import { getPosterGenerationSnapshot } from './Database/posterGenerationClient';
+import { createPosterOperationId, runPosterDelivery } from './Services/posterDeliveryService';
+import { createPendingPosterDelivery, createPosterDesignSnapshot, measurePosterBlob, stablePosterAssetReference } from './Services/posterDeliveryFactory';
+import { posterStudioThemeStyle } from './theme';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowLeft, Palette, Maximize2, Eye, Save, Zap, Send, 
   MoreHorizontal, Grid, Magnet, Square, Ruler, RotateCcw, 
-  LayoutTemplate, Type, Image, Trophy, Undo, Redo, Sparkles, ChevronDown, Layers
+  LayoutTemplate, Type, Image, Trophy, Undo, Redo, Sparkles, ChevronDown, Layers, SlidersHorizontal
 } from 'lucide-react';
 
 interface PosterStudioProps {
@@ -56,11 +78,28 @@ interface PosterStudioProps {
   tenantId: string;
 }
 
+interface PosterGenerationContext {
+  operationId: string;
+  scope: PosterDeliveryScope;
+  snapshot: PosterDesignSnapshot;
+  backgroundUrl: string;
+}
+
 export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const routeParams = useLocalSearchParams<{
+    deliveryId?: string | string[];
+    generationId?: string | string[];
+    assetId?: string | string[];
+  }>();
+  const readRouteParam = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value)?.trim() || '';
+  const deliveryId = readRouteParam(routeParams.deliveryId);
+  const generationId = readRouteParam(routeParams.generationId);
+  const legacyAssetId = readRouteParam(routeParams.assetId);
+  const editRouteKey = deliveryId ? `delivery:${deliveryId}` : generationId ? `generation:${generationId}` : legacyAssetId ? `asset:${legacyAssetId}` : '';
+  const authUserId = useAuthStore((state) => state.user?.id ?? '');
   const { width } = useWindowDimensions();
-  const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1180;
   const isDesktop = width >= 1180;
 
@@ -77,7 +116,6 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     variables,
     currentResultId,
     currentItemId,
-    currentResultPublicVisible,
     setCurrentItemId,
     setCurrentResultPublicVisible,
     bumpAssetsRefreshTick,
@@ -91,6 +129,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     cycleResultNumberMode,
   } = useTemplateStore();
   const safeVariables = variables || {};
+  const layerGroupIssues = getLayerGroupIssues(layers);
   const { data: dbTemplates } = useGetPosterTemplates(festivalId);
   const { isOnline } = useOfflineStore();
   const canUndo = useHistoryStore((s) => s.canUndo());
@@ -107,10 +146,28 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
   const [isDebug, setIsDebug] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationContext, setGenerationContext] = useState<PosterGenerationContext | null>(null);
+  const [downloadRecovery, setDownloadRecovery] = useState<{ blob: Blob; filename: string } | null>(null);
+  const [posterCustomFontReferences, setPosterCustomFontReferences] = useState<PosterAssetReference[]>([]);
+  const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [editLoadError, setEditLoadError] = useState('');
+  const [editMissingSourceKeys, setEditMissingSourceKeys] = useState<string[]>([]);
+  const [legacyRecreatedFromTemplate, setLegacyRecreatedFromTemplate] = useState(false);
+  const [editSourceSnapshot, setEditSourceSnapshot] = useState<PosterDesignSnapshot | null>(null);
+  const [editSourceStatus, setEditSourceStatus] = useState<'idle' | 'checking' | 'current' | 'changed' | 'offline' | 'unavailable'>('idle');
+  const [isRefreshingSource, setIsRefreshingSource] = useState(false);
   const [activeDockPanel, setActiveDockPanel] = useState<DockPanelType>('layers');
   const [isDockOpen, setIsDockOpen] = useState(false);
+  const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const viewMenuRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const { contextMenu, openMenu: openContextMenu, closeMenu: closeContextMenu } = useContextMenu();
   const bgInputRef = useRef<HTMLInputElement>(null);
+  const processedGenerationIdsRef = useRef(new Set<string>());
+  const editLoadTokenRef = useRef(0);
+  const restoredDesignSignatureRef = useRef<string | null>(null);
+  const deliveryOwnerIdRef = useRef<string | null>(null);
   const historyUndo = useHistoryStore((s) => s.undo);
   const historyRedo = useHistoryStore((s) => s.redo);
   // Default to first DB template (not a demo). Falls back to empty string so loadDraftOnStart gets null.
@@ -124,6 +181,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
 
   // When DB templates first load, auto-select the last used one, or the first one
   useEffect(() => {
+    if (editRouteKey) return;
     if (!dbTemplates) return; // Wait until data is fetched
 
     if (dbTemplates.length === 0) {
@@ -136,14 +194,353 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       const exists = lastId && dbTemplates.find((t: any) => t.id === lastId);
       setCurrentTemplateId(exists ? lastId : dbTemplates[0].id!);
     }
-  }, [dbTemplates, currentTemplateId]);
+  }, [dbTemplates, currentTemplateId, editRouteKey]);
 
   // Initial Draft Loading — only fires when a real templateId is set
   useEffect(() => {
-    if (currentTemplateId) {
+    if (!editRouteKey && currentTemplateId) {
       useTemplateStore.getState().loadDraftOnStart(currentTemplateId);
     }
-  }, [currentTemplateId]);
+  }, [currentTemplateId, editRouteKey]);
+
+  useEffect(() => {
+    if (!editRouteKey) {
+      restoredDesignSignatureRef.current = null;
+      setEditLoadState('idle');
+      setEditLoadError('');
+      setEditMissingSourceKeys([]);
+      setLegacyRecreatedFromTemplate(false);
+      setEditSourceSnapshot(null);
+      setEditSourceStatus('idle');
+      return;
+    }
+    if (!authUserId || !festivalId || !tenantId) return;
+
+    const token = ++editLoadTokenRef.current;
+    const scope: PosterDeliveryScope = { userId: authUserId, tenantId, festivalId };
+    const objectUrls: string[] = [];
+    let cancelled = false;
+    setEditLoadState('loading');
+    setEditLoadError('');
+    setEditMissingSourceKeys([]);
+    setLegacyRecreatedFromTemplate(false);
+    setEditSourceStatus('idle');
+
+    const isCurrentRequest = () => {
+      const auth = useAuthStore.getState();
+      return !cancelled
+        && editLoadTokenRef.current === token
+        && auth.user?.id === scope.userId
+        && (auth.tenant_id === scope.tenantId || auth.is_superadmin === true)
+        && tenantId === scope.tenantId
+        && festivalId === scope.festivalId;
+    };
+
+    const contentTypeForReference = (reference: PosterAssetReference): string => {
+      if (reference.contentType) return reference.contentType;
+      const extension = reference.assetKey.split(/[?#]/, 1)[0].split('.').pop()?.toLowerCase();
+      if (extension === 'png') return 'image/png';
+      if (extension === 'webp') return 'image/webp';
+      if (extension === 'gif') return 'image/gif';
+      if (extension === 'svg') return 'image/svg+xml';
+      if (extension === 'woff2') return 'font/woff2';
+      if (extension === 'woff') return 'font/woff';
+      if (extension === 'otf') return 'font/otf';
+      if (extension === 'ttf') return 'font/ttf';
+      return 'image/jpeg';
+    };
+
+    const restoreLegacyAsset = async (assetId: string): Promise<PosterDesignSnapshot | null> => {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(assetId)) {
+        throw new Error('This Media Center asset ID is invalid.');
+      }
+      const { data: asset, error: assetError } = await supabase
+        .from('generated_assets')
+        .select('*')
+        .eq('id', assetId)
+        .eq('tenant_id', scope.tenantId)
+        .eq('festival_id', scope.festivalId)
+        .maybeSingle();
+      if (assetError) throw new Error('The Media Center asset could not be loaded.');
+      if (!asset) throw new Error('This poster was not found in the active tenant and festival.');
+      if (typeof asset.generation_id === 'string' && asset.generation_id) {
+        const savedGeneration = await getPosterGenerationSnapshot(asset.generation_id, scope);
+        if (!savedGeneration) throw new Error('The editable design for this poster is unavailable to the current account.');
+        if (savedGeneration.generationId !== asset.generation_id) throw new Error('The server returned a different poster generation.');
+        return savedGeneration.snapshot;
+      }
+
+      if (typeof asset.template_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(asset.template_id)) {
+        throw new Error('Original editable design unavailable. This poster has no saved template to recreate from.');
+      }
+      const { data: storedTemplate, error: templateError } = await supabase
+        .from('poster_templates')
+        .select('*')
+        .eq('id', asset.template_id)
+        .eq('tenant_id', scope.tenantId)
+        .eq('festival_id', scope.festivalId)
+        .maybeSingle();
+      if (templateError || !storedTemplate) {
+        throw new Error('Original editable design unavailable. The saved template is no longer available in this festival.');
+      }
+      if (!Number.isFinite(storedTemplate.width) || !Number.isFinite(storedTemplate.height)
+        || storedTemplate.width <= 0 || storedTemplate.height <= 0
+        || !Array.isArray(storedTemplate.layers)) {
+        throw new Error('The saved template has invalid dimensions or layer data and cannot be recreated safely.');
+      }
+      const layerResults = storedTemplate.layers.map((layer: unknown) => LayerSchema.safeParse(layer));
+      if (layerResults.some((result: { success: boolean }) => !result.success)) {
+        throw new Error('The saved template contains unsupported layer data. The original poster is still available in Media Center.');
+      }
+
+      const missingKeys = new Set<string>();
+      const resolveLegacyReference = async (source: string): Promise<string> => {
+        const reference = stablePosterAssetReference(source);
+        if (!reference) return source;
+        if (/^https?:\/\//i.test(reference.assetKey) || reference.assetKey.startsWith('/')) return reference.assetKey;
+        return storageService.getPresignedUrl(reference.assetKey, contentTypeForReference(reference), 'download');
+      };
+      const layers = await Promise.all((storedTemplate.layers as LayerData[]).map(async (layer) => {
+        if (layer.type !== 'image' || !layer.src) return layer;
+        try {
+          return { ...layer, src: await resolveLegacyReference(layer.src) };
+        } catch {
+          const reference = stablePosterAssetReference(layer.src);
+          if (reference) missingKeys.add(reference.assetKey);
+          return layer;
+        }
+      }));
+
+      let backgroundUrl = typeof storedTemplate.background_url === 'string' ? storedTemplate.background_url : '';
+      if (backgroundUrl) {
+        try {
+          backgroundUrl = await resolveLegacyReference(backgroundUrl);
+        } catch {
+          const reference = stablePosterAssetReference(backgroundUrl);
+          if (reference) missingKeys.add(reference.assetKey);
+          backgroundUrl = '';
+        }
+      }
+
+      const resultRows = await resultVisibilityService.listPosterStudioResults(scope.tenantId, scope.festivalId);
+      const matchingRows = resultRows.filter((row) => row.published === true && (
+        typeof asset.event_id === 'string' && asset.event_id
+          ? row.item_id === asset.event_id
+          : typeof asset.result_id === 'string' && row.result_id === asset.result_id
+      ));
+      const selectedResult = matchingRows.find((row) => row.result_id === asset.result_id) ?? matchingRows[0];
+      const variables = selectedResult ? {
+        event_name: selectedResult.item_name,
+        result_no: resolveOfficialResultNumber(matchingRows).value,
+        ...buildRankVariables(matchingRows),
+      } : {};
+      const recreatedTemplate: TemplateData = {
+        id: storedTemplate.id,
+        name: `${storedTemplate.name || 'Poster'} (recreated)`,
+        background_url: backgroundUrl,
+        background_transform: storedTemplate.background_transform || undefined,
+        width: storedTemplate.width,
+        height: storedTemplate.height,
+        aspect_ratio: storedTemplate.aspect_ratio || `${storedTemplate.width}:${storedTemplate.height}`,
+        layers,
+        schema_version: storedTemplate.schema_version || '1.0',
+        template_version: storedTemplate.version || storedTemplate.template_version || 1,
+        status: storedTemplate.status === 'published' || storedTemplate.status === 'pending_approval' ? storedTemplate.status : 'draft',
+        isLocal: false,
+        isPublishable: true,
+      };
+      if (!isCurrentRequest()) return null;
+      const sourceFingerprint = matchingRows.length > 0 ? fingerprintOfficialResults(matchingRows) : '';
+      restoredDesignSignatureRef.current = JSON.stringify({ layers, variables });
+      useTemplateStore.getState().restorePosterDesign({
+        template: recreatedTemplate,
+        layers,
+        variables,
+        itemId: selectedResult?.item_id ?? null,
+        resultId: selectedResult?.result_id ?? null,
+        sourceResultFingerprint: sourceFingerprint,
+        typographyMode: useTemplateStore.getState().typographyMode,
+      });
+      if (selectedResult) {
+        useTemplateStore.getState().setCurrentResultPublicVisible(matchingRows.some((row) => row.public_visible));
+        await useTemplateStore.getState().loadResultOverride(selectedResult.result_id, isCurrentRequest);
+        restoredDesignSignatureRef.current = JSON.stringify({
+          layers: useLayerStore.getState().layers,
+          variables: useTemplateStore.getState().variables,
+        });
+      }
+      if (!isCurrentRequest()) return null;
+      setEditSourceSnapshot(null);
+      setEditSourceStatus('idle');
+      setEditMissingSourceKeys([...missingKeys]);
+      setLegacyRecreatedFromTemplate(true);
+      setEditLoadState('ready');
+      return null;
+    };
+
+    const restore = async () => {
+      try {
+        let snapshot: PosterDesignSnapshot | null = null;
+        let sourceAssets: PosterSourceAssetBlob[] = [];
+        if (deliveryId) {
+          const localRecord = await getPosterDelivery(deliveryId, scope);
+          if (localRecord) {
+            snapshot = localRecord.snapshot;
+            sourceAssets = localRecord.sourceAssets ?? [];
+          }
+        } else if (generationId) {
+          const serverSnapshot = await getPosterGenerationSnapshot(generationId, scope);
+          if (!serverSnapshot) throw new Error('The editable Poster Studio snapshot was not found for this generation.');
+          if (serverSnapshot.generationId !== generationId) throw new Error('The server returned a different poster generation.');
+          snapshot = serverSnapshot.snapshot;
+        } else if (legacyAssetId) {
+          snapshot = await restoreLegacyAsset(legacyAssetId);
+          if (!snapshot) return;
+        }
+
+        if (!snapshot && generationId) {
+          throw new Error('The editable Poster Studio snapshot is unavailable for this generation.');
+        }
+        if (!snapshot || !isPosterDesignSnapshot(snapshot)) {
+          throw new Error('The saved Poster Studio design snapshot is invalid or unavailable.');
+        }
+        const accessMode = generationId ? 'tenant_shared' : 'owner_only';
+        if (!canAccessPosterSnapshot(snapshot, scope, accessMode)) {
+          throw new Error('This poster belongs to a different account, tenant, or festival.');
+        }
+
+        // Re-evaluate availability on each restore; older local records may have
+        // marked every stable reference as missing before trying to reconnect it.
+        const missingKeys = new Set<string>();
+        const cachedByKey = new Map(sourceAssets.map((asset) => [asset.assetKey, asset]));
+        const resolvedByKey = new Map<string, string>();
+        const resolveReference = async (reference: PosterAssetReference): Promise<string> => {
+          const existing = resolvedByKey.get(reference.assetKey);
+          if (existing) return existing;
+          const cached = cachedByKey.get(reference.assetKey);
+          if (cached) {
+            const objectUrl = URL.createObjectURL(cached.blob);
+            objectUrls.push(objectUrl);
+            resolvedByKey.set(reference.assetKey, objectUrl);
+            return objectUrl;
+          }
+          if (/^https?:\/\//i.test(reference.assetKey) || reference.assetKey.startsWith('/')) {
+            resolvedByKey.set(reference.assetKey, reference.assetKey);
+            return reference.assetKey;
+          }
+          const url = await storageService.getPresignedUrl(
+            reference.assetKey,
+            contentTypeForReference(reference),
+            'download',
+          );
+          resolvedByKey.set(reference.assetKey, url);
+          return url;
+        };
+
+        const layers = await Promise.all(snapshot.layers.map(async (layer) => {
+          if (layer.type !== 'image' || !layer.src) return layer;
+          const reference = stablePosterAssetReference(layer.src);
+          if (!reference) return layer;
+          const savedReference = snapshot!.assetReferences.find((entry) => entry.assetKey === reference.assetKey) ?? reference;
+          try {
+            return { ...layer, src: await resolveReference(savedReference) };
+          } catch {
+            missingKeys.add(savedReference.assetKey);
+            return layer;
+          }
+        }));
+
+        let backgroundUrl = '';
+        if (snapshot.backgroundAsset) {
+          try {
+            backgroundUrl = await resolveReference(snapshot.backgroundAsset);
+          } catch {
+            missingKeys.add(snapshot.backgroundAsset.assetKey);
+          }
+        }
+        for (const font of snapshot.customFontReferences) {
+          if (!font.fontFamily) continue;
+          try {
+            const url = await resolveReference(font);
+            await loadFont({ family: font.fontFamily, url, category: 'Custom Fonts' });
+          } catch {
+            missingKeys.add(font.assetKey);
+          }
+        }
+
+        if (!isCurrentRequest()) return;
+        restoredDesignSignatureRef.current = JSON.stringify({ layers, variables: snapshot.variables });
+        const template = {
+          id: snapshot.templateId,
+          name: 'Poster generation design',
+          background_url: backgroundUrl,
+          background_transform: snapshot.backgroundTransform ?? undefined,
+          width: snapshot.width,
+          height: snapshot.height,
+          aspect_ratio: `${snapshot.width}:${snapshot.height}`,
+          layers,
+          schema_version: '1.0.0',
+          template_version: snapshot.templateVersion,
+          status: 'draft' as const,
+          isLocal: false,
+          isPublishable: true,
+        };
+        useTemplateStore.getState().restorePosterDesign({
+          template,
+          layers,
+          variables: snapshot.variables,
+          itemId: snapshot.itemId,
+          resultId: snapshot.resultId,
+          sourceResultFingerprint: snapshot.sourceResultFingerprint,
+          typographyMode: snapshot.typographyMode,
+        });
+        setEditSourceSnapshot(snapshot);
+        setEditMissingSourceKeys([...missingKeys]);
+        setEditLoadState('ready');
+      } catch (error) {
+        if (!isCurrentRequest()) return;
+        setEditLoadError(error instanceof Error ? error.message : 'Poster design could not be restored.');
+        setEditLoadState('error');
+      }
+    };
+
+    void restore();
+    return () => {
+      cancelled = true;
+      for (const url of objectUrls) URL.revokeObjectURL(url);
+    };
+  }, [editRouteKey, deliveryId, generationId, legacyAssetId, authUserId, tenantId, festivalId]);
+
+  useEffect(() => {
+    if (!editRouteKey || editLoadState !== 'ready' || !editSourceSnapshot) return;
+    const activeScope = { userId: authUserId, tenantId, festivalId };
+    if (!canAccessPosterSnapshot(editSourceSnapshot, activeScope, generationId ? 'tenant_shared' : 'owner_only')) return;
+    if (!isOnline) {
+      setEditSourceStatus('offline');
+      return;
+    }
+
+    let cancelled = false;
+    setEditSourceStatus('checking');
+    void resultVisibilityService.listPosterStudioResults(tenantId, festivalId)
+      .then((results) => {
+        if (cancelled) return;
+        const officialRows = results.filter((row) => row.published === true && (
+          editSourceSnapshot.itemId
+            ? row.item_id === editSourceSnapshot.itemId
+            : row.result_id === editSourceSnapshot.resultId
+        ));
+        setEditSourceStatus(
+          fingerprintOfficialResults(officialRows) === editSourceSnapshot.sourceResultFingerprint
+            ? 'current'
+            : 'changed',
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setEditSourceStatus('unavailable');
+      });
+    return () => { cancelled = true; };
+  }, [editRouteKey, editLoadState, editSourceSnapshot, authUserId, tenantId, festivalId, generationId, isOnline]);
 
   // Load custom tenant fonts at startup
   useEffect(() => {
@@ -152,6 +549,13 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       try {
         console.log('[PosterStudio] Loading custom tenant fonts...');
         const fonts = await fontService.getFonts(tenantId);
+        setPosterCustomFontReferences(fonts.flatMap((font) => {
+          const metadata = font.metadata as FontMetadata | null;
+          const reference = stablePosterAssetReference(font.file_url);
+          return metadata?.family && reference
+            ? [{ ...reference, assetId: font.id, fontFamily: metadata.family }]
+            : [];
+        }));
         await Promise.all(
           fonts.map(async (f) => {
             const meta = f.metadata as FontMetadata;
@@ -211,6 +615,27 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isDockOpen]);
 
+  useEffect(() => {
+    if (!isViewMenuOpen && !isMoreMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!viewMenuRef.current?.contains(target)) setIsViewMenuOpen(false);
+      if (!moreMenuRef.current?.contains(target)) setIsMoreMenuOpen(false);
+    };
+    const handleMenuKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsViewMenuOpen(false);
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.addEventListener('keydown', handleMenuKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      window.removeEventListener('keydown', handleMenuKeyDown);
+    };
+  }, [isViewMenuOpen, isMoreMenuOpen]);
+
   // ── Result Number Typography Mode Switcher ──────────
   const handleResultModeSwitch = () => {
     // 1. Update mode in store
@@ -236,7 +661,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
   const selectedLayer = selectedIds.length === 1 ? layers.find((l) => l.id === selectedIds[0]) || null : null;
 
   // Register keyboard shortcuts
-  useKeyboardShortcuts();
+  useKeyboardShortcuts(Boolean(editRouteKey));
   useMemoryBudget();
 
   useEffect(() => {
@@ -247,20 +672,23 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
 
   // Dirty State Marking
   useEffect(() => {
-    // Only mark unsaved if the app has fully loaded
+    if (editRouteKey && editLoadState !== 'ready') return;
+    const signature = JSON.stringify({ layers, variables: safeVariables });
+    if (restoredDesignSignatureRef.current === signature) return;
+    restoredDesignSignatureRef.current = null;
     if (layers.length > 0) {
       useTemplateStore.getState().markUnsaved();
     }
-  }, [layers, safeVariables]);
+  }, [layers, safeVariables, editRouteKey, editLoadState]);
 
   // Debounced Autosave
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (editRouteKey || !hasUnsavedChanges) return;
     const timer = setTimeout(() => {
       saveDraft();
     }, 1500);
     return () => clearTimeout(timer);
-  }, [hasUnsavedChanges, saveDraft]);
+  }, [hasUnsavedChanges, saveDraft, editRouteKey]);
 
   // Warn on Unload
   useEffect(() => {
@@ -432,53 +860,189 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     useLayerStore.getState().setLayers(newLayers);
   };
 
-  const handleCapture = useCallback(async (captureFunc: (ratio?: number) => string) => {
-    if (!activeTemplate) return;
+  const beginSingleGeneration = useCallback(() => {
     try {
-      const dataUrl = captureFunc();
-      const blob = dataUrlToBlob(dataUrl);
-      const eventName = safeVariables['event_name'] || 'Festival Event';
-
-      const res = await saveGeneratedPosterAsset({
-        blob,
-        tenantId,
-        festivalId,
-        templateId: activeTemplate.id,
-        eventId: currentItemId,
-        resultId: currentResultId,
-        eventName,
-        publicVisible: currentResultPublicVisible,
+      const current = useTemplateStore.getState();
+      const template = current.activeTemplate;
+      const auth = useAuthStore.getState();
+      const userId = auth.user?.id;
+      if (!template || !current.currentItemId || !current.currentResultId) {
+        throw new Error('Select an official result before generating a poster.');
+      }
+      if (!userId || (auth.tenant_id !== tenantId && auth.is_superadmin !== true)) {
+        throw new Error('Sign in to the selected tenant before generating a poster.');
+      }
+      if (!template.id || template.isLocal || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(template.id)) {
+        throw new Error('Save this template to the database before generating a poster.');
+      }
+      const scope = { userId, tenantId, festivalId };
+      const operationId = createPosterOperationId();
+      const snapshot = createPosterDesignSnapshot({
+        scope,
+        template,
+        itemId: current.currentItemId,
+        resultId: current.currentResultId,
+        layers: useLayerStore.getState().layers,
+        variables: current.variables,
+        typographyMode: current.typographyMode,
+        sourceResultFingerprint: current.sourceResultFingerprint,
+        customFontReferences: posterCustomFontReferences,
       });
+      processedGenerationIdsRef.current.delete(operationId);
+      setGenerationContext({ operationId, scope, snapshot, backgroundUrl: template.background_url });
+      setIsGenerating(true);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Poster generation could not start.');
+    }
+  }, [festivalId, tenantId, posterCustomFontReferences]);
 
-      queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
-      bumpAssetsRefreshTick();
-      useTemplateStore.getState().updateStableLayout();
-      alert(
-        res.visibilityStatus === 'published'
-          ? '✅ Poster generated & auto-published to Public Media Center!'
-          : '✅ Poster generated & saved as Draft in Media Center (result is not public yet).'
+  const handleCapture = useCallback(async (captureFunc: (ratio?: number) => string) => {
+    const context = generationContext;
+    if (!context || processedGenerationIdsRef.current.has(context.operationId)) return;
+    processedGenerationIdsRef.current.add(context.operationId);
+    let blob: Blob | null = null;
+    let savedLocally = false;
+    try {
+      blob = dataUrlToBlob(captureFunc());
+      const dimensions = await measurePosterBlob(blob);
+      const record = createPendingPosterDelivery({
+        operationId: context.operationId,
+        scope: context.scope,
+        snapshot: context.snapshot,
+        blob,
+        ...dimensions,
+      });
+      await savePendingPosterDelivery(record);
+      savedLocally = true;
+
+      if (!deliveryOwnerIdRef.current) deliveryOwnerIdRef.current = createPosterOperationId();
+      const outcome = await runPosterDelivery(
+        context.operationId,
+        context.scope,
+        deliveryOwnerIdRef.current,
+        {
+          isScopeActive: (scope) => {
+            const auth = useAuthStore.getState();
+            return auth.user?.id === scope.userId
+              && (auth.tenant_id === scope.tenantId || auth.is_superadmin === true)
+              && festivalId === scope.festivalId
+              && tenantId === scope.tenantId;
+          },
+        },
       );
-    } catch (e: any) {
-      console.error(e);
-      alert('Failed to generate poster: ' + (e?.message || 'Unknown error'));
+
+      const auth = useAuthStore.getState();
+      const stillInScope = auth.user?.id === context.scope.userId
+        && (auth.tenant_id === context.scope.tenantId || auth.is_superadmin === true)
+        && festivalId === context.scope.festivalId
+        && tenantId === context.scope.tenantId;
+      if (stillInScope && outcome.status === 'synced') {
+        queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
+        bumpAssetsRefreshTick();
+        useTemplateStore.getState().updateStableLayout();
+        alert(outcome.result.visibilityStatus === 'published'
+          ? 'Poster saved on this device and uploaded to Media Center.'
+          : 'Poster saved on this device and uploaded as a Media Center draft.');
+      } else if (stillInScope && outcome.status === 'failed') {
+        alert(`Poster saved on this device. Upload is pending and can be retried from Media Center. ${outcome.error}`);
+      } else if (stillInScope && outcome.status === 'busy') {
+        alert('Poster is saved on this device and another Studio tab is already uploading it.');
+      } else if (stillInScope && outcome.status === 'missing') {
+        alert('Poster image is ready, but its local recovery record could not be found. Generate it again before retrying.');
+      }
+    } catch (error) {
+      console.error(error);
+      if (!savedLocally && blob) {
+        setDownloadRecovery({
+          blob,
+          filename: `poster-${context.snapshot.itemId || context.snapshot.resultId}.jpg`,
+        });
+        alert('Local recovery could not be saved. Download the generated poster before closing this page.');
+      } else if (!savedLocally) {
+        alert(`Poster could not be saved: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } else {
+        const auth = useAuthStore.getState();
+        if (auth.user?.id === context.scope.userId
+          && (auth.tenant_id === context.scope.tenantId || auth.is_superadmin === true)) {
+          alert(`Poster is saved on this device. Upload can be retried from Media Center. ${error instanceof Error ? error.message : ''}`);
+        }
+      }
     } finally {
       setIsGenerating(false);
+      setGenerationContext(null);
     }
-  }, [
-    activeTemplate,
-    festivalId,
-    tenantId,
-    currentResultId,
-    currentItemId,
-    currentResultPublicVisible,
-    safeVariables,
-    queryClient,
-    bumpAssetsRefreshTick,
-  ]);
+  }, [generationContext, festivalId, tenantId, queryClient, bumpAssetsRefreshTick]);
+
+  const handleRenderError = useCallback((error: Error) => {
+    console.error('[PosterStudio] Poster renderer failed before upload.', error);
+    setIsGenerating(false);
+    setGenerationContext(null);
+    alert(`Poster could not be rendered, so no upload was started. ${error.message}`);
+  }, []);
+
+  const refreshOfficialResultData = useCallback(async () => {
+    if (!editSourceSnapshot || !isOnline) return;
+    setIsRefreshingSource(true);
+    try {
+      const auth = useAuthStore.getState();
+      const activeScope = {
+        userId: auth.user?.id ?? '',
+        tenantId: tenantId,
+        festivalId: festivalId,
+      };
+      if (!canAccessPosterSnapshot(
+        editSourceSnapshot,
+        activeScope,
+        generationId ? 'tenant_shared' : 'owner_only',
+      ) || (auth.tenant_id !== editSourceSnapshot.tenantId && auth.is_superadmin !== true)) {
+        throw new Error('The active account or festival changed. Reopen this poster from Media Center.');
+      }
+
+      const results = await resultVisibilityService.listPosterStudioResults(tenantId, festivalId);
+      const officialRows = results.filter((row) => row.published === true && (
+        editSourceSnapshot.itemId
+          ? row.item_id === editSourceSnapshot.itemId
+          : row.result_id === editSourceSnapshot.resultId
+      ));
+      if (officialRows.length === 0) throw new Error('No current official result rows are available for this poster.');
+
+      const current = useTemplateStore.getState();
+      const nextFingerprint = fingerprintOfficialResults(officialRows);
+      current.setVariables({
+        ...current.variables,
+        ...buildRankVariables(officialRows),
+        result_no: resolveOfficialResultNumber(officialRows).value,
+      });
+      current.setSourceResultFingerprint(nextFingerprint);
+      current.markUnsaved();
+      setEditSourceStatus('current');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Official result data could not be refreshed.');
+      setEditSourceStatus('unavailable');
+    } finally {
+      setIsRefreshingSource(false);
+    }
+  }, [editSourceSnapshot, isOnline, festivalId, tenantId, generationId]);
+
+  if (editRouteKey && editLoadState !== 'ready') {
+    return (
+      <div style={{ ...styles.root, display: 'grid', placeItems: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 480, width: '100%', background: '#fff', borderRadius: 12, padding: 24, boxShadow: '0 12px 40px rgba(15, 23, 42, 0.14)' }}>
+          <h2 style={{ margin: '0 0 10px', fontSize: 18, color: 'var(--ps-text)' }}>
+            {editLoadState === 'error' ? 'Poster design could not be opened' : 'Restoring poster design'}
+          </h2>
+          <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.5, color: 'var(--ps-muted)' }}>
+            {editLoadState === 'error' ? editLoadError : 'Checking the saved design and reconnecting its source assets…'}
+          </p>
+          <button onClick={() => router.back()} style={styles.modalBtn}>Back to Media Center</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
-      <div style={styles.root}>
+      <div className="poster-studio" style={{ ...posterStudioThemeStyle, ...styles.root }}>
         {/* ---- OFFLINE BANNER ---- */}
       {!isOnline && (
         <div style={styles.offlineBanner}>
@@ -487,13 +1051,49 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       )}
 
       {/* ---- DRAFT RECOVERY BANNER ---- */}
-      {draftRecoveryAvailable && (
+      {draftRecoveryAvailable && !editRouteKey && (
         <div style={styles.draftBanner}>
           <span>🗂 Unsaved draft found from a previous session.</span>
           <div style={styles.draftActions}>
             <button onClick={() => restoreDraft()} style={styles.draftBtn}>Restore Draft</button>
             <button onClick={() => clearDraft()} style={{ ...styles.draftBtn, backgroundColor: 'transparent', color: coreColor('#64748B', 'textMuted') }}>Discard</button>
           </div>
+        </div>
+      )}
+      {editMissingSourceKeys.length > 0 && (
+        <div role="status" style={{ margin: '8px 16px', padding: '10px 12px', borderRadius: 8, background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
+          The design is editable, but {editMissingSourceKeys.length} source asset{editMissingSourceKeys.length === 1 ? '' : 's'} could not be reconnected. Affected image or font layers may need their source reselected before generating.
+        </div>
+      )}
+      {legacyRecreatedFromTemplate && (
+        <div role="status" style={{ margin: '8px 16px', padding: '10px 12px', borderRadius: 8, background: '#eff6ff', color: '#1e40af', fontSize: 13 }}>
+          Original editable design unavailable. This is a new design from the currently saved template and available official result data. The previous Media Center poster remains unchanged; Generate saves a new poster. Select a current result from Results if one was not restored.
+        </div>
+      )}
+      {layerGroupIssues.length > 0 && (
+        <div role="alert" style={{ margin: '8px 16px', padding: '10px 12px', borderRadius: 8, background: '#fff7ed', color: '#9a3412', fontSize: 13 }}>
+          Some saved groups refer to {layerGroupIssues.reduce((count, issue) => count + issue.missingLayerIds.length, 0)} missing layer record(s). Their artwork cannot be reconstructed automatically; rebuild those elements manually.
+        </div>
+      )}
+      {editRouteKey && !legacyRecreatedFromTemplate && (
+        <div role="status" style={{ margin: '8px 16px', padding: '10px 12px', borderRadius: 8, background: '#eff6ff', color: '#1e40af', fontSize: 13 }}>
+          Re-editing a saved design. Generate creates a new poster revision; the current Media Center poster stays available until the new upload is finalized.
+        </div>
+      )}
+      {editRouteKey && editSourceSnapshot && editLoadState === 'ready' && editSourceStatus !== 'current' && (
+        <div role="status" style={{ margin: '8px 16px', padding: '10px 12px', borderRadius: 8, background: editSourceStatus === 'changed' ? '#fff7ed' : '#eff6ff', color: editSourceStatus === 'changed' ? '#9a3412' : '#1e40af', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <span>
+            {editSourceStatus === 'changed' && 'Official result data changed since this poster was generated.'}
+            {editSourceStatus === 'checking' && 'Checking whether official result data has changed…'}
+            {editSourceStatus === 'offline' && 'Offline: this saved design is open; official result data cannot be refreshed.'}
+            {editSourceStatus === 'unavailable' && 'Official result data could not be checked. The saved design remains unchanged.'}
+            {editSourceStatus === 'idle' && 'Official result source status is not available.'}
+          </span>
+          {editSourceStatus === 'changed' && (
+            <button onClick={refreshOfficialResultData} disabled={isRefreshingSource || !isOnline} style={styles.draftBtn}>
+              {isRefreshingSource ? 'Refreshing…' : 'Refresh result data'}
+            </button>
+          )}
         </div>
       )}
 
@@ -648,9 +1248,9 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  backgroundColor: isMultiFrameMode ? '#0284C7' : 'transparent',
-                  color: isMultiFrameMode ? '#FFFFFF' : '#38BDF8',
-                  borderColor: '#38BDF8',
+                  backgroundColor: isMultiFrameMode ? 'var(--ps-accent)' : 'var(--ps-surface)',
+                  color: isMultiFrameMode ? '#FFFFFF' : 'var(--ps-muted)',
+                  borderColor: isMultiFrameMode ? 'var(--ps-accent)' : 'var(--ps-border)',
                 }}
               >
                 ⧉ Multi-Frame ({batchItems.length}/6)
@@ -658,25 +1258,25 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
             )}
 
             {/* Viewport Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div ref={viewMenuRef} style={{ position: 'relative' }}>
               <button
-                onClick={() => {
-                  const el = document.getElementById('view-dropdown');
-                  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-                }}
+                aria-haspopup="menu"
+                aria-expanded={isViewMenuOpen}
+                aria-controls="view-dropdown"
+                onClick={() => { setIsMoreMenuOpen(false); setIsViewMenuOpen((open) => !open); }}
                 style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 <Eye size={14} /> View <ChevronDown size={12} />
               </button>
-              <div id="view-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, padding: 8, zIndex: 100, minWidth: 140 }}>
-                <button onClick={() => setGridVisible(!gridVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Grid size={14} /> Grid</button>
-                <button onClick={() => setGridSnap(!gridSnap)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: gridSnap ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Magnet size={14} /> Snap</button>
-                <button onClick={() => setSafeZoneVisible(!safeZoneVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: safeZoneVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Square size={14} /> Safe Zones</button>
-                <button onClick={() => setRulerVisible(!rulerVisible)} style={{ ...styles.toolBtn, display: 'flex', alignItems: 'center', gap: 6, width: '100%', textAlign: 'left', color: rulerVisible ? coreColor('#5EEAD4', 'primaryText') : coreColor('#94A3B8', 'textSubtle') }}><Ruler size={14} /> Ruler</button>
-              </div>
+              {isViewMenuOpen && <div id="view-dropdown" role="menu" aria-label="Canvas view options" style={styles.dropdownMenu}>
+                <button role="menuitemcheckbox" aria-checked={gridVisible} onClick={() => setGridVisible(!gridVisible)} style={{ ...styles.toolBtn, ...styles.dropdownMenuItem, color: gridVisible ? 'var(--ps-accent)' : 'var(--ps-muted)' }}><Grid size={14} /> Grid</button>
+                <button role="menuitemcheckbox" aria-checked={gridSnap} onClick={() => setGridSnap(!gridSnap)} style={{ ...styles.toolBtn, ...styles.dropdownMenuItem, color: gridSnap ? 'var(--ps-accent)' : 'var(--ps-muted)' }}><Magnet size={14} /> Snap</button>
+                <button role="menuitemcheckbox" aria-checked={safeZoneVisible} onClick={() => setSafeZoneVisible(!safeZoneVisible)} style={{ ...styles.toolBtn, ...styles.dropdownMenuItem, color: safeZoneVisible ? 'var(--ps-accent)' : 'var(--ps-muted)' }}><Square size={14} /> Safe Zones</button>
+                <button role="menuitemcheckbox" aria-checked={rulerVisible} onClick={() => setRulerVisible(!rulerVisible)} style={{ ...styles.toolBtn, ...styles.dropdownMenuItem, color: rulerVisible ? 'var(--ps-accent)' : 'var(--ps-muted)' }}><Ruler size={14} /> Ruler</button>
+              </div>}
             </div>
 
-            {!currentResultId && (
+            {!currentResultId && !editRouteKey && (
               <button
                 onClick={async () => {
                   setIsSaving(true);
@@ -748,12 +1348,12 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   setIsSaving(false);
                 }}
                 disabled={isSaving}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#3B82F6', 'infoAction'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#3B82F6', 'border') }}
+                style={{ ...styles.topBtn, ...styles.supportingAction, display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <Save size={14} /> {isSaving ? 'Saving...' : 'Save'}
               </button>
             )}
-            {currentResultId && (
+            {currentResultId && !editRouteKey && (
               <button
                 onClick={async () => {
                   setIsSaving(true);
@@ -761,41 +1361,41 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                   setIsSaving(false);
                 }}
                 disabled={isSaving}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#8B5CF6', 'infoAction'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#8B5CF6', 'border') }}
+                style={{ ...styles.topBtn, ...styles.supportingAction, display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <Save size={14} /> {isSaving ? 'Saving...' : 'Save Edit'}
               </button>
             )}
             {currentResultId && (
               <button 
-                onClick={() => setIsGenerating(true)} 
+                onClick={beginSingleGeneration}
                 disabled={isGenerating}
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, backgroundColor: coreColor('#0F766E', 'primary'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#0F766E', 'border') }}
+                style={{ ...styles.topBtn, ...styles.primaryAction, display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <Zap size={14} /> {isGenerating ? 'Generating...' : 'Generate'}
               </button>
             )}
-            {!currentResultId && (
+            {!currentResultId && !editRouteKey && (
               <button 
                 onClick={() => setShowPublish(true)} 
-                style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', backgroundColor: coreColor('#0F766E', 'primary'), color: coreColor('#FFFFFF', 'onPrimary'), borderColor: coreColor('#0F766E', 'border') }}
+                  style={{ ...styles.topBtn, ...styles.supportingAction, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px' }}
               >
                 <Send size={14} /> Publish
               </button>
             )}
             
             {/* More Menu for less used actions */}
-            <div style={{ position: 'relative' }}>
+            <div ref={moreMenuRef} style={{ position: 'relative' }}>
               <button
-                onClick={() => {
-                  const el = document.getElementById('more-dropdown');
-                  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-                }}
+                aria-haspopup="menu"
+                aria-expanded={isMoreMenuOpen}
+                aria-controls="more-dropdown"
+                onClick={() => { setIsViewMenuOpen(false); setIsMoreMenuOpen((open) => !open); }}
                 style={{ ...styles.topBtn, display: 'flex', alignItems: 'center', gap: 4 }}
               >
                 More <ChevronDown size={12} />
               </button>
-              <div id="more-dropdown" style={{ display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 4, background: coreColor('#171717', 'surfaceStrong'), border: `1px solid ${coreColor('#2a2a2a', 'border')}`, borderRadius: 6, padding: 8, zIndex: 100, minWidth: 180 }}>
+              {isMoreMenuOpen && <div id="more-dropdown" role="menu" aria-label="More canvas actions" style={{ ...styles.dropdownMenu, minWidth: 180 }}>
                 {/* ── Typography Mode Toggle ── */}
                 <button
                   onClick={toggleTypographyMode}
@@ -838,7 +1438,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 >
                   <RotateCcw size={14} /> Reset Canvas
                 </button>
-              </div>
+              </div>}
             </div>
 
             <button
@@ -846,7 +1446,9 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 const result = historyUndo(layers);
                 if (result) useLayerStore.getState().setLayers(result);
               }}
-              style={{ ...styles.topBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px', opacity: canUndo ? 1 : 0.4 }}
+              disabled={!canUndo}
+              aria-label="Undo"
+              style={{ ...styles.topBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px', opacity: canUndo ? 1 : 0.45 }}
               title="Undo (Ctrl+Z)"
             >
               <Undo size={14} />
@@ -856,7 +1458,9 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
                 const result = historyRedo(layers);
                 if (result) useLayerStore.getState().setLayers(result);
               }}
-              style={{ ...styles.topBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px', opacity: canRedo ? 1 : 0.4 }}
+              disabled={!canRedo}
+              aria-label="Redo"
+              style={{ ...styles.topBtn, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 8px', opacity: canRedo ? 1 : 0.45 }}
               title="Redo (Ctrl+Y)"
             >
               <Redo size={14} />
@@ -955,7 +1559,11 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               </div>
             </div>
           ) : isMultiFrameMode ? (
-            <MultiFrameGrid festivalId={festivalId} tenantId={tenantId} />
+            <MultiFrameGrid
+              festivalId={festivalId}
+              tenantId={tenantId}
+              customFontReferences={posterCustomFontReferences}
+            />
           ) : (
             <div style={styles.canvasWrapper} onContextMenu={(e) => {
               // If a layer is selected and we right-click on the canvas, it could be for the layer
@@ -992,11 +1600,65 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         )}
       </div>
 
+      {!isDesktop && isDockOpen && (
+        <div
+          style={{
+            ...styles.mobileDockLayer,
+            ...(isTablet ? styles.tabletDockLayer : {}),
+          }}
+          onClick={() => setIsDockOpen(false)}
+          aria-hidden="false"
+        >
+          <div
+            style={{
+              ...styles.mobileDockPanel,
+              ...(isTablet ? styles.tabletDockPanel : {}),
+            }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <ControlDock
+              mobile
+              activePanel={activeDockPanel}
+              onClose={() => setIsDockOpen(false)}
+              festivalId={festivalId}
+              tenantId={tenantId}
+              currentTemplateId={currentTemplateId}
+              setCurrentTemplateId={(newId: string) => {
+                setCurrentTemplateId(newId);
+                localStorage.setItem('posterStudio_lastTemplateId', newId);
+                useTemplateStore.getState().setCurrentResultId(null);
+              }}
+              setShowCreateModal={setShowCreateModal}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ---- PUBLISHED RESULTS PANEL (Phase 6 placeholder) ---- */}
       {/* <PublishedResultsPanel festivalId={festivalId} tenantId={tenantId} /> */}
 
       {/* ---- BOTTOM BAR (Viewport Controls) ---- */}
-      <div style={styles.bottomBar}>
+      <div style={{ ...styles.bottomBar, ...(!isDesktop ? styles.responsiveBottomBar : {}) }}>
+        {!isDesktop && (
+          <div style={styles.mobileToolRail} role="toolbar" aria-label="Poster editing tools">
+            {MOBILE_TOOL_ITEMS.map(({ panel, label, Icon }) => {
+              const selected = activeDockPanel === panel && isDockOpen;
+              return (
+                <button
+                  key={panel}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={selected}
+                  onClick={() => handleToolClick(panel)}
+                  style={{ ...styles.mobileToolButton, ...(selected ? styles.mobileToolButtonActive : {}) }}
+                >
+                  <Icon size={17} aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div style={styles.bottomZoomGroup}>
           <button onClick={() => setZoom(Math.max(0.1, zoomLevel - 0.1))} style={styles.bottomToolBtn} title="Zoom Out">−</button>
           <span style={styles.bottomZoomLabel}>{Math.round(zoomLevel * 100)}%</span>
@@ -1010,6 +1672,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         <MobileBottomSheet
           selectedLayer={selectedLayer}
           onClose={() => useLayerStore.getState().clearSelection()}
+          hidden={isDockOpen}
         />
       )}
 
@@ -1088,19 +1751,50 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
         />
       )}
 
+      {downloadRecovery && (
+        <div style={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="poster-recovery-title">
+          <div style={styles.modalBox}>
+            <h3 id="poster-recovery-title" style={styles.modalTitle}>Download your generated poster</h3>
+              <p style={{ color: 'var(--ps-muted)', fontSize: 13 }}>
+              Browser storage could not save this poster. Download the image before leaving this page.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setDownloadRecovery(null)} style={styles.modalBtn}>Close</button>
+              <button
+                onClick={() => {
+                  const objectUrl = URL.createObjectURL(downloadRecovery.blob);
+                  const anchor = document.createElement('a');
+                  anchor.href = objectUrl;
+                  anchor.download = downloadRecovery.filename;
+                  anchor.click();
+                  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+                }}
+                style={styles.emptyStateCta}
+              >
+                Download poster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ---- DIAGNOSTICS OVERLAY (ADD-ON 52) ---- */}
       {isDebug && <DiagnosticsOverlay />}
 
       {/* ---- OFFSCREEN RENDERER FOR GENERATION ---- */}
-      {isGenerating && activeTemplate && (
+      {isGenerating && generationContext && (
         <OffscreenRenderer
-          layers={layers}
-          variables={safeVariables}
-          width={activeTemplate.width}
-          height={activeTemplate.height}
-          backgroundUrl={activeTemplate.background_url}
-          backgroundTransform={activeTemplate.background_transform}
+          key={generationContext.operationId}
+          renderKey={generationContext.operationId}
+          layers={generationContext.snapshot.layers}
+          variables={generationContext.snapshot.variables}
+          width={generationContext.snapshot.width}
+          height={generationContext.snapshot.height}
+          backgroundUrl={generationContext.backgroundUrl}
+          backgroundTransform={generationContext.snapshot.backgroundTransform}
+          customFontReferences={generationContext.snapshot.customFontReferences}
           onReady={handleCapture}
+          onError={handleRenderError}
         />
       )}
       </div>
@@ -1161,6 +1855,19 @@ const styles: Record<string, React.CSSProperties> = {
   layerName: { flex: 1, fontSize: 12, fontWeight: 500, color: coreColor('#E2E8F0', 'text'), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   layerActions: { display: 'flex', gap: 4 },
   bottomBar: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', backgroundColor: coreColor('#1f1f1f', 'surfaceStrong'), borderTop: `1px solid ${coreColor('#2a2a2a', 'border')}`, padding: '6px 16px', zIndex: 40 },
+  supportingAction: { backgroundColor: 'var(--ps-surface)', color: 'var(--ps-text)', borderColor: 'var(--ps-border-strong)' },
+  primaryAction: { backgroundColor: 'var(--ps-accent)', color: '#FFFFFF', borderColor: 'var(--ps-accent)' },
+  dropdownMenu: { position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--ps-surface)', border: '1px solid var(--ps-border)', borderRadius: 8, padding: 6, zIndex: 100, minWidth: 140, boxShadow: 'var(--ps-shadow)' },
+  dropdownMenuItem: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 36, textAlign: 'left', borderRadius: 6 },
+  toolDividerHoriz: { height: 1, width: '100%', backgroundColor: 'var(--ps-border)', margin: '8px 0', flexShrink: 0 },
+  responsiveBottomBar: { flexDirection: 'column', alignItems: 'stretch', gap: 4, padding: '4px 8px calc(4px + env(safe-area-inset-bottom))', zIndex: 9002 },
+  mobileToolRail: { display: 'flex', alignItems: 'stretch', gap: 4, width: '100%', minWidth: 0, overflowX: 'auto', overscrollBehaviorX: 'contain', padding: '2px 0', scrollbarWidth: 'thin' },
+  mobileToolButton: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, flex: '1 0 64px', minWidth: 64, minHeight: 44, padding: '4px 6px', border: '1px solid transparent', borderRadius: 8, backgroundColor: 'transparent', color: 'var(--ps-muted)', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap', touchAction: 'manipulation' },
+  mobileToolButtonActive: { color: 'var(--ps-accent)', backgroundColor: 'var(--ps-accent-soft)', borderColor: 'var(--ps-border)' },
+  mobileDockLayer: { position: 'fixed', inset: 0, zIndex: 8500, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '12px 8px calc(92px + env(safe-area-inset-bottom))', backgroundColor: 'rgba(15, 23, 42, 0.28)', boxSizing: 'border-box' },
+  tabletDockLayer: { alignItems: 'center', justifyContent: 'flex-end', padding: 16 },
+  mobileDockPanel: { width: '100%', height: 'min(72dvh, 620px)', maxHeight: 'calc(100dvh - 112px - env(safe-area-inset-bottom))', minHeight: 0 },
+  tabletDockPanel: { width: 'min(420px, calc(100vw - 32px))', height: 'min(72dvh, 680px)', maxHeight: 'calc(100dvh - 32px)' },
   bottomZoomGroup: { display: 'flex', alignItems: 'center', gap: 4, backgroundColor: coreColor('#171717', 'surfaceStrong'), borderRadius: 6, padding: '4px', border: `1px solid ${coreColor('#2a2a2a', 'border')}` },
   bottomToolBtn: { padding: '4px 8px', background: 'transparent', border: 'none', color: coreColor('#94A3B8', 'textSubtle'), fontSize: 13, fontWeight: 600, cursor: 'pointer', borderRadius: 4 },
   bottomZoomLabel: { fontSize: 12, color: coreColor('#E2E8F0', 'text'), fontVariantNumeric: 'tabular-nums', width: 44, textAlign: 'center' },

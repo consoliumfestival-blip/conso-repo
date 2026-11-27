@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { S3Client, DeleteObjectCommand, GetObjectCommand, HeadObjectCommand, PutObjectCommand } from 'npm:@aws-sdk/client-s3';
 import { getSignedUrl } from 'npm:@aws-sdk/s3-request-presigner';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { isPosterGenerationObjectKey, posterGenerationPutConditions } from './posterUploadPolicy.ts';
 
 const R2_ACCOUNT_ID = Deno.env.get('R2_ACCOUNT_ID') ?? '';
 const R2_ACCESS_KEY_ID = Deno.env.get('R2_ACCESS_KEY_ID') ?? '';
@@ -31,6 +32,7 @@ const corsHeaders = {
 
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const allowedObjectKey = (value: string) => {
+  if (isPosterGenerationObjectKey(value)) return true;
   if (value.startsWith('templates/')) {
     return /^templates\/[a-zA-Z0-9-]+\/[a-zA-Z0-9._-]+$/.test(value);
   }
@@ -63,7 +65,7 @@ serve(async (req: Request) => {
 
     const { objectKey, contentType, operation = 'upload' } = await req.json();
 
-    if (!objectKey) {
+    if (typeof objectKey !== 'string' || !objectKey) {
       return new Response(JSON.stringify({ error: 'Missing objectKey' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -288,6 +290,7 @@ serve(async (req: Request) => {
         Bucket: R2_BUCKET,
         Key: objectKey,
         ContentType: contentType,
+        ...posterGenerationPutConditions(objectKey),
       });
       // Expiry 120 seconds as requested
       url = await getSignedUrl(s3Client, command, { expiresIn: 120 });
@@ -326,15 +329,21 @@ serve(async (req: Request) => {
       try {
         head = await s3Client.send(command);
       } catch (error: any) {
-        return new Response(JSON.stringify({
-          exists: false,
-          objectKey,
-          bucket: R2_BUCKET,
-          error: error.message,
-          publicUrl: publicDomain ? `https://${publicDomain}/${objectKey}` : null,
-        }), {
+        const statusCode = error?.$metadata?.httpStatusCode;
+        if (statusCode === 404 || ['NotFound', 'NoSuchKey'].includes(error?.name)) {
+          return new Response(JSON.stringify({
+            exists: false,
+            objectKey,
+            bucket: R2_BUCKET,
+            publicUrl: publicDomain ? `https://${publicDomain}/${objectKey}` : null,
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          });
+        }
+        return new Response(JSON.stringify({ error: 'R2 object verification is unavailable.' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+          status: 502,
         });
       }
       return new Response(JSON.stringify({

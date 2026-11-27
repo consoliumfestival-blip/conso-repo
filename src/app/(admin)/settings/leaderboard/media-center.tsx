@@ -4,7 +4,8 @@ import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking, Platform, TextInput, Pressable } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus } from 'lucide-react-native';
+import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus, PenLine } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/core/config/supabase';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useExportQueueStore } from '@/services/exportQueueService';
@@ -13,6 +14,11 @@ import { uploadService } from '@/services/storage/uploadService';
 import { useAuthStore } from '@/core/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jsPDF } from 'jspdf';
+import { listPosterDeliveries } from '@/components/leaderboard/PosterStudio/Database/posterDeliveryRepository';
+import type { PosterDeliveryRecord, PosterDeliveryScope } from '@/components/leaderboard/PosterStudio/Database/posterDesignSnapshot';
+import { createPosterOperationId, runPosterDelivery } from '@/components/leaderboard/PosterStudio/Services/posterDeliveryService';
+import { useOfflineStore } from '@/components/leaderboard/PosterStudio/Stores/offlineStore';
+import { shouldShowLocalPosterDelivery } from '@/components/leaderboard/PosterStudio/Services/posterMediaCenterRules';
 
 function crc32(bytes: Uint8Array): number {
   let crc = 0xffffffff;
@@ -111,16 +117,32 @@ const colors = {
 };
 
 const signedUrlCache = new Map<string, { url: string, expires: number }>();
+const EMPTY_MEDIA_ASSETS: any[] = [];
+const EMPTY_STORAGE_PATHS: string[] = [];
+
+function deliveryStatusLabel(delivery: PosterDeliveryRecord): string {
+  if (delivery.status === 'pending_upload') return 'Saved · upload pending';
+  if (delivery.status === 'uploading') return 'Uploading';
+  if (delivery.status === 'pending_finalize') return 'Finishing upload';
+  if (delivery.status === 'failed') return 'Upload failed · retry';
+  return 'Uploaded';
+}
 
 export default function MediaCenterPage() {
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const { jobs, isProcessing } = useExportQueueStore();
-  const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
+  const router = useRouter();
+  const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'pending'>('all');
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [exportingPdfId, setExportingPdfId] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  const { tenant_id } = useAuthStore();
+  const { tenant_id, user } = useAuthStore();
+  const isOnline = useOfflineStore((state) => state.isOnline);
+  const [savedFestivalContext, setSavedFestivalContext] = useState<string | null>(null);
+  const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
+  const retryOwnerIdRef = React.useRef<string | null>(null);
+  const [localPreviewUrls, setLocalPreviewUrls] = useState<Record<string, string>>({});
 
   // Upload poster states
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -129,6 +151,66 @@ export default function MediaCenterPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setSavedFestivalContext(null);
+    if (Platform.OS !== 'web' || !user?.id || !tenant_id) return;
+    try {
+      const raw = localStorage.getItem('posterStudio:lastFestivalScope');
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { userId?: string; tenantId?: string; festivalId?: string };
+      if (saved.userId === user.id && saved.tenantId === tenant_id && saved.festivalId) {
+        setSavedFestivalContext(saved.festivalId);
+      }
+    } catch {
+      setSavedFestivalContext(null);
+    }
+  }, [user?.id, tenant_id]);
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' || !user?.id || !tenant_id || !activeFestival?.id) return;
+    const saved = { userId: user.id, tenantId: tenant_id, festivalId: activeFestival.id };
+    try {
+      localStorage.setItem('posterStudio:lastFestivalScope', JSON.stringify(saved));
+      setSavedFestivalContext(activeFestival.id);
+    } catch {
+      // The cloud context remains authoritative if browser storage is unavailable.
+    }
+  }, [user?.id, tenant_id, activeFestival?.id]);
+
+  const localFestivalId = activeFestival?.id || savedFestivalContext;
+  const localDeliveryScope: PosterDeliveryScope | null = user?.id && tenant_id && localFestivalId
+    ? { userId: user.id, tenantId: tenant_id, festivalId: localFestivalId }
+    : null;
+  const localDeliveryQueryKey = [
+    'poster-deliveries',
+    localDeliveryScope?.userId,
+    localDeliveryScope?.tenantId,
+    localDeliveryScope?.festivalId,
+  ];
+  const {
+    data: localDeliveries = [],
+    isLoading: isLocalDeliveriesLoading,
+    refetch: refetchLocalDeliveries,
+  } = useQuery({
+    queryKey: localDeliveryQueryKey,
+    queryFn: () => localDeliveryScope
+      ? listPosterDeliveries(localDeliveryScope, { limit: 100 })
+      : Promise.resolve([]),
+    enabled: Platform.OS === 'web' && !!localDeliveryScope,
+    staleTime: 0,
+  });
+
+  React.useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const urls: Record<string, string> = {};
+    for (const delivery of localDeliveries) {
+      const blob = delivery.outputs[0]?.blob;
+      if (blob) urls[delivery.operationId] = URL.createObjectURL(blob);
+    }
+    setLocalPreviewUrls(urls);
+    return () => Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
+  }, [localDeliveries]);
 
   const handleFileSelect = () => {
     const input = document.createElement('input');
@@ -179,6 +261,7 @@ export default function MediaCenterPage() {
   };
 
   const handleDeletePoster = async (asset: any) => {
+    if (asset.is_local_delivery) return;
     if (!activeFestival?.id) return;
     const confirmed = confirm(`Delete poster "${asset.event_name}"?`);
     if (!confirmed) return;
@@ -255,9 +338,12 @@ export default function MediaCenterPage() {
       for (let i = 0; i < itemsToExport.length; i++) {
         const asset = itemsToExport[i];
         const imageUrl = asset.resolutions?.hd || asset.resolutions?.standard || asset.resolutions?.share;
-        if (!imageUrl) continue;
+        const localBlob: Blob | undefined = asset.is_local_delivery
+          ? asset.delivery?.outputs?.[0]?.blob
+          : undefined;
+        if (!localBlob && !imageUrl) continue;
         try {
-          const blob = await fetchImageBlob(imageUrl);
+          const blob = localBlob || await fetchImageBlob(imageUrl);
           const buf = new Uint8Array(await blob.arrayBuffer());
           const ext = blob.type.includes('png') ? 'png' : 'jpg';
           const base = `${asset.result_no ? `${asset.result_no}_` : ''}${asset.event_name || 'poster'}`
@@ -294,10 +380,15 @@ export default function MediaCenterPage() {
     }
   };
 
-  const { data: assets = [], isLoading, refetch } = useQuery({
-    queryKey: ['generated-assets', activeFestival?.id],
+  const {
+    data: cloudMediaData,
+    isLoading: isCloudAssetsLoading,
+    isError: isCloudAssetsError,
+    refetch,
+  } = useQuery({
+    queryKey: ['generated-assets', activeFestival?.id, tenant_id, user?.id],
     queryFn: async () => {
-      if (!activeFestival?.id) return [];
+      if (!activeFestival?.id) return { assets: [], knownStoragePaths: [] as string[] };
       const { data, error } = await supabase
         .from('generated_assets')
         .select(`
@@ -306,9 +397,16 @@ export default function MediaCenterPage() {
           result:results(public_result_no, public_visible)
         `)
         .eq('festival_id', activeFestival.id)
+        .eq('tenant_id', tenant_id)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
+
+      const knownStoragePaths = [...new Set((data as any[]).flatMap((row) => {
+        const values = [row.storage_path, row.public_url]
+          .filter((value): value is string => typeof value === 'string' && value.length > 0);
+        return values.map((value) => value.startsWith('r2://') ? value.slice('r2://'.length) : value);
+      }))];
       
       // Group by render_hash (ignore superseded rows where is_current === false)
       const grouped = (data as any[]).reduce((acc, curr, idx) => {
@@ -324,15 +422,18 @@ export default function MediaCenterPage() {
             template_id: curr.template_id,
             event_id: curr.event_id,
             result_id: curr.result_id,
+            generation_id: curr.generation_id || null,
             event_name: curr.event_name || curr.item?.item_name_en || curr.item?.item_name_ml || 'Festival Event',
             result_no: curr.result?.public_result_no,
             visibility_status: curr.visibility_status || 'published',
             is_live_public: isLivePublic,
             created_at: curr.created_at,
             storage_paths: [] as string[],
+            asset_ids: [] as string[],
             resolutions: {}
           };
         }
+        if (curr.id && !acc[key].asset_ids.includes(curr.id)) acc[key].asset_ids.push(curr.id);
         if (curr.storage_path && !acc[key].storage_paths.includes(curr.storage_path)) {
           acc[key].storage_paths.push(curr.storage_path);
         } else if (curr.public_url && curr.public_url.startsWith('r2://')) {
@@ -384,15 +485,151 @@ export default function MediaCenterPage() {
         }
       }
       
-      return resultAssets;
+      return { assets: resultAssets, knownStoragePaths };
     },
     enabled: !!activeFestival?.id,
     refetchInterval: isProcessing ? 3000 : false, // Poll if queue is processing
   });
 
+  const assets: any[] = cloudMediaData?.assets ?? EMPTY_MEDIA_ASSETS;
+  const knownStoragePaths: string[] = cloudMediaData?.knownStoragePaths ?? EMPTY_STORAGE_PATHS;
+  const cloudStoragePathSet = React.useMemo(() => new Set(knownStoragePaths), [knownStoragePaths]);
+  const currentCloudAssetIds = React.useMemo(
+    () => new Set<string>(assets.flatMap((asset: any) => asset.asset_ids ?? [])),
+    [assets],
+  );
+  const cloudMediaAvailable = !!activeFestival?.id && !isCloudAssetsLoading && !isCloudAssetsError;
+  const localAssets = React.useMemo(() => localDeliveries
+    .filter((delivery) => shouldShowLocalPosterDelivery(
+      delivery,
+      cloudStoragePathSet,
+      currentCloudAssetIds,
+      cloudMediaAvailable,
+    ))
+    .map((delivery) => {
+      const preview = localPreviewUrls[delivery.operationId];
+      const eventName = delivery.snapshot.variables.event_name || 'Poster';
+      const resolutionUrl = preview || undefined;
+      return {
+        id: `local:${delivery.operationId}`,
+        render_hash: `local_${delivery.operationId}`,
+        template_id: delivery.snapshot.templateId,
+        event_id: delivery.snapshot.itemId,
+        result_id: delivery.snapshot.resultId,
+        generation_id: delivery.serverGenerationId,
+        event_name: eventName,
+        result_no: delivery.snapshot.variables.result_no,
+        visibility_status: delivery.serverVisibilityStatus || 'unknown',
+        is_live_public: delivery.serverVisibilityStatus === 'published',
+        created_at: delivery.createdAt,
+        storage_paths: delivery.outputs.map((output) => output.storageKey),
+        asset_ids: delivery.serverAssetIds,
+        resolutions: resolutionUrl ? { hd: resolutionUrl, standard: resolutionUrl } : {},
+        is_local_delivery: true,
+        delivery,
+      };
+    }),
+  [localDeliveries, localPreviewUrls, cloudStoragePathSet, currentCloudAssetIds, cloudMediaAvailable]);
+  const mediaAssets = React.useMemo(() => [...assets, ...localAssets]
+    .sort((a: any, b: any) => String(b.created_at).localeCompare(String(a.created_at))), [assets, localAssets]);
+  const isLoading = isLocalDeliveriesLoading || (isCloudAssetsLoading && localAssets.length === 0);
+
   const [waNumber, setWaNumber] = useState('');
   const [waCaption, setWaCaption] = useState('🏆 *{festival_name}* 🏆\n━━━━━━━━━━━━━━━━━━━━\n\n*മത്സരഫലം പ്രസിദ്ധീകരിച്ചു!* 🎉\n\n🔹 *ഇനം:* {event_name}\n{result_no_text}\n\nവിജയികൾക്ക് അഭിനന്ദനങ്ങൾ! 🌟');
   const [isSharingId, setIsSharingId] = useState<string | null>(null);
+
+  const downloadLocalDelivery = (delivery: PosterDeliveryRecord) => {
+    if (Platform.OS !== 'web') return;
+    const blob = delivery.outputs[0]?.blob;
+    if (!blob) {
+      alert('This local poster has no saved image bytes.');
+      return;
+    }
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = `poster-${delivery.snapshot.itemId || delivery.snapshot.resultId}.jpg`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  };
+
+  const handleEditAsset = (asset: any) => {
+    const params: Record<string, string> = {};
+    const editFestivalId = asset.is_local_delivery ? asset.delivery.festivalId : activeFestival?.id;
+    if (editFestivalId) params.festivalId = editFestivalId;
+    if (asset.is_local_delivery) {
+      params.deliveryId = asset.delivery.operationId;
+    } else if (asset.generation_id) {
+      params.generationId = asset.generation_id;
+    } else {
+      params.assetId = String(asset.id);
+    }
+    router.push({ pathname: '/(admin)/settings/leaderboard/poster-studio', params });
+  };
+
+  const handleRetryLocalDelivery = async (delivery: PosterDeliveryRecord) => {
+    const auth = useAuthStore.getState();
+    const scope: PosterDeliveryScope = {
+      userId: delivery.userId,
+      tenantId: delivery.tenantId,
+      festivalId: delivery.festivalId,
+    };
+    if (!isOnline) {
+      alert('This poster is saved on this device. Connect to the internet before retrying upload.');
+      return;
+    }
+    if (!auth.user?.id || auth.user.id !== scope.userId
+      || (auth.tenant_id !== scope.tenantId && auth.is_superadmin !== true)) {
+      alert('Switch back to the account and tenant that created this poster before retrying.');
+      return;
+    }
+    if (!retryOwnerIdRef.current) retryOwnerIdRef.current = createPosterOperationId();
+    setRetryingDeliveryId(delivery.operationId);
+    try {
+      const result = await runPosterDelivery(
+        delivery.operationId,
+        scope,
+        retryOwnerIdRef.current,
+        {
+          isScopeActive: async (requestedScope) => {
+            const currentAuth = useAuthStore.getState();
+            let currentFestivalId = queryClient.getQueryData<{ id?: string } | null>([
+              'active-festival', currentAuth.tenant_id,
+            ])?.id;
+            if (!currentFestivalId && Platform.OS === 'web') {
+              try {
+                const raw = localStorage.getItem('posterStudio:lastFestivalScope');
+                const cached = raw ? JSON.parse(raw) as { userId?: string; tenantId?: string; festivalId?: string } : null;
+                if (cached && cached.userId === currentAuth.user?.id && cached.tenantId === currentAuth.tenant_id) {
+                  currentFestivalId = cached.festivalId;
+                }
+              } catch {
+                currentFestivalId = undefined;
+              }
+            }
+            return currentAuth.user?.id === requestedScope.userId
+              && (currentAuth.tenant_id === requestedScope.tenantId || currentAuth.is_superadmin === true)
+              && currentFestivalId === requestedScope.festivalId;
+          },
+        },
+      );
+      const currentAuth = useAuthStore.getState();
+      if (currentAuth.user?.id === scope.userId
+        && (currentAuth.tenant_id === scope.tenantId || currentAuth.is_superadmin === true)) {
+        await Promise.all([
+          refetchLocalDeliveries(),
+          queryClient.invalidateQueries({ queryKey: ['generated-assets', delivery.festivalId] }),
+        ]);
+      }
+      if (result.status === 'failed') alert(`Upload is still pending. ${result.error}`);
+      else if (result.status === 'busy') alert('Another Studio tab is already uploading this poster.');
+      else if (result.status === 'missing') alert('The saved local poster could not be found.');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Poster upload retry failed.');
+    } finally {
+      setRetryingDeliveryId(null);
+    }
+  };
 
   React.useEffect(() => {
     const loadWaSettings = async () => {
@@ -522,10 +759,11 @@ export default function MediaCenterPage() {
   };
 
   const filteredAssets = React.useMemo(() => {
-    if (filter === 'published') return assets.filter((a: any) => a.is_live_public);
-    if (filter === 'draft') return assets.filter((a: any) => !a.is_live_public);
-    return assets;
-  }, [assets, filter]);
+    if (filter === 'published') return mediaAssets.filter((a: any) => !a.is_local_delivery && a.is_live_public);
+    if (filter === 'draft') return mediaAssets.filter((a: any) => !a.is_local_delivery && !a.is_live_public);
+    if (filter === 'pending') return mediaAssets.filter((a: any) => a.is_local_delivery);
+    return mediaAssets;
+  }, [mediaAssets, filter]);
 
   const openUrl = (url: string) => {
     if (Platform.OS === 'web') {
@@ -542,6 +780,16 @@ export default function MediaCenterPage() {
         <View>
           <Text style={styles.title}>Media Center</Text>
           <Text style={styles.subtitle}>Manage and share generated assets</Text>
+          {savedFestivalContext && (!activeFestival?.id || !isOnline) && (
+            <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>
+              Showing posters for the last festival saved on this device.
+            </Text>
+          )}
+          {isCloudAssetsError && (
+            <Text style={{ color: '#9A3412', fontSize: 12, marginTop: 4 }}>
+              Cloud Media Center is unavailable. Saved posters on this device are still shown below.
+            </Text>
+          )}
         </View>
         <View style={styles.headerActions}>
           {isProcessing && (
@@ -574,20 +822,25 @@ export default function MediaCenterPage() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {isLoading ? (
           <ActivityIndicator size="large" color={coreColor(colors.navy, 'primaryText')} style={{ marginTop: 40 }} />
-        ) : assets.length === 0 ? (
+        ) : mediaAssets.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🗂️</Text>
             <Text style={styles.emptyTitle}>No assets generated yet</Text>
-            <Text style={styles.emptySub}>Publish results in Poster Studio to see them here.</Text>
+            <Text style={styles.emptySub}>
+              {isCloudAssetsError
+                ? 'Cloud assets could not be loaded and no matching local posters were found on this device.'
+                : 'Publish results in Poster Studio to see them here.'}
+            </Text>
           </View>
         ) : (
           <>
             {/* Filter Tabs */}
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               {([
-                { key: 'all', label: `All (${assets.length})` },
-                { key: 'published', label: `🌐 Published Live (${assets.filter((a: any) => a.is_live_public).length})` },
-                { key: 'draft', label: `📝 Drafts / Not Public (${assets.filter((a: any) => !a.is_live_public).length})` },
+                { key: 'all', label: `All (${mediaAssets.length})` },
+                { key: 'published', label: `🌐 Published Live (${mediaAssets.filter((a: any) => !a.is_local_delivery && a.is_live_public).length})` },
+                { key: 'draft', label: `📝 Drafts / Not Public (${mediaAssets.filter((a: any) => !a.is_local_delivery && !a.is_live_public).length})` },
+                { key: 'pending', label: `💾 On this device (${localAssets.length})` },
               ] as const).map((tab) => {
                 const active = filter === tab.key;
                 return (
@@ -657,7 +910,7 @@ export default function MediaCenterPage() {
               <View key={asset.render_hash} style={styles.card}>
                 <View style={styles.imageContainer}>
                   <Image 
-                    source={{ uri: asset.resolutions?.thumb || asset.resolutions?.standard || asset.resolutions?.hd || 'https://via.placeholder.com/400' }} 
+                    source={{ uri: asset.resolutions?.thumb || asset.resolutions?.standard || asset.resolutions?.hd || 'https://via.placeholder.com/400' }}
                     style={styles.thumbnail}
                     resizeMode="cover"
                   />
@@ -667,12 +920,16 @@ export default function MediaCenterPage() {
                       {
                         left: 12,
                         right: undefined,
-                        backgroundColor: asset.is_live_public ? 'rgba(6, 95, 70, 0.9)' : 'rgba(51, 65, 85, 0.9)',
+                        backgroundColor: asset.is_local_delivery
+                          ? 'rgba(120, 53, 15, 0.94)'
+                          : asset.is_live_public ? 'rgba(6, 95, 70, 0.9)' : 'rgba(51, 65, 85, 0.9)',
                       },
                     ]}
                   >
                     <Text style={styles.qualityText}>
-                      {asset.is_live_public ? '🌐 Live Public' : '📝 Draft (Hidden)'}
+                      {asset.is_local_delivery
+                        ? deliveryStatusLabel(asset.delivery)
+                        : asset.is_live_public ? '🌐 Live Public' : '📝 Draft (Hidden)'}
                     </Text>
                   </View>
                   <View style={styles.qualityBadge}>
@@ -685,18 +942,42 @@ export default function MediaCenterPage() {
                 <View style={styles.cardBody}>
                   <Text style={styles.eventName} numberOfLines={1}>{asset.event_name}</Text>
                   <Text style={styles.metaText}>
-                    {asset.result_no ? `Result #${asset.result_no}` : 'General Poster'} • {new Date(asset.created_at).toLocaleDateString()}
+                    {asset.result_no ? `Result #${asset.result_no}` : 'Poster'} • {new Date(asset.created_at).toLocaleDateString()}
+                    {asset.is_local_delivery ? ' • Saved on this device' : ''}
                   </Text>
                   
                   <View style={styles.actionsGrid}>
-                    <TouchableOpacity 
-                      style={[styles.actionBtn, !asset.resolutions?.hd && styles.actionBtnDisabled]}
-                      onPress={() => asset.resolutions?.hd && openUrl(asset.resolutions.hd)}
-                      disabled={!asset.resolutions?.hd}
-                    >
-                      <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
-                      <Text style={styles.actionText}>HD Image</Text>
-                    </TouchableOpacity>
+                    {asset.is_local_delivery ? (
+                      <>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => downloadLocalDelivery(asset.delivery)}>
+                          <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
+                          <Text style={styles.actionText}>Download</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionBtn} onPress={() => handleEditAsset(asset)}>
+                          <PenLine size={14} color={colors.navy} />
+                          <Text style={styles.actionText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.actionBtn, (!isOnline || retryingDeliveryId === asset.delivery.operationId || asset.delivery.status === 'synced') && styles.actionBtnDisabled]}
+                          onPress={() => handleRetryLocalDelivery(asset.delivery)}
+                          disabled={!isOnline || retryingDeliveryId === asset.delivery.operationId || asset.delivery.status === 'synced'}
+                        >
+                          {retryingDeliveryId === asset.delivery.operationId
+                            ? <ActivityIndicator size="small" color={coreColor(colors.navy, 'primaryText')} />
+                            : <RefreshCw size={14} color={coreColor(colors.navy, 'primaryText')} />}
+                          <Text style={styles.actionText}>{asset.delivery.status === 'synced' ? 'Uploaded' : 'Retry upload'}</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, !asset.resolutions?.hd && styles.actionBtnDisabled]}
+                        onPress={() => asset.resolutions?.hd && openUrl(asset.resolutions.hd)}
+                        disabled={!asset.resolutions?.hd}
+                      >
+                        <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
+                        <Text style={styles.actionText}>HD Image</Text>
+                      </TouchableOpacity>
+                    )}
                     
                     <TouchableOpacity 
                       style={[styles.actionBtn, (!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash) && styles.actionBtnDisabled]}
@@ -707,7 +988,15 @@ export default function MediaCenterPage() {
                       <Text style={styles.actionText}>{exportingPdfId === asset.render_hash ? 'PDF...' : 'PDF'}</Text>
                     </TouchableOpacity>
                     
-                    <TouchableOpacity 
+                    {!asset.is_local_delivery && <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => handleEditAsset(asset)}
+                    >
+                      <PenLine size={14} color={colors.navy} />
+                      <Text style={styles.actionText}>Edit</Text>
+                    </TouchableOpacity>}
+
+                    {!asset.is_local_delivery && <TouchableOpacity
                       style={styles.actionBtn}
                       onPress={() => {
                         const url = asset.resolutions?.share || asset.resolutions?.hd || asset.resolutions?.standard;
@@ -719,23 +1008,23 @@ export default function MediaCenterPage() {
                     >
                       <Share2 size={14} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.actionText}>Link</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     
-                    <TouchableOpacity 
+                    {!asset.is_local_delivery && <TouchableOpacity
                       style={[styles.actionBtn, styles.actionBtnWhatsApp]}
                       onPress={() => handleWhatsAppShare(asset)}
                     >
                       <Share2 size={14} color={ui.colors.onPrimary} />
                       <Text style={styles.actionTextWhatsApp}>Share</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                     
-                    <TouchableOpacity 
+                    {!asset.is_local_delivery && <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: ui.colors.dangerSoft }]}
                       onPress={() => handleDeletePoster(asset)}
                     >
                       <Trash2 size={14} color={ui.colors.danger} />
                       <Text style={[styles.actionText, { color: ui.colors.danger }]}>Delete</Text>
-                    </TouchableOpacity>
+                    </TouchableOpacity>}
                   </View>
                 </View>
               </View>

@@ -1,21 +1,33 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
+import { useWindowDimensions } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTemplateStore, BatchFrameItem } from '../Stores/templateStore';
 import { useLayerStore } from '../Stores/layerStore';
-import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
-import { computeAutoShrinkFontSize, loadFont, ML_FONTS, EN_FONTS } from '../Utils/fontLoader';
-import { resolveLayerText } from '../Utils/resolver';
-import { dataUrlToBlob, saveGeneratedPosterAsset } from '../Utils/generatedAssetSaver';
+import { dataUrlToBlob } from '../Utils/generatedAssetSaver';
 import OffscreenRenderer from './OffscreenRenderer';
+import { useAuthStore } from '../../../../core/store/authStore';
+import type { PosterAssetReference, PosterDeliveryScope, PosterDesignSnapshot } from '../Database/posterDesignSnapshot';
+import { savePendingPosterDelivery } from '../Database/posterDeliveryRepository';
+import { createPosterOperationId, runPosterDelivery } from '../Services/posterDeliveryService';
+import { createPendingPosterDelivery, createPosterDesignSnapshot, measurePosterBlob } from '../Services/posterDeliveryFactory';
 
 interface MultiFrameGridProps {
   festivalId: string;
   tenantId: string;
+  customFontReferences: PosterAssetReference[];
 }
 
-type FrameRunStatus = 'idle' | 'rendering' | 'published' | 'draft' | 'error';
+type FrameRunStatus = 'idle' | 'rendering' | 'published' | 'draft' | 'pending' | 'error';
 
-export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridProps) {
+interface BatchRunFrame {
+  frame: BatchFrameItem;
+  operationId: string;
+  snapshot: PosterDesignSnapshot;
+  backgroundUrl: string;
+}
+
+export default function MultiFrameGrid({ festivalId, tenantId, customFontReferences }: MultiFrameGridProps) {
+  const { width } = useWindowDimensions();
   const queryClient = useQueryClient();
   const {
     activeTemplate,
@@ -27,12 +39,11 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
     setCurrentResultId,
     setCurrentItemId,
     setCurrentResultPublicVisible,
+    setSourceResultFingerprint,
     loadResultOverride,
     bumpAssetsRefreshTick,
   } = useTemplateStore();
   const { layers: baseLayers } = useLayerStore();
-
-  const resolvedBgUrl = useResolvedImageUrl(activeTemplate?.background_url);
 
   const [isBatchRunning, setIsBatchRunning] = useState(false);
   const [activeExportIndex, setActiveExportIndex] = useState<number | null>(null);
@@ -40,27 +51,16 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
   const [frameErrors, setFrameErrors] = useState<Record<string, string>>({});
   const [expandedEditIds, setExpandedEditIds] = useState<Record<string, boolean>>({});
   const [batchSummary, setBatchSummary] = useState<string | null>(null);
+  const [batchRun, setBatchRun] = useState<{ frames: BatchRunFrame[]; ownerId: string } | null>(null);
+  const [downloadRecoveries, setDownloadRecoveries] = useState<Record<string, { blob: Blob; filename: string }>>({});
 
   const processingIndexRef = useRef<number | null>(null);
-  const batchCountsRef = useRef({ published: 0, draft: 0, failed: 0 });
+  const batchCountsRef = useRef({ published: 0, draft: 0, pending: 0, failed: 0 });
 
   const canvasW = activeTemplate?.width || 1080;
   const canvasH = activeTemplate?.height || 1080;
-  const previewW = 280;
+  const previewW = Math.min(280, Math.max(180, width - 76));
   const previewScale = previewW / canvasW;
-  const previewH = Math.round(canvasH * previewScale);
-
-  // Preload all template fonts when entering Multi-Frame view
-  useEffect(() => {
-    const knownFonts = [...ML_FONTS, ...EN_FONTS];
-    const families = Array.from(
-      new Set(baseLayers.filter((l) => l.type === 'text' && l.fontFamily).map((l) => l.fontFamily!))
-    );
-    families.forEach((fam) => {
-      const def = knownFonts.find((f) => f.family === fam);
-      if (def) loadFont(def);
-    });
-  }, [baseLayers]);
 
   const publicCount = batchItems.filter((b) => b.publicVisible).length;
   const draftCount = batchItems.length - publicCount;
@@ -70,97 +70,231 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
     setCurrentResultId(frame.resultId);
     setCurrentItemId(frame.itemId);
     setCurrentResultPublicVisible(frame.publicVisible);
+    setSourceResultFingerprint(frame.sourceResultFingerprint || '');
     setIsMultiFrameMode(false);
     loadResultOverride(frame.resultId);
   };
 
   const startBatchGenerate = () => {
     if (!activeTemplate || batchItems.length === 0 || isBatchRunning) return;
-    setBatchSummary(null);
-    batchCountsRef.current = { published: 0, draft: 0, failed: 0 };
-    const initStatuses: Record<string, FrameRunStatus> = {};
-    batchItems.forEach((b, i) => {
-      initStatuses[b.itemId] = i === 0 ? 'rendering' : 'idle';
-    });
-    setFrameStatuses(initStatuses);
-    setFrameErrors({});
-    processingIndexRef.current = null;
-    setIsBatchRunning(true);
-    setActiveExportIndex(0);
+    try {
+      const current = useTemplateStore.getState();
+      const template = current.activeTemplate;
+      const auth = useAuthStore.getState();
+      const userId = auth.user?.id;
+      if (!template || !userId || (auth.tenant_id !== tenantId && auth.is_superadmin !== true)) {
+        throw new Error('Sign in to the selected tenant before generating posters.');
+      }
+      if (!template.id || template.isLocal || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(template.id)) {
+        throw new Error('Save this template to the database before generating posters.');
+      }
+      const scope: PosterDeliveryScope = { userId, tenantId, festivalId };
+      const frozenLayers = useLayerStore.getState().layers;
+      const frames = current.batchItems.map((frame) => {
+        const operationId = createPosterOperationId();
+        const snapshot = createPosterDesignSnapshot({
+          scope,
+          template,
+          itemId: frame.itemId,
+          resultId: frame.resultId,
+          layers: frame.customLayers ?? frozenLayers,
+          variables: frame.variables,
+          typographyMode: current.typographyMode,
+          sourceResultFingerprint: frame.sourceResultFingerprint || '',
+          customFontReferences,
+        });
+        return { frame: structuredClone(frame), operationId, snapshot, backgroundUrl: template.background_url };
+      });
+      const run = { frames, ownerId: createPosterOperationId() };
+      setBatchRun(run);
+      setBatchSummary(null);
+      batchCountsRef.current = { published: 0, draft: 0, pending: 0, failed: 0 };
+      const initStatuses: Record<string, FrameRunStatus> = {};
+      frames.forEach(({ frame }, index) => {
+        initStatuses[frame.itemId] = index === 0 ? 'rendering' : 'idle';
+      });
+      setFrameStatuses(initStatuses);
+      setFrameErrors({});
+      setDownloadRecoveries({});
+      processingIndexRef.current = null;
+      setIsBatchRunning(true);
+      setActiveExportIndex(0);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Batch generation could not start.');
+    }
   };
 
   const handleBatchCapture = useCallback(
     async (captureFunc: (ratio?: number) => string) => {
-      if (activeExportIndex === null || !activeTemplate) return;
+      if (activeExportIndex === null || !activeTemplate || !batchRun) return;
       if (processingIndexRef.current === activeExportIndex) return;
       processingIndexRef.current = activeExportIndex;
 
-      const frame = batchItems[activeExportIndex];
-      if (!frame) {
+      const runFrame = batchRun.frames[activeExportIndex];
+      if (!runFrame) {
         setIsBatchRunning(false);
         setActiveExportIndex(null);
+        setBatchRun(null);
         return;
       }
+      const { frame } = runFrame;
+      const isRunScopeActive = () => {
+        const auth = useAuthStore.getState();
+        return auth.user?.id === runFrame.snapshot.userId
+          && (auth.tenant_id === runFrame.snapshot.tenantId || auth.is_superadmin === true)
+          && festivalId === runFrame.snapshot.festivalId
+          && tenantId === runFrame.snapshot.tenantId;
+      };
 
+      let blob: Blob | null = null;
+      let savedLocally = false;
       try {
-        const dataUrl = captureFunc();
-        const blob = dataUrlToBlob(dataUrl);
-        const res = await saveGeneratedPosterAsset({
+        blob = dataUrlToBlob(captureFunc());
+        const dimensions = await measurePosterBlob(blob);
+        const record = createPendingPosterDelivery({
+          operationId: runFrame.operationId,
+          scope: runFrame.snapshot,
+          snapshot: runFrame.snapshot,
           blob,
-          tenantId,
-          festivalId,
-          templateId: activeTemplate.id,
-          eventId: frame.itemId,
-          resultId: frame.resultId,
-          eventName: frame.variables.event_name || frame.itemName,
-          publicVisible: frame.publicVisible,
+          ...dimensions,
         });
-
-        if (res.visibilityStatus === 'published') {
-          batchCountsRef.current.published++;
-        } else {
-          batchCountsRef.current.draft++;
+        await savePendingPosterDelivery(record);
+        savedLocally = true;
+        if (!isRunScopeActive()) {
+          setIsBatchRunning(false);
+          setActiveExportIndex(null);
+          setBatchRun(null);
+          return;
+        }
+        const outcome = await runPosterDelivery(
+          runFrame.operationId,
+          runFrame.snapshot,
+          batchRun.ownerId,
+          {
+            isScopeActive: (scope) => {
+              const auth = useAuthStore.getState();
+              return auth.user?.id === scope.userId
+                && (auth.tenant_id === scope.tenantId || auth.is_superadmin === true)
+                && festivalId === scope.festivalId
+                && tenantId === scope.tenantId;
+            },
+          },
+        );
+        if (!isRunScopeActive()) {
+          setIsBatchRunning(false);
+          setActiveExportIndex(null);
+          setBatchRun(null);
+          return;
         }
 
-        setFrameStatuses((prev) => ({
-          ...prev,
-          [frame.itemId]: res.visibilityStatus,
-        }));
-      } catch (err: any) {
-        batchCountsRef.current.failed++;
-        setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: 'error' }));
+        if (outcome.status === 'synced') {
+          const frameVisibility = outcome.result.visibilityStatus === 'published' ? 'published' : 'draft';
+          if (frameVisibility === 'published') batchCountsRef.current.published++;
+          else batchCountsRef.current.draft++;
+          setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: frameVisibility }));
+        } else {
+          batchCountsRef.current.pending++;
+          setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: 'pending' }));
+          setFrameErrors((prev) => ({
+            ...prev,
+            [frame.itemId]: outcome.status === 'failed'
+              ? `Saved on this device; upload pending. ${outcome.error}`
+              : 'Saved on this device; upload pending.',
+          }));
+        }
+      } catch (error) {
+        if (!isRunScopeActive()) {
+          setIsBatchRunning(false);
+          setActiveExportIndex(null);
+          setBatchRun(null);
+          return;
+        }
+        if (savedLocally) batchCountsRef.current.pending++;
+        else batchCountsRef.current.failed++;
+        setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: savedLocally ? 'pending' : 'error' }));
         setFrameErrors((prev) => ({
           ...prev,
-          [frame.itemId]: err?.message || 'Generation failed',
+          [frame.itemId]: savedLocally
+            ? `Saved on this device; upload pending. ${error instanceof Error ? error.message : 'Delivery failed.'}`
+            : error instanceof Error ? error.message : 'Generation failed',
         }));
+        if (!savedLocally && blob) {
+          const recoveryBlob = blob;
+          setDownloadRecoveries((previous) => ({
+            ...previous,
+            [frame.itemId]: { blob: recoveryBlob, filename: `poster-${frame.itemId}.jpg` },
+          }));
+        }
       }
 
       const nextIndex = activeExportIndex + 1;
-      if (nextIndex < batchItems.length) {
-        const nextFrame = batchItems[nextIndex];
+      if (nextIndex < batchRun.frames.length) {
+        const nextFrame = batchRun.frames[nextIndex].frame;
         setFrameStatuses((prev) => ({ ...prev, [nextFrame.itemId]: 'rendering' }));
         setActiveExportIndex(nextIndex);
       } else {
         setIsBatchRunning(false);
         setActiveExportIndex(null);
+        setBatchRun(null);
         processingIndexRef.current = null;
-        queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
-        bumpAssetsRefreshTick();
-        const { published, draft, failed } = batchCountsRef.current;
+        if (isRunScopeActive()) {
+          queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
+          bumpAssetsRefreshTick();
+        }
+        const { published, draft, pending, failed } = batchCountsRef.current;
         setBatchSummary(
-          `Completed: ${published} Auto-Published to Public, ${draft} Saved as Draft in Media Center${
-            failed > 0 ? `, ${failed} Failed` : ''
-          }.`
+          `Completed: ${published} published, ${draft} draft, ${pending} saved locally for upload retry${failed > 0 ? `, ${failed} not saved` : ''}.`
         );
       }
     },
-    [activeExportIndex, activeTemplate, batchItems, festivalId, tenantId, queryClient, bumpAssetsRefreshTick]
+    [activeExportIndex, activeTemplate, batchRun, festivalId, tenantId, queryClient, bumpAssetsRefreshTick]
   );
 
-  const activeFrame =
-    isBatchRunning && activeExportIndex !== null ? batchItems[activeExportIndex] : null;
+  const activeRunFrame = isBatchRunning && activeExportIndex !== null
+    ? batchRun?.frames[activeExportIndex] ?? null
+    : null;
 
-  const sortedLayers = [...baseLayers].sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
+  const handleBatchRenderError = useCallback((error: Error) => {
+    if (activeExportIndex === null || !batchRun || !activeRunFrame || processingIndexRef.current === activeExportIndex) return;
+    processingIndexRef.current = activeExportIndex;
+    const auth = useAuthStore.getState();
+    const scopeIsActive = auth.user?.id === activeRunFrame.snapshot.userId
+      && (auth.tenant_id === activeRunFrame.snapshot.tenantId || auth.is_superadmin === true)
+      && festivalId === activeRunFrame.snapshot.festivalId
+      && tenantId === activeRunFrame.snapshot.tenantId;
+    if (!scopeIsActive) {
+      setIsBatchRunning(false);
+      setActiveExportIndex(null);
+      setBatchRun(null);
+      processingIndexRef.current = null;
+      return;
+    }
+    batchCountsRef.current.failed++;
+    setFrameStatuses((previous) => ({ ...previous, [activeRunFrame.frame.itemId]: 'error' }));
+    setFrameErrors((previous) => ({
+      ...previous,
+      [activeRunFrame.frame.itemId]: `Render failed; no image was uploaded. ${error.message}`,
+    }));
+
+    const nextIndex = activeExportIndex + 1;
+    if (nextIndex < batchRun.frames.length) {
+      const nextFrame = batchRun.frames[nextIndex].frame;
+      setFrameStatuses((previous) => ({ ...previous, [nextFrame.itemId]: 'rendering' }));
+      setActiveExportIndex(nextIndex);
+      return;
+    }
+
+    setIsBatchRunning(false);
+    setActiveExportIndex(null);
+    setBatchRun(null);
+    processingIndexRef.current = null;
+    if (scopeIsActive) {
+      queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
+      bumpAssetsRefreshTick();
+    }
+    const { published, draft, pending, failed } = batchCountsRef.current;
+    setBatchSummary(`Completed: ${published} published, ${draft} draft, ${pending} saved locally for upload retry${failed > 0 ? `, ${failed} not saved` : ''}.`);
+  }, [activeExportIndex, activeRunFrame, batchRun, bumpAssetsRefreshTick, festivalId, queryClient, tenantId]);
 
   return (
     <div style={styles.container}>
@@ -211,7 +345,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
       ) : (
         <div style={styles.grid}>
           {batchItems.map((frame) => {
-            const frameLayers = frame.customLayers || sortedLayers;
+            const frameLayers = frame.customLayers || baseLayers;
             const status = frameStatuses[frame.itemId] || 'idle';
             const errMsg = frameErrors[frame.itemId];
             const isEditing = !!expandedEditIds[frame.itemId];
@@ -223,12 +357,20 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                 <div style={styles.cardHeader}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={styles.frameNo}>#{frame.variables.result_no || frame.resultNo}</span>
+                      {frame.resultNoConflict ? (
+                        <span style={styles.frameNoConflict} role="alert">Conflicting official numbers</span>
+                      ) : (
+                        <span style={styles.frameNo}>
+                          {frame.variables.result_no || frame.resultNo
+                            ? `#${frame.variables.result_no || frame.resultNo}`
+                            : 'Pending number'}
+                        </span>
+                      )}
                       <span
                         style={{
                           ...styles.modePill,
-                          backgroundColor: frame.publicVisible ? '#064e3b' : '#334155',
-                          color: frame.publicVisible ? '#34d399' : '#cbd5e1',
+                          backgroundColor: frame.publicVisible ? 'var(--ps-success-soft)' : 'var(--ps-surface-muted)',
+                          color: frame.publicVisible ? 'var(--ps-success)' : 'var(--ps-muted)',
                         }}
                       >
                         {frame.publicVisible ? '🌐 Auto-Publish' : '📝 Draft'}
@@ -239,11 +381,20 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                             ...styles.runStatusPill,
                             backgroundColor:
                               status === 'error'
-                                ? '#7f1d1d'
+                                ? 'var(--ps-danger-soft)'
                                 : status === 'rendering'
-                                ? '#1e3a8a'
-                                : '#14532d',
-                            color: '#ffffff',
+                                ? 'var(--ps-accent-soft)'
+                                : status === 'pending'
+                                ? 'var(--ps-warning-soft)'
+                                : 'var(--ps-success-soft)',
+                            color:
+                              status === 'error'
+                                ? 'var(--ps-danger)'
+                                : status === 'rendering'
+                                ? 'var(--ps-accent)'
+                                : status === 'pending'
+                                ? 'var(--ps-warning)'
+                                : 'var(--ps-success)',
                           }}
                         >
                           {status === 'rendering'
@@ -252,6 +403,8 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                             ? '✓ Published'
                             : status === 'draft'
                             ? '✓ Draft Saved'
+                            : status === 'pending'
+                            ? 'Saved locally · upload pending'
                             : '✕ Error'}
                         </span>
                       )}
@@ -262,6 +415,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button
+                      disabled={isBatchRunning}
                       onClick={() =>
                         setExpandedEditIds((prev) => ({
                           ...prev,
@@ -274,6 +428,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                       {isEditing ? 'Hide Edit' : 'Edit Text'}
                     </button>
                     <button
+                      disabled={isBatchRunning}
                       onClick={() => handleEditSingle(frame)}
                       style={styles.smallBtn}
                       title="Open this frame on full Canvas"
@@ -291,105 +446,47 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                   </div>
                 </div>
 
-                {errMsg && <div style={styles.errorText}>⚠ {errMsg}</div>}
+                {errMsg && (
+                  <div style={styles.errorText}>
+                    ⚠ {errMsg}
+                    {downloadRecoveries[frame.itemId] && (
+                      <button
+                        style={styles.smallBtn}
+                        onClick={() => {
+                          const recovery = downloadRecoveries[frame.itemId];
+                          if (!recovery) return;
+                          const objectUrl = URL.createObjectURL(recovery.blob);
+                          const anchor = document.createElement('a');
+                          anchor.href = objectUrl;
+                          anchor.download = recovery.filename;
+                          anchor.click();
+                          window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+                          setDownloadRecoveries((previous) => {
+                            const { [frame.itemId]: _removed, ...remaining } = previous;
+                            return remaining;
+                          });
+                        }}
+                      >
+                        Download image
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Proportional Live Preview */}
                 <div style={styles.previewWrap}>
-                  <div
-                    style={{
-                      width: previewW,
-                      height: previewH,
-                      position: 'relative',
-                      overflow: 'hidden',
-                      backgroundColor: '#FFFFFF',
-                      borderRadius: 6,
-                      boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: canvasW,
-                        height: canvasH,
-                        position: 'relative',
-                        transform: `scale(${previewScale})`,
-                        transformOrigin: 'top left',
-                        backgroundColor: '#FFFFFF',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {resolvedBgUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={resolvedBgUrl}
-                          alt="Background"
-                          style={{
-                            position: 'absolute',
-                            left: bgTransform.x ?? 0,
-                            top: bgTransform.y ?? 0,
-                            width: canvasW,
-                            height: canvasH,
-                            transform: `scale(${bgTransform.scale ?? 1})`,
-                            transformOrigin: 'top left',
-                            objectFit: 'fill',
-                            pointerEvents: 'none',
-                          }}
-                        />
-                      )}
-                      {frameLayers.map((layer) => {
-                        if (layer.isVisible === false || layer.type !== 'text') return null;
-                        const resolvedText = resolveLayerText(layer, frame.variables);
-                        const fontFamilyStack = `"${layer.fontFamily || 'Poppins'}", "Noto Sans Malayalam", "Inter", sans-serif`;
-                        const baseFontSize = layer.fontSize || 24;
-                        const effectiveOverflow =
-                          layer.overflowMode ||
-                          (layer.dynamicBinding || layer.text?.includes('{') ? 'auto-shrink' : undefined);
-                        const displayFontSize =
-                          effectiveOverflow === 'auto-shrink' && layer.width
-                            ? computeAutoShrinkFontSize({
-                                text: resolvedText,
-                                fontFamily: fontFamilyStack,
-                                baseFontSize,
-                                fontWeight: layer.fontWeight || 600,
-                                maxWidth: layer.width,
-                                maxHeight: layer.height,
-                                maxLines: layer.maxLines,
-                                lineHeight: layer.lineHeight || 1.2,
-                              })
-                            : baseFontSize;
-
-                        return (
-                          <div
-                            key={layer.id}
-                            style={{
-                              position: 'absolute',
-                              left: layer.x,
-                              top: layer.y,
-                              width: layer.width || 'auto',
-                              height: layer.height || 'auto',
-                              fontSize: displayFontSize,
-                              fontFamily: fontFamilyStack,
-                              fontWeight: layer.fontWeight || 600,
-                              fontStyle: layer.fontStyle || 'normal',
-                              color: layer.fill || '#000000',
-                              textAlign: (layer.align as any) || 'left',
-                              lineHeight: layer.lineHeight || 1.2,
-                              letterSpacing: layer.letterSpacing || 0,
-                              opacity: layer.opacity ?? 1,
-                              transform: `rotate(${layer.rotation || 0}deg)`,
-                              transformOrigin: 'top left',
-                              whiteSpace: effectiveOverflow === 'clip' ? 'nowrap' : 'pre-wrap',
-                              overflow: 'hidden',
-                              textOverflow: effectiveOverflow === 'ellipsis' ? 'ellipsis' : 'clip',
-                              wordBreak: 'break-word',
-                              pointerEvents: 'none',
-                            }}
-                          >
-                            {resolvedText}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                  <OffscreenRenderer
+                    key={`preview-${frame.itemId}`}
+                    renderKey={`preview-${frame.itemId}`}
+                    layers={frameLayers}
+                    variables={frame.variables}
+                    width={canvasW}
+                    height={canvasH}
+                    backgroundUrl={activeTemplate?.background_url}
+                    backgroundTransform={bgTransform}
+                    customFontReferences={customFontReferences}
+                    previewScale={previewScale}
+                  />
                 </div>
 
                 {/* Compact Inline Editor */}
@@ -400,6 +497,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                         <label style={styles.fieldLabel}>No.</label>
                         <input
                           style={styles.input}
+                          disabled={isBatchRunning}
                           value={frame.variables.result_no || ''}
                           onChange={(e) =>
                             updateBatchItemVariables(frame.itemId, { result_no: e.target.value })
@@ -410,6 +508,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                         <label style={styles.fieldLabel}>Event Name</label>
                         <input
                           style={styles.input}
+                          disabled={isBatchRunning}
                           value={frame.variables.event_name || ''}
                           onChange={(e) =>
                             updateBatchItemVariables(frame.itemId, { event_name: e.target.value })
@@ -423,6 +522,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                           <label style={styles.fieldLabel}>{rank}st/nd/rd Name</label>
                           <input
                             style={styles.input}
+                            disabled={isBatchRunning}
                             value={frame.variables[`name_${rank}`] || ''}
                             onChange={(e) =>
                               updateBatchItemVariables(frame.itemId, {
@@ -435,6 +535,7 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
                           <label style={styles.fieldLabel}>Unit</label>
                           <input
                             style={styles.input}
+                            disabled={isBatchRunning}
                             value={frame.variables[`unit_${rank}`] || ''}
                             onChange={(e) =>
                               updateBatchItemVariables(frame.itemId, {
@@ -454,16 +555,19 @@ export default function MultiFrameGrid({ festivalId, tenantId }: MultiFrameGridP
       )}
 
       {/* Sequential Offscreen Renderer for Batch Generation */}
-      {isBatchRunning && activeTemplate && activeFrame && (
+      {isBatchRunning && batchRun && activeRunFrame && (
         <OffscreenRenderer
-          key={`${activeFrame.itemId}_${activeExportIndex}`}
-          layers={activeFrame.customLayers || baseLayers}
-          variables={activeFrame.variables}
-          width={canvasW}
-          height={canvasH}
-          backgroundUrl={activeTemplate.background_url}
-          backgroundTransform={activeTemplate.background_transform}
+          key={activeRunFrame.operationId}
+          renderKey={activeRunFrame.operationId}
+          layers={activeRunFrame.snapshot.layers}
+          variables={activeRunFrame.snapshot.variables}
+          width={activeRunFrame.snapshot.width}
+          height={activeRunFrame.snapshot.height}
+          backgroundUrl={activeRunFrame.backgroundUrl}
+          backgroundTransform={activeRunFrame.snapshot.backgroundTransform}
+          customFontReferences={activeRunFrame.snapshot.customFontReferences}
           onReady={handleBatchCapture}
+          onError={handleBatchRenderError}
         />
       )}
     </div>
@@ -475,7 +579,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: '#121316',
+    backgroundColor: 'var(--ps-app-bg)',
     overflowY: 'auto',
     padding: 16,
     gap: 14,
@@ -487,9 +591,9 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap',
     gap: 12,
     padding: '12px 16px',
-    backgroundColor: '#1b1d22',
+    backgroundColor: 'var(--ps-surface)',
     borderRadius: 10,
-    border: '1px solid #2a2d35',
+    border: '1px solid var(--ps-border)',
   },
   titleRow: {
     display: 'flex',
@@ -500,11 +604,11 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 15,
     fontWeight: 800,
-    color: '#F1F5F9',
+    color: 'var(--ps-text)',
   },
   subtitle: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: 'var(--ps-muted)',
     marginTop: 4,
   },
   statBadgePub: {
@@ -512,16 +616,16 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     padding: '2px 8px',
     borderRadius: 999,
-    backgroundColor: '#064e3b',
-    color: '#34d399',
+    backgroundColor: 'var(--ps-success-soft)',
+    color: 'var(--ps-success)',
   },
   statBadgeDraft: {
     fontSize: 11,
     fontWeight: 700,
     padding: '2px 8px',
     borderRadius: 999,
-    backgroundColor: '#334155',
-    color: '#cbd5e1',
+    backgroundColor: 'var(--ps-surface-muted)',
+    color: 'var(--ps-muted)',
   },
   headerActions: {
     display: 'flex',
@@ -531,9 +635,9 @@ const styles: Record<string, React.CSSProperties> = {
   backBtn: {
     padding: '8px 14px',
     borderRadius: 6,
-    border: '1px solid #475569',
-    backgroundColor: 'transparent',
-    color: '#E2E8F0',
+    border: '1px solid var(--ps-border-strong)',
+    backgroundColor: 'var(--ps-surface)',
+    color: 'var(--ps-text)',
     fontSize: 12,
     fontWeight: 700,
     cursor: 'pointer',
@@ -542,7 +646,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 16px',
     borderRadius: 6,
     border: 'none',
-    backgroundColor: '#0F766E',
+    backgroundColor: 'var(--ps-accent)',
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 700,
@@ -551,31 +655,33 @@ const styles: Record<string, React.CSSProperties> = {
   summaryBanner: {
     padding: '10px 14px',
     borderRadius: 8,
-    backgroundColor: '#064e3b',
-    border: '1px solid #059669',
-    color: '#ECFDF5',
+    backgroundColor: 'var(--ps-accent-soft)',
+    border: '1px solid var(--ps-border)',
+    color: 'var(--ps-accent)',
     fontSize: 13,
     fontWeight: 600,
   },
   emptyBox: {
     padding: 40,
     textAlign: 'center',
-    backgroundColor: '#1b1d22',
+    backgroundColor: 'var(--ps-surface)',
     borderRadius: 10,
-    border: '1px dashed #334155',
+    border: '1px dashed var(--ps-border-strong)',
   },
   emptyText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: 'var(--ps-muted)',
   },
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+    minWidth: 0,
     gap: 14,
   },
   card: {
-    backgroundColor: '#1b1d22',
-    border: '1px solid #2a2d35',
+    minWidth: 0,
+    backgroundColor: 'var(--ps-surface)',
+    border: '1px solid var(--ps-border)',
     borderRadius: 10,
     padding: 12,
     display: 'flex',
@@ -591,7 +697,15 @@ const styles: Record<string, React.CSSProperties> = {
   frameNo: {
     fontSize: 11,
     fontWeight: 800,
-    color: '#38bdf8',
+    color: 'var(--ps-accent)',
+  },
+  frameNoConflict: {
+    color: 'var(--ps-danger)',
+    backgroundColor: 'var(--ps-danger-soft)',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '3px 6px',
+    borderRadius: 4,
   },
   modePill: {
     fontSize: 10,
@@ -608,7 +722,7 @@ const styles: Record<string, React.CSSProperties> = {
   cardTitle: {
     fontSize: 13,
     fontWeight: 700,
-    color: '#E2E8F0',
+    color: 'var(--ps-text)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -616,9 +730,9 @@ const styles: Record<string, React.CSSProperties> = {
   smallBtn: {
     padding: '4px 8px',
     borderRadius: 4,
-    border: '1px solid #334155',
-    backgroundColor: '#0f172a',
-    color: '#CBD5E1',
+    border: '1px solid var(--ps-border)',
+    backgroundColor: 'var(--ps-surface-muted)',
+    color: 'var(--ps-text)',
     fontSize: 10,
     fontWeight: 600,
     cursor: 'pointer',
@@ -626,17 +740,17 @@ const styles: Record<string, React.CSSProperties> = {
   removeBtn: {
     padding: '2px 8px',
     borderRadius: 4,
-    border: '1px solid #451a1a',
-    backgroundColor: '#2a1215',
-    color: '#FCA5A5',
+    border: '1px solid var(--ps-danger-soft)',
+    backgroundColor: 'var(--ps-danger-soft)',
+    color: 'var(--ps-danger)',
     fontSize: 14,
     fontWeight: 700,
     cursor: 'pointer',
   },
   errorText: {
     fontSize: 11,
-    color: '#FCA5A5',
-    backgroundColor: '#451a1a',
+    color: 'var(--ps-danger)',
+    backgroundColor: 'var(--ps-danger-soft)',
     padding: '6px 8px',
     borderRadius: 6,
   },
@@ -645,7 +759,7 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 8,
-    backgroundColor: '#0f1014',
+    backgroundColor: 'var(--ps-canvas-surround)',
     borderRadius: 8,
   },
   inlineForm: {
@@ -653,7 +767,7 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     gap: 6,
     paddingTop: 6,
-    borderTop: '1px solid #2a2d35',
+    borderTop: '1px solid var(--ps-border)',
   },
   formRow2: {
     display: 'flex',
@@ -663,17 +777,18 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'block',
     fontSize: 9,
     fontWeight: 700,
-    color: '#94A3B8',
+    color: 'var(--ps-muted)',
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   input: {
     width: '100%',
+    minHeight: 38,
     padding: '5px 7px',
     borderRadius: 4,
-    border: '1px solid #334155',
-    backgroundColor: '#0f172a',
-    color: '#F1F5F9',
+    border: '1px solid var(--ps-border)',
+    backgroundColor: 'var(--ps-surface)',
+    color: 'var(--ps-text)',
     fontSize: 11,
     boxSizing: 'border-box',
   },

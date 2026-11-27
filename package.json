@@ -96,7 +96,9 @@
     "babel-preset-expo": "~54.0.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "fake-indexeddb": "^6.2.8",
     "pdfkit": "^0.20.2",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.2"
   },
   "private": true

@@ -1,10 +1,36 @@
-import { storageProvider, FileMetadata, StorageOperation, Visibility } from '../../providers/storage';
+import { storageProvider, FileMetadata, KeyedVerifiedStorageProvider, StorageOperation, StorageUploadInput, VerifiedStorageObject, Visibility } from '../../providers/storage';
 
 export type { AssetType, FileMetadata, Visibility } from '../../providers/storage';
+
+function getKeyedVerifiedProvider(): KeyedVerifiedStorageProvider {
+  const provider = storageProvider as typeof storageProvider & Partial<KeyedVerifiedStorageProvider>;
+  if (
+    provider.name !== 'r2'
+    || typeof provider.uploadAtKey !== 'function'
+    || typeof provider.verifyObjectMetadata !== 'function'
+  ) {
+    throw new Error('Resumable Poster Studio delivery requires the configured R2 storage provider.');
+  }
+  return provider as typeof storageProvider & KeyedVerifiedStorageProvider;
+}
 
 export const storageService = {
   providerName: storageProvider.name,
   bucketName: storageProvider.bucketName,
+
+  async verifyPosterObject(
+    objectKey: string,
+    expectedContentType: string,
+    expectedSize: number,
+  ): Promise<VerifiedStorageObject | null> {
+    return getKeyedVerifiedProvider().verifyObjectMetadata(objectKey, expectedContentType, expectedSize);
+  },
+
+  async uploadPosterObjectAtKey(
+    input: StorageUploadInput & { expectedSize: number },
+  ): Promise<VerifiedStorageObject> {
+    return getKeyedVerifiedProvider().uploadAtKey(input);
+  },
 
   async upload(
     file: Blob | File,

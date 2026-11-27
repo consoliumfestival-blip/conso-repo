@@ -130,6 +130,11 @@ html, body, #root, #__next {
   text-rendering: optimizeLegibility;
 }
 
+.poster-studio :focus-visible {
+  outline: 2px solid var(--ps-focus) !important;
+  outline-offset: 2px;
+}
+
 /* Custom Scrollbars for Web */
 ::-webkit-scrollbar {
   width: 6px;

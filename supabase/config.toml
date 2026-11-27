@@ -430,5 +430,8 @@ verify_jwt = true
 [functions.r2-presign]
 verify_jwt = true
 
+[functions.poster-generation]
+verify_jwt = true
+
 [functions.send-notification]
 verify_jwt = true

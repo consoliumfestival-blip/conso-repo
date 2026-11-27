@@ -1,7 +1,7 @@
 import { coreColor, coreAlpha } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
 import React, { useState, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Pressable } from 'react-native';
+import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView, Pressable } from 'react-native';
 import { X, UploadCloud, CheckCircle, Image as ImageIcon } from 'lucide-react-native';
 import { supabase } from '../../../../core/config/supabase';
 import { uploadService } from '../../../../services/storage/uploadService';
@@ -277,11 +277,10 @@ export default function CreateTemplateModal({
                 <TouchableOpacity style={styles.imagePickerBox} onPress={pickFile}>
                   {previewUrl ? (
                     <View style={styles.previewContainer}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={previewUrl}
-                        alt="preview"
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }}
+                      <Image
+                        source={{ uri: previewUrl }}
+                        accessibilityLabel="Selected background image preview"
+                        style={{ width: '100%', height: '100%', resizeMode: 'cover', borderRadius: 10 }}
                       />
                       <View style={styles.previewOverlay}>
                         <Text style={styles.previewChangeText}>Tap to change</Text>

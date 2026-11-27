@@ -26,7 +26,7 @@ export type FestivalResult = {
   published_at: string | null;
   festival_id: string | null;
   tenant_id: string | null;
-  public_result_no?: number;
+  public_result_no?: number | null;
 };
 
 const throwIfError = (error: { message: string } | null) => {
@@ -39,6 +39,18 @@ export const resultVisibilityService = {
     festivalId?: string | null,
   ): Promise<FestivalResult[]> {
     const { data, error } = await databaseProvider.listAdminPublishedResults<FestivalResult>(
+      tenantId,
+      festivalId,
+    );
+    throwIfError(error);
+    return data;
+  },
+
+  async listPosterStudioResults(
+    tenantId?: string | null,
+    festivalId?: string | null,
+  ): Promise<FestivalResult[]> {
+    const { data, error } = await databaseProvider.listPosterStudioPublishedResults<FestivalResult>(
       tenantId,
       festivalId,
     );

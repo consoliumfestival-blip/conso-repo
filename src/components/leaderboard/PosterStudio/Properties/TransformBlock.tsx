@@ -2,8 +2,7 @@ import { coreColor } from '@/constants/coreTheme';
 import React, { useState, useCallback } from 'react';
 import NumericField from './fields/NumericField';
 import Accordion from './Accordion';
-import { LayerData, LockProfile } from '../Stores/layerStore';
-import { useLayerStore } from '../Stores/layerStore';
+import { useLayerStore, type LayerData } from '../Stores/layerStore';
 import { useHistoryStore } from '../Stores/historyStore';
 
 interface TransformBlockProps {
@@ -15,11 +14,6 @@ export default function TransformBlock({ layer }: TransformBlockProps) {
   const history = useHistoryStore();
   const [aspectLocked, setAspectLocked] = useState(false);
 
-  if (!layer) return null;
-
-  const isFullyLocked = layer.lockProfile === 'fully-locked';
-  const isSemiLocked = layer.lockProfile === 'semi-locked';
-
   const commit = useCallback(
     (patch: Partial<LayerData>) => {
       history.push(layers);
@@ -27,6 +21,11 @@ export default function TransformBlock({ layer }: TransformBlockProps) {
     },
     [history, layers, updateLayer, layer.id]
   );
+
+  if (!layer) return null;
+
+  const isFullyLocked = layer.lockProfile === 'fully-locked';
+  const isSemiLocked = layer.lockProfile === 'semi-locked';
 
   const handleWidthChange = (w: number) => {
     if (aspectLocked && layer.width > 0) {

@@ -64,7 +64,7 @@ export default function SliderField({ label, value, onChange, min, max, step = 1
           width: 100%;
           height: 4px;
           border-radius: 999px;
-          background: #2a2a2a;
+          background: var(--ps-border);
           outline: none;
           margin-top: 8px;
         }
@@ -74,7 +74,7 @@ export default function SliderField({ label, value, onChange, min, max, step = 1
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: #0F766E;
+          background: var(--ps-accent);
           cursor: pointer;
           transition: transform 0.1s;
         }
@@ -85,7 +85,7 @@ export default function SliderField({ label, value, onChange, min, max, step = 1
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: #0F766E;
+          background: var(--ps-accent);
           cursor: pointer;
           border: none;
         }

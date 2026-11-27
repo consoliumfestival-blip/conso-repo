@@ -1538,12 +1538,35 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     tenantId?: string | null,
     festivalId?: string | null,
   ): Promise<ListResult<T>> {
+    return this.listAdminPublishedResultsUsingRpc<T>(
+      'get_admin_published_results',
+      tenantId,
+      festivalId,
+    );
+  }
+
+  async listPosterStudioPublishedResults<T>(
+    tenantId?: string | null,
+    festivalId?: string | null,
+  ): Promise<ListResult<T>> {
+    return this.listAdminPublishedResultsUsingRpc<T>(
+      'get_admin_published_results_with_public_number',
+      tenantId,
+      festivalId,
+    );
+  }
+
+  private async listAdminPublishedResultsUsingRpc<T>(
+    rpcName: 'get_admin_published_results' | 'get_admin_published_results_with_public_number',
+    tenantId?: string | null,
+    festivalId?: string | null,
+  ): Promise<ListResult<T>> {
     const pageSize = 500;
     const rows: T[] = [];
     let expectedCount: number | null = null;
 
     for (let from = 0; ; from += pageSize) {
-      const { data, error, count } = await supabase.rpc('get_admin_published_results', {
+      const { data, error, count } = await supabase.rpc(rpcName, {
         p_tenant_id: tenantId ?? null,
         p_festival_id: festivalId ?? null,
       }, from === 0 ? { count: 'exact' } : undefined)

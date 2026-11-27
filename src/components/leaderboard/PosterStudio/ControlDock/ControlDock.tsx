@@ -20,14 +20,23 @@ interface ControlDockProps {
   currentTemplateId: string;
   setCurrentTemplateId: (id: string) => void;
   setShowCreateModal: (show: boolean) => void;
+  mobile?: boolean;
 }
 
 export default function ControlDock({ 
-  activePanel, onClose, festivalId, tenantId, currentTemplateId, setCurrentTemplateId, setShowCreateModal 
+  activePanel, onClose, festivalId, tenantId, currentTemplateId, setCurrentTemplateId, setShowCreateModal, mobile = false
 }: ControlDockProps) {
   const { selectedIds, layers } = useLayerStore();
   const { variables } = useTemplateStore();
   const selectedLayer = selectedIds.length === 1 ? layers.find(l => l.id === selectedIds[0]) : null;
+  const closeButtonRef = React.useRef<HTMLButtonElement>(null);
+
+  React.useEffect(() => {
+    if (!mobile || typeof document === 'undefined') return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    closeButtonRef.current?.focus();
+    return () => previousFocus?.focus();
+  }, [mobile]);
 
   // If no panel is explicitly open via tool rail, and a layer is selected, 
   // we could potentially auto-open properties. But the user said:
@@ -39,10 +48,15 @@ export default function ControlDock({
   if (!activePanel) return null;
 
   return (
-    <div style={styles.dockContainer}>
+    <div
+      style={{ ...styles.dockContainer, ...(mobile ? styles.mobileDockContainer : {}) }}
+      role={mobile ? 'dialog' : undefined}
+      aria-modal={mobile ? false : undefined}
+      aria-labelledby={mobile ? 'poster-studio-mobile-panel-title' : undefined}
+    >
       <div style={styles.dockHeader}>
-        <h3 style={styles.dockTitle}>{getPanelTitle(activePanel)}</h3>
-        <button onClick={onClose} style={styles.closeBtn} title="Close Panel">×</button>
+        <h3 id={mobile ? 'poster-studio-mobile-panel-title' : undefined} style={styles.dockTitle}>{getPanelTitle(activePanel)}</h3>
+        <button ref={closeButtonRef} onClick={onClose} style={styles.closeBtn} title="Close Panel" aria-label="Close panel">×</button>
       </div>
       <div style={styles.dockContent}>
         {activePanel === 'text' && (
@@ -104,7 +118,7 @@ export default function ControlDock({
         )}
 
         {activePanel === 'assets' && (
-          <AssetsPanel />
+          <AssetsPanel festivalId={festivalId} tenantId={tenantId} />
         )}
       </div>
     </div>
@@ -163,6 +177,16 @@ const styles: Record<string, React.CSSProperties> = {
     overflowY: 'auto',
     display: 'flex',
     flexDirection: 'column',
+  },
+  mobileDockContainer: {
+    width: '100%',
+    height: '100%',
+    minHeight: 0,
+    borderLeft: 'none',
+    border: '1px solid var(--ps-border)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    boxShadow: 'var(--ps-shadow)',
   },
   ctaBtn: { 
     padding: '12px 28px', 

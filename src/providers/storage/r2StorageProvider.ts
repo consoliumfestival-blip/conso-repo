@@ -1,13 +1,9 @@
 import { supabase } from '../../core/config/supabase';
-import { FileMetadata, StorageOperation, StorageProvider, StorageUploadInput, Visibility } from './storageProvider';
+import { FileMetadata, KeyedVerifiedStorageProvider, StorageOperation, StorageProvider, StorageUploadInput, VerifiedStorageObject, Visibility } from './storageProvider';
+import { recoverR2ObjectAfterCreateOnlyConflict, uploadWithProgress } from './r2UploadRequest';
 
 const R2_BUCKET_NAME = process.env.EXPO_PUBLIC_R2_BUCKET || 'sahi-assets';
 const R2_PUBLIC_DOMAIN = process.env.EXPO_PUBLIC_R2_PUB_DOMAIN || '';
-
-type UploadResponse = {
-  status: number;
-  eTag: string | null;
-};
 
 type R2PresignResponse = {
   url?: string;
@@ -18,45 +14,10 @@ type R2PresignResponse = {
   contentType?: string | null;
   contentLength?: number | null;
   eTag?: string | null;
+  error?: string;
 };
 
-const uploadWithProgress = (
-  presignedUrl: string,
-  file: Blob | File,
-  contentType: string,
-  onProgress?: (progress: number) => void,
-): Promise<UploadResponse> =>
-  new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', presignedUrl, true);
-    xhr.setRequestHeader('Content-Type', contentType);
-
-    if (onProgress) {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable) {
-          onProgress(Math.round((event.loaded / event.total) * 100));
-        }
-      };
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({
-          status: xhr.status,
-          eTag: xhr.getResponseHeader('etag'),
-        });
-        return;
-      }
-      reject(new Error(`R2 upload failed with status ${xhr.status}: ${xhr.responseText || 'No response body'}`));
-    };
-
-    xhr.onerror = () => reject(new Error(
-      'R2 upload failed due to a network error. Check the R2 bucket CORS policy, presigned PUT permissions, and browser preflight response.',
-    ));
-    xhr.send(file);
-  });
-
-export class R2StorageProvider implements StorageProvider {
+export class R2StorageProvider implements StorageProvider, KeyedVerifiedStorageProvider {
   readonly name = 'r2';
   readonly bucketName = R2_BUCKET_NAME;
 
@@ -82,6 +43,58 @@ export class R2StorageProvider implements StorageProvider {
       throw new Error(`R2 upload verification failed: object was not found at ${objectKey}`);
     }
     return verification;
+  }
+
+  async verifyObjectMetadata(
+    objectKey: string,
+    expectedContentType: string,
+    expectedSize: number,
+  ): Promise<VerifiedStorageObject | null> {
+    const verification = await this.invokePresign(objectKey, expectedContentType, 'verify');
+    if (verification.error) {
+      throw new Error('R2 object verification is unavailable. Retry when storage is reachable.');
+    }
+    if (!verification.exists) return null;
+    if (
+      verification.contentType !== expectedContentType
+      || verification.contentLength !== expectedSize
+      || !verification.eTag
+    ) {
+      throw new Error('An object already exists at this poster key with different metadata; it was left untouched.');
+    }
+    return {
+      objectKey,
+      contentType: verification.contentType,
+      contentLength: verification.contentLength,
+      eTag: verification.eTag,
+    };
+  }
+
+  async uploadAtKey(
+    input: StorageUploadInput & { expectedSize: number },
+  ): Promise<VerifiedStorageObject> {
+    if (!input.objectKey.trim() || !input.file.size || input.file.size !== input.expectedSize) {
+      throw new TypeError('Poster upload key or expected file size is invalid.');
+    }
+    if (input.file.type && input.file.type !== input.contentType) {
+      throw new TypeError('Poster file type does not match the upload content type.');
+    }
+
+    const { url } = await this.invokePresign(input.objectKey, input.contentType, 'upload');
+    if (!url) throw new Error('R2 upload URL was not returned.');
+    try {
+      await uploadWithProgress(url, input.file, input.contentType, input.onProgress, '*');
+    } catch (error) {
+      return recoverR2ObjectAfterCreateOnlyConflict(error, () => this.verifyObjectMetadata(
+        input.objectKey,
+        input.contentType,
+        input.expectedSize,
+      ));
+    }
+
+    const verified = await this.verifyObjectMetadata(input.objectKey, input.contentType, input.expectedSize);
+    if (!verified) throw new Error('R2 upload finished, but the saved object could not be verified.');
+    return verified;
   }
 
   async upload(input: StorageUploadInput): Promise<{ fileUrl: string; objectKey: string }> {

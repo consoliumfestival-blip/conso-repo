@@ -3,8 +3,8 @@ import { coreColor } from '@/constants/coreTheme';
  * PublishedResultsPanel
  * --------------------
  * Loads published festival results (both publicly visible and internal/not-yet-public)
- * grouped cleanly per competition item (1 card = 1 competition), assigns item-level
- * sequential result numbers (1, 2, 3...), and supports both single-frame binding and
+ * grouped cleanly per competition item (1 card = 1 competition), uses the stored
+ * official result number, and supports both single-frame binding and
  * multi-frame batch selection (up to 6 frames simultaneously).
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
@@ -13,6 +13,7 @@ import { festivalCategoryService } from '../../../../services/festivalCategorySe
 import { useTemplateStore, BatchFrameItem, TemplateVariables } from '../Stores/templateStore';
 import { supabase } from '../../../../core/config/supabase';
 import { CATEGORIES, SAHITHYOLSAV_CATEGORY_ALIASES } from '../../../../constants/categories';
+import { buildRankVariables, fingerprintOfficialResults, isPosterEligibleWinner, resolveOfficialResultNumber } from './resultGroupRules';
 
 interface PublishedResultsPanelProps {
   festivalId: string;
@@ -29,6 +30,8 @@ interface CompetitionItemGroup {
   publicVisible: boolean;
   earliestPublishedAt: string;
   resultNo: string;
+  resultNoConflict: boolean;
+  sourceResultFingerprint: string;
   results: FestivalResult[];
   isExported: boolean;
   exportedVisibility: 'published' | 'draft' | null;
@@ -49,6 +52,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
     setCurrentResultId,
     setCurrentItemId,
     setCurrentResultPublicVisible,
+    setSourceResultFingerprint,
     loadResultOverride,
     batchItems,
     setBatchItems,
@@ -80,7 +84,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       };
 
       const [data, itemsResult, customCategories, assetsResult] = await Promise.all([
-        resultVisibilityService.listFestivalResults(tenantId, festivalId),
+        resultVisibilityService.listPosterStudioResults(tenantId, festivalId),
         supabase.from('items').select('id, category_codes').eq('festival_id', festivalId),
         festivalCategoryService.list(festivalId, true).catch(() => []),
         fetchAssets(),
@@ -152,7 +156,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       groupedMap.set(key, list);
     });
 
-    type TempGroup = Omit<CompetitionItemGroup, 'resultNo' | 'variables'>;
+    type TempGroup = Omit<CompetitionItemGroup, 'resultNo' | 'resultNoConflict' | 'sourceResultFingerprint' | 'variables'>;
     const tempGroups: TempGroup[] = [];
 
     groupedMap.forEach((rows, itemId) => {
@@ -211,38 +215,22 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
         return cmp !== 0 ? cmp : a.itemName.localeCompare(b.itemName);
       });
 
-    const orderMap = new Map<string, string>();
-    let seq = 1;
-    publicSorted.forEach((g) => orderMap.set(g.itemId, String(seq++)));
-    draftSorted.forEach((g) => orderMap.set(g.itemId, String(seq++)));
-
     return [...publicSorted, ...draftSorted].map((g) => {
-      const resultNo = orderMap.get(g.itemId) || '';
+      const officialNumber = resolveOfficialResultNumber(g.results);
+      const resultNo = officialNumber.value;
       const vars: TemplateVariables = {
         event_name: g.itemName,
         category_name: g.categoryNameEn,
         category_name_ml: g.categoryNameMl,
         result_no: resultNo,
       };
-
-      for (let i = 1; i <= 5; i++) {
-        const winners = g.results.filter((r) => r.rank === i);
-        if (winners.length > 0) {
-          vars[`name_${i}`] = winners.map((w) => (w.participant_name || '').trim().toUpperCase()).join(' & ');
-          vars[`unit_${i}`] = winners.map((w) => w.organisation_name || '').join(' & ');
-          vars[`grade_${i}`] = winners[0].grade || '';
-          vars[`points_${i}`] = String(winners[0].points_awarded || '');
-        } else {
-          vars[`name_${i}`] = '';
-          vars[`unit_${i}`] = '';
-          vars[`grade_${i}`] = '';
-          vars[`points_${i}`] = '';
-        }
-      }
+      Object.assign(vars, buildRankVariables(g.results));
 
       return {
         ...g,
         resultNo,
+        resultNoConflict: officialNumber.conflict,
+        sourceResultFingerprint: fingerprintOfficialResults(g.results),
         variables: vars,
       };
     });
@@ -255,6 +243,8 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
     itemNameMl: group.itemNameMl,
     categoryName: group.categoryNameEn,
     resultNo: group.resultNo,
+  resultNoConflict: group.resultNoConflict,
+    sourceResultFingerprint: group.sourceResultFingerprint,
     publicVisible: group.publicVisible,
     variables: group.variables,
   });
@@ -266,6 +256,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       setCurrentResultId(group.primaryResultId);
       setCurrentItemId(group.itemId);
       setCurrentResultPublicVisible(group.publicVisible);
+      setSourceResultFingerprint(group.sourceResultFingerprint);
       setIsMultiFrameMode(false);
       loadResultOverride(group.primaryResultId);
     },
@@ -274,6 +265,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       setCurrentResultId,
       setCurrentItemId,
       setCurrentResultPublicVisible,
+      setSourceResultFingerprint,
       setIsMultiFrameMode,
       loadResultOverride,
     ]
@@ -445,9 +437,9 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
                     }}
                     style={{
                       ...styles.frameToggleBtn,
-                      backgroundColor: isInBatch ? '#0284c7' : '#0f172a',
-                      borderColor: isInBatch ? '#38bdf8' : '#334155',
-                      color: isInBatch ? '#ffffff' : '#94a3b8',
+                      backgroundColor: isInBatch ? 'var(--ps-accent)' : 'var(--ps-surface-muted)',
+                      borderColor: isInBatch ? 'var(--ps-accent)' : 'var(--ps-border)',
+                      color: isInBatch ? '#ffffff' : 'var(--ps-muted)',
                     }}
                     title={isInBatch ? 'Remove from 6-Frame Grid' : 'Add to 6-Frame Grid'}
                   >
@@ -457,7 +449,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
 
                 {/* Ranked participants */}
                 <div style={styles.cardRanks}>
-                  {group.results.slice(0, 3).map((r) => (
+                  {group.results.filter(isPosterEligibleWinner).map((r) => (
                     <div key={r.result_id} style={styles.rankRow}>
                       <span
                         style={{
@@ -481,14 +473,14 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
                       ...styles.statusPill,
                       backgroundColor: group.isExported
                         ? group.exportedVisibility === 'draft'
-                          ? '#1e293b'
-                          : '#064e3b'
-                        : '#451a1a',
+                          ? 'var(--ps-surface-muted)'
+                          : 'var(--ps-accent-soft)'
+                        : 'var(--ps-danger-soft)',
                       color: group.isExported
                         ? group.exportedVisibility === 'draft'
-                          ? '#93c5fd'
-                          : '#34d399'
-                        : '#fca5a5',
+                          ? 'var(--ps-muted)'
+                          : 'var(--ps-accent)'
+                        : 'var(--ps-danger)',
                     }}
                   >
                     {group.isExported
@@ -564,7 +556,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 10px',
     borderRadius: 6,
     border: 'none',
-    backgroundColor: '#0F766E',
+    backgroundColor: 'var(--ps-accent)',
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: 700,
@@ -573,9 +565,9 @@ const styles: Record<string, React.CSSProperties> = {
   openGridBtn: {
     padding: '8px 10px',
     borderRadius: 6,
-    border: '1px solid #38bdf8',
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    color: '#38bdf8',
+    border: '1px solid var(--ps-border-strong)',
+    backgroundColor: 'var(--ps-accent-soft)',
+    color: 'var(--ps-accent)',
     fontSize: 11,
     fontWeight: 700,
     cursor: 'pointer',
@@ -600,9 +592,9 @@ const styles: Record<string, React.CSSProperties> = {
   filterChipActive: {
     padding: '4px 8px',
     borderRadius: 999,
-    border: '1px solid #38bdf8',
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    color: '#38bdf8',
+    border: '1px solid var(--ps-accent)',
+    backgroundColor: 'var(--ps-accent-soft)',
+    color: 'var(--ps-accent)',
     fontSize: 10,
     fontWeight: 700,
     cursor: 'pointer',
@@ -685,6 +677,7 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 999,
   },
   frameToggleBtn: {
+    minHeight: 36,
     padding: '4px 8px',
     borderRadius: 6,
     border: '1px solid',

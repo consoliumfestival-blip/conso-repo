@@ -25,6 +25,23 @@ export interface StorageUploadInput {
   onProgress?: (progress: number) => void;
 }
 
+export interface VerifiedStorageObject {
+  objectKey: string;
+  contentType: string;
+  contentLength: number;
+  eTag: string;
+}
+
+/** Narrow capability for resumable uploads that must keep one stable object key. */
+export interface KeyedVerifiedStorageProvider {
+  uploadAtKey(input: StorageUploadInput & { expectedSize: number }): Promise<VerifiedStorageObject>;
+  verifyObjectMetadata(
+    objectKey: string,
+    expectedContentType: string,
+    expectedSize: number,
+  ): Promise<VerifiedStorageObject | null>;
+}
+
 export interface StorageProvider {
   readonly name: string;
   readonly bucketName: string;

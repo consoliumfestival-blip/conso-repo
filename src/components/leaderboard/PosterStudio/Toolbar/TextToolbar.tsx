@@ -70,7 +70,7 @@ export default function TextToolbar({ onOpenProperties }: TextToolbarProps = {})
       <div style={styles.divider} />
 
       {/* 3. Text Color (Native Color Picker hidden behind a colored circle) */}
-      <div style={{ position: 'relative', width: 24, height: 24, borderRadius: 12, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.2)' }}>
+      <div style={{ position: 'relative', width: 24, height: 24, borderRadius: 12, overflow: 'hidden', border: '2px solid var(--ps-border-strong)' }}>
          <input 
            type="color" 
            value={layer.fill || '#000000'} 
@@ -92,7 +92,7 @@ export default function TextToolbar({ onOpenProperties }: TextToolbarProps = {})
 
       {/* 5. Alignment Cycle */}
       <button 
-        style={styles.iconBtn}
+        style={{ ...styles.iconBtn, color: 'var(--ps-danger)' }}
         onClick={() => {
           const nextAlign = layer.align === 'left' ? 'center' : layer.align === 'center' ? 'right' : 'left';
           commit({ align: nextAlign });

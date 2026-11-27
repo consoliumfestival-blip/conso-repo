@@ -1,6 +1,7 @@
-import Dexie, { Table } from 'dexie';
-import { LayerData } from '../Stores/layerStore';
-import { TemplateVariables, BackgroundTransform } from '../Stores/templateStore';
+import Dexie, { type Table } from 'dexie';
+import type { LayerData } from '../Stores/layerStore';
+import type { TemplateVariables, BackgroundTransform } from '../Stores/templateStore';
+import type { PosterDeliveryRecord } from './posterDesignSnapshot';
 
 export interface ResultOverride {
   id: string; // Composite key: `${templateId}_${resultId}`
@@ -29,18 +30,26 @@ export interface TemplateDraft {
   isPublishable?: boolean;
 }
 
+export type { PosterDeliveryRecord } from './posterDesignSnapshot';
+
 export class PosterStudioDatabase extends Dexie {
   templates!: Table<TemplateDraft>;
   result_overrides!: Table<ResultOverride>;
+  poster_deliveries!: Table<PosterDeliveryRecord>;
 
-  constructor() {
-    super('PosterStudioDatabase');
+  constructor(databaseName = 'PosterStudioDatabase') {
+    super(databaseName);
     this.version(1).stores({
       templates: 'id, updatedAt' // Primary key and indexed props
     });
     this.version(2).stores({
       templates: 'id, updatedAt',
       result_overrides: 'id, templateId, resultId, updatedAt'
+    });
+    this.version(3).stores({
+      templates: 'id, updatedAt',
+      result_overrides: 'id, templateId, resultId, updatedAt',
+      poster_deliveries: 'operationId, [userId+tenantId+festivalId], [userId+tenantId+festivalId+status], userId, tenantId, festivalId, status, createdAt, updatedAt'
     });
   }
 }

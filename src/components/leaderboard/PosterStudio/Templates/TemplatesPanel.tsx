@@ -52,8 +52,9 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
               backgroundColor: currentTemplateId === 'starter-template' ? coreAlpha(coreColor('#38bdf8', 'overlay'), 0.05) : coreColor('#0F172A', 'overlay')
             }}
           >
-            <div 
-              style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+            <button
+              type="button"
+              style={styles.selectItem}
               onClick={() => onSelectTemplate('starter-template')}
             >
               <div style={styles.iconBox}>
@@ -64,7 +65,7 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
                 <div style={styles.sub}>Default Layout • 1080x1080</div>
               </div>
               {currentTemplateId === 'starter-template' && <Check size={16} color={coreColor("#38BDF8", 'info')} />}
-            </div>
+            </button>
           </div>
         )}
 
@@ -79,8 +80,9 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
                 backgroundColor: isSelected ? coreAlpha(coreColor('#38bdf8', 'overlay'), 0.05) : coreColor('#0F172A', 'overlay')
               }}
             >
-              <div 
-                style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, cursor: 'pointer' }}
+              <button
+                type="button"
+                style={styles.selectItem}
                 onClick={() => onSelectTemplate(t.id)}
               >
                 <div style={styles.iconBox}>
@@ -93,7 +95,7 @@ export default function TemplatesPanel({ festivalId, currentTemplateId, onSelect
                   </div>
                 </div>
                 {isSelected && <Check size={16} color={coreColor("#38BDF8", 'info')} />}
-              </div>
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -151,6 +153,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   resetBtn: {
     width: '100%',
+    minHeight: 40,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -204,6 +207,20 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid',
     borderRadius: 8,
     transition: 'all 0.15s ease'
+  },
+  selectItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    padding: 0,
+    border: 'none',
+    background: 'transparent',
+    color: 'inherit',
+    textAlign: 'left',
+    cursor: 'pointer',
   },
   iconBox: {
     width: 32,

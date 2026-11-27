@@ -12,8 +12,10 @@ import RulerOverlay from './RulerOverlay';
 import MultiSelectToolbar from '../Toolbar/MultiSelectToolbar';
 import InlineTextEditor from '../Layers/InlineTextEditor';
 import { useViewportManager } from '../Hooks/useViewportManager';
-import { computeAutoShrinkFontSize } from '../Utils/fontLoader';
-import { resolveLayerText } from '../Utils/resolver';
+import { getTextLayerBackgroundRenderProps, getTextLayerRenderProps } from '../Utils/textLayerRenderer';
+import { getGroupBounds, getRenderableLayers } from '../Utils/layerTree';
+import { EditableVisualNode, GroupSelectionNode } from './EditableVisualNode';
+import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
 
 interface StudioCanvasProps {
   canvasWidth: number;
@@ -94,7 +96,8 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
     }
   }, [layer.fontFamily]);
 
-  const resolvedText = resolveLayerText(layer, variables);
+  const textProps = getTextLayerRenderProps(layer, variables, fontsLoaded);
+  const textBackgroundProps = getTextLayerBackgroundRenderProps(layer);
   const draggable = !layer.isLocked && layer.lockProfile !== 'fully-locked' && layer.lockProfile !== 'semi-locked';
 
   useEffect(() => {
@@ -138,52 +141,35 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
     }
   };
 
-  const baseFontSize = layer.fontSize || 24;
-  const effectiveOverflow = layer.overflowMode || (layer.dynamicBinding || layer.text?.includes('{') ? 'auto-shrink' : undefined);
-  const fontFamilyStack = `"${layer.fontFamily || 'Poppins'}", "Noto Sans Malayalam", "Inter", sans-serif`;
-
-  const displayFontSize =
-    effectiveOverflow === 'auto-shrink' && layer.width && fontsLoaded
-      ? computeAutoShrinkFontSize({
-          text: resolvedText,
-          fontFamily: fontFamilyStack,
-          baseFontSize,
-          fontWeight: layer.fontWeight || 600,
-          maxWidth: layer.width,
-          maxHeight: layer.height,
-          maxLines: layer.maxLines,
-          lineHeight: layer.lineHeight || 1.2,
-        })
-      : baseFontSize;
-
   return (
     <>
+      {textBackgroundProps && <Rect {...textBackgroundProps} />}
       <Text
         ref={shapeRef}
         x={layer.x}
         y={layer.y}
-        width={layer.width || undefined}
-        height={layer.height || undefined}
-        text={resolvedText}
-        fontSize={displayFontSize}
-        fontFamily={fontFamilyStack}
-        fontStyle={`${layer.fontWeight || 600} ${layer.fontStyle || 'normal'}`}
-        textDecoration={layer.textDecoration || ''}
-        fill={layer.fill || '#000000'}
-        stroke={layer.stroke || undefined}
-        strokeWidth={layer.strokeWidth || 0}
-        shadowColor={layer.shadowColor || undefined}
-        shadowBlur={layer.shadowBlur || 0}
-        shadowOffsetX={layer.shadowOffsetX || 0}
-        shadowOffsetY={layer.shadowOffsetY || 0}
-        align={layer.align || 'left'}
-        lineHeight={layer.lineHeight || 1.2}
-        letterSpacing={layer.letterSpacing || 0}
-        wrap={effectiveOverflow === 'clip' ? 'none' : 'word'}
-        ellipsis={effectiveOverflow === 'ellipsis'}
-        rotation={layer.rotation || 0}
-        scaleX={layer.scaleX || 1}
-        scaleY={layer.scaleY || 1}
+        width={textProps.width}
+        height={textProps.height}
+        text={textProps.text}
+        fontSize={textProps.fontSize}
+        fontFamily={textProps.fontFamily}
+        fontStyle={textProps.fontStyle}
+        textDecoration={textProps.textDecoration}
+        fill={textProps.fill}
+        stroke={textProps.stroke}
+        strokeWidth={textProps.strokeWidth}
+        shadowColor={textProps.shadowColor}
+        shadowBlur={textProps.shadowBlur}
+        shadowOffsetX={textProps.shadowOffsetX}
+        shadowOffsetY={textProps.shadowOffsetY}
+        align={textProps.align}
+        lineHeight={textProps.lineHeight}
+        letterSpacing={textProps.letterSpacing}
+        wrap={textProps.wrap}
+        ellipsis={textProps.ellipsis}
+        rotation={textProps.rotation}
+        scaleX={textProps.scaleX}
+        scaleY={textProps.scaleY}
         opacity={isEditing ? 0 : (layer.opacity ?? 1)}
         visible={layer.isVisible !== false}
         draggable={draggable}
@@ -231,12 +217,10 @@ function EditableTextNode({ layer, isSelected, onSelect, onDragEnd, onTransformE
   );
 }
 
-import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
-
 export default function StudioCanvas({ canvasWidth, canvasHeight, backgroundUrl, onContextMenu }: StudioCanvasProps) {
   const stageRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { layers, selectedIds, setSelectedIds, clearSelection, updateLayer } = useLayerStore();
+  const { layers, selectedIds, setSelectedIds, clearSelection, updateLayer, transformGroup } = useLayerStore();
   const history = useHistoryStore();
   
   const resolvedBgUrl = useResolvedImageUrl(backgroundUrl);
@@ -416,7 +400,23 @@ export default function StudioCanvas({ canvasWidth, canvasHeight, backgroundUrl,
   const handleTouchEnd = useCallback(() => { lastDist.current = 0; }, []);
 
   const inlineEditLayer = inlineEditLayerId ? layers.find((l) => l.id === inlineEditLayerId) || null : null;
-  const sortedLayers = [...layers].sort((a, b) => a.zIndex - b.zIndex);
+  const renderableLayers = getRenderableLayers(layers);
+  const groups = layers.filter((layer) => layer.type === 'group' && layer.isVisible !== false);
+
+  const handleGroupDragEnd = useCallback((id: string, x: number, y: number, width: number, height: number) => {
+    history.push(layers);
+    transformGroup(id, {
+      x: gridSnap ? Math.round(x / gridSize) * gridSize : Math.round(x),
+      y: gridSnap ? Math.round(y / gridSize) * gridSize : Math.round(y),
+      width,
+      height,
+    });
+  }, [gridSize, gridSnap, history, layers, transformGroup]);
+
+  const handleGroupTransformEnd = useCallback((id: string, x: number, y: number, width: number, height: number) => {
+    history.push(layers);
+    transformGroup(id, { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) });
+  }, [history, layers, transformGroup]);
 
   return (
     <div
@@ -467,7 +467,7 @@ export default function StudioCanvas({ canvasWidth, canvasHeight, backgroundUrl,
         </Layer>
 
         <Layer name="contentLayer">
-          {sortedLayers.map((layer) => {
+          {renderableLayers.map((layer) => {
             if (layer.type === 'text') {
               return (
                 <EditableTextNode
@@ -486,7 +486,37 @@ export default function StudioCanvas({ canvasWidth, canvasHeight, backgroundUrl,
                 />
               );
             }
+            if (layer.type === 'image' || layer.type === 'shape') {
+              return (
+                <EditableVisualNode
+                  key={layer.id}
+                  layer={layer}
+                  isSelected={selectedIds.includes(layer.id) && !inlineEditLayerId}
+                  interactive
+                  onSelect={(e) => handleLayerSelect(e, layer.id)}
+                  onDragEnd={handleDragEnd}
+                  onTransformEnd={handleTransformEnd}
+                  onContextMenu={(e) => onContextMenu?.(e, layer.id, 'layer')}
+                />
+              );
+            }
             return null;
+          })}
+
+          {groups.map((group) => {
+            const bounds = getGroupBounds(group, layers);
+            if (!bounds) return null;
+            return (
+              <GroupSelectionNode
+                key={group.id}
+                group={group}
+                bounds={bounds}
+                isSelected={selectedIds.includes(group.id) && !inlineEditLayerId}
+                onSelect={(event) => handleLayerSelect(event, group.id)}
+                onDragEnd={handleGroupDragEnd}
+                onTransformEnd={handleGroupTransformEnd}
+              />
+            );
           })}
 
           {/* Rubber-band Selection Rect */}

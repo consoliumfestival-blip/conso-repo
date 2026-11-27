@@ -48,7 +48,7 @@ export function useClipboard() {
 }
 
 // ---- Keyboard Shortcuts Hook ----
-export function useKeyboardShortcuts() {
+export function useKeyboardShortcuts(disableDraftSave = false) {
   const historyStore = useHistoryStore();
   const { layers, selectedIds, removeLayer, duplicateLayer, toggleLock, toggleVisibility, clearSelection, setSelectedIds, groupSelected, ungroupLayer } = useLayerStore();
   const canvasStore = useCanvasStore();
@@ -90,7 +90,7 @@ export function useKeyboardShortcuts() {
       if (ctrl && key === '=') { e.preventDefault(); canvasStore.setZoom(canvasStore.zoomLevel + 0.1); return; }
       if (ctrl && key === '-') { e.preventDefault(); canvasStore.setZoom(canvasStore.zoomLevel - 0.1); return; }
       if (ctrl && key === '0') { e.preventDefault(); canvasStore.fitToViewport(); return; }
-      if (ctrl && key === 's') { e.preventDefault(); saveDraft(); return; }
+      if (ctrl && key === 's') { e.preventDefault(); if (!disableDraftSave) saveDraft(); return; }
       if (key === '?') { e.preventDefault(); window.dispatchEvent(new Event('poster-studio:show-shortcuts')); return; }
       if (key === 'Delete' || key === 'Backspace') { e.preventDefault(); historyStore.push(layers); selectedIds.filter((id) => layers.find((l) => l.id === id)?.lockProfile !== 'fully-locked').forEach(removeLayer); return; }
       if (key === 'Escape') { clearSelection(); return; }
@@ -102,7 +102,7 @@ export function useKeyboardShortcuts() {
       if (key === 'ArrowLeft') { e.preventDefault(); nudge(-step, 0); }
       if (key === 'ArrowRight') { e.preventDefault(); nudge(step, 0); }
     },
-    [layers, selectedIds, historyStore, copySelected, cutSelected, paste, duplicateLayer, removeLayer, groupSelected, ungroupLayer, toggleLock, toggleVisibility, clearSelection, canvasStore, saveDraft, nudge]
+    [layers, selectedIds, historyStore, copySelected, cutSelected, paste, duplicateLayer, removeLayer, groupSelected, ungroupLayer, toggleLock, toggleVisibility, clearSelection, canvasStore, saveDraft, disableDraftSave, nudge]
   );
 
   useEffect(() => {

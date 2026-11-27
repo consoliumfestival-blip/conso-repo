@@ -14,8 +14,8 @@ export default function ToggleField({ label, value, onChange, icon }: ToggleFiel
         style={{
           ...styles.button,
           backgroundColor: value ? '#E0F2FE' : 'transparent',
-          borderColor: value ? '#0284C7' : '#E2E8F0',
-          color: value ? '#0284C7' : '#64748B',
+          borderColor: value ? 'var(--ps-accent)' : 'var(--ps-border)',
+          color: value ? 'var(--ps-accent)' : 'var(--ps-muted)',
         }}
         onClick={() => onChange(!value)}
       >

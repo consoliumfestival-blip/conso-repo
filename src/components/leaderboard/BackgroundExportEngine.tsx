@@ -116,13 +116,25 @@ export default function BackgroundExportEngine() {
     }
   }, [currentJob, markJobCompleted, markJobFailed]);
 
+  const handleRendererError = useCallback(async (error: Error) => {
+    if (!currentJob) return;
+    console.error('[BGExport] Poster renderer failed for job', currentJob.id, error);
+    try {
+      await markJobFailed(currentJob.id, `Poster render failed: ${error.message}`);
+    } finally {
+      setIsProcessingLocal(false);
+    }
+  }, [currentJob, markJobFailed]);
+
   if (!currentJob || !isProcessingLocal) {
     console.info('[BGExport] Idle. currentJob:', !!currentJob, 'isProcessingLocal:', isProcessingLocal);
     return null;
   }
 
   return (
-    <OffscreenRenderer 
+    <OffscreenRenderer
+      key={currentJob.id}
+      renderKey={currentJob.id}
       layers={currentJob.payload.layers}
       variables={currentJob.payload.variables}
       onReady={handleRendererReady}
@@ -130,6 +142,7 @@ export default function BackgroundExportEngine() {
       height={1080}
       backgroundUrl={currentJob.payload.backgroundUrl}
       backgroundTransform={currentJob.payload.backgroundTransform}
+      onError={handleRendererError}
     />
   );
 }

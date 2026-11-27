@@ -151,6 +151,7 @@ export interface DatabaseProvider {
   getPublicLeaderboardSettings<T>(tenantId?: string | null, festivalId?: string | null): Promise<QueryResult<T>>;
   // Result Visibility Management
   listAdminPublishedResults<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
+  listPosterStudioPublishedResults<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
   listFestivalResults<T>(tenantId?: string | null, festivalId?: string | null): Promise<ListResult<T>>;
   updateResultVisibility(resultId: string, status: 'draft' | 'ready' | 'published' | 'hidden' | 'archived'): Promise<QueryResult<void>>;
   bulkUpdateResultVisibility(resultIds: string[], status: 'draft' | 'ready' | 'published' | 'hidden' | 'archived'): Promise<QueryResult<void>>;

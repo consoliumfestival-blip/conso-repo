@@ -1,8 +1,7 @@
 import { coreColor } from '@/constants/coreTheme';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLayerStore } from '../Stores/layerStore';
 import { useHistoryStore } from '../Stores/historyStore';
-import { useTemplateStore } from '../Stores/templateStore';
 
 interface StudioContextMenuProps {
   x: number;
@@ -16,6 +15,26 @@ interface StudioContextMenuProps {
 export default function StudioContextMenu({ x, y, targetId, targetType, onClose, onOpenProperties }: StudioContextMenuProps) {
   const { layers, duplicateLayer, removeLayer, toggleLock, toggleVisibility, setLayers } = useLayerStore();
   const history = useHistoryStore();
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose]);
   
   if (!targetId || targetType !== 'layer') return null; // Canvas context menu not fully implemented yet
 
@@ -57,11 +76,13 @@ export default function StudioContextMenu({ x, y, targetId, targetType, onClose,
 
   return (
     <div 
+      ref={menuRef}
       style={{
         ...styles.menuContainer,
         left: x,
         top: y,
       }}
+      aria-label="Layer actions"
       onMouseDown={(e) => e.stopPropagation()} // Prevent clicking inside from closing it immediately
     >
       <div style={styles.menuHeader}>

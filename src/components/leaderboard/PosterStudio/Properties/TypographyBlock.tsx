@@ -21,6 +21,7 @@ function detectScript(text: string): 'ml' | 'en' {
 export default function TypographyBlock({ layer }: TypographyBlockProps) {
   const { updateLayerLinked, layers } = useLayerStore();
   const history = useHistoryStore();
+  const { variables } = useTemplateStore();
 
   if (!layer || layer.type !== 'text') return null;
 
@@ -29,7 +30,6 @@ export default function TypographyBlock({ layer }: TypographyBlockProps) {
     updateLayerLinked(layer.id, patch);
   };
 
-  const { variables } = useTemplateStore();
   const resolved = resolveTemplateVariables(layer.text, variables);
   const detectedScript = detectScript(resolved);
   const isBold = (layer.fontWeight ?? 600) >= 700;

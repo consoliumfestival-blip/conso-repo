@@ -4,7 +4,7 @@
       "http://localhost:8081",
       "http://localhost:19006",
       "http://localhost:3000",
-      "https://your-production-domain.example"
+      "https://consoulium.sabicofficial.in"
     ],
     "AllowedMethods": [
       "PUT",
@@ -12,7 +12,8 @@
       "HEAD"
     ],
     "AllowedHeaders": [
-      "content-type"
+      "content-type",
+      "if-none-match"
     ],
     "ExposeHeaders": [
       "etag"

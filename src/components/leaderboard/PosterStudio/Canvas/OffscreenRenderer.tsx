@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Stage, Layer, Group, Text, Image as KonvaImage, Rect } from 'react-konva';
-import useImage from 'use-image';
 import { resolveImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
 import { storageService } from '../../../../services/storage/storageService';
 import { loadFont, ML_FONTS, EN_FONTS } from '../Utils/fontLoader';
@@ -32,12 +31,42 @@ interface BackgroundImageProps {
   onAssetStatus: (id: string, status: AssetStatus) => void;
 }
 
+let cachedBackground: { src: string; promise: Promise<HTMLImageElement> } | null = null;
+
+function loadBackgroundOnce(src: string): Promise<HTMLImageElement> {
+  if (cachedBackground?.src === src) return cachedBackground.promise;
+  const image = new window.Image();
+  image.crossOrigin = 'anonymous';
+  const promise = new Promise<HTMLImageElement>((resolve, reject) => {
+    image.onload = () => {
+      void image.decode().catch(() => undefined).then(() => resolve(image));
+    };
+    image.onerror = () => reject(new Error('Background image could not be loaded.'));
+    image.src = src;
+  });
+  cachedBackground = { src, promise };
+  void promise.catch(() => {
+    if (cachedBackground?.promise === promise) cachedBackground = null;
+  });
+  return promise;
+}
+
 function BackgroundImage({ src, width, height, transform, assetId, onAssetStatus }: BackgroundImageProps) {
-  const [image, status] = useImage(src, 'anonymous');
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
 
   useEffect(() => {
-    onAssetStatus(assetId, status === 'loaded' ? 'loaded' : status === 'failed' ? 'failed' : 'loading');
-  }, [assetId, onAssetStatus, status]);
+    let cancelled = false;
+    setImage(null);
+    onAssetStatus(assetId, 'loading');
+    void loadBackgroundOnce(src).then((loaded) => {
+      if (cancelled) return;
+      setImage(loaded);
+      onAssetStatus(assetId, 'loaded');
+    }).catch(() => {
+      if (!cancelled) onAssetStatus(assetId, 'failed');
+    });
+    return () => { cancelled = true; };
+  }, [assetId, onAssetStatus, src]);
 
   return image ? (
     <KonvaImage
@@ -52,15 +81,16 @@ function BackgroundImage({ src, width, height, transform, assetId, onAssetStatus
   ) : null;
 }
 
-async function withReadinessTimeout<T>(work: Promise<T>, remainingMs: number, timeoutMessage: string): Promise<T> {
-  if (remainingMs <= 0) throw new Error(timeoutMessage);
+async function withReadinessTimeout<T>(work: Promise<T>, remainingMs: number, timeoutMessage: string | (() => string)): Promise<T> {
+  const message = () => typeof timeoutMessage === 'function' ? timeoutMessage() : timeoutMessage;
+  if (remainingMs <= 0) throw new Error(message());
   let timeoutId: number | undefined;
   try {
     return await Promise.race([
       work,
       new Promise<T>((_, reject) => {
         timeoutId = window.setTimeout(
-          () => reject(new Error(timeoutMessage)),
+          () => reject(new Error(message())),
           remainingMs,
         );
       }),
@@ -85,8 +115,8 @@ async function resolveFontUrl(reference: PosterAssetReference): Promise<string> 
   return storageService.getPresignedUrl(objectKey, getFontContentType(reference), 'download');
 }
 
-async function prepareFonts(layers: readonly LayerData[], variables: Record<string, string | undefined>, references: PosterAssetReference[]) {
-  const textLayers = layers.filter((layer) => layer.type === 'text' && layer.isVisible !== false);
+async function prepareFonts(layers: readonly LayerData[], variables: Record<string, string | undefined>, references: PosterAssetReference[], pending: Set<string>) {
+  const textLayers = layers.filter((layer) => layer.type === 'text' && layer.isVisible !== false && resolveLayerText(layer, variables).trim().length > 0);
   const fontFamilies = new Set(textLayers.map((layer) => layer.fontFamily || 'Poppins'));
   const resolvedText = textLayers.map((layer) => resolveLayerText(layer, variables)).join(' ');
   if (/[\u0D00-\u0D7F]/.test(resolvedText)) fontFamilies.add('Noto Sans Malayalam');
@@ -94,22 +124,27 @@ async function prepareFonts(layers: readonly LayerData[], variables: Record<stri
   const customByFamily = new Map(references.filter((reference) => reference.fontFamily).map((reference) => [reference.fontFamily!, reference]));
   const knownFonts = [...ML_FONTS, ...EN_FONTS];
   await Promise.all([...fontFamilies].map(async (family) => {
-    const customReference = customByFamily.get(family);
-    if (customReference) {
-      const status = await loadFont({
-        family,
-        resolveUrl: () => resolveFontUrl(customReference),
-        cacheKey: customReference.assetKey,
-        category: 'Custom Fonts',
-      });
-      if (status !== 'loaded') throw new Error(`Font "${family}" could not be loaded. Reconnect to media storage and retry.`);
-      return;
-    }
+    pending.add(family);
+    try {
+      const customReference = customByFamily.get(family);
+      if (customReference) {
+        const status = await loadFont({
+          family,
+          resolveUrl: () => resolveFontUrl(customReference),
+          cacheKey: customReference.assetKey,
+          category: 'Custom Fonts',
+        });
+        if (status !== 'loaded') throw new Error(`Font "${family}" could not be loaded. Reconnect to media storage and retry.`);
+        return;
+      }
 
-    const definition = knownFonts.find((font) => font.family === family);
-    if (definition) {
-      const status = await loadFont(definition);
-      if (status !== 'loaded') throw new Error(`Font "${family}" could not be loaded. Check the connection and retry.`);
+      const definition = knownFonts.find((font) => font.family === family);
+      if (definition) {
+        const status = await loadFont(definition);
+        if (status !== 'loaded') throw new Error(`Font "${family}" could not be loaded. Check the connection and retry.`);
+      }
+    } finally {
+      pending.delete(family);
     }
   }));
 
@@ -133,7 +168,14 @@ async function prepareFonts(layers: readonly LayerData[], variables: Record<stri
       text: `${current?.text || ''}${resolvedText}`,
     });
   }
-  await Promise.all([...fontRequests.values()].map(({ css, text }) => document.fonts.load(css, text)));
+  await Promise.all([...fontRequests.values()].map(async ({ css, text }) => {
+    pending.add(css);
+    try {
+      await document.fonts.load(css, text);
+    } finally {
+      pending.delete(css);
+    }
+  }));
 }
 
 export interface OffscreenRendererProps {
@@ -303,10 +345,11 @@ export default function OffscreenRenderer({
     const prepare = async () => {
       try {
         const remainingMs = READINESS_TIMEOUT_MS - (Date.now() - renderStartedAtRef.current);
+        const pendingFonts = new Set<string>();
         await withReadinessTimeout(
-          prepareFonts(renderableLayers, variables, customFontReferences),
+          prepareFonts(renderableLayers, variables, customFontReferences, pendingFonts),
           remainingMs,
-          'Poster fonts did not finish loading within 30 seconds. Check the font source and retry.',
+          () => `Poster fonts did not finish loading within 30 seconds${pendingFonts.size ? `: ${[...pendingFonts].join(', ')}` : ''}. Check the font source and retry.`,
         );
         await new Promise<void>((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve())));
         if (cancelled || mountedSignatureRef.current !== renderSignature) return;

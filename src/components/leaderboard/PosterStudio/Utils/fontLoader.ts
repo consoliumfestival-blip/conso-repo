@@ -33,7 +33,7 @@ export const EN_FONTS: FontDefinition[] = [
   // Sans / Modern
   { family: 'Manrope', category: 'Sans / Modern', weights: '300,400,500,600,700' },
   { family: 'Plus Jakarta Sans', category: 'Sans / Modern', weights: '300,400,500,600,700' },
-  { family: 'Outfit', category: 'Sans / Modern', weights: '300,400,500,600,700' },
+  { family: 'Outfit', url: '/fonts/Outfit_400Regular.ttf', category: 'Sans / Modern', weights: '400,500,600,700' },
   { family: 'Sora', category: 'Sans / Modern', weights: '300,400,500,600,700' },
   { family: 'Urbanist', category: 'Sans / Modern', weights: '300,400,500,600,700' },
   { family: 'Space Grotesk', category: 'Sans / Modern', weights: '300,400,500,600,700' },
@@ -70,7 +70,7 @@ export const EN_FONTS: FontDefinition[] = [
   { family: 'Raleway', category: 'Friendly / Editorial', weights: '300,400,500,600,700' },
   { family: 'Cabin', category: 'Friendly / Editorial', weights: '400,500,600,700' },
   { family: 'Karla', category: 'Friendly / Editorial', weights: '300,400,500,600,700' },
-].map(f => ({ ...f, url: 'https://fonts.gstatic.com/' }));
+].map(f => ({ ...f, url: f.url || 'https://fonts.gstatic.com/' }));
 
 EN_FONTS.unshift({ family: 'Authenia Textured', category: 'Display / Poster', url: '/fonts/Authenia-Textured.ttf' });
 

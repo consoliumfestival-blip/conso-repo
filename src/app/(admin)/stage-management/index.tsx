@@ -1,6 +1,7 @@
 import { getStageCheckinProgress } from '../../../core/utils/stageCheckinProgress';
 import { coreColor } from '@/constants/coreTheme';
 import { ui } from '@/constants/designSystem';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { Animated, Pressable, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, useWindowDimensions, RefreshControl, Alert } from 'react-native';
 import { Modal } from '@/components/ui/CoreModal';
@@ -25,6 +26,32 @@ import { stageManagementService } from '../../../services/stageManagementService
 import { ScheduleTopicSetupModal } from '@/components/schedule/ScheduleTopicSetupModal';
 import { scheduleTopicDrawService, type ScheduleTopicDrawState } from '@/services/scheduleTopicDrawService';
 import { useQuery } from '@tanstack/react-query';
+
+const EMPTY_HIDDEN_VENUE_IDS: string[] = [];
+
+const readHiddenVenueIds = async (key: string): Promise<string[]> => {
+  const stored = Platform.OS === 'web'
+    ? (typeof window !== 'undefined' ? window.localStorage.getItem(key) : null)
+    : await AsyncStorage.getItem(key);
+  if (!stored) return [];
+
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeHiddenVenueIds = async (key: string, venueIds: string[]): Promise<void> => {
+  const value = JSON.stringify(venueIds);
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') throw new Error('Browser storage is unavailable.');
+    window.localStorage.setItem(key, value);
+    return;
+  }
+  await AsyncStorage.setItem(key, value);
+};
 
 const getRegistrationsForSchedule = (registrations: any[], schedule: any) =>
   registrations.filter((registration: any) =>
@@ -120,7 +147,7 @@ function AdminMobileScheduleRow({ schedule, summary, registrations, onPress, las
 
 function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { venueIdOverride?: string; optimizedRead: boolean }) {
   const router = useRouter();
-  const { user, role, is_superadmin, initialized } = useAuthStore();
+  const { user, tenant_id, role, is_superadmin, initialized } = useAuthStore();
   const hasStageAccess = !!user && (role === 'admin' || is_superadmin);
 
   const stage = useStageManagement({ summaryOnly: optimizedRead });
@@ -158,7 +185,19 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [selectedStatus, setSelectedStatus] = React.useState('All');
   const [selectedSchedulePeriod, setSelectedSchedulePeriod] = React.useState<'all' | 'upcoming' | 'past' | 'postponed'>('all');
   const [selectedDate, setSelectedDate] = React.useState('');
-  const [hiddenVenueIds, setHiddenVenueIds] = React.useState<string[]>([]);
+  const preferenceTenantId = stage.context?.tenant_id || tenant_id;
+  const preferenceFestivalId = stage.context?.festival_id;
+  const hiddenVenueStorageKey = !venueIdOverride && user?.id && preferenceTenantId && preferenceFestivalId
+    ? `stage-management:hidden-venues:v1:${encodeURIComponent(String(preferenceTenantId))}:${encodeURIComponent(String(preferenceFestivalId))}:${encodeURIComponent(String(user.id))}`
+    : null;
+  const [hiddenVenuePreferences, setHiddenVenuePreferences] = React.useState<{
+    key: string;
+    venueIds: string[];
+    status: 'loading' | 'ready' | 'error';
+  } | null>(null);
+  const [hiddenVenuePreferenceRetry, setHiddenVenuePreferenceRetry] = React.useState(0);
+  const [savingHiddenVenuePreference, setSavingHiddenVenuePreference] = React.useState(false);
+  const savingHiddenVenuePreferenceRef = React.useRef(false);
   const [showHiddenVenues, setShowHiddenVenues] = React.useState(false);
   const [actionScheduleId, setActionScheduleId] = React.useState<string | null>(null);
   const [showStatusChoices, setShowStatusChoices] = React.useState(false);
@@ -175,9 +214,22 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   }, []);
 
   React.useEffect(() => {
-    setHiddenVenueIds([]);
     setShowHiddenVenues(false);
-  }, [stage.context?.tenant_id, stage.context?.festival_id]);
+    if (!hiddenVenueStorageKey) {
+      setHiddenVenuePreferences(null);
+      return;
+    }
+
+    let cancelled = false;
+    setHiddenVenuePreferences({ key: hiddenVenueStorageKey, venueIds: [], status: 'loading' });
+    readHiddenVenueIds(hiddenVenueStorageKey).then((venueIds) => {
+      if (!cancelled) setHiddenVenuePreferences({ key: hiddenVenueStorageKey, venueIds, status: 'ready' });
+    }).catch(() => {
+      if (!cancelled) setHiddenVenuePreferences({ key: hiddenVenueStorageKey, venueIds: [], status: 'error' });
+    });
+
+    return () => { cancelled = true; };
+  }, [hiddenVenueStorageKey, hiddenVenuePreferenceRetry]);
 
   const openStagePortal = (venueId: string) => {
     const path = `/stage-management/venue/${venueId}${optimizedRead ? '?read=v2' : ''}`;
@@ -232,6 +284,14 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
     return [{ id: 'All', name: 'All Venues' }, ...venues.map((v: any) => ({ id: v.id, name: v.name }))];
   }, [venues]);
 
+  const currentHiddenVenuePreferences = hiddenVenuePreferences?.key === hiddenVenueStorageKey
+    ? hiddenVenuePreferences
+    : null;
+  const hiddenVenueIds = currentHiddenVenuePreferences?.status === 'ready'
+    ? currentHiddenVenuePreferences.venueIds
+    : EMPTY_HIDDEN_VENUE_IDS;
+  const isLoadingHiddenVenuePreferences = !venueIdOverride && !!hiddenVenueStorageKey
+    && (!currentHiddenVenuePreferences || currentHiddenVenuePreferences.status === 'loading');
   const hiddenVenueIdSet = React.useMemo(() => new Set(hiddenVenueIds), [hiddenVenueIds]);
   const visibleVenues = React.useMemo(
     () => venues.filter((venue: any) => !hiddenVenueIdSet.has(venue.id)),
@@ -246,12 +306,31 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
     [venues],
   );
 
+  const saveHiddenVenueIds = async (nextVenueIds: string[]) => {
+    if (!hiddenVenueStorageKey || currentHiddenVenuePreferences?.status !== 'ready' || savingHiddenVenuePreferenceRef.current) return;
+    savingHiddenVenuePreferenceRef.current = true;
+    setSavingHiddenVenuePreference(true);
+    try {
+      await writeHiddenVenueIds(hiddenVenueStorageKey, nextVenueIds);
+      setHiddenVenuePreferences({ key: hiddenVenueStorageKey, venueIds: nextVenueIds, status: 'ready' });
+    } catch (error: any) {
+      const message = error?.message || 'Please allow browser or device storage and try again.';
+      if (Platform.OS === 'web') window.alert(`Could not save hidden stages\n\n${message}`);
+      else Alert.alert('Could not save hidden stages', message);
+    } finally {
+      savingHiddenVenuePreferenceRef.current = false;
+      setSavingHiddenVenuePreference(false);
+    }
+  };
+
   const hideVenue = (venueId: string) => {
-    setHiddenVenueIds((current) => current.includes(venueId) ? current : [...current, venueId]);
+    if (hiddenVenueIds.includes(venueId)) return;
+    void saveHiddenVenueIds([...hiddenVenueIds, venueId]);
   };
 
   const unhideVenue = (venueId: string) => {
-    setHiddenVenueIds((current) => current.filter((id) => id !== venueId));
+    const nextVenueIds = hiddenVenueIds.filter((id) => id !== venueId);
+    void saveHiddenVenueIds(nextVenueIds);
     if (hiddenVenues.length <= 1) setShowHiddenVenues(false);
   };
 
@@ -398,7 +477,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
     );
   }
 
-  if (isLoadingSchedules || isLoadingVenues || isLoadingRegs || isLoadingFest) {
+  if (isLoadingSchedules || isLoadingVenues || isLoadingRegs || isLoadingFest || isLoadingHiddenVenuePreferences) {
     return (
       <View className="flex-1 bg-ssf-bg p-5">
         <SsfTableSkeleton rows={8} columns={5} />
@@ -487,7 +566,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <View className="mb-3 flex-row items-start justify-between gap-3">
               <View className="min-w-0 flex-1">
                 <Text className="font-poppins-bold text-sm text-ui-text">Hidden stages · {hiddenVenues.length}</Text>
-                <Text className="mt-0.5 font-poppins text-[11px] text-ui-text-muted">Hidden from this view only; stages and events remain active.</Text>
+                <Text className="mt-0.5 font-poppins text-[11px] text-ui-text-muted">Saved on this device for this festival; stages and events remain active.</Text>
               </View>
               <TouchableOpacity
                 accessibilityRole="button"
@@ -509,6 +588,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                     accessibilityRole="button"
                     accessibilityLabel={`Unhide ${venue.name}`}
                     onPress={() => unhideVenue(venue.id)}
+                    disabled={savingHiddenVenuePreference}
                     className="h-11 shrink-0 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-3"
                   >
                     <Eye size={14} color={coreColor('#0F766E', 'primary')} />
@@ -520,7 +600,20 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
           </View>
         )}
 
-        {venues.length === 0 ? (
+        {currentHiddenVenuePreferences?.status === 'error' ? (
+          <SsfCard className="items-center py-8">
+            <Text className="font-poppins-bold text-ssf-text">Could not load saved hidden stages</Text>
+            <Text className="mt-1 text-center font-poppins text-sm text-ssf-text-muted">Check device storage access and retry.</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => setHiddenVenuePreferenceRetry((current) => current + 1)}
+              className="mt-4 h-11 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-4"
+            >
+              <RotateCcw size={15} color={coreColor('#0F766E', 'primary')} />
+              <Text className="ml-2 font-poppins-bold text-xs text-ui-text">Retry</Text>
+            </TouchableOpacity>
+          </SsfCard>
+        ) : venues.length === 0 ? (
           <SsfCard className="items-center py-10">
             <MapPin size={42} color={coreColor("#94A3B8", 'textSubtle')} />
             <Text className="font-poppins-bold text-ssf-text mt-3">No stages available</Text>
@@ -570,6 +663,7 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                       accessibilityRole="button"
                       accessibilityLabel={`Hide ${venue.name} from this page`}
                       onPress={() => hideVenue(venue.id)}
+                      disabled={savingHiddenVenuePreference}
                       className="h-11 shrink-0 flex-row items-center justify-center rounded-lg border border-white/80 bg-core-surface-white px-2"
                     >
                       <EyeOff size={15} color={coreColor('#64748B', 'textMuted')} />

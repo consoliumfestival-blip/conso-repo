@@ -206,7 +206,7 @@ body::-webkit-scrollbar,
 
 .custom-stage-green-v2,
 .custom-stage-v41 {
-  contain: strict;
+  contain: layout style;
 }
 
 /* Isolate layout/style recalc during scroll-lock sky updates and eliminate

@@ -66,7 +66,15 @@
       if (current !== nextHref) link.setAttribute('href', nextHref);
     }
   };
-  const observer = new MutationObserver(update);
+  let updateFrame = 0;
+  const scheduleUpdate = () => {
+    if (updateFrame) return;
+    updateFrame = requestAnimationFrame(() => {
+      updateFrame = 0;
+      update();
+    });
+  };
+  const observer = new MutationObserver(scheduleUpdate);
   observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
   document.addEventListener('click', (event) => {
     const link = event.target.closest?.('a');

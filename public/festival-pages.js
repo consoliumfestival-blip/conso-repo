@@ -493,6 +493,13 @@
 
   function renderSchedule(term) {
     const schedules = [...(snapshot.schedules || [])]
+      .filter((s) => {
+        if (!s.start_time) return false;
+        const d = new Date(s.start_time);
+        if (Number.isNaN(d.getTime())) return false;
+        const dayNum = d.getDate();
+        return dayNum >= 27 && dayNum <= 30;
+      })
       .sort((a, b) => Date.parse(a.start_time || '') - Date.parse(b.start_time || ''));
 
     const dayKey = (iso) => {

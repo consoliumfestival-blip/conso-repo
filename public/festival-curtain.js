@@ -39,16 +39,6 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    @view-transition {
-      navigation: auto;
-    }
-    ::view-transition-group(root),
-    ::view-transition-old(root),
-    ::view-transition-new(root) {
-      animation: none !important;
-      animation-duration: 0s !important;
-      mix-blend-mode: normal;
-    }
     @font-face {
       font-family: "GoogleSansFlex";
       src: url("/assets/google-sans-flex-latin-wdth-normal-B_nyAeTb.woff2") format("woff2");
@@ -212,7 +202,25 @@
         ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 90))])
         : Promise.resolve();
 
-      fontWait.then(() => {
+      const heroWait = location.pathname.includes('explore') && !document.querySelector('.ayatic-3d-scene')
+        ? new Promise((resolve) => {
+            let settled = false;
+            let obs = null;
+            const finish = () => {
+              if (settled) return;
+              settled = true;
+              obs?.disconnect();
+              resolve();
+            };
+            obs = new MutationObserver(() => {
+              if (document.querySelector('.ayatic-3d-scene')) finish();
+            });
+            obs.observe(document.documentElement, { childList: true, subtree: true });
+            setTimeout(finish, 350);
+          })
+        : Promise.resolve();
+
+      Promise.all([fontWait, heroWait]).then(() => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             document.documentElement.classList.remove('is-curtain-covered');

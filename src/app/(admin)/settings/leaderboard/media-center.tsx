@@ -4,7 +4,7 @@ import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking, Platform, TextInput, Pressable } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus, PenLine } from 'lucide-react-native';
+import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus, PenLine, Eye, EyeOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/core/config/supabase';
 import { useFestival } from '@/core/hooks/useFestival';
@@ -141,6 +141,7 @@ export default function MediaCenterPage() {
   const isOnline = useOfflineStore((state) => state.isOnline);
   const [savedFestivalContext, setSavedFestivalContext] = useState<string | null>(null);
   const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
+  const [togglingVisibilityHash, setTogglingVisibilityHash] = useState<string | null>(null);
   const retryOwnerIdRef = React.useRef<string | null>(null);
   const [localPreviewUrls, setLocalPreviewUrls] = useState<Record<string, string>>({});
 
@@ -257,6 +258,32 @@ export default function MediaCenterPage() {
       alert('Upload failed: ' + err.message);
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleTogglePublicVisibility = async (asset: any) => {
+    if (asset.is_local_delivery || !activeFestival?.id || !tenant_id) return;
+    const isCurrentlyHidden = asset.visibility_status === 'hidden' || asset.visibility_status === 'draft';
+    const nextStatus = isCurrentlyHidden ? 'published' : 'hidden';
+    setTogglingVisibilityHash(asset.render_hash);
+    try {
+      let query = supabase
+        .from('generated_assets')
+        .update({ visibility_status: nextStatus, updated_at: new Date().toISOString() })
+        .eq('festival_id', activeFestival.id)
+        .eq('tenant_id', tenant_id);
+      if (String(asset.render_hash || '').startsWith('_ungrouped_')) {
+        query = query.eq('id', asset.id);
+      } else {
+        query = query.eq('render_hash', asset.render_hash);
+      }
+      const { error } = await query;
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
+    } catch (err: any) {
+      alert('Failed to update public visibility: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setTogglingVisibilityHash(null);
     }
   };
 
@@ -929,6 +956,8 @@ export default function MediaCenterPage() {
                     <Text style={styles.qualityText}>
                       {asset.is_local_delivery
                         ? deliveryStatusLabel(asset.delivery)
+                        : asset.visibility_status === 'hidden'
+                        ? '🙈 Hidden'
                         : asset.is_live_public ? '🌐 Live Public' : '📝 Draft (Hidden)'}
                     </Text>
                   </View>
@@ -1018,6 +1047,30 @@ export default function MediaCenterPage() {
                       <Text style={styles.actionTextWhatsApp}>Share</Text>
                     </TouchableOpacity>}
                     
+                    {!asset.is_local_delivery && <TouchableOpacity
+                      style={[
+                        styles.actionBtn,
+                        (asset.visibility_status !== 'hidden' && asset.is_live_public)
+                          ? { backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }
+                          : { backgroundColor: '#ECFDF5', borderColor: '#6EE7B7' },
+                        togglingVisibilityHash === asset.render_hash && styles.actionBtnDisabled,
+                      ]}
+                      onPress={() => handleTogglePublicVisibility(asset)}
+                      disabled={togglingVisibilityHash === asset.render_hash}
+                    >
+                      {asset.visibility_status !== 'hidden' && asset.is_live_public
+                        ? <EyeOff size={14} color="#C2410C" />
+                        : <Eye size={14} color="#047857" />}
+                      <Text style={[
+                        styles.actionText,
+                        { color: (asset.visibility_status !== 'hidden' && asset.is_live_public) ? '#C2410C' : '#047857' },
+                      ]}>
+                        {togglingVisibilityHash === asset.render_hash
+                          ? 'Saving...'
+                          : (asset.visibility_status !== 'hidden' && asset.is_live_public) ? 'Hide Public' : 'Show Public'}
+                      </Text>
+                    </TouchableOpacity>}
+
                     {!asset.is_local_delivery && <TouchableOpacity
                       style={[styles.actionBtn, { backgroundColor: ui.colors.dangerSoft }]}
                       onPress={() => handleDeletePoster(asset)}

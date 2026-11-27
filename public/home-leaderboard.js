@@ -150,11 +150,13 @@ async function install(section) {
   const resultsSection = section.querySelector('#public-results');
   if (resultsSection && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     let revealFrame = 0;
+    let listening = false;
     const updateReveal = () => {
       revealFrame = 0;
       if (!resultsSection.isConnected) {
         window.removeEventListener('scroll', scheduleReveal);
         window.removeEventListener('resize', scheduleReveal);
+        listening = false;
         return;
       }
       const viewport = window.innerHeight;
@@ -167,9 +169,32 @@ async function install(section) {
     const scheduleReveal = () => {
       if (!revealFrame) revealFrame = requestAnimationFrame(updateReveal);
     };
-    window.addEventListener('scroll', scheduleReveal, { passive: true });
-    window.addEventListener('resize', scheduleReveal, { passive: true });
-    scheduleReveal();
+    const attach = () => {
+      if (listening) return;
+      listening = true;
+      window.addEventListener('scroll', scheduleReveal, { passive: true });
+      window.addEventListener('resize', scheduleReveal, { passive: true });
+      scheduleReveal();
+    };
+    const detach = () => {
+      if (!listening) return;
+      listening = false;
+      window.removeEventListener('scroll', scheduleReveal);
+      window.removeEventListener('resize', scheduleReveal);
+      if (revealFrame) {
+        cancelAnimationFrame(revealFrame);
+        revealFrame = 0;
+      }
+    };
+    if (typeof IntersectionObserver === 'function') {
+      const revealObserver = new IntersectionObserver(([entry]) => {
+        if (entry?.isIntersecting) attach();
+        else detach();
+      }, { rootMargin: '250px 0px' });
+      revealObserver.observe(resultsSection);
+    } else {
+      attach();
+    }
   }
   let snapshot = null;
   let loadError = false;
@@ -320,10 +345,16 @@ async function install(section) {
 
 }
 
-const observer = new MutationObserver(() => {
-  const section = document.querySelector('section#register');
-  if (section) install(section);
-});
-observer.observe(document.body, { childList: true, subtree: true });
 const initialSection = document.querySelector('section#register');
-if (initialSection) install(initialSection);
+if (initialSection) {
+  install(initialSection);
+} else {
+  const observer = new MutationObserver(() => {
+    const section = document.querySelector('section#register');
+    if (section) {
+      observer.disconnect();
+      install(section);
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}

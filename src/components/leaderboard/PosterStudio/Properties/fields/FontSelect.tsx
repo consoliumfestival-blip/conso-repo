@@ -42,32 +42,26 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
     if (!tenant_id) return;
     try {
       const fonts = await fontService.getFonts(tenant_id, festivalId);
-      const resolvedList = await Promise.all(
-        fonts.map(async (f) => {
-          const meta = f.metadata as FontMetadata;
-          if (!meta) return null;
-          
-          let url = f.file_url;
-          if (url && url.startsWith('r2://')) {
-            const objectKey = url.replace('r2://', '');
-            try {
-              const ext = objectKey.split('.').pop()?.toLowerCase() || 'ttf';
-              const contentType = ext === 'woff2' ? 'font/woff2' : ext === 'woff' ? 'font/woff' : ext === 'otf' ? 'font/otf' : 'font/ttf';
-              url = await storageService.getPresignedUrl(objectKey, contentType, 'download');
-            } catch (e) {
-              console.error('Failed to resolve font signed URL', e);
-            }
-          }
-          
-          return {
-            family: meta.family,
-            url: url,
-            category: 'Custom Fonts',
-            isCustom: true,
-          };
-        })
-      );
-      setCustomFonts(resolvedList.filter(Boolean) as any[]);
+      const resolvedList = fonts.flatMap((f) => {
+        const meta = f.metadata as FontMetadata | null;
+        if (!meta?.family || !f.file_url) return [];
+
+        const objectKey = f.file_url.startsWith('r2://') ? f.file_url.replace('r2://', '') : null;
+        const extension = objectKey?.split('.').pop()?.toLowerCase() || 'ttf';
+        const contentType = extension === 'woff2' ? 'font/woff2' : extension === 'woff' ? 'font/woff' : extension === 'otf' ? 'font/otf' : 'font/ttf';
+
+        return [{
+          family: meta.family,
+          url: objectKey ? undefined : f.file_url,
+          resolveUrl: objectKey
+            ? () => storageService.getPresignedUrl(objectKey, contentType, 'download')
+            : undefined,
+          cacheKey: objectKey || f.file_url,
+          category: 'Custom Fonts',
+          isCustom: true,
+        }];
+      });
+      setCustomFonts(resolvedList);
     } catch (e) {
       console.error('Failed to fetch/resolve custom fonts:', e);
     }
@@ -76,6 +70,11 @@ export default function FontSelect({ label, value, onChange, script = 'both' }: 
   useEffect(() => {
     fetchFonts();
   }, [fetchFonts]);
+
+  useEffect(() => {
+    const selectedCustomFont = customFonts.find((font) => font.family === value);
+    if (selectedCustomFont) void loadFont(selectedCustomFont);
+  }, [customFonts, value]);
 
   const customFontsList = customFonts;
 
@@ -269,7 +268,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: `1px solid ${coreColor('#334155', 'border')}`,
     fontSize: 13,
     color: coreColor('#E2E8F0', 'text'),
-    backgroundColor: coreColor('#0F172A', 'overlay'),
+    backgroundColor: coreColor('#FFFFFF', 'surface'),
     cursor: 'pointer',
     width: '100%',
     textAlign: 'left',
@@ -277,10 +276,10 @@ const styles: Record<string, React.CSSProperties> = {
     transition: 'border-color 0.15s, background-color 0.15s',
   },
   popover: {
-    backgroundColor: coreColor('#0F172A', 'overlay'),
+    backgroundColor: coreColor('#FFFFFF', 'surfaceStrong'),
     border: `1px solid ${coreColor('#334155', 'border')}`,
     borderRadius: 8,
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4)',
+    boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.18), 0 8px 10px -6px rgba(15, 23, 42, 0.12)',
     zIndex: 10000,
     display: 'flex',
     flexDirection: 'column',

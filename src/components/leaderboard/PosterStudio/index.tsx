@@ -48,8 +48,7 @@ import CreateTemplateModal from './Templates/CreateTemplateModal';
 import { supabase } from '../../../core/config/supabase';
 import OffscreenRenderer from './Canvas/OffscreenRenderer';
 import MultiFrameGrid from './Canvas/MultiFrameGrid';
-import { uploadService } from '../../../services/storage/uploadService';
-import { dataUrlToBlob } from './Utils/generatedAssetSaver';
+import { formatBackgroundSize, uploadPosterBackground } from './Services/backgroundUploadService';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { fontService, FontMetadata } from '../../../services/fontService';
 import { loadFont } from './Utils/fontLoader';
@@ -164,6 +163,10 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const { contextMenu, openMenu: openContextMenu, closeMenu: closeContextMenu } = useContextMenu();
   const bgInputRef = useRef<HTMLInputElement>(null);
+  const [bgUploadProgress, setBgUploadProgress] = useState<number | null>(null);
+  const [bgUploadPhase, setBgUploadPhase] = useState<'preparing' | 'uploading' | null>(null);
+  const [bgUploadDetails, setBgUploadDetails] = useState('');
+  const bgUploadControllerRef = useRef<AbortController | null>(null);
   const processedGenerationIdsRef = useRef(new Set<string>());
   const editLoadTokenRef = useRef(0);
   const restoredDesignSignatureRef = useRef<string | null>(null);
@@ -462,7 +465,12 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
           if (!font.fontFamily) continue;
           try {
             const url = await resolveReference(font);
-            await loadFont({ family: font.fontFamily, url, category: 'Custom Fonts' });
+            await loadFont({
+              family: font.fontFamily,
+              url,
+              cacheKey: font.assetKey,
+              category: 'Custom Fonts',
+            });
           } catch {
             missingKeys.add(font.assetKey);
           }
@@ -542,13 +550,16 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     return () => { cancelled = true; };
   }, [editRouteKey, editLoadState, editSourceSnapshot, authUserId, tenantId, festivalId, generationId, isOnline]);
 
-  // Load custom tenant fonts at startup
+  // Load the custom-font manifest at startup. Font binaries are fetched only
+  // when a font is selected or needed by the poster being rendered.
   useEffect(() => {
+    setPosterCustomFontReferences([]);
     if (!tenantId) return;
-    const loadCustomFonts = async () => {
+    let cancelled = false;
+    const loadCustomFontReferences = async () => {
       try {
-        console.log('[PosterStudio] Loading custom tenant fonts...');
-        const fonts = await fontService.getFonts(tenantId);
+        const fonts = await fontService.getFonts(tenantId, festivalId);
+        if (cancelled) return;
         setPosterCustomFontReferences(fonts.flatMap((font) => {
           const metadata = font.metadata as FontMetadata | null;
           const reference = stablePosterAssetReference(font.file_url);
@@ -556,39 +567,13 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
             ? [{ ...reference, assetId: font.id, fontFamily: metadata.family }]
             : [];
         }));
-        await Promise.all(
-          fonts.map(async (f) => {
-            const meta = f.metadata as FontMetadata;
-            if (!meta) return;
-
-            let url = f.file_url;
-            if (url && url.startsWith('r2://')) {
-              const objectKey = url.replace('r2://', '');
-              try {
-                const ext = objectKey.split('.').pop()?.toLowerCase() || 'ttf';
-                const contentType = ext === 'woff2' ? 'font/woff2' : ext === 'woff' ? 'font/woff' : ext === 'otf' ? 'font/otf' : 'font/ttf';
-                url = await storageService.getPresignedUrl(objectKey, contentType, 'download');
-              } catch (e) {
-                console.error('Failed to resolve font signed URL at startup', e);
-              }
-            }
-
-            if (url) {
-              console.log(`[PosterStudio] Registering custom font: ${meta.family}`);
-              await loadFont({
-                family: meta.family,
-                url: url,
-                category: 'Custom Fonts'
-              });
-            }
-          })
-        );
       } catch (e) {
-        console.error('Failed to preload custom fonts:', e);
+        if (!cancelled) console.error('Failed to load custom font references:', e);
       }
     };
-    loadCustomFonts();
-  }, [tenantId]);
+    void loadCustomFontReferences();
+    return () => { cancelled = true; };
+  }, [tenantId, festivalId]);
 
   const handleToolClick = useCallback((panel: DockPanelType) => {
     if (activeDockPanel === panel && isDockOpen) {
@@ -731,30 +716,40 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     setShowValidation(true);
   };
 
-  // Background image upload handler (Uploading properly to R2 instead of heavy Base64 local state)
+  // Upload the user-selected background through the shared, format-preserving R2 path.
   const handleBgUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const controller = new AbortController();
+    bgUploadControllerRef.current = controller;
     try {
-      // Compress the image before uploading to avoid huge storage costs
-      const { compressImage } = await import('./Utils/imageCompressor');
-      const compressedFile = await compressImage(file, 2048, 2048, 0.85);
-      
-      const metadata = await uploadService.uploadTemplate(
-        compressedFile,
+      setBgUploadDetails('');
+      setBgUploadProgress(0);
+      const { metadata, uploadedFile } = await uploadPosterBackground(file, {
         festivalId,
         tenantId,
-        'background',
-        'jpg',
-        () => {} // progress
-      );
-      
+        templateWidth: activeTemplate?.width || canvasW,
+        templateHeight: activeTemplate?.height || canvasH,
+        backgroundScale: activeTemplate?.background_transform?.scale,
+        signal: controller.signal,
+        onPhase: setBgUploadPhase,
+        onPrepared: (preparedFile) => setBgUploadDetails(
+          `${file.name} · ${formatBackgroundSize(file.size)} → ${formatBackgroundSize(preparedFile.size)}`,
+        ),
+        onProgress: setBgUploadProgress,
+      });
       useTemplateStore.getState().updateTemplateMeta({ background_url: `r2://${metadata.object_key}` });
+      setBgUploadDetails(`${file.name} · ${formatBackgroundSize(file.size)} → ${formatBackgroundSize(uploadedFile.size)} uploaded`);
     } catch (err) {
       console.error('Top bar BG upload failed:', err);
-      alert('Failed to upload background image');
+      alert(err instanceof Error ? err.message : 'Failed to upload background image. Retry after checking your connection.');
+    } finally {
+      if (bgUploadControllerRef.current === controller) bgUploadControllerRef.current = null;
+      setBgUploadPhase(null);
+      setBgUploadProgress(null);
+      e.target.value = '';
     }
-  }, [festivalId, tenantId]);
+  }, [activeTemplate?.background_transform?.scale, activeTemplate?.height, activeTemplate?.width, canvasH, canvasW, festivalId, tenantId]);
 
   // Layer quick actions
   const handleDuplicateLayer = () => {
@@ -784,7 +779,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       scaleY: 1,
       opacity: 1,
       fontSize: 32,
-      fontFamily: 'Poppins',
+      fontFamily: 'Outfit',
       fontWeight: 600,
       fill: '#000000',
       align: 'left',
@@ -813,7 +808,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       text: '{event_name_primary}',
       x: cx - 440, y: cy - 100, width: 880, height: 90,
       rotation: 0, scaleX: 1, scaleY: 1, opacity: 1,
-      fontSize: 52, fontFamily: 'Poppins', fontWeight: 900,
+      fontSize: 52, fontFamily: 'Outfit', fontWeight: 900,
       fill: '#000000', align: 'center', lineHeight: 1.1, letterSpacing: 1,
       overflowMode: 'auto-shrink', maxLines: 2,
       zIndex: maxZ, isVisible: true, isLocked: false, lockProfile: 'editable',
@@ -825,7 +820,7 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
       text: '{event_name_secondary}',
       x: cx - 440, y: cy + 4, width: 880, height: 64,
       rotation: 0, scaleX: 1, scaleY: 1, opacity: 1,
-      fontSize: 32, fontFamily: 'Poppins', fontWeight: 400,
+      fontSize: 32, fontFamily: 'Outfit', fontWeight: 400,
       fill: '#333333', align: 'center', lineHeight: 1.2, letterSpacing: 0,
       overflowMode: 'auto-shrink', maxLines: 1,
       zIndex: maxZ + 1, isVisible: true, isLocked: false, lockProfile: 'editable',
@@ -896,14 +891,14 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
     }
   }, [festivalId, tenantId, posterCustomFontReferences]);
 
-  const handleCapture = useCallback(async (captureFunc: (ratio?: number) => string) => {
+  const handleCapture = useCallback(async (captureFunc: (ratio?: number) => Promise<Blob>) => {
     const context = generationContext;
     if (!context || processedGenerationIdsRef.current.has(context.operationId)) return;
     processedGenerationIdsRef.current.add(context.operationId);
     let blob: Blob | null = null;
     let savedLocally = false;
     try {
-      blob = dataUrlToBlob(captureFunc());
+      blob = await captureFunc();
       const dimensions = await measurePosterBlob(blob);
       const record = createPendingPosterDelivery({
         operationId: context.operationId,
@@ -1135,9 +1130,10 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
             </span>
             {/* Template selector has been moved to the Templates Panel in the Right Control Dock */}
             {/* Change Background Button replacing the old status pill */}
-            <input type="file" ref={bgInputRef} style={{ display: 'none' }} onChange={handleBgUpload} accept="image/*" />
+            <input type="file" ref={bgInputRef} style={{ display: 'none' }} onChange={handleBgUpload} accept="image/jpeg,image/png,image/webp" />
             <button
-              onClick={() => bgInputRef.current?.click()}
+              onClick={() => bgUploadPhase === null && bgInputRef.current?.click()}
+              disabled={bgUploadPhase !== null}
               style={{
                 marginLeft: '16px',
                 padding: '4px 12px',
@@ -1156,8 +1152,20 @@ export default function PosterStudio({ festivalId, tenantId }: PosterStudioProps
               onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
               onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
             >
-              <Image size={14} /> Change {currentResultId ? 'Result' : 'Template'} BG
+              <Image size={14} /> {bgUploadPhase === null
+                ? `Change ${currentResultId ? 'Result' : 'Template'} BG`
+                : bgUploadPhase === 'preparing'
+                  ? 'Preparing image…'
+                  : (bgUploadProgress ?? 0) >= 100 ? 'Finishing upload…' : `Uploading ${bgUploadProgress ?? 0}%`}
             </button>
+            {bgUploadPhase && storageService.providerName === 'r2' && (bgUploadPhase === 'preparing' || (bgUploadProgress ?? 0) < 100) && (
+              <button
+                onClick={() => bgUploadControllerRef.current?.abort()}
+                style={{ padding: '4px 8px', borderRadius: 4, fontSize: 11, backgroundColor: 'transparent', color: coreColor('#94A3B8', 'textSubtle'), border: `1px solid ${coreColor('#334155', 'border')}`, cursor: 'pointer' }}
+                aria-label="Cancel background image upload"
+              >Cancel</button>
+            )}
+            {bgUploadDetails && <span title={bgUploadDetails} style={{ fontSize: 10, color: coreColor('#94A3B8', 'textSubtle'), maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bgUploadDetails}</span>}
             {currentResultId && (
                <button
                  onClick={async () => {

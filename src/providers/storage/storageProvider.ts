@@ -23,6 +23,8 @@ export interface StorageUploadInput {
   contentType: string;
   visibility: Visibility;
   onProgress?: (progress: number) => void;
+  /** Optional cancellation for storage providers that support abortable uploads. */
+  signal?: AbortSignal;
 }
 
 export interface VerifiedStorageObject {

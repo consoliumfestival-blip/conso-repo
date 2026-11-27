@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRankVariables, fingerprintOfficialResults, resolveOfficialResultNumber } from '../resultGroupRules';
+import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, resolveOfficialResultNumber } from '../resultGroupRules';
+import { resolveTemplateVariables } from '../../Utils/resolver';
 
 test('uses the stored official number instead of the group display order', () => {
   const result = resolveOfficialResultNumber([
@@ -23,6 +24,30 @@ test('reports conflicting stored numbers and returns no arbitrary number', () =>
     { public_result_no: 24 },
     { public_result_no: 25 },
   ]), { value: '', conflict: true });
+});
+
+test('flags zero or negative stored result numbers instead of displaying them as official', () => {
+  assert.deepEqual(resolveOfficialResultNumber([{ public_result_no: 0 }]), { value: '', conflict: true });
+  assert.deepEqual(resolveOfficialResultNumber([{ public_result_no: -1 }]), { value: '', conflict: true });
+});
+
+test('labels missing or conflicting public numbers instead of rendering a misleading blank number', () => {
+  assert.equal(getOfficialResultNumberLabel({ value: '', conflict: false }, true), 'Official number missing');
+  assert.equal(getOfficialResultNumberLabel({ value: '', conflict: true }, true), 'Conflicting official numbers');
+  assert.equal(getOfficialResultNumberLabel({ value: '', conflict: false }, false), 'Not public; number assigned on publish');
+});
+
+test('sorts published competitions by their stored publication-order number, numerically', () => {
+  assert.ok(compareOfficialResultNumbers({ value: '2', conflict: false }, { value: '10', conflict: false }) < 0);
+  assert.ok(compareOfficialResultNumbers({ value: '24', conflict: false }, { value: '', conflict: false }) < 0);
+  assert.ok(compareOfficialResultNumbers({ value: '', conflict: true }, { value: '', conflict: false }) === 0);
+});
+
+test('keeps a missing-number warning in Studio UI and exports an empty result-number token', () => {
+  const officialNumber = resolveOfficialResultNumber([{ public_result_no: null }]);
+  const label = getOfficialResultNumberLabel(officialNumber, false);
+  assert.equal(resolveTemplateVariables('{result_no}', { result_no: officialNumber.value }), '');
+  assert.notEqual(label, resolveTemplateVariables('{result_no}', { result_no: officialNumber.value }));
 });
 
 test('preserves positive-point tied winners and their organisation order while omitting zero-point participants', () => {

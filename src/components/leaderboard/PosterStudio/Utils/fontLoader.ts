@@ -2,7 +2,9 @@ import { useCanvasStore } from '../Stores/canvasStore';
 
 export interface FontDefinition {
   family: string;
-  url: string;
+  url?: string;
+  resolveUrl?: () => Promise<string>;
+  cacheKey?: string;
   category?: string;
   weights?: string;
 }
@@ -73,18 +75,24 @@ export const EN_FONTS: FontDefinition[] = [
 EN_FONTS.unshift({ family: 'Authenia Textured', category: 'Display / Poster', url: '/fonts/Authenia-Textured.ttf' });
 
 const loadedFonts = new Set<string>();
+const loadedFontKeys = new Set<string>();
 const fontLoadCache = new Map<string, Promise<'loaded' | 'failed'>>();
 
+function fontIdentity(font: FontDefinition): string {
+  return `${font.family}|${font.cacheKey || font.url || font.family}|${font.weights || ''}`;
+}
+
 export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed'> {
-  if (loadedFonts.has(font.family)) return 'loaded';
+  const identity = fontIdentity(font);
+  if (loadedFontKeys.has(identity)) return 'loaded';
 
   // Deduplicate simultaneous load calls for same font
-  if (fontLoadCache.has(font.family)) {
-    return fontLoadCache.get(font.family)!;
+  if (fontLoadCache.has(identity)) {
+    return fontLoadCache.get(identity)!;
   }
 
   const promise = new Promise<'loaded' | 'failed'>((resolve) => {
-    const isGoogleFont = font.url && font.url.includes('fonts.gstatic');
+    const isGoogleFont = font.url?.includes('fonts.gstatic');
     
     if (isGoogleFont) {
       try {
@@ -114,7 +122,9 @@ export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed
     } else {
       (async () => {
         try {
-          const fontFace = new FontFace(font.family, `url(${font.url})`);
+          const url = font.resolveUrl ? await font.resolveUrl() : font.url;
+          if (!url) throw new Error('Font source URL is missing.');
+          const fontFace = new FontFace(font.family, `url(${url})`);
           await fontFace.load();
           (document.fonts as any).add(fontFace);
           loadedFonts.add(font.family);
@@ -128,8 +138,11 @@ export async function loadFont(font: FontDefinition): Promise<'loaded' | 'failed
     }
   });
 
-  fontLoadCache.set(font.family, promise);
-  promise.finally(() => fontLoadCache.delete(font.family));
+  fontLoadCache.set(identity, promise);
+  promise.then((status) => {
+    if (status === 'loaded') loadedFontKeys.add(identity);
+    fontLoadCache.delete(identity);
+  });
   return promise;
 }
 

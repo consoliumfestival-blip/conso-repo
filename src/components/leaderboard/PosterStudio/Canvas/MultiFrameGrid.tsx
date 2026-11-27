@@ -3,13 +3,13 @@ import { useWindowDimensions } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTemplateStore, BatchFrameItem } from '../Stores/templateStore';
 import { useLayerStore } from '../Stores/layerStore';
-import { dataUrlToBlob } from '../Utils/generatedAssetSaver';
 import OffscreenRenderer from './OffscreenRenderer';
 import { useAuthStore } from '../../../../core/store/authStore';
 import type { PosterAssetReference, PosterDeliveryScope, PosterDesignSnapshot } from '../Database/posterDesignSnapshot';
 import { savePendingPosterDelivery } from '../Database/posterDeliveryRepository';
 import { createPosterOperationId, runPosterDelivery } from '../Services/posterDeliveryService';
 import { createPendingPosterDelivery, createPosterDesignSnapshot, measurePosterBlob } from '../Services/posterDeliveryFactory';
+import { getOfficialResultNumberLabel } from '../Results/resultGroupRules';
 
 interface MultiFrameGridProps {
   festivalId: string;
@@ -17,13 +17,26 @@ interface MultiFrameGridProps {
   customFontReferences: PosterAssetReference[];
 }
 
-type FrameRunStatus = 'idle' | 'rendering' | 'published' | 'draft' | 'pending' | 'error';
+type FrameRunStatus = 'idle' | 'rendering' | 'uploading' | 'published' | 'draft' | 'pending' | 'error';
+
+const DEFAULT_DELIVERY_WORKERS = 2;
+
+function getDeliveryWorkerLimit(): number {
+  if (typeof navigator === 'undefined') return DEFAULT_DELIVERY_WORKERS;
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return typeof deviceMemory === 'number' && deviceMemory <= 4 ? 1 : DEFAULT_DELIVERY_WORKERS;
+}
 
 interface BatchRunFrame {
   frame: BatchFrameItem;
   operationId: string;
   snapshot: PosterDesignSnapshot;
   backgroundUrl: string;
+}
+
+interface PendingDelivery {
+  runFrame: BatchRunFrame;
+  ownerId: string;
 }
 
 export default function MultiFrameGrid({ festivalId, tenantId, customFontReferences }: MultiFrameGridProps) {
@@ -56,6 +69,97 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
 
   const processingIndexRef = useRef<number | null>(null);
   const batchCountsRef = useRef({ published: 0, draft: 0, pending: 0, failed: 0 });
+  const uploadQueueRef = useRef<PendingDelivery[]>([]);
+  const activeUploadCountRef = useRef(0);
+  const renderQueueCompleteRef = useRef(false);
+  const batchFinalizedRef = useRef(false);
+
+  const finalizeBatchWhenIdle = useCallback(() => {
+    if (batchFinalizedRef.current || !renderQueueCompleteRef.current || uploadQueueRef.current.length > 0 || activeUploadCountRef.current > 0) return;
+    batchFinalizedRef.current = true;
+    setIsBatchRunning(false);
+    setActiveExportIndex(null);
+    setBatchRun(null);
+    processingIndexRef.current = null;
+    const auth = useAuthStore.getState();
+    if (auth.tenant_id === tenantId || auth.is_superadmin === true) {
+      queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
+      bumpAssetsRefreshTick();
+    }
+    const { published, draft, pending, failed } = batchCountsRef.current;
+    setBatchSummary(
+      `Completed: ${published} published, ${draft} draft, ${pending} saved locally for upload retry${failed > 0 ? `, ${failed} not saved` : ''}.`
+    );
+  }, [bumpAssetsRefreshTick, festivalId, queryClient, tenantId]);
+
+  const pumpUploadQueue = useCallback(() => {
+    while (activeUploadCountRef.current < getDeliveryWorkerLimit() && uploadQueueRef.current.length > 0) {
+      const job = uploadQueueRef.current.shift()!;
+      activeUploadCountRef.current += 1;
+      const { runFrame } = job;
+      const scopeIsActive = () => {
+        const auth = useAuthStore.getState();
+        return auth.user?.id === runFrame.snapshot.userId
+          && (auth.tenant_id === runFrame.snapshot.tenantId || auth.is_superadmin === true)
+          && festivalId === runFrame.snapshot.festivalId
+          && tenantId === runFrame.snapshot.tenantId;
+      };
+      const markPending = (message: string) => {
+        batchCountsRef.current.pending += 1;
+        setFrameStatuses((previous) => ({ ...previous, [runFrame.frame.itemId]: 'pending' }));
+        setFrameErrors((previous) => ({ ...previous, [runFrame.frame.itemId]: message }));
+      };
+      if (!scopeIsActive()) {
+        markPending('Saved on this device; delivery paused after the active account or festival changed.');
+        activeUploadCountRef.current -= 1;
+        continue;
+      }
+      setFrameStatuses((previous) => ({ ...previous, [runFrame.frame.itemId]: 'uploading' }));
+      let outcomeHandled = false;
+      void runPosterDelivery(job.runFrame.operationId, job.runFrame.snapshot, job.ownerId, {
+        isScopeActive: (scope) => {
+          const auth = useAuthStore.getState();
+          return auth.user?.id === scope.userId
+            && (auth.tenant_id === scope.tenantId || auth.is_superadmin === true)
+            && festivalId === scope.festivalId
+            && tenantId === scope.tenantId;
+        },
+      }).then((outcome) => {
+        if (!scopeIsActive()) {
+          markPending('Saved on this device; delivery paused after the active account or festival changed.');
+          outcomeHandled = true;
+          return;
+        }
+        if (outcome.status === 'synced') {
+          const visibility = outcome.result.visibilityStatus === 'published' ? 'published' : 'draft';
+          if (visibility === 'published') batchCountsRef.current.published += 1;
+          else batchCountsRef.current.draft += 1;
+          setFrameStatuses((previous) => ({ ...previous, [runFrame.frame.itemId]: visibility }));
+          outcomeHandled = true;
+        } else {
+          markPending(outcome.status === 'failed'
+            ? `Saved on this device; upload pending. ${outcome.error}`
+            : 'Saved on this device; upload pending.');
+          outcomeHandled = true;
+        }
+      }).catch((error) => {
+        markPending(scopeIsActive()
+          ? `Saved on this device; upload pending. ${error instanceof Error ? error.message : 'Delivery failed.'}`
+          : 'Saved on this device; delivery paused after the active account or festival changed.');
+        outcomeHandled = true;
+      }).finally(() => {
+        if (!outcomeHandled) markPending('Saved on this device; upload pending.');
+        activeUploadCountRef.current -= 1;
+        pumpUploadQueue();
+        finalizeBatchWhenIdle();
+      });
+    }
+  }, [festivalId, finalizeBatchWhenIdle, tenantId]);
+
+  const enqueueDelivery = useCallback((runFrame: BatchRunFrame, ownerId: string) => {
+    uploadQueueRef.current.push({ runFrame, ownerId });
+    pumpUploadQueue();
+  }, [pumpUploadQueue]);
 
   const canvasW = activeTemplate?.width || 1080;
   const canvasH = activeTemplate?.height || 1080;
@@ -117,6 +221,10 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
       setFrameErrors({});
       setDownloadRecoveries({});
       processingIndexRef.current = null;
+      uploadQueueRef.current = [];
+      activeUploadCountRef.current = 0;
+      renderQueueCompleteRef.current = false;
+      batchFinalizedRef.current = false;
       setIsBatchRunning(true);
       setActiveExportIndex(0);
     } catch (error) {
@@ -125,7 +233,7 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
   };
 
   const handleBatchCapture = useCallback(
-    async (captureFunc: (ratio?: number) => string) => {
+    async (captureFunc: (ratio?: number) => Promise<Blob>) => {
       if (activeExportIndex === null || !activeTemplate || !batchRun) return;
       if (processingIndexRef.current === activeExportIndex) return;
       processingIndexRef.current = activeExportIndex;
@@ -149,7 +257,7 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
       let blob: Blob | null = null;
       let savedLocally = false;
       try {
-        blob = dataUrlToBlob(captureFunc());
+        blob = await captureFunc();
         const dimensions = await measurePosterBlob(blob);
         const record = createPendingPosterDelivery({
           operationId: runFrame.operationId,
@@ -161,52 +269,20 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
         await savePendingPosterDelivery(record);
         savedLocally = true;
         if (!isRunScopeActive()) {
-          setIsBatchRunning(false);
-          setActiveExportIndex(null);
-          setBatchRun(null);
-          return;
-        }
-        const outcome = await runPosterDelivery(
-          runFrame.operationId,
-          runFrame.snapshot,
-          batchRun.ownerId,
-          {
-            isScopeActive: (scope) => {
-              const auth = useAuthStore.getState();
-              return auth.user?.id === scope.userId
-                && (auth.tenant_id === scope.tenantId || auth.is_superadmin === true)
-                && festivalId === scope.festivalId
-                && tenantId === scope.tenantId;
-            },
-          },
-        );
-        if (!isRunScopeActive()) {
-          setIsBatchRunning(false);
-          setActiveExportIndex(null);
-          setBatchRun(null);
-          return;
-        }
-
-        if (outcome.status === 'synced') {
-          const frameVisibility = outcome.result.visibilityStatus === 'published' ? 'published' : 'draft';
-          if (frameVisibility === 'published') batchCountsRef.current.published++;
-          else batchCountsRef.current.draft++;
-          setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: frameVisibility }));
-        } else {
           batchCountsRef.current.pending++;
-          setFrameStatuses((prev) => ({ ...prev, [frame.itemId]: 'pending' }));
-          setFrameErrors((prev) => ({
-            ...prev,
-            [frame.itemId]: outcome.status === 'failed'
-              ? `Saved on this device; upload pending. ${outcome.error}`
-              : 'Saved on this device; upload pending.',
-          }));
+          setFrameStatuses((previous) => ({ ...previous, [frame.itemId]: 'pending' }));
+          setFrameErrors((previous) => ({ ...previous, [frame.itemId]: 'Saved on this device; delivery paused after the active account or festival changed.' }));
+          renderQueueCompleteRef.current = true;
+          setActiveExportIndex(null);
+          finalizeBatchWhenIdle();
+          return;
         }
+        enqueueDelivery(runFrame, batchRun.ownerId);
       } catch (error) {
         if (!isRunScopeActive()) {
-          setIsBatchRunning(false);
+          renderQueueCompleteRef.current = true;
           setActiveExportIndex(null);
-          setBatchRun(null);
+          finalizeBatchWhenIdle();
           return;
         }
         if (savedLocally) batchCountsRef.current.pending++;
@@ -233,21 +309,13 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
         setFrameStatuses((prev) => ({ ...prev, [nextFrame.itemId]: 'rendering' }));
         setActiveExportIndex(nextIndex);
       } else {
-        setIsBatchRunning(false);
+        renderQueueCompleteRef.current = true;
         setActiveExportIndex(null);
-        setBatchRun(null);
         processingIndexRef.current = null;
-        if (isRunScopeActive()) {
-          queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
-          bumpAssetsRefreshTick();
-        }
-        const { published, draft, pending, failed } = batchCountsRef.current;
-        setBatchSummary(
-          `Completed: ${published} published, ${draft} draft, ${pending} saved locally for upload retry${failed > 0 ? `, ${failed} not saved` : ''}.`
-        );
+        finalizeBatchWhenIdle();
       }
     },
-    [activeExportIndex, activeTemplate, batchRun, festivalId, tenantId, queryClient, bumpAssetsRefreshTick]
+    [activeExportIndex, activeTemplate, batchRun, enqueueDelivery, finalizeBatchWhenIdle, festivalId, tenantId]
   );
 
   const activeRunFrame = isBatchRunning && activeExportIndex !== null
@@ -263,10 +331,10 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
       && festivalId === activeRunFrame.snapshot.festivalId
       && tenantId === activeRunFrame.snapshot.tenantId;
     if (!scopeIsActive) {
-      setIsBatchRunning(false);
+      renderQueueCompleteRef.current = true;
       setActiveExportIndex(null);
-      setBatchRun(null);
       processingIndexRef.current = null;
+      finalizeBatchWhenIdle();
       return;
     }
     batchCountsRef.current.failed++;
@@ -284,17 +352,11 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
       return;
     }
 
-    setIsBatchRunning(false);
+    renderQueueCompleteRef.current = true;
     setActiveExportIndex(null);
-    setBatchRun(null);
     processingIndexRef.current = null;
-    if (scopeIsActive) {
-      queryClient.invalidateQueries({ queryKey: ['generated-assets', festivalId] });
-      bumpAssetsRefreshTick();
-    }
-    const { published, draft, pending, failed } = batchCountsRef.current;
-    setBatchSummary(`Completed: ${published} published, ${draft} draft, ${pending} saved locally for upload retry${failed > 0 ? `, ${failed} not saved` : ''}.`);
-  }, [activeExportIndex, activeRunFrame, batchRun, bumpAssetsRefreshTick, festivalId, queryClient, tenantId]);
+    finalizeBatchWhenIdle();
+  }, [activeExportIndex, activeRunFrame, batchRun, finalizeBatchWhenIdle, festivalId, tenantId]);
 
   return (
     <div style={styles.container}>
@@ -360,10 +422,11 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
                       {frame.resultNoConflict ? (
                         <span style={styles.frameNoConflict} role="alert">Conflicting official numbers</span>
                       ) : (
-                        <span style={styles.frameNo}>
-                          {frame.variables.result_no || frame.resultNo
-                            ? `#${frame.variables.result_no || frame.resultNo}`
-                            : 'Pending number'}
+                        <span style={!frame.publicVisible || !frame.resultNo ? styles.frameNoWarning : styles.frameNo} role={!frame.publicVisible || !frame.resultNo ? 'status' : undefined}>
+                          {getOfficialResultNumberLabel(
+                            { value: frame.resultNo, conflict: false },
+                            frame.publicVisible,
+                          )}
                         </span>
                       )}
                       <span
@@ -386,6 +449,8 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
                                 ? 'var(--ps-accent-soft)'
                                 : status === 'pending'
                                 ? 'var(--ps-warning-soft)'
+                                : status === 'uploading'
+                                ? 'var(--ps-accent-soft)'
                                 : 'var(--ps-success-soft)',
                             color:
                               status === 'error'
@@ -394,6 +459,8 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
                                 ? 'var(--ps-accent)'
                                 : status === 'pending'
                                 ? 'var(--ps-warning)'
+                                : status === 'uploading'
+                                ? 'var(--ps-accent)'
                                 : 'var(--ps-success)',
                           }}
                         >
@@ -403,6 +470,8 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
                             ? '✓ Published'
                             : status === 'draft'
                             ? '✓ Draft Saved'
+                            : status === 'uploading'
+                            ? 'Uploading…'
                             : status === 'pending'
                             ? 'Saved locally · upload pending'
                             : '✕ Error'}
@@ -702,6 +771,14 @@ const styles: Record<string, React.CSSProperties> = {
   frameNoConflict: {
     color: 'var(--ps-danger)',
     backgroundColor: 'var(--ps-danger-soft)',
+    fontSize: 10,
+    fontWeight: 700,
+    padding: '3px 6px',
+    borderRadius: 4,
+  },
+  frameNoWarning: {
+    color: 'var(--ps-warning)',
+    backgroundColor: 'var(--ps-warning-soft)',
     fontSize: 10,
     fontWeight: 700,
     padding: '3px 6px',

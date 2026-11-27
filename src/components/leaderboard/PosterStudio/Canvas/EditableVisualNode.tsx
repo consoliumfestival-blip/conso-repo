@@ -29,7 +29,7 @@ export function EditableVisualNode({
 }: EditableVisualNodeProps) {
   const nodeRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
-  const resolvedByHook = useResolvedImageUrl(layer.type === 'image' ? layer.src : undefined);
+  const resolvedByHook = useResolvedImageUrl(!resolvedSource && layer.type === 'image' ? layer.src : undefined);
   const source = resolvedSource || resolvedByHook;
   const [image, imageStatus] = useImage(source || '', 'anonymous');
   const canEdit = interactive && !layer.isLocked && layer.lockProfile !== 'fully-locked' && layer.lockProfile !== 'semi-locked';

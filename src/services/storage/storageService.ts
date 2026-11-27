@@ -38,8 +38,16 @@ export const storageService = {
     contentType: string,
     visibility: Visibility,
     onProgress?: (progress: number) => void,
+    signal?: AbortSignal,
   ) {
-    return storageProvider.upload({ file, objectKey, contentType, visibility, onProgress });
+    return storageProvider.upload({
+      file,
+      objectKey,
+      contentType,
+      visibility,
+      onProgress,
+      signal: storageProvider.name === 'r2' ? signal : undefined,
+    });
   },
 
   async delete(objectKey: string): Promise<void> {

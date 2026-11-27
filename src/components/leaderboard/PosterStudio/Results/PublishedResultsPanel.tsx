@@ -13,7 +13,7 @@ import { festivalCategoryService } from '../../../../services/festivalCategorySe
 import { useTemplateStore, BatchFrameItem, TemplateVariables } from '../Stores/templateStore';
 import { supabase } from '../../../../core/config/supabase';
 import { CATEGORIES, SAHITHYOLSAV_CATEGORY_ALIASES } from '../../../../constants/categories';
-import { buildRankVariables, fingerprintOfficialResults, isPosterEligibleWinner, resolveOfficialResultNumber } from './resultGroupRules';
+import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, isPosterEligibleWinner, resolveOfficialResultNumber } from './resultGroupRules';
 
 interface PublishedResultsPanelProps {
   festivalId: string;
@@ -146,7 +146,7 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
     load();
   }, [load, assetsRefreshTick]);
 
-  // Group into one CompetitionItemGroup per item_id, with item-level 1, 2, 3... numbering
+  // Group into one CompetitionItemGroup per item_id and use the stored official number.
   const itemGroups = useMemo<CompetitionItemGroup[]>(() => {
     const groupedMap = new Map<string, FestivalResult[]>();
     rawResults.forEach((r) => {
@@ -199,11 +199,15 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
       });
     });
 
-    // Assign item-level sequential result numbers (1, 2, 3...):
-    // Public items first in earliest-publish order (matching item-results.tsx), then non-public items.
+    // Sort cards for browsing; this display order must never become an official result number.
     const publicSorted = tempGroups
       .filter((g) => g.publicVisible)
       .sort((a, b) => {
+        const officialOrder = compareOfficialResultNumbers(
+          resolveOfficialResultNumber(a.results),
+          resolveOfficialResultNumber(b.results),
+        );
+        if (officialOrder !== 0) return officialOrder;
         const cmp = (a.earliestPublishedAt || '9999').localeCompare(b.earliestPublishedAt || '9999');
         return cmp !== 0 ? cmp : a.itemName.localeCompare(b.itemName);
       });
@@ -410,7 +414,24 @@ export default function PublishedResultsPanel({ festivalId, tenantId }: Publishe
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={styles.resultNoBadge}>#{group.resultNo}</span>
+                      <span
+                        style={{
+                          ...styles.resultNoBadge,
+                          ...(group.resultNoConflict || !group.publicVisible || !group.resultNo
+                            ? styles.resultNoWarningBadge
+                            : {}),
+                        }}
+                        title={getOfficialResultNumberLabel(
+                          { value: group.resultNo, conflict: group.resultNoConflict },
+                          group.publicVisible,
+                        )}
+                        role={group.resultNoConflict || (group.publicVisible && !group.resultNo) ? 'alert' : undefined}
+                      >
+                        {getOfficialResultNumberLabel(
+                          { value: group.resultNo, conflict: group.resultNoConflict },
+                          group.publicVisible,
+                        )}
+                      </span>
                       <span
                         style={{
                           ...styles.visBadge,
@@ -669,6 +690,14 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(56, 189, 248, 0.12)',
     padding: '2px 6px',
     borderRadius: 4,
+    whiteSpace: 'nowrap',
+  },
+  resultNoWarningBadge: {
+    color: coreColor('#fbbf24', 'warning'),
+    backgroundColor: 'rgba(251, 191, 36, 0.12)',
+    maxWidth: 140,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   visBadge: {
     fontSize: 9,

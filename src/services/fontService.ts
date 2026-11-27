@@ -32,17 +32,22 @@ export const fontService = {
       onProgress
     );
 
-    // 2. Append our custom FontMetadata manifest to the DB record
-    // We update the record that was just created by uploadAsset
-    if (fileMetadata.id) {
-      const { error } = await supabase
-        .from('file_metadata')
-        .update({ metadata: metadata })
-        .eq('id', fileMetadata.id);
+    // 2. Attach the manifest required by getFonts() and the Studio font picker.
+    // Do not report success when the object exists but is unusable in the library.
+    if (!fileMetadata.id) {
+      throw new Error('Font file uploaded, but its library record could not be registered.');
+    }
 
-      if (error) {
-        console.error('Failed to attach font manifest metadata:', error);
-      }
+    const { data: registeredFont, error } = await supabase
+      .from('file_metadata')
+      .update({ metadata })
+      .eq('id', fileMetadata.id)
+      .select('id')
+      .maybeSingle();
+
+    if (error || !registeredFont) {
+      console.error('Failed to attach font manifest metadata:', error);
+      throw new Error('Font file uploaded, but its library registration failed. Check the font list before retrying.');
     }
 
     return fileMetadata;

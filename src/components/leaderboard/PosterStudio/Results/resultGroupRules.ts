@@ -27,14 +27,37 @@ export function isPosterEligibleWinner(row: Pick<PosterResultRow, 'rank' | 'poin
 export function resolveOfficialResultNumber(
   rows: readonly Pick<PosterResultRow, 'public_result_no'>[],
 ): OfficialResultNumber {
+  const assignedValues = rows
+    .map((row) => row.public_result_no)
+    .filter((number): number is number => number !== null && number !== undefined);
+  const hasInvalidNumber = assignedValues.some((number) => !Number.isSafeInteger(number) || number < 1);
   const numbers = [...new Set(
-    rows
-      .map((row) => row.public_result_no)
-      .filter((number): number is number => number !== null && number !== undefined),
+    assignedValues.filter((number) => Number.isSafeInteger(number) && number > 0),
   )];
 
-  if (numbers.length > 1) return { value: '', conflict: true };
+  if (hasInvalidNumber || numbers.length > 1) return { value: '', conflict: true };
   return { value: numbers.length === 1 ? String(numbers[0]) : '', conflict: false };
+}
+
+export function getOfficialResultNumberLabel(
+  officialNumber: OfficialResultNumber,
+  publicVisible: boolean,
+): string {
+  if (officialNumber.conflict) return 'Conflicting official numbers';
+  if (officialNumber.value) return `#${officialNumber.value}`;
+  return publicVisible ? 'Official number missing' : 'Not public; number assigned on publish';
+}
+
+export function compareOfficialResultNumbers(
+  left: OfficialResultNumber,
+  right: OfficialResultNumber,
+): number {
+  const leftValue = !left.conflict && left.value ? Number(left.value) : null;
+  const rightValue = !right.conflict && right.value ? Number(right.value) : null;
+  if (leftValue !== null && rightValue !== null) return leftValue - rightValue;
+  if (leftValue !== null) return -1;
+  if (rightValue !== null) return 1;
+  return 0;
 }
 
 export function buildRankVariables(rows: readonly PosterResultRow[]): Record<string, string> {

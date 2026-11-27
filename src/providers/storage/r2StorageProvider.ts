@@ -112,7 +112,7 @@ export class R2StorageProvider implements StorageProvider, KeyedVerifiedStorageP
       fileSize: input.file.size,
     });
 
-    const uploadResponse = await uploadWithProgress(url, input.file, input.contentType, input.onProgress);
+    const uploadResponse = await uploadWithProgress(url, input.file, input.contentType, input.onProgress, undefined, input.signal);
     const verification = await this.verifyObject(input.objectKey, input.contentType);
     console.info('R2 upload verified', {
       bucket: verification.bucket || this.bucketName,

@@ -26,9 +26,24 @@ export function uploadWithProgress(
   contentType: string,
   onProgress?: (progress: number) => void,
   ifNoneMatch?: string,
+  signal?: AbortSignal,
 ): Promise<UploadResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
+    const cleanup = () => signal?.removeEventListener('abort', abortUpload);
+    const abortUpload = () => xhr.abort();
+    const rejectAborted = () => {
+      const error = new Error('R2 upload was cancelled. Choose the image again to retry.');
+      error.name = 'AbortError';
+      cleanup();
+      reject(error);
+    };
+
+    if (signal?.aborted) {
+      rejectAborted();
+      return;
+    }
+
     xhr.open('PUT', presignedUrl, true);
     xhr.setRequestHeader('Content-Type', contentType);
     if (ifNoneMatch) xhr.setRequestHeader('If-None-Match', ifNoneMatch);
@@ -42,6 +57,7 @@ export function uploadWithProgress(
     }
 
     xhr.onload = () => {
+      cleanup();
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve({
           status: xhr.status,
@@ -55,9 +71,14 @@ export function uploadWithProgress(
       ));
     };
 
-    xhr.onerror = () => reject(new Error(
-      'R2 upload failed due to a network error. Check the R2 bucket CORS policy, presigned PUT permissions, and browser preflight response.',
-    ));
+    xhr.onerror = () => {
+      cleanup();
+      reject(new Error(
+        'R2 upload failed due to a network error. Check the R2 bucket CORS policy, presigned PUT permissions, and browser preflight response.',
+      ));
+    };
+    xhr.onabort = rejectAborted;
+    signal?.addEventListener('abort', abortUpload, { once: true });
     xhr.send(file);
   });
 }

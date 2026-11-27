@@ -40,7 +40,8 @@ export const uploadService = {
     visibility: Visibility,
     extension: string,
     subFolder?: string,
-    onProgress?: (progress: number) => void
+    onProgress?: (progress: number) => void,
+    signal?: AbortSignal,
   ): Promise<FileMetadata> {
     const size = file.size;
     const limit = FILE_LIMITS[assetType] || 10 * 1024 * 1024;
@@ -75,7 +76,7 @@ export const uploadService = {
       objectKey = `festivals/${festivalId}/${assetType}s/${safeFileName}`;
     }
 
-    const uploadResult = await storageService.upload(file, objectKey, contentType, visibility, onProgress);
+    const uploadResult = await storageService.upload(file, objectKey, contentType, visibility, onProgress, signal);
     const isPublic = visibility === 'public';
 
     const metadata: FileMetadata = {
@@ -118,8 +119,8 @@ export const uploadService = {
     await storageService.delete(objectKey);
   },
 
-  async uploadTemplate(file: Blob, festivalId: string, tenantId: string, templateType: string, extension: string, onProgress?: (progress: number) => void) {
-    return this.uploadAsset(file, 'template', festivalId, tenantId, 'signed', extension, templateType, onProgress);
+  async uploadTemplate(file: Blob, festivalId: string, tenantId: string, templateType: string, extension: string, onProgress?: (progress: number) => void, signal?: AbortSignal) {
+    return this.uploadAsset(file, 'template', festivalId, tenantId, 'signed', extension, templateType, onProgress, signal);
   },
 
   async uploadExport(file: Blob, festivalId: string, tenantId: string, extension: string, onProgress?: (progress: number) => void) {

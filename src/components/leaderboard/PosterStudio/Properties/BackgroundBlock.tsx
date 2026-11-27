@@ -1,5 +1,5 @@
 import { coreColor } from '@/constants/coreTheme';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import NumericField from './fields/NumericField';
 import SliderField from './fields/SliderField';
 import { ToggleField } from './fields/SliderField';
@@ -7,8 +7,9 @@ import Accordion from './Accordion';
 import { useTemplateStore, BackgroundTransform } from '../Stores/templateStore';
 import useImage from 'use-image';
 import { useResolvedImageUrl } from '../../../../core/hooks/useResolvedImageUrl';
-import { uploadService } from '../../../../services/storage/uploadService';
+import { storageService } from '../../../../services/storage/storageService';
 import { UploadCloud } from 'lucide-react';
+import { formatBackgroundSize, uploadPosterBackground } from '../Services/backgroundUploadService';
 
 interface BackgroundBlockProps {
   festivalId: string;
@@ -18,6 +19,11 @@ interface BackgroundBlockProps {
 export default function BackgroundBlock({ festivalId, tenantId }: BackgroundBlockProps) {
   const { activeTemplate, updateTemplateMeta } = useTemplateStore();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState<'preparing' | 'uploading' | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadDetails, setUploadDetails] = useState('');
+  const uploadControllerRef = useRef<AbortController | null>(null);
   
   const bgTransform = activeTemplate?.background_transform || { scale: 1, x: 0, y: 0, isDraggable: false };
   const resolvedBgUrl = useResolvedImageUrl(activeTemplate?.background_url);
@@ -39,25 +45,38 @@ export default function BackgroundBlock({ festivalId, tenantId }: BackgroundBloc
     input.onchange = async (e: any) => {
       const file: File = e.target.files[0];
       if (!file) return;
+      const controller = new AbortController();
+      uploadControllerRef.current = controller;
       try {
         setIsUploading(true);
-        // Dynamically import to avoid top-level issues if needed, or import at top
-        const { compressImage } = await import('../Utils/imageCompressor');
-        const compressedFile = await compressImage(file, 2048, 2048, 0.85);
-        
-        const metadata = await uploadService.uploadTemplate(
-          compressedFile,
+        setUploadDetails('');
+        setUploadProgress(0);
+        setUploadError('');
+        const { metadata, uploadedFile } = await uploadPosterBackground(file, {
           festivalId,
           tenantId,
-          'background',
-          'jpg',
-          () => {} // progress
-        );
+          templateWidth: activeTemplate?.width || 1080,
+          templateHeight: activeTemplate?.height || 1080,
+          backgroundScale: activeTemplate?.background_transform?.scale,
+          signal: controller.signal,
+          onPhase: setUploadPhase,
+          onPrepared: (preparedFile) => setUploadDetails(
+            `${file.name} · ${formatBackgroundSize(file.size)} → ${formatBackgroundSize(preparedFile.size)}`,
+          ),
+          onProgress: setUploadProgress,
+        });
         updateTemplateMeta({ background_url: `r2://${metadata.object_key}` });
+        setUploadDetails(`${file.name} · ${formatBackgroundSize(file.size)} → ${formatBackgroundSize(uploadedFile.size)} uploaded`);
       } catch (err) {
-        console.error("Upload failed", err);
+        const message = err instanceof Error ? err.message : 'Background upload failed. Retry after checking your connection.';
+        setUploadError(message);
+        console.error('Background upload failed:', err);
       } finally {
+        if (uploadControllerRef.current === controller) uploadControllerRef.current = null;
         setIsUploading(false);
+        setUploadPhase(null);
+        setUploadProgress(null);
+        input.value = '';
       }
     };
     input.click();
@@ -91,10 +110,25 @@ export default function BackgroundBlock({ festivalId, tenantId }: BackgroundBloc
   };
 
   const UploadButton = () => (
-    <button onClick={handleUpload} disabled={isUploading} style={styles.uploadBtn}>
-      <UploadCloud size={16} />
-      {isUploading ? 'Uploading...' : 'Change Background'}
-    </button>
+    <div>
+      <button onClick={handleUpload} disabled={isUploading} style={styles.uploadBtn}>
+        <UploadCloud size={16} />
+        {isUploading
+          ? uploadPhase === 'preparing'
+            ? 'Preparing image…'
+            : (uploadProgress ?? 0) >= 100 ? 'Finishing upload…' : `Uploading${uploadProgress === null ? '…' : ` ${uploadProgress}%`}`
+          : 'Change Background'}
+      </button>
+      {uploadDetails && <p style={styles.uploadDetails} title={uploadDetails}>{uploadDetails}</p>}
+      {uploadError && <p role="alert" style={styles.uploadError}>{uploadError}</p>}
+      {isUploading && storageService.providerName === 'r2' && (uploadPhase === 'preparing' || (uploadProgress ?? 0) < 100) && (
+        <button
+          onClick={() => uploadControllerRef.current?.abort()}
+          style={styles.cancelUploadBtn}
+          aria-label="Cancel background image upload"
+        >Cancel upload</button>
+      )}
+    </div>
   );
 
   if (!activeTemplate?.background_url) {
@@ -175,5 +209,8 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: 'pointer',
     transition: 'background 0.2s',
-  }
+  },
+  uploadError: { color: coreColor('#b91c1c', 'danger'), fontSize: 11, margin: '6px 0 0', lineHeight: 1.4 },
+  uploadDetails: { color: coreColor('#64748b', 'textMuted'), fontSize: 10, margin: '5px 0 0', lineHeight: 1.3, overflowWrap: 'anywhere' },
+  cancelUploadBtn: { marginTop: 6, padding: '4px 8px', background: 'transparent', color: coreColor('#64748b', 'textMuted'), border: `1px solid ${coreColor('#334155', 'border')}`, borderRadius: 5, fontSize: 10, cursor: 'pointer' },
 };

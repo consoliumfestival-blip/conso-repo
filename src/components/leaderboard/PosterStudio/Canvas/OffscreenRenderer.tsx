@@ -10,6 +10,7 @@ import { getLayerGroupIssues, getRenderableLayers } from '../Utils/layerTree';
 import type { LayerData } from '../Stores/layerStore';
 import type { PosterAssetReference } from '../Database/posterDesignSnapshot';
 import { EditableVisualNode } from './EditableVisualNode';
+import { dataUrlToBlob } from '../Utils/generatedAssetSaver';
 
 const READINESS_TIMEOUT_MS = 30_000;
 
@@ -51,53 +52,15 @@ function BackgroundImage({ src, width, height, transform, assetId, onAssetStatus
   ) : null;
 }
 
-function decodeImageSource(source: string, label: string, signal: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const image = new window.Image();
-    const cleanup = () => {
-      image.onload = null;
-      image.onerror = null;
-      signal.removeEventListener('abort', onAbort);
-    };
-    const onAbort = () => {
-      cleanup();
-      image.src = '';
-      reject(new DOMException('Image preparation was cancelled.', 'AbortError'));
-    };
-    image.crossOrigin = 'anonymous';
-    image.onload = async () => {
-      try {
-        if (typeof image.decode === 'function') await image.decode();
-        if (image.naturalWidth < 1 || image.naturalHeight < 1) throw new Error('Image has no decoded pixels.');
-        cleanup();
-        resolve();
-      } catch (error) {
-        cleanup();
-        reject(new Error(`${label} could not be decoded: ${error instanceof Error ? error.message : 'unknown image error'}`));
-      }
-    };
-    image.onerror = () => {
-      cleanup();
-      reject(new Error(`${label} could not be loaded. Check the connection and media access, then retry.`));
-    };
-    signal.addEventListener('abort', onAbort, { once: true });
-    if (signal.aborted) {
-      onAbort();
-      return;
-    }
-    image.src = source;
-  });
-}
-
-async function withReadinessTimeout<T>(work: Promise<T>, remainingMs: number): Promise<T> {
-  if (remainingMs <= 0) throw new Error('Poster assets and fonts did not finish loading within 30 seconds. Retry after reconnecting.');
+async function withReadinessTimeout<T>(work: Promise<T>, remainingMs: number, timeoutMessage: string): Promise<T> {
+  if (remainingMs <= 0) throw new Error(timeoutMessage);
   let timeoutId: number | undefined;
   try {
     return await Promise.race([
       work,
       new Promise<T>((_, reject) => {
         timeoutId = window.setTimeout(
-          () => reject(new Error('Poster assets and fonts did not finish loading within 30 seconds. Retry after reconnecting.')),
+          () => reject(new Error(timeoutMessage)),
           remainingMs,
         );
       }),
@@ -133,8 +96,12 @@ async function prepareFonts(layers: readonly LayerData[], variables: Record<stri
   await Promise.all([...fontFamilies].map(async (family) => {
     const customReference = customByFamily.get(family);
     if (customReference) {
-      const url = await resolveFontUrl(customReference);
-      const status = await loadFont({ family, url, category: 'Custom Fonts' });
+      const status = await loadFont({
+        family,
+        resolveUrl: () => resolveFontUrl(customReference),
+        cacheKey: customReference.assetKey,
+        category: 'Custom Fonts',
+      });
       if (status !== 'loaded') throw new Error(`Font "${family}" could not be loaded. Reconnect to media storage and retry.`);
       return;
     }
@@ -146,23 +113,33 @@ async function prepareFonts(layers: readonly LayerData[], variables: Record<stri
     }
   }));
 
-  await document.fonts.ready;
-  const fontRequests = textLayers.map((layer) => {
+  const fontRequests = new Map<string, { css: string; text: string }>();
+  textLayers.forEach((layer) => {
     const family = layer.fontFamily || 'Poppins';
     const weight = layer.fontWeight || 600;
     const size = layer.fontSize || 24;
-    return document.fonts.load(`${weight} ${size}px "${family}"`, resolveLayerText(layer, variables));
+    const key = `${weight}|${family}`;
+    const current = fontRequests.get(key);
+    fontRequests.set(key, {
+      css: `${weight} ${size}px "${family}"`,
+      text: `${current?.text || ''}${resolveLayerText(layer, variables)}`,
+    });
   });
   if (/[\u0D00-\u0D7F]/.test(resolvedText)) {
-    fontRequests.push(document.fonts.load('400 24px "Noto Sans Malayalam"', resolvedText));
+    const key = '400|Noto Sans Malayalam';
+    const current = fontRequests.get(key);
+    fontRequests.set(key, {
+      css: '400 24px "Noto Sans Malayalam"',
+      text: `${current?.text || ''}${resolvedText}`,
+    });
   }
-  await Promise.all(fontRequests);
+  await Promise.all([...fontRequests.values()].map(({ css, text }) => document.fonts.load(css, text)));
 }
 
 export interface OffscreenRendererProps {
   layers: any[];
   variables: Record<string, string | undefined>;
-  onReady?: (captureFunc: (ratio?: number) => string) => void;
+  onReady?: (captureFunc: (ratio?: number) => Promise<Blob>) => void;
   onError?: (error: Error) => void;
   onStatus?: (status: RenderStatus, message?: string) => void;
   width?: number;
@@ -263,7 +240,6 @@ export default function OffscreenRenderer({
     setAssetState({ signature: renderSignature, status: 'preparing', sources: {}, error: '' });
     onStatusRef.current?.('preparing');
 
-    const controller = new AbortController();
     const deadline = Date.now() + READINESS_TIMEOUT_MS;
     let cancelled = false;
     const prepare = async () => {
@@ -274,16 +250,19 @@ export default function OffscreenRenderer({
         }
         const sources = await withReadinessTimeout(Promise.all(assetSpecs.map(async (asset) => {
           if (!asset.url) throw new Error(`${asset.label} has no source image. Reopen the design and add the missing asset.`);
-          const source = await resolveImageUrl(asset.url);
+          let source: string | null;
+          try {
+            source = (await resolveImageUrl(asset.url)) ?? null;
+          } catch {
+            throw new Error(`${asset.label} URL could not be resolved. Check media storage access and retry.`);
+          }
           if (!source) throw new Error(`${asset.label} could not be resolved. Reconnect to media storage and retry.`);
-          await decodeImageSource(source, asset.label, controller.signal);
           return [asset.id, source] as const;
-        })), deadline - Date.now());
+        })), deadline - Date.now(), 'Poster image URLs did not finish resolving within 30 seconds. Check media storage access and retry.');
         if (cancelled) return;
         setAssetState({ signature: renderSignature, status: 'ready', sources: Object.fromEntries(sources), error: '' });
       } catch (error) {
-        if (cancelled || (error instanceof DOMException && error.name === 'AbortError')) return;
-        controller.abort();
+        if (cancelled) return;
         reportRenderError(error instanceof Error ? error : new Error('Poster assets could not be prepared. Retry the export.'));
       }
     };
@@ -291,7 +270,6 @@ export default function OffscreenRenderer({
     void prepare();
     return () => {
       cancelled = true;
-      controller.abort();
     };
   }, [assetSpecs, groupIssues, renderSignature, reportRenderError]);
 
@@ -304,7 +282,20 @@ export default function OffscreenRenderer({
       reportRenderError(new Error(`${failedAsset?.label || 'Poster image'} failed inside the canvas renderer. Check media access and retry.`));
       return;
     }
-    if (requiredIds.some((id) => renderedAssetStatuses[id] !== 'loaded')) return;
+    const pendingId = requiredIds.find((id) => renderedAssetStatuses[id] !== 'loaded');
+    if (pendingId) {
+      const failedAsset = assetSpecs.find((asset) => asset.id === pendingId);
+      const remainingMs = READINESS_TIMEOUT_MS - (Date.now() - renderStartedAtRef.current);
+      if (remainingMs <= 0) {
+        reportRenderError(new Error(`${failedAsset?.label || 'Poster image'} did not finish loading and decoding within 30 seconds. Check media storage access and retry.`));
+        return;
+      }
+      const timeoutId = window.setTimeout(
+        () => reportRenderError(new Error(`${failedAsset?.label || 'Poster image'} did not finish loading and decoding within 30 seconds. Check media storage access and retry.`)),
+        remainingMs,
+      );
+      return () => window.clearTimeout(timeoutId);
+    }
     if (renderStartedRef.current === renderSignature) return;
     renderStartedRef.current = renderSignature;
 
@@ -312,20 +303,35 @@ export default function OffscreenRenderer({
     const prepare = async () => {
       try {
         const remainingMs = READINESS_TIMEOUT_MS - (Date.now() - renderStartedAtRef.current);
-        await withReadinessTimeout(prepareFonts(renderableLayers, variables, customFontReferences), remainingMs);
+        await withReadinessTimeout(
+          prepareFonts(renderableLayers, variables, customFontReferences),
+          remainingMs,
+          'Poster fonts did not finish loading within 30 seconds. Check the font source and retry.',
+        );
         await new Promise<void>((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve())));
         if (cancelled || mountedSignatureRef.current !== renderSignature) return;
         layerRef.current?.batchDraw();
         await new Promise<void>((resolve) => window.setTimeout(resolve, 30));
         if (cancelled || mountedSignatureRef.current !== renderSignature) return;
 
-        const capture = (ratio?: number) => {
+        const capture = async (ratio?: number): Promise<Blob> => {
           if (!stageRef.current) throw new Error('Poster renderer is no longer available. Reopen the canvas and retry.');
           const maxDim = Math.max(width, height, 1);
           const maxSafeRatio = 4096 / maxDim;
           const requestedRatio = ratio ?? Math.min(2, maxSafeRatio);
           const effectiveRatio = Math.max(Number.EPSILON, Math.min(requestedRatio, maxSafeRatio));
-          return stageRef.current.toDataURL({ pixelRatio: effectiveRatio, mimeType: 'image/jpeg', quality: 0.95 });
+          const canvas = stageRef.current.toCanvas({ pixelRatio: effectiveRatio });
+          if (typeof canvas.toBlob !== 'function') {
+            return dataUrlToBlob(canvas.toDataURL('image/jpeg', 0.95));
+          }
+          const blob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob((value: Blob | null) => {
+              if (value) resolve(value);
+              else reject(new Error('The browser could not encode the poster image. Retry the export.'));
+            }, 'image/jpeg', 0.95);
+          });
+          if (blob.type !== 'image/jpeg') throw new Error('The browser did not produce a JPEG poster image. Retry the export.');
+          return blob;
         };
         if (onReadyRef.current) onReadyRef.current(capture);
         setFullyReadySignature(renderSignature);

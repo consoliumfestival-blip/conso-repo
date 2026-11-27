@@ -11,7 +11,7 @@ import { useFestival } from '@/core/hooks/useFestival';
 import { useExportQueueStore } from '@/services/exportQueueService';
 import { storageService } from '@/services/storage/storageService';
 import { uploadService } from '@/services/storage/uploadService';
-import { uploadMediaFilesInBatches, type BatchMediaProgress } from '@/services/storage/mediaBatchUpload';
+import { uploadMediaFilesInBatches, generateUniqueRenderHash, type BatchMediaProgress } from '@/services/storage/mediaBatchUpload';
 import { useAuthStore } from '@/core/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jsPDF } from 'jspdf';
@@ -232,6 +232,13 @@ export default function MediaCenterPage() {
     return () => Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
   }, [localDeliveries]);
 
+  React.useEffect(() => {
+    if (Platform.OS !== 'web' || !previewUrl || !previewUrl.startsWith('blob:')) return;
+    return () => {
+      try { URL.revokeObjectURL(previewUrl); } catch {}
+    };
+  }, [previewUrl]);
+
   const { data: publishedResultChoices = [] } = useQuery({
     queryKey: ['media-center-result-choices', activeFestival?.id, tenant_id],
     queryFn: async () => {
@@ -357,10 +364,10 @@ export default function MediaCenterPage() {
         queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
         if (result.cancelled) {
           alert(`Upload stopped. ${result.completed} uploaded before cancel.`);
-        } else if (result.failed > 0) {
+        } else if (result.failed > 0 || result.errors.length > 0) {
           alert(`Uploaded ${result.completed} media items (${result.skipped} skipped, ${result.failed} failed).\n${result.errors.slice(0, 3).join('\n')}`);
         }
-        if (!result.cancelled && result.failed === 0) {
+        if (!result.cancelled && result.failed === 0 && result.errors.length === 0) {
           resetUploadModal();
         }
       } catch (err: any) {
@@ -372,7 +379,7 @@ export default function MediaCenterPage() {
       return;
     }
 
-    if (!selectedFile || !uploadEventName.trim()) return;
+    if (!selectedFile || !uploadEventName.trim() || !selectedResultId) return;
     setIsUploading(true);
     setUploadProgress(0);
     try {
@@ -387,7 +394,7 @@ export default function MediaCenterPage() {
         undefined,
         (p) => setUploadProgress(p),
       );
-      const renderHash = `manual_result_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const renderHash = generateUniqueRenderHash('manual_result');
       const { error } = await supabase.from('generated_assets').insert({
         tenant_id,
         festival_id: activeFestival.id,
@@ -440,13 +447,18 @@ export default function MediaCenterPage() {
 
   const handleDeletePoster = async (asset: any) => {
     if (asset.is_local_delivery) return;
-    if (!activeFestival?.id) return;
+    if (!activeFestival?.id || !tenant_id) return;
     const confirmed = confirm(`Delete poster "${asset.event_name}"?`);
     if (!confirmed) return;
     try {
+      const baseQuery = supabase
+        .from('generated_assets')
+        .delete()
+        .eq('festival_id', activeFestival.id)
+        .eq('tenant_id', tenant_id);
       const query = String(asset.render_hash || '').startsWith('_ungrouped_')
-        ? supabase.from('generated_assets').delete().eq('id', asset.id)
-        : supabase.from('generated_assets').delete().eq('render_hash', asset.render_hash);
+        ? baseQuery.eq('id', asset.id)
+        : baseQuery.eq('render_hash', asset.render_hash);
       const { error } = await query;
       if (error) throw error;
       for (const objectKey of (asset.storage_paths || []) as string[]) {
@@ -495,8 +507,21 @@ export default function MediaCenterPage() {
         unit: 'px',
         format: [img.width || 1080, img.height || 1080],
       });
-      const imgFormat = blob.type.includes('png') ? 'PNG' : 'JPEG';
-      pdf.addImage(dataUrl, imgFormat, 0, 0, img.width || 1080, img.height || 1080);
+      let pdfImageData = dataUrl;
+      let imgFormat: 'PNG' | 'JPEG' = blob.type.includes('png') ? 'PNG' : 'JPEG';
+      if (blob.type.includes('webp')) {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 1080;
+        canvas.height = img.height || 1080;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Canvas context unavailable for WebP PDF export');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        pdfImageData = canvas.toDataURL('image/png');
+        canvas.width = 0;
+        canvas.height = 0;
+        imgFormat = 'PNG';
+      }
+      pdf.addImage(pdfImageData, imgFormat, 0, 0, img.width || 1080, img.height || 1080);
       const safeName = (asset.event_name || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_');
       pdf.save(`${safeName}.pdf`);
     } catch (err: any) {
@@ -523,7 +548,7 @@ export default function MediaCenterPage() {
         try {
           const blob = localBlob || await fetchImageBlob(imageUrl);
           const buf = new Uint8Array(await blob.arrayBuffer());
-          const ext = blob.type.includes('png') ? 'png' : 'jpg';
+          const ext = blob.type.includes('webp') ? 'webp' : blob.type.includes('png') ? 'png' : 'jpg';
           const base = `${asset.result_no ? `${asset.result_no}_` : ''}${asset.event_name || 'poster'}`
             .replace(/[^a-zA-Z0-9_-]+/g, '_')
             .slice(0, 60);
@@ -624,43 +649,50 @@ export default function MediaCenterPage() {
       
       const resultAssets = Object.values(grouped) as any[];
       
-      // Resolve r2:// URLs to presigned HTTP URLs
+      // Resolve r2:// URLs to presigned HTTP URLs in bounded-concurrency chunks of 10
+      const presignTasks: Array<{ asset: any; res: string; objectKey: string }> = [];
       for (const asset of resultAssets) {
         for (const res of Object.keys(asset.resolutions)) {
-          let url = asset.resolutions[res];
+          const url = asset.resolutions[res];
           if (url && url.startsWith('r2://')) {
-            const objectKey = url.replace('r2://', '');
-            try {
-              const now = Date.now();
-              const storageKey = `presigned_${objectKey}`;
-              let cachedUrl = signedUrlCache.get(objectKey)?.url;
-              
-              // If not in memory, check AsyncStorage
-              if (!cachedUrl) {
-                const persisted = await AsyncStorage.getItem(storageKey);
-                if (persisted) {
-                   const parsed = JSON.parse(persisted);
-                   if (parsed.expires > now) {
-                     cachedUrl = parsed.url;
-                     signedUrlCache.set(objectKey, { url: parsed.url, expires: parsed.expires });
-                   }
-                }
-              }
-
-              if (cachedUrl) {
-                asset.resolutions[res] = cachedUrl;
-              } else {
-                const signedUrl = await storageService.getPresignedUrl(objectKey, 'image/jpeg', 'download');
-                asset.resolutions[res] = signedUrl;
-                const expires = now + 55 * 60 * 1000;
-                signedUrlCache.set(objectKey, { url: signedUrl, expires });
-                AsyncStorage.setItem(storageKey, JSON.stringify({ url: signedUrl, expires })).catch(console.error);
-              }
-            } catch (e) {
-              console.error('Failed to presign URL', e);
-            }
+            presignTasks.push({ asset, res, objectKey: url.slice('r2://'.length) });
           }
         }
+      }
+
+      const PRESIGN_CONCURRENCY = 10;
+      for (let i = 0; i < presignTasks.length; i += PRESIGN_CONCURRENCY) {
+        const chunk = presignTasks.slice(i, i + PRESIGN_CONCURRENCY);
+        await Promise.all(chunk.map(async ({ asset, res, objectKey }) => {
+          try {
+            const now = Date.now();
+            const storageKey = `presigned_${objectKey}`;
+            let cachedUrl = signedUrlCache.get(objectKey)?.url;
+
+            if (!cachedUrl) {
+              const persisted = await AsyncStorage.getItem(storageKey);
+              if (persisted) {
+                const parsed = JSON.parse(persisted);
+                if (parsed.expires > now) {
+                  cachedUrl = parsed.url;
+                  signedUrlCache.set(objectKey, { url: parsed.url, expires: parsed.expires });
+                }
+              }
+            }
+
+            if (cachedUrl) {
+              asset.resolutions[res] = cachedUrl;
+            } else {
+              const signedUrl = await storageService.getPresignedUrl(objectKey, 'image/jpeg', 'download');
+              asset.resolutions[res] = signedUrl;
+              const expires = now + 55 * 60 * 1000;
+              signedUrlCache.set(objectKey, { url: signedUrl, expires });
+              AsyncStorage.setItem(storageKey, JSON.stringify({ url: signedUrl, expires })).catch(console.error);
+            }
+          } catch (e) {
+            console.error('Failed to presign URL', e);
+          }
+        }));
       }
       
       return { assets: resultAssets, knownStoragePaths };
@@ -1509,7 +1541,7 @@ export default function MediaCenterPage() {
                       isUploading
                       || (uploadTarget === 'media'
                         ? (selectedFiles.length === 0 && !selectedFile)
-                        : (!selectedFile || !uploadEventName.trim()))
+                        : (!selectedFile || !uploadEventName.trim() || !selectedResultId))
                     ) && styles.btnDisabled,
                   ]}
                   onPress={handleUploadPoster}
@@ -1517,7 +1549,7 @@ export default function MediaCenterPage() {
                     isUploading
                     || (uploadTarget === 'media'
                       ? (selectedFiles.length === 0 && !selectedFile)
-                      : (!selectedFile || !uploadEventName.trim()))
+                      : (!selectedFile || !uploadEventName.trim() || !selectedResultId))
                   }
                 >
                   {isUploading ? <ActivityIndicator size="small" color={coreColor('#fff', 'onPrimary')} /> : <Upload size={16} color={coreColor('#fff', 'onPrimary')} />}

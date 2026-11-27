@@ -4,6 +4,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { Users, List } from 'lucide-react-native';
 import { supabase } from '@/core/config/supabase';
 import { ui } from '@/constants/designSystem';
+import { FestivalViewerPrograms } from '@/components/programs/FestivalViewerPrograms';
+import { programReadService } from '@/services/programReadService';
 
 type Row = { id: string; name?: string; item_name_ml?: string; item_code?: string; chest_number?: string; entry_chest_number?: string; category_code?: string; category_codes?: string[]; gender?: string; status?: string; team?: string; participant?: string; item_type?: string; participation_type?: string; entry_kind?: string; members?: { name: string; chest_number: string | null }[] };
 type ViewName = 'participants' | 'programs';
@@ -15,6 +17,7 @@ export default function FestivalReadonlyPortal() {
   const [pinInput, setPinInput] = useState('');
   const [pin, setPin] = useState('');
   const [tab, setTab] = useState<ViewName>('participants');
+  const desktopProgramsTab = width >= 768 && tab === 'programs';
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [page, setPage] = useState(1);
@@ -34,18 +37,23 @@ export default function FestivalReadonlyPortal() {
     return data.rows as Row[];
   }, [linkId]);
   useEffect(() => {
-    if (!pin || !linkId) return;
+    if (!pin || !linkId || desktopProgramsTab) return;
     const request = ++requestVersion.current;
     setBusy(true); setError(''); setSelected(null); setDetails([]);
     fetchRows(pin, tab, submitted, page).then(data => { if (request === requestVersion.current) setRows(data); })
       .catch(e => { if (request === requestVersion.current) { setRows([]); setError(e.message); } })
       .finally(() => { if (request === requestVersion.current) setBusy(false); });
     return () => { if (requestVersion.current === request) requestVersion.current = request + 1; };
-  }, [pin, linkId, tab, submitted, page, fetchRows, retry]);
+  }, [pin, linkId, tab, submitted, page, fetchRows, retry, desktopProgramsTab]);
   const openDetails = async (row: Row) => {
     const request = ++requestVersion.current;
     setSelected(row); setDetails([]); setBusy(true); setError('');
-    try { const data = await fetchRows(pin, tab === 'participants' ? 'participant' : 'program', '', 1, row.id); if (request === requestVersion.current) setDetails(data); }
+    try {
+      const data = desktopProgramsTab && row.category_code
+        ? await programReadService.viewerProgramDetail(linkId!, pin, row.id, row.category_code)
+        : await fetchRows(pin, tab === 'participants' ? 'participant' : 'program', '', 1, row.id);
+      if (request === requestVersion.current) setDetails(data);
+    }
     catch (e: any) { if (request === requestVersion.current) setError(e.message); }
     finally { if (request === requestVersion.current) setBusy(false); }
   };
@@ -73,12 +81,12 @@ export default function FestivalReadonlyPortal() {
           <Text style={{ color: tab === name ? ui.colors.onPrimary : ui.colors.text, fontWeight: '700' }}>{name === 'participants' ? 'Participants' : 'Programs'}</Text>
         </Pressable>)}
       </View>
-      {!selected && <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><TextInput accessibilityLabel={`Search ${tab}`} value={query} onChangeText={setQuery} onSubmitEditing={() => { setPage(1); setSubmitted(query); }} placeholder={`Search ${tab}`} style={{ flex: 1, minWidth: 0, height: 40, paddingHorizontal: 10, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, backgroundColor: ui.colors.surface, color: ui.colors.text }} /><Pressable accessibilityRole="button" onPress={() => { setPage(1); setSubmitted(query); }} style={button}><Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>Search</Text></Pressable></View>}
+      {!selected && !desktopProgramsTab && <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}><TextInput accessibilityLabel={`Search ${tab}`} value={query} onChangeText={setQuery} onSubmitEditing={() => { setPage(1); setSubmitted(query); }} placeholder={`Search ${tab}`} style={{ flex: 1, minWidth: 0, height: 40, paddingHorizontal: 10, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, backgroundColor: ui.colors.surface, color: ui.colors.text }} /><Pressable accessibilityRole="button" onPress={() => { setPage(1); setSubmitted(query); }} style={button}><Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>Search</Text></Pressable></View>}
       {selected && <Pressable accessibilityRole="button" onPress={() => { requestVersion.current++; setSelected(null); setError(''); setBusy(false); }} style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: ui.colors.primary }}>‹ Back to {tab}</Text></Pressable>}
       {!!error && <Text accessibilityRole="alert" style={{ color: ui.colors.danger, marginVertical: 6 }}>{error}</Text>}
       {!!error && <Pressable accessibilityRole="button" onPress={() => selected ? void openDetails(selected) : setRetry(value => value + 1)} style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }}><Text style={{ color: ui.colors.primary, fontWeight: '700' }}>Retry</Text></Pressable>}
     </View>
-    <ScrollView contentContainerStyle={{ width: '100%', maxWidth: 1100, alignSelf: 'center', paddingHorizontal: 16, paddingBottom: 28 }}>
+    {desktopProgramsTab && !selected ? <FestivalViewerPrograms linkId={linkId!} pin={pin} onOpenProgram={item => { void openDetails(item); }} /> : <ScrollView contentContainerStyle={{ width: '100%', maxWidth: 1100, alignSelf: 'center', paddingHorizontal: 16, paddingBottom: 28 }}>
       {busy && <ActivityIndicator color={ui.colors.primary} />}
       {selected ? <>
         <Text style={[text, { fontSize: 17, fontWeight: '700', marginBottom: 10 }]}>{selected.name || selected.item_name_ml || selected.item_code}</Text>
@@ -96,6 +104,6 @@ export default function FestivalReadonlyPortal() {
         </Pressable>)}
         <View style={{ flexDirection: 'row', gap: 8, justifyContent: width < 420 ? 'space-between' : 'flex-end', marginTop: 8 }}><Pressable accessibilityRole="button" disabled={page === 1 || busy} onPress={() => setPage(p => p - 1)} style={{ padding: 12, opacity: page === 1 || busy ? 0.4 : 1 }}><Text style={{ color: ui.colors.primary }}>Previous</Text></Pressable><Text style={{ color: ui.colors.textMuted, alignSelf: 'center' }}>Page {page}</Text><Pressable accessibilityRole="button" disabled={rows.length <= 30 || busy} onPress={() => setPage(p => p + 1)} style={{ padding: 12, opacity: rows.length <= 30 || busy ? 0.4 : 1 }}><Text style={{ color: ui.colors.primary }}>Next</Text></Pressable></View>
       </>}
-    </ScrollView>
+    </ScrollView>}
   </View>;
 }

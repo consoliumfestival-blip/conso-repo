@@ -1,6 +1,6 @@
 import { coreColor } from '@/constants/coreTheme';
 import { Modal } from '@/components/ui/CoreModal';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, Check, GitCompare, Search, X } from 'lucide-react-native';
 import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
@@ -12,26 +12,34 @@ type Props = {
   tenantId: string | null;
   festivalId: string | null;
   onClose: () => void;
+  viewerAccess?: { linkId: string; pin: string };
 };
 
 const keyFor = (program: Pick<ProgramComparisonOption, 'item_id' | 'category'>) => `${program.item_id}:${program.category}`;
 const labelFor = (program: Pick<ProgramComparisonOption, 'item_code' | 'item_name' | 'category'>) => `${program.item_name || program.item_code} · ${program.category}`;
+const EMPTY_OPTIONS: ProgramComparisonOption[] = [];
 
-export function ProgramParticipantComparisonModal({ visible, tenantId, festivalId, onClose }: Props) {
+export function ProgramParticipantComparisonModal({ visible, tenantId, festivalId, onClose, viewerAccess }: Props) {
   const { width, height } = useWindowDimensions();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [results, setResults] = useState<ProgramParticipantComparison[] | null>(null);
   const [isComparing, setIsComparing] = useState(false);
   const [compareError, setCompareError] = useState('');
   const optionsQuery = useQuery({
-    queryKey: ['program-participant-comparison-options', tenantId, festivalId],
-    enabled: visible && !!tenantId && !!festivalId,
-    queryFn: () => programReadService.comparisonOptions(tenantId!, festivalId!),
-    staleTime: 120_000,
+    queryKey: viewerAccess
+      ? ['festival-viewer-comparison-options', viewerAccess.linkId]
+      : ['program-participant-comparison-options', tenantId, festivalId],
+    enabled: visible && (viewerAccess ? !!viewerAccess.linkId && !!viewerAccess.pin : !!tenantId && !!festivalId),
+    queryFn: () => viewerAccess
+      ? programReadService.viewerComparisonOptions(viewerAccess.linkId, viewerAccess.pin)
+      : programReadService.comparisonOptions(tenantId!, festivalId!),
+    staleTime: viewerAccess ? 0 : 120_000,
+    gcTime: viewerAccess ? 0 : undefined,
     retry: false,
   });
-  const options = optionsQuery.data ?? [];
+  const options = optionsQuery.data ?? EMPTY_OPTIONS;
   const selectedPrograms = useMemo(() => options.filter(option => selectedKeys.includes(keyFor(option))), [options, selectedKeys]);
   const filteredOptions = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -44,6 +52,9 @@ export function ProgramParticipantComparisonModal({ visible, tenantId, festivalI
     setSelectedKeys([]);
     setResults(null);
     setCompareError('');
+    if (viewerAccess) {
+      queryClient.removeQueries({ queryKey: ['festival-viewer-comparison-options', viewerAccess.linkId] });
+    }
     onClose();
   };
   const toggle = (option: ProgramComparisonOption) => {
@@ -53,11 +64,13 @@ export function ProgramParticipantComparisonModal({ visible, tenantId, festivalI
     setCompareError('');
   };
   const compare = async () => {
-    if (!tenantId || !festivalId || selectedPrograms.length < 2 || isComparing) return;
+    if ((!viewerAccess && (!tenantId || !festivalId)) || selectedPrograms.length < 2 || isComparing) return;
     setIsComparing(true);
     setCompareError('');
     try {
-      setResults(await programReadService.compareParticipants(tenantId, festivalId, selectedPrograms));
+      setResults(viewerAccess
+        ? await programReadService.viewerCompareParticipants(viewerAccess.linkId, viewerAccess.pin, selectedPrograms)
+        : await programReadService.compareParticipants(tenantId!, festivalId!, selectedPrograms));
     } catch (error) {
       setResults(null);
       setCompareError(error instanceof Error ? error.message : 'Could not compare these programs.');

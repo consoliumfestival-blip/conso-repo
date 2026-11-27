@@ -9,12 +9,29 @@ export type ProgramParticipantComparison = {
   participant_name: string;
   chest_number: string | null;
   program_count: number;
-  programs: Array<{ item_id: string; item_code: string; item_name: string; category: string; kind: 'individual' | 'group'; group_member: boolean }>;
+  programs: { item_id: string; item_code: string; item_name: string; category: string; kind: 'individual' | 'group'; group_member: boolean }[];
 };
 export const programCacheOptions = { staleTime: 120_000, refetchInterval: false as const, refetchOnWindowFocus: false, refetchOnReconnect: false, refetchOnMount: false };
 // Details are still fetched only when opened; stale cached details refresh on that explicit open.
 export const programDetailCacheOptions = { ...programCacheOptions, refetchOnMount: true };
 export const programReadService = {
+  async viewerProgramsPage(input: { linkId: string; pin: string; section: string; search: string; type: string; stage: string; status: string; category: string; page: number }): Promise<ProgramPage> {
+    const { data, error } = await supabase.rpc('festival_readonly_programs_page', {
+      p_link_id: input.linkId, p_pin: input.pin, p_section: input.section, p_search: input.search,
+      p_type: input.type, p_stage: input.stage, p_status: input.status, p_category: input.category, p_page: input.page,
+    });
+    if (error) throw error;
+    if (data?.status !== 'ok') throw new Error(data?.status === 'locked' ? 'Too many incorrect PIN attempts. Try again later.' : 'Viewer access is unavailable.');
+    return data.page as ProgramPage;
+  },
+  async viewerProgramDetail(linkId: string, pin: string, itemId: string, category: string): Promise<any[]> {
+    const { data, error } = await supabase.rpc('festival_readonly_program_detail', {
+      p_link_id: linkId, p_pin: pin, p_item_id: itemId, p_category: category,
+    });
+    if (error) throw error;
+    if (data?.status !== 'ok') throw new Error(data?.status === 'locked' ? 'Too many incorrect PIN attempts. Try again later.' : 'Viewer access is unavailable.');
+    return data.rows as any[];
+  },
   async page(input: { tenantId: string; festivalId: string; section: string; search: string; type: string; stage: string; status: string; category: string; page: number }, signal?: AbortSignal): Promise<ProgramPage> {
     let request = supabase.rpc('admin_program_cards_page', {
       p_tenant_id: input.tenantId, p_festival_id: input.festivalId, p_section: input.section,
@@ -41,7 +58,7 @@ export const programReadService = {
     if (error) throw error;
     return (data ?? []) as ProgramComparisonOption[];
   },
-  async compareParticipants(tenantId: string, festivalId: string, programs: Array<Pick<ProgramComparisonOption, 'item_id' | 'category'>>): Promise<ProgramParticipantComparison[]> {
+  async compareParticipants(tenantId: string, festivalId: string, programs: Pick<ProgramComparisonOption, 'item_id' | 'category'>[]): Promise<ProgramParticipantComparison[]> {
     const { data, error } = await supabase.rpc('admin_program_participant_comparison', {
       p_tenant_id: tenantId,
       p_festival_id: festivalId,
@@ -49,5 +66,21 @@ export const programReadService = {
     });
     if (error) throw error;
     return (data ?? []) as ProgramParticipantComparison[];
+  },
+  async viewerComparisonOptions(linkId: string, pin: string): Promise<ProgramComparisonOption[]> {
+    const { data, error } = await supabase.rpc('festival_readonly_program_comparison', {
+      p_link_id: linkId, p_pin: pin, p_mode: 'options', p_programs: [],
+    });
+    if (error) throw error;
+    if (data?.status !== 'ok') throw new Error(data?.status === 'locked' ? 'Too many incorrect PIN attempts. Try again later.' : 'Viewer access is unavailable.');
+    return data.rows as ProgramComparisonOption[];
+  },
+  async viewerCompareParticipants(linkId: string, pin: string, programs: Pick<ProgramComparisonOption, 'item_id' | 'category'>[]): Promise<ProgramParticipantComparison[]> {
+    const { data, error } = await supabase.rpc('festival_readonly_program_comparison', {
+      p_link_id: linkId, p_pin: pin, p_mode: 'compare', p_programs: programs,
+    });
+    if (error) throw error;
+    if (data?.status !== 'ok') throw new Error(data?.status === 'locked' ? 'Too many incorrect PIN attempts. Try again later.' : 'Viewer access is unavailable.');
+    return data.rows as ProgramParticipantComparison[];
   },
 };

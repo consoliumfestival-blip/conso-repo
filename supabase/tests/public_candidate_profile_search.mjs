@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 
-const migrationUrl = new URL('../migrations/20261128000000_public_candidate_profile_search.sql', import.meta.url);
+const migrationUrl = new URL('../migrations/20261127195513_public_candidate_profile_search.sql', import.meta.url);
 const id = (number) => `00000000-0000-0000-0000-${String(number).padStart(12, '0')}`;
 
 test('public candidate search stays team-scoped, profile-gated and fully pageable', async () => {

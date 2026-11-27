@@ -270,12 +270,14 @@ export async function runPosterDelivery(
         throw new Error(`Poster exceeds the existing ${FILE_LIMITS.generated_asset / 1024 / 1024} MB generated-asset limit.`);
       }
       stage = 'upload';
-      let verification = await callInActiveScope(scope, isScopeActive, () => withLeaseHeartbeat(
+      const previousVerification = verifiedByOutputId.get(output.outputId);
+      // A new key has no object to verify. The create-only PUT handles a retry
+      // after an interrupted upload and verifies an existing key on conflict.
+      let verification = previousVerification ? await callInActiveScope(scope, isScopeActive, () => withLeaseHeartbeat(
         operationId, scope, ownerId, repository, database, now,
         leaseDurationMs, leaseHeartbeatIntervalMs,
         () => verifyStorageObject(output.storageKey, output.contentType, output.blob.size),
-      ));
-      const previousVerification = verifiedByOutputId.get(output.outputId);
+      )) : null;
       if (verification && previousVerification && verification.eTag !== previousVerification.etag) {
         throw new Error('Saved poster bytes changed at the retry key; the upload was stopped.');
       }

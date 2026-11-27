@@ -108,6 +108,7 @@ test('uploads at the persisted key and stores the confirmed server identity', as
     const record = makeRecord();
     await savePendingPosterDelivery(record, database);
     const uploadKeys: string[] = [];
+    let preUploadVerifications = 0;
     const finalizedRecords: PosterDeliveryRecord[] = [];
     const result = await runPosterDelivery(record.operationId, makeScope(), 'tab-a', {
       database,
@@ -115,7 +116,10 @@ test('uploads at the persisted key and stores the confirmed server identity', as
       now: () => Date.parse(record.createdAt),
       isScopeActive: () => true,
       lookup: async () => null,
-      verifyObject: async () => null,
+      verifyObject: async () => {
+        preUploadVerifications += 1;
+        throw new Error('A new poster key must not be verified before upload.');
+      },
       uploadAtKey: async (input) => {
         uploadKeys.push(input.objectKey);
         return verifiedObject(input.objectKey);
@@ -129,6 +133,7 @@ test('uploads at the persisted key and stores the confirmed server identity', as
     const saved = await getPosterDelivery(record.operationId, makeScope(), database);
     assert.equal(result.status, 'synced');
     assert.deepEqual(uploadKeys, [record.outputs[0].storageKey]);
+    assert.equal(preUploadVerifications, 0);
     assert.equal(finalizedRecords[0]?.operationId, record.operationId);
     assert.equal(finalizedRecords[0]?.verifiedOutputs[0].etag, 'poster-etag');
     assert.equal(saved?.status, 'synced');
@@ -143,6 +148,7 @@ test('retry after finalize failure verifies and reuses the same uploaded object'
     const record = makeRecord();
     await savePendingPosterDelivery(record, database);
     let objectExists = false;
+    let retryVerifications = 0;
     const uploadKeys: string[] = [];
     let finalizeAttempts = 0;
     const dependencies = {
@@ -151,7 +157,10 @@ test('retry after finalize failure verifies and reuses the same uploaded object'
       now: () => Date.parse(record.createdAt),
       isScopeActive: () => true,
       lookup: async () => null,
-      verifyObject: async (key: string) => objectExists ? verifiedObject(key) : null,
+      verifyObject: async (key: string) => {
+        retryVerifications += 1;
+        return objectExists ? verifiedObject(key) : null;
+      },
       uploadAtKey: async (input: { objectKey: string }) => {
         objectExists = true;
         uploadKeys.push(input.objectKey);
@@ -176,6 +185,7 @@ test('retry after finalize failure verifies and reuses the same uploaded object'
     assert.equal(retry.status, 'synced');
     assert.equal(afterRetry?.status, 'synced');
     assert.deepEqual(uploadKeys, [record.outputs[0].storageKey]);
+    assert.equal(retryVerifications, 1);
     assert.equal(finalizeAttempts, 2);
   });
 });

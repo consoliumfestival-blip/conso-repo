@@ -109,7 +109,7 @@ function LoadingWave({ wave, reducedMotion }: { wave: (typeof waves)[number]; re
   );
 }
 
-export function AyaticLoadingScreen() {
+export function AyaticLoadingScreen({ inline = false, size = 144 }: { inline?: boolean; size?: number } = {}) {
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -146,10 +146,10 @@ export function AyaticLoadingScreen() {
       accessibilityLabel="Loading"
       style={[
         styles.screen,
-        Platform.OS === "web" ? styles.webScreen : styles.nativeScreen,
+        inline ? styles.inlineScreen : Platform.OS === "web" ? styles.webScreen : styles.nativeScreen,
       ]}
     >
-      <View style={styles.logo}>
+      <View style={[styles.logo, { width: size }]}>
         {waves.map((wave) => <LoadingWave key={wave.start} wave={wave} reducedMotion={reducedMotion} />)}
       </View>
     </View>
@@ -172,6 +172,11 @@ const styles = StyleSheet.create({
     left: 0,
     width: "100vw",
     height: "100vh",
+  },
+  inlineScreen: {
+    backgroundColor: "transparent",
+    zIndex: 0,
+    elevation: 0,
   },
   nativeScreen: {
     ...StyleSheet.absoluteFillObject,

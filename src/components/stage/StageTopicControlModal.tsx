@@ -187,7 +187,10 @@ export function StageTopicControlModal({
       setNotice(`Shown: ${selectedPreview.item_name} · Code ${selectedPreview.code_letter} · ${selectedPreview.topic_text}`);
     } catch (error: any) {
       setActionError(`Show Next failed: ${errorMessage(error, 'The request failed without an error description. Check your connection and retry stage display.')}`);
-      await stageQuery.refetch();
+      // Reload only this event's saved draw and participants after a rejected
+      // preview; do not retain a local draw snapshot that may have been replaced.
+      setLastDraw(null);
+      await Promise.all([stageQuery.refetch(), topicQuery.refetch(), registrationsQuery.refetch()]);
     } finally {
       setBusy('');
     }
@@ -224,48 +227,6 @@ export function StageTopicControlModal({
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} showsVerticalScrollIndicator={false}>
-            {!!actionError && <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" selectable className="font-poppins text-xs text-core-danger-red-700">{actionError}</Text>}
-            {(stageQuery.isPending || stageQuery.isError || !stageQuery.data) && <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
-              <SsfButton label="Show Next" size="sm" disabled={!!busy} onPress={() => { void showNext(); }} />
-              <Text className="font-poppins text-xs text-ui-text-muted">{stageQuery.isError ? 'Stage display could not be refreshed. Retry to enable Show Next.' : 'Loading stage display…'}</Text>
-              <SsfButton label="Retry stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
-            </View>}
-            {stageQuery.isPending ? null
-              : stageQuery.isError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" selectable className="font-poppins text-xs text-core-danger-red-700">Stage display: {errorMessage(stageQuery.error, 'The request failed without an error description. Check your connection and retry.')}</Text>
-              : stageQuery.data ? (
-                <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
-                  <Text className="font-poppins-bold text-sm text-ui-text">
-                    {stageQuery.data.paused ? 'Display paused' : stageQuery.data.on_screen
-                      ? `On screen: ${stageQuery.data.on_screen.item_name} · ${stageQuery.data.on_screen.code_letter}`
-                      : 'Audience screen waiting'}
-                  </Text>
-                  <Text className="font-poppins text-xs text-ui-text-muted">
-                    {`Selected event: ${schedule?.item_name_en || schedule?.item_code || 'Choose an event'}`}
-                  </Text>
-                  <Text className="font-poppins text-xs text-ui-text-muted">{selected ? `Selected participant: ${selected.participant_name || 'Participant'} · Code ${selected.code_letter || 'Not assigned'}` : 'Choose a participant below to preview their drawn topic.'}</Text>
-                  <Text selectable className="font-poppins-bold text-sm text-ui-text">{selectedPreview ? `Selected draw: ${selectedPreview.item_name} · Code ${selectedPreview.code_letter} · ${selectedPreview.topic_text}` : 'Choose a participant with a saved topic and code letter.'}</Text>
-                  {onScreen && !stageQuery.data.paused ? (
-                    <Text className="font-poppins-bold text-sm text-ui-text">On-screen timer: {timer}</Text>
-                  ) : null}
-                  {selectedPreview ? (
-                    <Text className="font-poppins text-xs text-ui-text-muted">
-                      Selected duration: {Math.floor(selectedPreview.duration_seconds / 60)} min
-                    </Text>
-                  ) : null}
-                  <View className="flex-row flex-wrap gap-2">
-                    <SsfButton label="Show Next" size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy} />
-                    <SsfButton label="Refresh stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
-                    <SsfButton label={stageQuery.data.paused ? 'Resume' : 'Pause'} size="sm" variant="outline" onPress={() => { void togglePause(); }} isLoading={busy === 'pause'} disabled={!!busy} />
-                    <SsfButton label="Link & QR" size="sm" variant="outline" onPress={() => portal ? setShowLink((value) => !value) : onOpenLink?.()} disabled={!!busy || (portal && !displayUrl)} />
-                  </View>
-                  {stageQuery.data.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Resume the display before Show Next. The selected topic will not be shown until you press Show Next.</Text> : null}
-                  {showLink && displayUrl ? <View className="items-center gap-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
-                    <QRCode value={displayUrl} size={150} />
-                    <Text selectable className="font-poppins text-xs text-ui-text-muted">{displayUrl}</Text>
-                    <SsfButton label="Copy link" size="sm" onPress={() => { void copyDisplayLink(); }} />
-                  </View> : null}
-                </View>
-              ) : null}
             {topicQuery.isError && <View className="gap-2">
               <Text accessibilityRole="alert" selectable className="font-poppins text-xs text-core-danger-red-700">Event topics: {errorMessage(topicQuery.error, 'Could not load event topics.')}</Text>
               <SsfButton label="Retry event topics" size="sm" variant="outline" disabled={!!busy} isLoading={topicQuery.isFetching} onPress={() => { void topicQuery.refetch(); }} />
@@ -291,6 +252,18 @@ export function StageTopicControlModal({
               ))}
             </ScrollView>
             {!schedules.length ? <Text className="font-poppins text-xs text-ui-text-muted">No events assigned to this stage.</Text> : null}
+            <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
+              <Text className="font-poppins text-xs text-ui-text-muted">Selected event</Text>
+              <Text className="font-poppins-bold text-sm text-ui-text">{schedule?.item_name_en || schedule?.item_name_ml || schedule?.item_code || 'Choose an event'}</Text>
+              <Text className="font-poppins text-xs text-ui-text-muted">{selected ? `${selected.participant_name || 'Participant'} · Code ${selected.code_letter || 'Not assigned'}` : 'Choose a participant below to preview their saved draw.'}</Text>
+              <Text selectable className="font-poppins-bold text-sm text-ui-text">{selectedPreview ? selectedPreview.topic_text : 'No saved draw selected.'}</Text>
+              {selectedPreview ? <Text className="font-poppins text-xs text-ui-text-muted">Duration: {Math.floor(selectedPreview.duration_seconds / 60)} min</Text> : null}
+              <View className="flex-row flex-wrap items-center gap-2">
+                <SsfButton label="Show Next" accessibilityLabel={`Show selected draw for ${schedule?.item_name_en || schedule?.item_name_ml || schedule?.item_code || 'selected event'}`} size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy} />
+              </View>
+              {!!actionError && <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" selectable className="font-poppins text-xs text-core-danger-red-700">{actionError}</Text>}
+              {stageQuery.data?.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Audience display is paused. Use Resume under Audience display before Show Next.</Text> : null}
+            </View>
             {schedule && topicQuery.data?.enabled ? (
               <>
                 <Text className="font-poppins text-xs text-ui-text-muted">
@@ -334,6 +307,36 @@ export function StageTopicControlModal({
               : topicQuery.isError ? null
               : schedule ? <Text className="font-poppins text-xs text-ui-text-muted">Enable Topic Draw in Schedule Edit first.</Text> : null}
             {notice ? <Text className="font-poppins text-xs text-ui-text">{notice}</Text> : null}
+            <Text className="font-poppins-bold text-sm text-ui-text">Audience display</Text>
+            {(stageQuery.isPending || stageQuery.isError || !stageQuery.data) && <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
+              <Text className="font-poppins text-xs text-ui-text-muted">{stageQuery.isError ? 'Stage display could not be refreshed. Retry to enable Show Next.' : 'Loading stage display…'}</Text>
+              <SsfButton label="Retry stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
+            </View>}
+            {stageQuery.isPending ? null
+              : stageQuery.isError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" selectable className="font-poppins text-xs text-core-danger-red-700">Stage display: {errorMessage(stageQuery.error, 'The request failed without an error description. Check your connection and retry.')}</Text>
+              : stageQuery.data ? (
+                <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
+                  <Text className="font-poppins-bold text-sm text-ui-text">
+                    {stageQuery.data.paused ? 'Display paused' : stageQuery.data.on_screen
+                      ? `Audience screen now: ${stageQuery.data.on_screen.item_name} · Code ${stageQuery.data.on_screen.code_letter}`
+                      : 'Audience screen waiting'}
+                  </Text>
+                  {onScreen && !stageQuery.data.paused ? (
+                    <Text className="font-poppins-bold text-sm text-ui-text">On-screen timer: {timer}</Text>
+                  ) : null}
+                  <View className="flex-row flex-wrap gap-2">
+                    <SsfButton label="Refresh stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
+                    <SsfButton label={stageQuery.data.paused ? 'Resume' : 'Pause'} size="sm" variant="outline" onPress={() => { void togglePause(); }} isLoading={busy === 'pause'} disabled={!!busy} />
+                    <SsfButton label="Link & QR" size="sm" variant="outline" onPress={() => portal ? setShowLink((value) => !value) : onOpenLink?.()} disabled={!!busy || (portal && !displayUrl)} />
+                  </View>
+                  {stageQuery.data.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Resume the display before Show Next. The selected topic will not be shown until you press Show Next.</Text> : null}
+                  {showLink && displayUrl ? <View className="items-center gap-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
+                    <QRCode value={displayUrl} size={150} />
+                    <Text selectable className="font-poppins text-xs text-ui-text-muted">{displayUrl}</Text>
+                    <SsfButton label="Copy link" size="sm" onPress={() => { void copyDisplayLink(); }} />
+                  </View> : null}
+                </View>
+              ) : null}
           </ScrollView>
         </View>
       </View>

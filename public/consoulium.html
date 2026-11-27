@@ -342,7 +342,7 @@
             <span class="btn__arrow" aria-hidden="true">→</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
-          <a class="festival-button portal-button" href="#" id="landing-portal">
+          <a class="festival-button portal-button" href="/candidate-search" id="landing-portal">
             <span>Student Portal</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
@@ -355,7 +355,15 @@
         var explore = document.getElementById('landing-explore');
         var portal = document.getElementById('landing-portal');
         if (explore && location.search) explore.href = '/explore' + location.search;
-        if (portal) portal.addEventListener('click', function (e) { e.preventDefault(); });
+        if (portal) {
+          var params = new URLSearchParams(location.search);
+          var tenantId = params.get('tenant_id') || '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
+          if (tenantId === 'f87172d1-ed27-4db4-842c-cc00d3d56de2') tenantId = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
+          var portalParams = new URLSearchParams({ tenant_id: tenantId });
+          var festivalId = params.get('festival_id');
+          if (festivalId) portalParams.set('festival_id', festivalId);
+          portal.href = '/candidate-search?' + portalParams.toString();
+        }
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
           if (e.target && /^(INPUT|TEXTAREA|SELECT)$/i.test(e.target.tagName)) return;

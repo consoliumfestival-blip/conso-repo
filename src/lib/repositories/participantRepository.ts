@@ -13,6 +13,15 @@ export const participantRepository = {
     return databaseProvider.getPublicCandidateProfile<T>(slug);
   },
 
+  searchPublicCandidateProfiles(input: {
+    tenantId: string;
+    festivalId?: string | null;
+    query: string;
+    cursor?: { name: string; id: string } | null;
+  }) {
+    return databaseProvider.searchPublicCandidateProfiles(input);
+  },
+
   getParticipantRegistrations<T>(participantId: string) {
     return databaseProvider.getParticipantRegistrations<T>(participantId);
   },

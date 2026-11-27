@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { participantService, ParticipantStatus } from '../../services/participantService';
 import { stageManagementService } from '../../services/stageManagementService';
 import { useAuthStore } from '../store/authStore';
@@ -12,6 +12,28 @@ export const usePublicCandidateProfile = (slug?: string | null) =>
     enabled: !!slug,
     staleTime: 0,
   });
+
+export const usePublicCandidateSearch = (
+  tenantId: string | null | undefined,
+  festivalId: string | null | undefined,
+  query: string,
+  enabled = true,
+) => useInfiniteQuery({
+  queryKey: ['publicCandidateSearch', tenantId, festivalId ?? null, query],
+  queryFn: ({ pageParam }) => participantService.searchPublicCandidateProfiles({
+    tenantId: tenantId!,
+    festivalId: pageParam.festivalId ?? festivalId,
+    query,
+    cursor: pageParam.cursor,
+  }),
+  initialPageParam: { cursor: null as { name: string; id: string } | null, festivalId: festivalId ?? null },
+  getNextPageParam: (lastPage) => lastPage.has_more && lastPage.next_cursor
+    ? { cursor: lastPage.next_cursor, festivalId: lastPage.festival_id }
+    : undefined,
+  enabled: enabled && !!tenantId && query.length > 0,
+  staleTime: 30_000,
+  gcTime: 120_000,
+});
 
 export const useParticipants = (participantId?: string, options?: { loadList?: boolean; loadRegistrations?: boolean }) => {
   const queryClient = useQueryClient();

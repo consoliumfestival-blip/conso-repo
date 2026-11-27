@@ -10,6 +10,20 @@ export type ListResult<T> = {
   error: { code?: string; message: string } | null;
 };
 
+export type PublicCandidateSearchCursor = { name: string; id: string };
+export type PublicCandidateSearchItem = {
+  slug: string;
+  name: string;
+  chest_number: string | null;
+  category_code: string | null;
+};
+export type PublicCandidateSearchPage = {
+  festival_id: string | null;
+  items: PublicCandidateSearchItem[];
+  has_more: boolean;
+  next_cursor: PublicCandidateSearchCursor | null;
+};
+
 export type CompetitionItemUpdate = {
   festivalId: string;
   itemId: string;
@@ -52,6 +66,12 @@ export interface DatabaseProvider {
   listParticipants<T>(): Promise<ListResult<T>>;
   getParticipant<T>(participantId: string): Promise<QueryResult<T>>;
   getPublicCandidateProfile<T>(slug: string): Promise<QueryResult<T>>;
+  searchPublicCandidateProfiles(input: {
+    tenantId: string;
+    festivalId?: string | null;
+    query: string;
+    cursor?: PublicCandidateSearchCursor | null;
+  }): Promise<QueryResult<PublicCandidateSearchPage>>;
   getParticipantRegistrations<T>(participantId: string): Promise<ListResult<T>>;
   getRegistrationsByItem<T>(itemId: string, tenantId: string, festivalId?: string): Promise<ListResult<T>>;
   getAdminRegistrationsBySchedule<T>(scheduleId: string): Promise<ListResult<T>>;

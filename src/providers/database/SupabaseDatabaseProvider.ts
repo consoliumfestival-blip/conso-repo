@@ -1,5 +1,5 @@
 import { supabase } from '../../core/config/supabase';
-import { CompetitionItemUpdate, DatabaseProvider, ListResult, QueryResult } from './DatabaseProvider';
+import { CompetitionItemUpdate, DatabaseProvider, ListResult, PublicCandidateSearchPage, QueryResult } from './DatabaseProvider';
 import { CompetitionPublication, competitionArguments } from '../../types/scoring';
 
 const normalizeError = (error: any): QueryResult<never>['error'] => {
@@ -163,6 +163,22 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     });
 
     return { data: (data as T) ?? null, error: normalizeError(error) };
+  }
+
+  async searchPublicCandidateProfiles(input: {
+    tenantId: string;
+    festivalId?: string | null;
+    query: string;
+    cursor?: { name: string; id: string } | null;
+  }): Promise<QueryResult<PublicCandidateSearchPage>> {
+    const { data, error } = await supabase.rpc('search_public_candidate_profiles', {
+      p_tenant_id: input.tenantId,
+      p_festival_id: input.festivalId ?? null,
+      p_query: input.query,
+      p_cursor: input.cursor ?? null,
+    });
+
+    return { data: (data as PublicCandidateSearchPage) ?? null, error: normalizeError(error) };
   }
 
   async getParticipantRegistrations<T>(participantId: string): Promise<ListResult<T>> {

@@ -30,7 +30,8 @@ export function useProtectedRoute() {
   const routeParams = useLocalSearchParams<{ tenant_id?: string }>();
   const { user, role, tenant_id, is_superadmin, initialized, teamSessionStatus } = useAuthStore();
   const routeTenantId = Array.isArray(routeParams.tenant_id) ? routeParams.tenant_id[0] : routeParams.tenant_id;
-  const isPublicAuxiliaryPath = segments[0] === 'candidate' || segments[0] === 'unit-profile';
+  const isPublicAuxiliaryPath = segments[0] === 'candidate' || pathname === '/candidate-search' || segments[0] === 'unit-profile';
+  const isCandidatePublicRoute = pathname === '/candidate-search' || segments[0] === 'candidate';
   const isPublicPath = segments[0] === '(public)' || isPublicAuxiliaryPath;
   const publicTenantId = isPublicPath ? (routeTenantId || tenant_id) : null;
   // Only admin and judge routes use private module flags here. Team Leader
@@ -48,7 +49,7 @@ export function useProtectedRoute() {
   const isStageVenuePortal = /^\/stage-management\/venue\/[0-9a-f-]{36}$/i.test(pathname);
   const isAnnouncerLink = /^\/announcer\/(?:session\/)?[0-9a-f]{64}\/?$/i.test(pathname);
   const isReadonlyPortal = /^\/festival-view\/[0-9a-f-]{36}\/?$/i.test(pathname);
-  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal && !isReadonlyPortal);
+  const mustBlockCoreRoute = Boolean(initialized && user && isTeamLeader && !inTeamGroup && !isStageVenuePortal && !isReadonlyPortal && !isCandidatePublicRoute);
   const isInstalledAdmin = Boolean(user && role === 'admin' && !is_superadmin);
   const mainPortalRouteAllowed = !inTeamGroup
     && pathname !== '/team-leaders'
@@ -65,7 +66,7 @@ export function useProtectedRoute() {
   const teamManagementRouteAllowed = pathname === '/team-leaders' || segments[0] === '(auth)';
   const mainPortalRouteBlocked = !mainPortalRouteAllowed && segments[0] !== '(auth)' && !isAnnouncerLink;
   const teamLeaderRouteBlocked = !inTeamGroup;
-  const mustBlockInstalledPortalRoute = Boolean(initialized && !isReadonlyPortal && (
+  const mustBlockInstalledPortalRoute = Boolean(initialized && !isReadonlyPortal && !isCandidatePublicRoute && (
     (!user && installedPortalMode === 'team-management' && !teamManagementRouteAllowed)
     || (!user && installedPortalMode === 'main' && mainPortalRouteBlocked)
     || (!user && installedPortalMode === 'team-leader' && teamLeaderRouteBlocked)
@@ -88,7 +89,7 @@ export function useProtectedRoute() {
 
   const publicSection = pathname.includes('/leaderboard/schedule') ? 'schedule'
     : pathname.includes('/leaderboard/media') ? 'media'
-      : (pathname.includes('/participant-result') || segments[0] === 'candidate') ? 'participant_results'
+      : (pathname.includes('/participant-result') || pathname === '/candidate-search' || segments[0] === 'candidate') ? 'participant_results'
         : segments[0] === 'unit-profile' ? 'results'
         : pathname.includes('/leaderboard/item-results') || pathname.includes('/leaderboard/individual-rankings')
           || pathname.includes('/leaderboard/unit-rankings') ? 'results' : null;
@@ -125,6 +126,9 @@ export function useProtectedRoute() {
       router.replace({ pathname: '/(public)/unavailable', params: { tenant_id: publicTenantId, section: sectionLabel } } as any);
       return;
     }
+
+    // Candidate search and profiles are public routes even inside an installed portal.
+    if (isCandidatePublicRoute) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -245,7 +249,7 @@ export function useProtectedRoute() {
       router.replace('/(public)');
       return;
     }
-  }, [user, role, tenant_id, is_superadmin, initialized, segments, pathname, isStageVenuePortal, isAnnouncerLink, isReadonlyPortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, blockedAdminModule, blockedJudgePortal, blockedPublicModule, publicTenantId, publicFeatures.modules.public_page, publicFeatures.modules.public_leaderboard, publicSection, publicBoardRoute, publicFeatures.sections.public_page, router]);
+  }, [user, role, tenant_id, is_superadmin, initialized, segments, pathname, isCandidatePublicRoute, isStageVenuePortal, isAnnouncerLink, isReadonlyPortal, inTeamGroup, inTeamLogin, isTeamLeader, installedPortalMode, isInstalledAdmin, mainPortalRouteAllowed, mainPortalRouteBlocked, mainPwaAdminRouteAllowed, teamManagementRouteAllowed, teamLeaderRouteBlocked, isRecoveringTeamSession, blockedAdminModule, blockedJudgePortal, blockedPublicModule, publicTenantId, publicFeatures.modules.public_page, publicFeatures.modules.public_leaderboard, publicSection, publicBoardRoute, publicFeatures.sections.public_page, router]);
 
   return mustBlockCoreRoute || mustBlockInstalledPortalRoute || isRecoveringTeamSession;
 }

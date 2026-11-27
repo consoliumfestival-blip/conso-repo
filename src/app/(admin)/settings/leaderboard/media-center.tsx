@@ -350,17 +350,34 @@ export default function MediaCenterPage() {
       uploadAbortRef.current = controller;
       setIsUploading(true);
       setBatchProgress(null);
+      const fpStorageKey = `mediaCenter:uploadedFingerprints:${activeFestival.id}`;
+      let savedFingerprints: string[] = [];
+      if (Platform.OS === 'web') {
+        try {
+          const raw = localStorage.getItem(fpStorageKey);
+          const parsed = raw ? JSON.parse(raw) : [];
+          if (Array.isArray(parsed)) savedFingerprints = parsed.filter((v): v is string => typeof v === 'string');
+        } catch {}
+      }
+
       try {
         const result = await uploadMediaFilesInBatches({
           files: filesToUpload,
           festivalId: activeFestival.id,
           tenantId: tenant_id,
           baseTitle: uploadEventName.trim() || undefined,
+          existingFingerprints: new Set(savedFingerprints),
           batchSize: 10,
           concurrency: 3,
           signal: controller.signal,
           onProgress: (p) => setBatchProgress(p),
         });
+        if (Platform.OS === 'web' && result.uploadedFingerprints.length > 0) {
+          try {
+            const merged = Array.from(new Set([...savedFingerprints, ...result.uploadedFingerprints])).slice(-2000);
+            localStorage.setItem(fpStorageKey, JSON.stringify(merged));
+          } catch {}
+        }
         queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
         if (result.cancelled) {
           alert(`Upload stopped. ${result.completed} uploaded before cancel.`);

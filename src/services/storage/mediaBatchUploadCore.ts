@@ -26,6 +26,7 @@ export interface UploadMediaBatchResult {
   failed: number;
   skipped: number;
   cancelled: boolean;
+  uploadedFingerprints: string[];
   errors: string[];
 }
 
@@ -281,6 +282,7 @@ export async function runMediaBatchUpload(
   let failed = 0;
   let cancelled = false;
   let lastBatchIndex = 0;
+  const uploadedFingerprints: string[] = [];
   const errors: string[] = [];
 
   const emit = (batchIndex: number, currentFileName: string) => {
@@ -298,7 +300,7 @@ export async function runMediaBatchUpload(
 
   if (total === 0) {
     emit(0, '');
-    return { completed: 0, failed: 0, skipped, cancelled: false, errors: [] };
+    return { completed: 0, failed: 0, skipped, cancelled: false, uploadedFingerprints: [], errors: [] };
   }
 
   for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
@@ -312,6 +314,7 @@ export async function runMediaBatchUpload(
     const chunk = queue.slice(start, start + safeBatchSize);
     const batchRows: Array<Record<string, unknown>> = [];
     const batchUploadedKeys: string[] = [];
+    const batchFingerprints: string[] = [];
     let batchUploadedCount = 0;
     let cursor = 0;
 
@@ -385,6 +388,7 @@ export async function runMediaBatchUpload(
             } catch (thumbErr) {
               if (isAbortError(thumbErr, signal)) {
                 cancelled = true;
+                await Promise.allSettled([deps.deleteObject(hdMeta.object_key)]);
                 throw thumbErr;
               }
               // Keep HD upload even if optional non-abort thumbnail upload fails
@@ -393,6 +397,7 @@ export async function runMediaBatchUpload(
 
           batchRows.push(...itemRows);
           batchUploadedKeys.push(...itemKeys);
+          batchFingerprints.push(buildMediaFingerprint(file));
           batchUploadedCount++;
           emit(lastBatchIndex, file.name);
         } catch (err) {
@@ -413,6 +418,7 @@ export async function runMediaBatchUpload(
       try {
         await withRetry(() => deps.insertAssets(batchRows), signal);
         completed += batchUploadedCount;
+        uploadedFingerprints.push(...batchFingerprints);
       } catch (dbErr) {
         if (isAbortError(dbErr, signal)) {
           cancelled = true;
@@ -433,5 +439,5 @@ export async function runMediaBatchUpload(
   }
 
   emit(lastBatchIndex, '');
-  return { completed, failed, skipped, cancelled, errors };
+  return { completed, failed, skipped, cancelled, uploadedFingerprints, errors };
 }

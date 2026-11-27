@@ -260,7 +260,7 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
     select: 'id,render_hash,event_id,result_id,event_name,resolution,public_url,storage_path,asset_type,is_current,visibility_status,created_at,item:items(item_name_en,item_name_ml,item_type,item_code),result:results(public_result_no,public_visible)',
     festival_id: `eq.${festivalId}`,
     order: 'created_at.desc',
-    limit: '300',
+    limit: '1000',
   });
   let rows: any[];
   try {
@@ -270,7 +270,7 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
       select: 'id,render_hash,event_id,result_id,event_name,resolution,public_url,storage_path,asset_type,is_current,visibility_status,created_at',
       festival_id: `eq.${festivalId}`,
       order: 'created_at.desc',
-      limit: '300',
+      limit: '1000',
     });
     rows = await supabaseRest<any[]>(env, `generated_assets?${basicParams}`);
   }

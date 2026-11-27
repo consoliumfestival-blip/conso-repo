@@ -993,7 +993,7 @@
   function renderMedia(term) {
     const items = snapshot.items || [];
     const formats = [...new Set(items.map((m) => m.format).filter(Boolean))];
-    renderFilterChips([['all', 'All Posters'], ...formats.map((f) => [f, f])]);
+    renderFilterChips([['all', 'All Media'], ...formats.map((f) => [f, f])]);
 
     const filtered = items.filter((m) => {
       if (activeFilter !== 'all' && m.format !== activeFilter) return false;

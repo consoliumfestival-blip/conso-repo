@@ -158,6 +158,7 @@ test('propagates AbortError during thumbnail upload, aborts backoff sleep immedi
   const batchCtrl = new AbortController();
   const progressEvents = [];
   const inserted = [];
+  const abortedDeletedKeys = [];
 
   const res = await runMediaBatchUpload(
     {
@@ -185,13 +186,14 @@ test('propagates AbortError during thumbnail upload, aborts backoff sleep immedi
         return { object_key: 'festivals/fest-1/posters/hd.webp', file_url: 'r2://hd.webp' };
       },
       insertAssets: async (rows) => { inserted.push(rows); },
-      deleteObject: async () => {},
+      deleteObject: async (key) => { abortedDeletedKeys.push(key); },
     },
   );
 
   assert.equal(res.cancelled, true);
   assert.equal(res.completed, 0);
   assert.equal(inserted.length, 0);
+  assert.deepEqual(abortedDeletedKeys, ['festivals/fest-1/posters/hd.webp']);
   const lastEvent = progressEvents.at(-1);
   assert.equal(lastEvent.totalBatches, 3);
   assert.equal(lastEvent.batchIndex, 1);

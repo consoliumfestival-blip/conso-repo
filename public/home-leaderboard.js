@@ -16,6 +16,7 @@ function getScope() {
 
 async function fetchStandings(force = false) {
   const { tenant, festivalId } = getScope();
+  const snapStorageKey = `conso_pub_snap_v1:${tenant}:${festivalId || 'active'}`;
   const verParams = new URLSearchParams({ tenant_id: tenant });
   const verRes = await fetch(`/api/public-version?${verParams}`, {
     cache: 'no-store',
@@ -36,9 +37,24 @@ async function fetchStandings(force = false) {
     throw new Error('Invalid version');
   }
 
-  if (!force && cachedSnapshot && cachedSnapshot.revision === version.revision && Date.now() < confirmedAt + SNAPSHOT_TTL_MS) {
-    confirmedAt = Date.now();
-    return cachedSnapshot;
+  if (version.revision === null) {
+    try { sessionStorage.removeItem(snapStorageKey); } catch {}
+  } else {
+    if (!force && cachedSnapshot && cachedSnapshot.revision === version.revision && Date.now() < confirmedAt + SNAPSHOT_TTL_MS) {
+      confirmedAt = Date.now();
+      return cachedSnapshot;
+    }
+    if (!force) {
+      try {
+        const raw = sessionStorage.getItem(snapStorageKey);
+        const stored = raw ? JSON.parse(raw) : null;
+        if (stored?.data && stored.data.tenant_id === tenant && stored.data.revision === version.revision) {
+          cachedSnapshot = stored.data;
+          confirmedAt = Date.now();
+          return stored.data;
+        }
+      } catch {}
+    }
   }
 
   const snapParams = new URLSearchParams({ tenant_id: tenant });
@@ -63,6 +79,16 @@ async function fetchStandings(force = false) {
   }
   cachedSnapshot = data;
   confirmedAt = Date.now();
+  try {
+    if (data.revision && data.features?.public_page === true) {
+      sessionStorage.setItem(snapStorageKey, JSON.stringify({
+        etag: snapRes.headers.get('ETag') || null,
+        data,
+      }));
+    } else {
+      sessionStorage.removeItem(snapStorageKey);
+    }
+  } catch {}
   return data;
 }
 
@@ -336,9 +362,14 @@ async function install(section) {
       pending = false;
     }
   }
+  let lastVisibilityCheckAt = 0;
   const onVisible = () => {
     if (!section.isConnected) { document.removeEventListener('visibilitychange', onVisible); return; }
-    if (!document.hidden) refresh(true);
+    if (document.hidden) return;
+    const now = Date.now();
+    if (now - lastVisibilityCheckAt < 5_000) return;
+    lastVisibilityCheckAt = now;
+    refresh(false);
   };
   document.addEventListener('visibilitychange', onVisible);
   await refresh();

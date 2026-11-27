@@ -22,7 +22,8 @@ type PublicContext = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const EDGE_TTL_SECONDS = 5;
+const VERSION_EDGE_TTL_SECONDS = 5;
+const REVISION_DATA_EDGE_TTL_SECONDS = 300;
 const MAX_BROWSER_AGE_MS = 60_000;
 const pending = new Map<string, Promise<unknown>>();
 
@@ -48,7 +49,16 @@ function normalizeFlags(raw: any): PublicFlags {
   };
 }
 
-function json(body: unknown, status = 200, cacheStatus?: string): Response {
+function matchesIfNoneMatch(headerValue: string | null, etag: string): boolean {
+  if (!headerValue) return false;
+  const target = etag.trim();
+  return headerValue.split(',').some((part) => {
+    const token = part.trim();
+    return token === '*' || token === target;
+  });
+}
+
+function json(body: unknown, status = 200, cacheStatus?: string, etag?: string): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -56,6 +66,7 @@ function json(body: unknown, status = 200, cacheStatus?: string): Response {
       'Cache-Control': 'private, no-store, max-age=0',
       'X-Content-Type-Options': 'nosniff',
       ...(cacheStatus ? { 'X-Public-Snapshot-Cache': cacheStatus } : {}),
+      ...(etag ? { ETag: etag } : {}),
     },
   });
 }
@@ -101,10 +112,10 @@ async function loadVersion(env: Environment, tenantId: string): Promise<string |
 }
 
 async function sharedVersion(requestUrl: URL, env: Environment, tenantId: string) {
-  return shared(cacheKey(requestUrl, 'version', tenantId), () => loadVersion(env, tenantId));
+  return shared(cacheKey(requestUrl, 'version', tenantId), () => loadVersion(env, tenantId), VERSION_EDGE_TTL_SECONDS);
 }
 
-async function shared<T>(key: Request, build: () => Promise<T>): Promise<{ value: T; cacheStatus: string }> {
+async function shared<T>(key: Request, build: () => Promise<T>, ttlSeconds = VERSION_EDGE_TTL_SECONDS): Promise<{ value: T; cacheStatus: string }> {
   // Cache API is available in Pages Functions on both custom and pages.dev domains.
   // It is local to a Cloudflare data centre, so each location can fill independently.
   const cache = (globalThis as any).caches?.default as Cache | undefined;
@@ -119,7 +130,7 @@ async function shared<T>(key: Request, build: () => Promise<T>): Promise<{ value
     const value = await build();
     if (cache) {
       await cache.put(key, new Response(JSON.stringify(value), {
-        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${EDGE_TTL_SECONDS}` },
+        headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${ttlSeconds}` },
       })).catch(() => { console.warn('Public snapshot edge cache write failed'); });
     }
     return value;
@@ -254,23 +265,59 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
   const tenantId = rawTenantId.toLowerCase();
   try {
     const version = await sharedVersion(requestUrl, env, tenantId);
-    const contextResult = await shared(cacheKey(requestUrl, 'context', tenantId, undefined, version.value), () => loadContext(env, tenantId));
+    const contextResult = await shared(
+      cacheKey(requestUrl, 'context', tenantId, undefined, version.value),
+      () => loadContext(env, tenantId),
+      REVISION_DATA_EDGE_TTL_SECONDS,
+    );
     const context = contextResult.value;
     const festivalId = context.festivalId;
+    const etag = `W/"snap:${tenantId}:${festivalId || 'none'}:${version.value ?? 'disabled'}"`;
     if (!context.features.public_page || typeof festivalId !== 'string') {
+      if (matchesIfNoneMatch(request.headers.get('If-None-Match'), etag)) {
+        return new Response(null, {
+          status: 304,
+          headers: {
+            ETag: etag,
+            'Cache-Control': 'private, no-store, max-age=0',
+            'X-Content-Type-Options': 'nosniff',
+            'X-Public-Snapshot-Cache': contextResult.cacheStatus,
+          },
+        });
+      }
       const generatedAt = new Date().toISOString();
       return json({
         tenant_id: tenantId, festival_id: null, generated_at: generatedAt,
         revision: version.value,
         expires_at: new Date(Date.parse(generatedAt) + MAX_BROWSER_AGE_MS).toISOString(),
         features: context.features, settings: null, leaderboard: [], results: [], participant_results: [], schedules: [],
-      }, 200, contextResult.cacheStatus);
+      }, 200, contextResult.cacheStatus, etag);
     }
     const snapshot = await shared(
       cacheKey(requestUrl, 'snapshot', tenantId, festivalId, version.value),
       () => loadSnapshot(env, tenantId, festivalId, context, version.value ?? 'disabled'),
+      REVISION_DATA_EDGE_TTL_SECONDS,
     );
-    return json(snapshot.value, 200, snapshot.cacheStatus);
+    if (matchesIfNoneMatch(request.headers.get('If-None-Match'), etag)) {
+      return new Response(null, {
+        status: 304,
+        headers: {
+          ETag: etag,
+          'Cache-Control': 'private, no-store, max-age=0',
+          'X-Content-Type-Options': 'nosniff',
+          'X-Public-Snapshot-Cache': snapshot.cacheStatus,
+        },
+      });
+    }
+    if (snapshot.cacheStatus === 'HIT') {
+      const nowMs = Date.now();
+      return json({
+        ...snapshot.value,
+        generated_at: new Date(nowMs).toISOString(),
+        expires_at: new Date(nowMs + MAX_BROWSER_AGE_MS).toISOString(),
+      }, 200, snapshot.cacheStatus, etag);
+    }
+    return json(snapshot.value, 200, snapshot.cacheStatus, etag);
   } catch (error) {
     console.error('Public snapshot read failed', error);
     // Never serve stale published data when the source or cache fails.

@@ -1,0 +1,44 @@
+/assets/*-c26v2.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/scene-v11/*-c26v2.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/scene-v11/chunks/*-c26v2.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/brand/gallery/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/brand/news/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/ayatic-loader/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+/explore
+  Cache-Control: public, max-age=0, must-revalidate
+
+/consoulium
+  Cache-Control: public, max-age=0, must-revalidate
+
+/results
+  Cache-Control: public, max-age=0, must-revalidate
+
+/standings
+  Cache-Control: public, max-age=0, must-revalidate
+
+/schedule
+  Cache-Control: public, max-age=0, must-revalidate
+
+/gallery
+  Cache-Control: public, max-age=0, must-revalidate
+
+/media
+  Cache-Control: public, max-age=0, must-revalidate

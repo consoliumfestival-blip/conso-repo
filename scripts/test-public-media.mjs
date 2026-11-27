@@ -138,3 +138,228 @@ test('returns enabled: false and empty items when media section is disabled', as
     globalThis.fetch = origFetch;
   }
 });
+
+test('prioritizes original clarity over compressed previews, streams attachment downloads, supports 304 ETag, and coalesces concurrent requests', async () => {
+  const entries = new Map();
+  const origCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      async match(req) {
+        const entry = entries.get(req.url);
+        return entry && Date.now() < entry.expires ? entry.response.clone() : undefined;
+      },
+      async put(req, res) {
+        const age = Number(/max-age=(\d+)/.exec(res.headers.get('Cache-Control') ?? '')?.[1] ?? 0);
+        entries.set(req.url, { response: res.clone(), expires: Date.now() + age * 1000 });
+      },
+    },
+  };
+
+  let assetQueries = 0;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    const parsed = new URL(u);
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{ festival_id: festivalId, is_public_visible: true }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      assetQueries++;
+      await new Promise((r) => setTimeout(r, 15));
+      return new Response(JSON.stringify([
+        {
+          id: 'thumb-1',
+          render_hash: 'poster-orig',
+          event_name: 'Highlight Reel & Poster',
+          resolution: 'thumb',
+          public_url: 'https://cdn.example.com/posters/thumb.jpg',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-27T10:00:00Z',
+        },
+        {
+          id: 'orig-1',
+          render_hash: 'poster-orig',
+          event_name: 'Highlight Reel & Poster',
+          resolution: 'original',
+          public_url: 'https://cdn.example.com/posters/original-master.png',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-27T10:00:00Z',
+        },
+        {
+          id: 'vid-1',
+          render_hash: 'video-master',
+          event_name: 'Closing Ceremony Promo',
+          resolution: 'original',
+          public_url: 'https://cdn.example.com/videos/promo.mp4',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-27T11:00:00Z',
+        },
+      ]), { status: 200 });
+    }
+    if (u === 'https://cdn.example.com/posters/original-master.png') {
+      return new Response(new Uint8Array([137, 80, 78, 71]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/png', 'Content-Length': '4' },
+      });
+    }
+    if (u === 'https://cdn.example.com/videos/promo.mp4') {
+      return new Response(new Uint8Array([0, 0, 0, 24]), {
+        status: 200,
+        headers: { 'Content-Type': 'video/mp4', 'Content-Length': '4' },
+      });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    // Fire 5 concurrent requests before cache warms -> should coalesce into 1 generated_assets DB query
+    const burst = await Promise.all(Array.from({ length: 5 }, () => onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}`),
+      env,
+    })));
+    assert.equal(assetQueries, 1);
+    const first = burst[0];
+    assert.equal(first.status, 200);
+    const etag = first.headers.get('ETag');
+    assert.ok(etag && etag.startsWith('W/"media:'));
+    const body = await first.json();
+    const imgItem = body.items.find((i) => i.render_hash === 'poster-orig');
+    assert.equal(imgItem.resolution, 'original');
+    assert.equal(imgItem.image_url, 'https://cdn.example.com/posters/original-master.png');
+    assert.ok(imgItem.original_download_path.includes('download=1'));
+
+    // Conditional repeat visit with ETag -> 304 Not Modified without querying Supabase again
+    const notMod = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}`, {
+        headers: { 'If-None-Match': etag },
+      }),
+      env,
+    });
+    assert.equal(notMod.status, 304);
+    assert.equal(assetQueries, 1);
+
+    // Original PNG download attachment
+    const pngDl = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in${imgItem.original_download_path}`),
+      env,
+    });
+    assert.equal(pngDl.status, 200);
+    assert.equal(pngDl.headers.get('Content-Type'), 'image/png');
+    assert.match(pngDl.headers.get('Content-Disposition') || '', /^attachment; filename=".*\.png"$/);
+
+    // Original MP4 video download attachment
+    const vidDl = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&download=1&asset=video-master`),
+      env,
+    });
+    assert.equal(vidDl.status, 200);
+    assert.equal(vidDl.headers.get('Content-Type'), 'video/mp4');
+    assert.match(vidDl.headers.get('Content-Disposition') || '', /^attachment; filename="Closing_Ceremony_Promo\.mp4"$/);
+
+    // Unknown or unpublished asset cannot be downloaded -> 404
+    const missingDl = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&download=1&asset=hidden-or-other-tenant`),
+      env,
+    });
+    assert.equal(missingDl.status, 404);
+  } finally {
+    globalThis.fetch = origFetch;
+    globalThis.caches = origCaches;
+  }
+});
+
+test('separates media and result sections cleanly and exposes fast thumb_url alongside original download', async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{ festival_id: festivalId, is_public_visible: true }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify([
+        {
+          id: 'studio-1',
+          render_hash: 'studio-res-1',
+          event_id: 'item-111',
+          result_id: 'res-111',
+          event_name: 'Arabic Song',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/arabic-song.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T00:10:00Z',
+        },
+        {
+          id: 'manual-res-1',
+          render_hash: 'manual_result_999',
+          event_id: 'item-222',
+          result_id: 'res-222',
+          event_name: 'Mapilappattu Result',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/mapila.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T00:12:00Z',
+        },
+        {
+          id: 'media-thumb-1',
+          render_hash: 'manual_media_777',
+          event_name: 'Stage Crowd Photo',
+          resolution: 'thumb',
+          public_url: 'https://cdn.example.com/media/crowd-thumb.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T00:15:00Z',
+        },
+        {
+          id: 'media-hd-1',
+          render_hash: 'manual_media_777',
+          event_name: 'Stage Crowd Photo',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/media/crowd-hd.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T00:15:00Z',
+        },
+      ]), { status: 200 });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    const mediaRes = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=media`),
+      env,
+    });
+    assert.equal(mediaRes.status, 200);
+    const mediaBody = await mediaRes.json();
+    assert.equal(mediaBody.items.length, 1);
+    assert.equal(mediaBody.items[0].render_hash, 'manual_media_777');
+    assert.equal(mediaBody.items[0].section, 'media');
+    assert.equal(mediaBody.items[0].thumb_url, 'https://cdn.example.com/media/crowd-thumb.webp');
+    assert.equal(mediaBody.items[0].image_url, 'https://cdn.example.com/media/crowd-hd.webp');
+
+    const resultRes = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=result`),
+      env,
+    });
+    assert.equal(resultRes.status, 200);
+    const resultBody = await resultRes.json();
+    assert.equal(resultBody.items.length, 2);
+    assert.ok(resultBody.items.every((item) => item.section === 'result'));
+    const studioItem = resultBody.items.find((i) => i.render_hash === 'studio-res-1');
+    assert.equal(studioItem.event_id, 'item-111');
+    assert.equal(studioItem.result_id, 'res-111');
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

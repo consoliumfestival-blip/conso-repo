@@ -200,3 +200,47 @@ test('a changed revision does not reuse the prior context or snapshot cache', as
   assert.equal(next.response.headers.get('X-Public-Snapshot-Cache'), 'MISS');
   assert.equal(calls.filter((call) => call.path.endsWith('/get_public_published_results_scoped')).length, 2);
 });
+
+test('supports ETag 304 conditional requests, long revision-keyed snapshot TTL, and invalidates on revision change', async () => {
+  const cache = fakeCache();
+  globalThis.caches = cache;
+  let currentRevision = 7;
+  const calls = installSource({ revision: () => currentRevision });
+
+  const first = await snapshot(tenantA);
+  assert.equal(first.response.status, 200);
+  const etag = first.response.headers.get('ETag');
+  assert.equal(etag, `W/"snap:${tenantA}:${festivalA}:7"`);
+
+  // Revision-keyed context & snapshot cache entries persist well beyond 5s (300s TTL)
+  const snapCacheEntry = [...cache.entries.entries()].find(([k]) => k.includes('kind=snapshot'));
+  assert.ok(snapCacheEntry);
+  assert.ok(snapCacheEntry[1].expires - Date.now() > 60_000);
+
+  // Repeated request with matching ETag & unchanged revision -> 304 without heavy RPC calls
+  const cond = await onRequestGet({
+    request: new Request(`https://consoulium.example/api/public-snapshot?tenant_id=${tenantA}`, {
+      headers: { 'If-None-Match': etag },
+    }),
+    env,
+  });
+  assert.equal(cond.status, 304);
+  assert.equal(cond.headers.get('ETag'), etag);
+  assert.equal(calls.filter((call) => call.path.endsWith('/get_public_published_results_scoped')).length, 1);
+
+  // Publish/hide bumps revision -> old ETag does NOT get 304, returns 200 with fresh data and new ETag
+  currentRevision = 8;
+  for (const key of cache.entries.keys()) {
+    if (key.includes('kind=version')) cache.entries.delete(key);
+  }
+  const updatedRes = await onRequestGet({
+    request: new Request(`https://consoulium.example/api/public-snapshot?tenant_id=${tenantA}`, {
+      headers: { 'If-None-Match': etag },
+    }),
+    env,
+  });
+  assert.equal(updatedRes.status, 200);
+  assert.equal(updatedRes.headers.get('ETag'), `W/"snap:${tenantA}:${festivalA}:8"`);
+  const updatedBody = await updatedRes.json();
+  assert.equal(updatedBody.revision, '8');
+});

@@ -4,13 +4,14 @@ import { ui } from '@/constants/designSystem';
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Linking, Platform, TextInput, Pressable } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus, PenLine, Eye, EyeOff } from 'lucide-react-native';
+import { Download, RefreshCw, Share2, Archive, Upload, Trash2, Plus, PenLine, Eye, EyeOff, FolderUp, X } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/core/config/supabase';
 import { useFestival } from '@/core/hooks/useFestival';
 import { useExportQueueStore } from '@/services/exportQueueService';
 import { storageService } from '@/services/storage/storageService';
 import { uploadService } from '@/services/storage/uploadService';
+import { uploadMediaFilesInBatches, type BatchMediaProgress } from '@/services/storage/mediaBatchUpload';
 import { useAuthStore } from '@/core/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jsPDF } from 'jspdf';
@@ -128,12 +129,22 @@ function deliveryStatusLabel(delivery: PosterDeliveryRecord): string {
   return 'Uploaded';
 }
 
+function getAssetSection(asset: any): 'media' | 'result' {
+  const hash = String(asset?.render_hash || '');
+  if (hash.startsWith('manual_media_')) return 'media';
+  if (hash.startsWith('manual_result_')) return 'result';
+  if (asset?.event_id || asset?.result_id || asset?.result_no != null) return 'result';
+  if (hash.startsWith('manual_')) return 'media';
+  return 'result';
+}
+
 export default function MediaCenterPage() {
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const { jobs, isProcessing } = useExportQueueStore();
   const router = useRouter();
   const [filter, setFilter] = useState<'all' | 'published' | 'draft' | 'pending'>('all');
+  const [sectionFilter, setSectionFilter] = useState<'all' | 'media' | 'result'>('all');
   const [isExportingZip, setIsExportingZip] = useState(false);
   const [exportingPdfId, setExportingPdfId] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -145,13 +156,21 @@ export default function MediaCenterPage() {
   const retryOwnerIdRef = React.useRef<string | null>(null);
   const [localPreviewUrls, setLocalPreviewUrls] = useState<Record<string, string>>({});
 
-  // Upload poster states
+  // Upload modal states (Media vs Result + Folder Dual-WebP batch upload)
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<'media' | 'result'>('media');
   const [uploadEventName, setUploadEventName] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFolderName, setSelectedFolderName] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<BatchMediaProgress | null>(null);
+  const [resultSearchQuery, setResultSearchQuery] = useState('');
+  const [selectedResultItemId, setSelectedResultItemId] = useState<string | null>(null);
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const uploadAbortRef = React.useRef<AbortController | null>(null);
 
   React.useEffect(() => {
     setSavedFestivalContext(null);
@@ -213,30 +232,162 @@ export default function MediaCenterPage() {
     return () => Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
   }, [localDeliveries]);
 
+  const { data: publishedResultChoices = [] } = useQuery({
+    queryKey: ['media-center-result-choices', activeFestival?.id, tenant_id],
+    queryFn: async () => {
+      if (!activeFestival?.id || !tenant_id) return [];
+      const { data, error } = await supabase
+        .from('results')
+        .select('id, item_id, public_result_no, item:items(item_name_en, item_name_ml, item_code)')
+        .eq('festival_id', activeFestival.id)
+        .eq('tenant_id', tenant_id)
+        .eq('published', true)
+        .eq('public_visible', true)
+        .order('public_result_no', { ascending: true });
+      if (error || !Array.isArray(data)) return [];
+      const byItem = new Map<string, { resultId: string; itemId: string; resultNo: number | null; title: string; subtitle: string; itemCode: string }>();
+      for (const row of data as any[]) {
+        const key = row.item_id ? String(row.item_id) : String(row.id);
+        if (byItem.has(key)) continue;
+        const itemObj = Array.isArray(row.item) ? row.item[0] : row.item;
+        byItem.set(key, {
+          resultId: String(row.id),
+          itemId: String(row.item_id || ''),
+          resultNo: row.public_result_no != null ? Number(row.public_result_no) : null,
+          title: String(itemObj?.item_name_en || itemObj?.item_name_ml || 'Published Result'),
+          subtitle: String(itemObj?.item_name_ml || ''),
+          itemCode: String(itemObj?.item_code || ''),
+        });
+      }
+      return Array.from(byItem.values());
+    },
+    enabled: Platform.OS === 'web' && showUploadModal && uploadTarget === 'result' && !!activeFestival?.id && !!tenant_id,
+    staleTime: 60_000,
+  });
+
+  const resetUploadModal = () => {
+    setShowUploadModal(false);
+    setSelectedFile(null);
+    setSelectedFiles([]);
+    setSelectedFolderName('');
+    setPreviewUrl(null);
+    setUploadEventName('');
+    setUploadProgress(0);
+    setBatchProgress(null);
+    setSelectedResultItemId(null);
+    setSelectedResultId(null);
+    setResultSearchQuery('');
+  };
+
   const handleFileSelect = () => {
+    if (Platform.OS !== 'web') return;
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = 'image/jpeg,image/png,image/webp';
+    input.accept = 'image/jpeg,image/png,image/webp,image/*';
+    input.multiple = uploadTarget === 'media';
     input.onchange = (e: any) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be under 10MB');
+      const files = Array.from(e.target.files || []) as File[];
+      if (!files.length) return;
+      if (uploadTarget === 'result') {
+        const file = files[0];
+        if (file.size > 15 * 1024 * 1024) {
+          alert('File size must be under 15MB');
+          return;
+        }
+        setSelectedFile(file);
+        setSelectedFiles([]);
+        setSelectedFolderName('');
+        setPreviewUrl(URL.createObjectURL(file));
         return;
       }
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
+      setSelectedFiles(files);
+      setSelectedFile(files[0]);
+      setSelectedFolderName('');
+      setPreviewUrl(URL.createObjectURL(files[0]));
+    };
+    input.click();
+  };
+
+  const handleFolderSelect = () => {
+    if (Platform.OS !== 'web') return;
+    const input = document.createElement('input') as HTMLInputElement & { webkitdirectory?: boolean };
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.webkitdirectory = true;
+    input.setAttribute('webkitdirectory', '');
+    input.onchange = (e: any) => {
+      const rawFiles = Array.from(e.target.files || []) as File[];
+      const imageFiles = rawFiles.filter((f) => f.type.startsWith('image/') || /\.(jpe?g|png|webp|avif|gif|bmp)$/i.test(f.name || ''));
+      if (!imageFiles.length) {
+        alert('No image files found in the selected folder.');
+        return;
+      }
+      const relPath = (imageFiles[0] as File & { webkitRelativePath?: string }).webkitRelativePath || '';
+      const folderName = relPath.includes('/') ? relPath.split('/')[0] : 'Selected Folder';
+      setSelectedFiles(imageFiles);
+      setSelectedFile(imageFiles[0]);
+      setSelectedFolderName(folderName);
+      setPreviewUrl(URL.createObjectURL(imageFiles[0]));
     };
     input.click();
   };
 
   const handleUploadPoster = async () => {
-    if (!selectedFile || !uploadEventName.trim() || !activeFestival?.id || !tenant_id) return;
+    if (!activeFestival?.id || !tenant_id) return;
+
+    if (uploadTarget === 'media') {
+      const filesToUpload = selectedFiles.length > 0 ? selectedFiles : (selectedFile ? [selectedFile] : []);
+      if (!filesToUpload.length) return;
+      const controller = new AbortController();
+      uploadAbortRef.current = controller;
+      setIsUploading(true);
+      setBatchProgress(null);
+      try {
+        const result = await uploadMediaFilesInBatches({
+          files: filesToUpload,
+          festivalId: activeFestival.id,
+          tenantId: tenant_id,
+          baseTitle: uploadEventName.trim() || undefined,
+          batchSize: 10,
+          concurrency: 3,
+          signal: controller.signal,
+          onProgress: (p) => setBatchProgress(p),
+        });
+        queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
+        if (result.cancelled) {
+          alert(`Upload stopped. ${result.completed} uploaded before cancel.`);
+        } else if (result.failed > 0) {
+          alert(`Uploaded ${result.completed} media items (${result.skipped} skipped, ${result.failed} failed).\n${result.errors.slice(0, 3).join('\n')}`);
+        }
+        if (!result.cancelled && result.failed === 0) {
+          resetUploadModal();
+        }
+      } catch (err: any) {
+        alert('Media upload failed: ' + (err?.message || 'Unknown error'));
+      } finally {
+        uploadAbortRef.current = null;
+        setIsUploading(false);
+      }
+      return;
+    }
+
+    if (!selectedFile || !uploadEventName.trim()) return;
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      const metadata = await uploadService.uploadPoster(selectedFile, activeFestival.id, tenant_id, (p) => setUploadProgress(p));
-      const renderHash = `manual_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const ext = selectedFile.name.split('.').pop() || 'png';
+      const metadata = await uploadService.uploadAsset(
+        selectedFile,
+        'generated_asset',
+        activeFestival.id,
+        tenant_id,
+        'public',
+        ext,
+        undefined,
+        (p) => setUploadProgress(p),
+      );
+      const renderHash = `manual_result_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
       const { error } = await supabase.from('generated_assets').insert({
         tenant_id,
         festival_id: activeFestival.id,
@@ -246,14 +397,14 @@ export default function MediaCenterPage() {
         storage_path: metadata.object_key,
         public_url: metadata.file_url,
         event_name: uploadEventName.trim(),
+        event_id: selectedResultItemId || null,
+        result_id: selectedResultId || null,
+        visibility_status: 'published',
+        is_current: true,
       });
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
-      setShowUploadModal(false);
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setUploadEventName('');
-      setUploadProgress(0);
+      resetUploadModal();
     } catch (err: any) {
       alert('Upload failed: ' + err.message);
     } finally {
@@ -786,11 +937,13 @@ export default function MediaCenterPage() {
   };
 
   const filteredAssets = React.useMemo(() => {
-    if (filter === 'published') return mediaAssets.filter((a: any) => !a.is_local_delivery && a.is_live_public);
-    if (filter === 'draft') return mediaAssets.filter((a: any) => !a.is_local_delivery && !a.is_live_public);
-    if (filter === 'pending') return mediaAssets.filter((a: any) => a.is_local_delivery);
-    return mediaAssets;
-  }, [mediaAssets, filter]);
+    let base = mediaAssets;
+    if (filter === 'published') base = mediaAssets.filter((a: any) => !a.is_local_delivery && a.is_live_public);
+    else if (filter === 'draft') base = mediaAssets.filter((a: any) => !a.is_local_delivery && !a.is_live_public);
+    else if (filter === 'pending') base = mediaAssets.filter((a: any) => a.is_local_delivery);
+    if (sectionFilter === 'all') return base;
+    return base.filter((a: any) => getAssetSection(a) === sectionFilter);
+  }, [mediaAssets, filter, sectionFilter]);
 
   const openUrl = (url: string) => {
     if (Platform.OS === 'web') {
@@ -862,6 +1015,33 @@ export default function MediaCenterPage() {
         ) : (
           <>
             {/* Filter Tabs */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+              {([
+                { key: 'all', label: `All Sections (${mediaAssets.length})` },
+                { key: 'media', label: `🖼️ Media Page (${mediaAssets.filter((a: any) => getAssetSection(a) === 'media').length})` },
+                { key: 'result', label: `🏆 Result Cards (${mediaAssets.filter((a: any) => getAssetSection(a) === 'result').length})` },
+              ] as const).map((sec) => {
+                const active = sectionFilter === sec.key;
+                return (
+                  <TouchableOpacity
+                    key={sec.key}
+                    onPress={() => setSectionFilter(sec.key)}
+                    style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      borderRadius: 999,
+                      borderWidth: 1,
+                      borderColor: active ? colors.teal : colors.border,
+                      backgroundColor: active ? colors.teal : colors.card,
+                    }}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFFFFF' : colors.navy }}>
+                      {sec.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               {([
                 { key: 'all', label: `All (${mediaAssets.length})` },
@@ -971,7 +1151,7 @@ export default function MediaCenterPage() {
                 <View style={styles.cardBody}>
                   <Text style={styles.eventName} numberOfLines={1}>{asset.event_name}</Text>
                   <Text style={styles.metaText}>
-                    {asset.result_no ? `Result #${asset.result_no}` : 'Poster'} • {new Date(asset.created_at).toLocaleDateString()}
+                    {getAssetSection(asset) === 'media' ? 'Media' : 'Result'} • {asset.result_no ? `Result #${asset.result_no}` : 'Poster'} • {new Date(asset.created_at).toLocaleDateString()}
                     {asset.is_local_delivery ? ' • Saved on this device' : ''}
                   </Text>
                   
@@ -1087,76 +1267,270 @@ export default function MediaCenterPage() {
         )}
       </ScrollView>
 
-      {/* Upload Poster Modal */}
+      {/* Upload Media / Result Poster Modal */}
       <Modal
         visible={showUploadModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => !isUploading && setShowUploadModal(false)}
+        onRequestClose={() => !isUploading && resetUploadModal()}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Upload Custom Poster</Text>
-            
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Event / Poster Title *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="e.g. Malayalam Speech Result"
-                value={uploadEventName}
-                onChangeText={setUploadEventName}
-                editable={!isUploading}
-              />
-            </View>
+          <View style={[styles.modalContent, { maxHeight: '90%' }]}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalTitle}>Upload to Media / Results</Text>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Poster Image (JPG/PNG/WEBP) *</Text>
-              <TouchableOpacity 
-                style={styles.imagePickerBtn} 
-                onPress={handleFileSelect}
-                disabled={isUploading}
-              >
-                {previewUrl ? (
-                  <Image source={{ uri: previewUrl }} style={styles.previewImage} resizeMode="cover" />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Plus size={24} color={colors.muted} />
-                    <Text style={styles.imagePlaceholderText}>Click to select image</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {isUploading && (
-              <View style={styles.progressContainer}>
-                <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
-                <Text style={styles.progressText}>Uploading... {Math.round(uploadProgress)}%</Text>
+              {/* Destination Toggle */}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Upload Destination *</Text>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {([
+                    { key: 'media', label: '🖼️ Media (Public /media)' },
+                    { key: 'result', label: '🏆 Result (Public /results)' },
+                  ] as const).map((opt) => {
+                    const active = uploadTarget === opt.key;
+                    return (
+                      <TouchableOpacity
+                        key={opt.key}
+                        disabled={isUploading}
+                        onPress={() => {
+                          setUploadTarget(opt.key);
+                          setSelectedFile(null);
+                          setSelectedFiles([]);
+                          setSelectedFolderName('');
+                          setPreviewUrl(null);
+                          setBatchProgress(null);
+                        }}
+                        style={{
+                          flex: 1,
+                          paddingVertical: 10,
+                          paddingHorizontal: 12,
+                          borderRadius: 8,
+                          borderWidth: 1.5,
+                          borderColor: active ? colors.teal : colors.border,
+                          backgroundColor: active ? '#F0FDFA' : colors.bg,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: active ? colors.teal : colors.navy }}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            )}
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity 
-                style={styles.btnCancel} 
-                onPress={() => {
-                  setShowUploadModal(false);
-                  setSelectedFile(null);
-                  setPreviewUrl(null);
-                  setUploadEventName('');
-                }}
-                disabled={isUploading}
-              >
-                <Text style={styles.btnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }, (!selectedFile || !uploadEventName.trim() || isUploading) && styles.btnDisabled]}
-                onPress={handleUploadPoster}
-                disabled={!selectedFile || !uploadEventName.trim() || isUploading}
-              >
-                {isUploading ? <ActivityIndicator size="small" color={coreColor("#fff", 'onPrimary')} /> : <Upload size={16} color={coreColor("#fff", 'onPrimary')} />}
-                <Text style={styles.btnPrimaryText}>{isUploading ? 'Uploading...' : 'Upload Poster'}</Text>
-              </TouchableOpacity>
-            </View>
+              {uploadTarget === 'result' && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Link to Published Result / Competition *</Text>
+                  <TextInput
+                    style={[styles.input, { marginBottom: 8 }]}
+                    placeholder="Search competition or result #..."
+                    value={resultSearchQuery}
+                    onChangeText={setResultSearchQuery}
+                    editable={!isUploading}
+                  />
+                  <ScrollView style={{ maxHeight: 140, borderWidth: 1, borderColor: colors.border, borderRadius: 8, backgroundColor: colors.bg }}>
+                    {publishedResultChoices
+                      .filter((c) => {
+                        const q = resultSearchQuery.trim().toLowerCase();
+                        if (!q) return true;
+                        return c.title.toLowerCase().includes(q)
+                          || c.subtitle.toLowerCase().includes(q)
+                          || c.itemCode.toLowerCase().includes(q)
+                          || (c.resultNo != null && String(c.resultNo).includes(q));
+                      })
+                      .slice(0, 40)
+                      .map((choice) => {
+                        const isPicked = selectedResultItemId === choice.itemId && selectedResultId === choice.resultId;
+                        return (
+                          <TouchableOpacity
+                            key={`${choice.itemId}-${choice.resultId}`}
+                            disabled={isUploading}
+                            onPress={() => {
+                              setSelectedResultItemId(choice.itemId || null);
+                              setSelectedResultId(choice.resultId || null);
+                              if (!uploadEventName.trim()) setUploadEventName(choice.title);
+                            }}
+                            style={{
+                              paddingHorizontal: 12,
+                              paddingVertical: 9,
+                              borderBottomWidth: 1,
+                              borderBottomColor: colors.border,
+                              backgroundColor: isPicked ? '#ECFDF5' : 'transparent',
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, fontWeight: isPicked ? '700' : '600', color: colors.navy }} numberOfLines={1}>
+                              {choice.resultNo != null ? `#${choice.resultNo} · ` : ''}{choice.title}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    {publishedResultChoices.length === 0 && (
+                      <Text style={{ padding: 12, fontSize: 12, color: colors.muted }}>
+                        No published results found yet.
+                      </Text>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>
+                  {uploadTarget === 'media' ? 'Album / Title Prefix (Optional for Folder)' : 'Poster Title *'}
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={uploadTarget === 'media' ? 'e.g. Day 2 Stage Highlights (optional)' : 'e.g. Malayalam Speech Result'}
+                  value={uploadEventName}
+                  onChangeText={setUploadEventName}
+                  editable={!isUploading}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>
+                  {uploadTarget === 'media'
+                    ? 'Select Photos or Whole Folder (Auto-WebP · 10/batch to R2) *'
+                    : 'Poster Image (JPG/PNG/WEBP) *'}
+                </Text>
+                {uploadTarget === 'media' ? (
+                  <View style={{ gap: 10 }}>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        style={[styles.btnSecondary, { flex: 1, justifyContent: 'center' }]}
+                        onPress={handleFileSelect}
+                        disabled={isUploading}
+                      >
+                        <Plus size={16} color={colors.navy} />
+                        <Text style={styles.btnSecondaryText}>Select Image(s)</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.btnSecondary, { flex: 1, justifyContent: 'center', borderColor: colors.teal }]}
+                        onPress={handleFolderSelect}
+                        disabled={isUploading}
+                      >
+                        <FolderUp size={16} color={colors.teal} />
+                        <Text style={[styles.btnSecondaryText, { color: colors.teal }]}>Select Folder</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <View style={[styles.imagePickerBtn, { height: selectedFiles.length > 0 ? 140 : 110 }]}>
+                      {previewUrl ? (
+                        <View style={{ width: '100%', height: '100%', position: 'relative' }}>
+                          <Image source={{ uri: previewUrl }} style={styles.previewImage} resizeMode="cover" />
+                          <View style={{ position: 'absolute', bottom: 8, left: 8, right: 8, backgroundColor: 'rgba(15,23,42,0.82)', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 6 }}>
+                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }} numberOfLines={1}>
+                              {selectedFolderName ? `📁 ${selectedFolderName} · ` : ''}
+                              {selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'} ready → Dual WebP (HD + Thumb)
+                            </Text>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.imagePlaceholder}>
+                          <Text style={styles.imagePlaceholderText}>
+                            Converts to WebP in browser & uploads 10-by-10 to Cloudflare R2
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.imagePickerBtn}
+                    onPress={handleFileSelect}
+                    disabled={isUploading}
+                  >
+                    {previewUrl ? (
+                      <Image source={{ uri: previewUrl }} style={styles.previewImage} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Plus size={24} color={colors.muted} />
+                        <Text style={styles.imagePlaceholderText}>Click to select result poster</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isUploading && uploadTarget === 'media' && batchProgress && (
+                <View style={{ marginBottom: 14, gap: 6 }}>
+                  <View style={styles.progressContainer}>
+                    <View
+                      style={[
+                        styles.progressBar,
+                        { width: `${batchProgress.total > 0 ? Math.round(((batchProgress.completed + batchProgress.failed) / batchProgress.total) * 100) : 0}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={{ fontSize: 12, color: colors.navy, fontWeight: '600' }}>
+                    Batch {batchProgress.batchIndex}/{batchProgress.totalBatches} · {batchProgress.completed}/{batchProgress.total} uploaded
+                    {batchProgress.skipped > 0 ? ` · ${batchProgress.skipped} skipped` : ''}
+                    {batchProgress.failed > 0 ? ` · ${batchProgress.failed} failed` : ''}
+                  </Text>
+                  {!!batchProgress.currentFileName && (
+                    <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>
+                      Processing: {batchProgress.currentFileName}
+                    </Text>
+                  )}
+                </View>
+              )}
+
+              {isUploading && uploadTarget === 'result' && (
+                <View style={styles.progressContainer}>
+                  <View style={[styles.progressBar, { width: `${uploadProgress}%` }]} />
+                  <Text style={styles.progressText}>Uploading... {Math.round(uploadProgress)}%</Text>
+                </View>
+              )}
+
+              <View style={styles.modalActions}>
+                {isUploading && uploadTarget === 'media' ? (
+                  <TouchableOpacity
+                    style={[styles.btnCancel, { borderColor: ui.colors.danger, flexDirection: 'row', alignItems: 'center', gap: 6 }]}
+                    onPress={() => uploadAbortRef.current?.abort()}
+                  >
+                    <X size={14} color={ui.colors.danger} />
+                    <Text style={[styles.btnCancelText, { color: ui.colors.danger }]}>Stop Upload</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.btnCancel}
+                    onPress={resetUploadModal}
+                    disabled={isUploading}
+                  >
+                    <Text style={styles.btnCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[
+                    styles.btnPrimary,
+                    { backgroundColor: coreColor('#0F766E', 'primary') },
+                    (
+                      isUploading
+                      || (uploadTarget === 'media'
+                        ? (selectedFiles.length === 0 && !selectedFile)
+                        : (!selectedFile || !uploadEventName.trim()))
+                    ) && styles.btnDisabled,
+                  ]}
+                  onPress={handleUploadPoster}
+                  disabled={
+                    isUploading
+                    || (uploadTarget === 'media'
+                      ? (selectedFiles.length === 0 && !selectedFile)
+                      : (!selectedFile || !uploadEventName.trim()))
+                  }
+                >
+                  {isUploading ? <ActivityIndicator size="small" color={coreColor('#fff', 'onPrimary')} /> : <Upload size={16} color={coreColor('#fff', 'onPrimary')} />}
+                  <Text style={styles.btnPrimaryText}>
+                    {isUploading
+                      ? 'Uploading...'
+                      : uploadTarget === 'media'
+                        ? `Upload ${selectedFiles.length || (selectedFile ? 1 : 0)} to Media`
+                        : 'Upload Result Poster'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>

@@ -149,6 +149,10 @@
     if (e.target === modal || e.target.classList.contains('lightbox__stage')) closeModal();
   });
 
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) closeModal();
+  });
+
   let lightboxList = [];
   let lightboxIdx = 0;
 
@@ -178,14 +182,14 @@
     const bar = el('div', 'lightbox__bar');
     const counter = el('span', 'meta-pill', `${lightboxIdx + 1} / ${lightboxList.length}`);
     const actions = el('div', 'bulletin-bar__actions');
-    const dlUrl = item.downloadUrl || item.image;
-    if (dlUrl) {
-      const dlBtn = el('a', 'glass-btn glass-btn--primary', 'Download');
-      dlBtn.href = dlUrl;
-      dlBtn.target = '_blank';
-      dlBtn.rel = 'noopener';
-      dlBtn.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}.jpg`;
-      actions.append(dlBtn);
+    if (page === 'media') {
+      const dlUrl = item.originalDownloadPath || item.downloadUrl || item.image;
+      if (dlUrl) {
+        const dlBtn = el('a', 'glass-btn glass-btn--primary', 'Download');
+        dlBtn.href = dlUrl;
+        dlBtn.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}`;
+        actions.append(dlBtn);
+      }
     }
     const closeBtn = el('button', 'glass-btn', 'Close');
     closeBtn.type = 'button';
@@ -434,6 +438,116 @@
     return entry;
   }
 
+  let resultPosters = [];
+
+  function findPostersForResultGroup(results) {
+    if (!Array.isArray(resultPosters) || !resultPosters.length || !Array.isArray(results) || !results.length) {
+      return [];
+    }
+    const itemIds = new Set(results.map((r) => r.item_id).filter(Boolean));
+    const resultIds = new Set(results.map((r) => r.result_id).filter(Boolean));
+    const itemCodes = new Set(results.map((r) => String(r.item_code || '').trim().toLowerCase()).filter(Boolean));
+    const itemNames = new Set(
+      results.flatMap((r) => [r.item_name, r.item_name_ml])
+        .map((v) => String(v || '').trim().toLowerCase())
+        .filter(Boolean),
+    );
+
+    const matched = [];
+    const seen = new Set();
+    for (const poster of resultPosters) {
+      if (!poster || typeof poster !== 'object') continue;
+      const pid = poster.render_hash || poster.id;
+      if (pid && seen.has(pid)) continue;
+      const matchesId = (poster.event_id && itemIds.has(poster.event_id))
+        || (poster.result_id && resultIds.has(poster.result_id));
+      const matchesCode = poster.item_code && itemCodes.has(String(poster.item_code).trim().toLowerCase());
+      const matchesTitle = poster.title && itemNames.has(String(poster.title).trim().toLowerCase());
+      if (matchesId || matchesCode || matchesTitle) {
+        if (pid) seen.add(pid);
+        matched.push(poster);
+      }
+    }
+    return matched;
+  }
+
+  function openResultPopup(first, sortedResults, matchedPosters) {
+    modal.className = 'glass-modal result-modal';
+    const card = el('div', 'glass-modal__dialog result-modal__card');
+
+    const top = el('div', 'glass-modal__top');
+    const tags = el('div', 'result-modal__tags');
+    tags.append(
+      el('span', 'glass-tag glass-tag--accent', first.item_code || 'PODIUM'),
+      el('span', 'glass-tag', (first.item_category_codes || []).join(' · ') || 'General'),
+    );
+    const closeBtn = el('button', 'glass-btn', 'Close');
+    closeBtn.type = 'button';
+    closeBtn.addEventListener('click', closeModal);
+    top.append(tags, closeBtn);
+
+    const headingText = first.item_name || first.item_name_ml || 'Competition';
+    const titleEl = el('h2', 'result-modal__title', headingText);
+    const subEl = (first.item_name_ml && first.item_name_en !== first.item_name_ml && first.item_name !== first.item_name_ml)
+      ? el('p', 'glass-panel__sub result-modal__sub', first.item_name_ml)
+      : null;
+
+    const podiumRows = el('div', 'glass-rows result-modal__podium');
+    for (const res of sortedResults) {
+      const rankNum = Number(res.rank);
+      const rowNode = el('div', 'glass-row');
+      const rankBadge = el('span', 'glass-rank', Number.isFinite(rankNum) ? rankNum : '–');
+      if (Number.isFinite(rankNum)) rankBadge.dataset.rank = String(rankNum);
+      const info = el('div');
+      info.append(
+        el('strong', '', res.participant_name || res.organisation_name || 'Published entry'),
+        el('small', '', res.organisation_name || ''),
+      );
+      const placeLabel = rankNum === 1 ? '1st Place' : rankNum === 2 ? '2nd Place' : rankNum === 3 ? '3rd Place' : '';
+      rowNode.append(rankBadge, info, el('span', 'glass-points', placeLabel));
+      podiumRows.append(rowNode);
+    }
+
+    const posterSection = el('div', 'result-modal__posters');
+    posterSection.append(el('h3', 'result-modal__section-title', 'Result Poster Preview'));
+
+    if (matchedPosters.length > 0) {
+      for (const poster of matchedPosters) {
+        const posterBox = el('div', 'result-modal__poster-item');
+        const img = document.createElement('img');
+        img.className = 'result-modal__poster-img';
+        img.src = poster.image_url || poster.thumb_url;
+        img.alt = `${headingText} Result Poster`;
+        img.decoding = 'async';
+
+        const posterActions = el('div', 'result-modal__poster-actions');
+        const badge = el('span', 'meta-pill', poster.result_no != null ? `Result #${poster.result_no}` : (poster.format || 'Result Poster'));
+        const dlBtn = el('a', 'glass-btn glass-btn--primary', 'Download Poster');
+        dlBtn.href = poster.original_download_path || poster.download_url || poster.image_url;
+        dlBtn.download = `${(poster.title || headingText || 'result_poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}`;
+        posterActions.append(badge, dlBtn);
+
+        posterBox.append(img, posterActions);
+        posterSection.append(posterBox);
+      }
+    } else {
+      const emptyBox = el('div', 'result-modal__empty');
+      emptyBox.append(
+        el('strong', '', 'Preview not available · പ്രിവ്യൂ ലഭ്യല്ല'),
+        el('span', '', 'Result poster has not been published for this competition yet.'),
+      );
+      posterSection.append(emptyBox);
+    }
+
+    card.append(top, titleEl);
+    if (subEl) card.append(subEl);
+    card.append(podiumRows, posterSection);
+    modal.replaceChildren(card);
+    modal.hidden = false;
+    document.documentElement.style.overflow = 'hidden';
+    closeBtn.focus();
+  }
+
   function renderResults(term) {
     const allResults = (snapshot.results || []).filter((r) => [1, 2, 3].includes(Number(r.rank)));
     const catSet = new Set();
@@ -458,7 +572,22 @@
       if (term && !results.some((r) => [r.item_name, r.item_name_ml, r.item_code, r.participant_name, r.organisation_name]
         .some((v) => String(v || '').toLocaleLowerCase().includes(term)))) continue;
 
-      const panel = el('article', 'glass-panel');
+      const sortedResults = [...results].sort((a, b) => Number(a.rank ?? 999) - Number(b.rank ?? 999));
+      const matchedPosters = findPostersForResultGroup(sortedResults);
+
+      const panel = el('article', 'glass-panel glass-panel--clickable');
+      panel.tabIndex = 0;
+      panel.setAttribute('role', 'button');
+      panel.setAttribute('aria-label', `${first.item_name || first.item_name_ml || 'Competition'} result details and poster`);
+      const openPopup = () => openResultPopup(first, sortedResults, matchedPosters);
+      panel.addEventListener('click', openPopup);
+      panel.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          openPopup();
+        }
+      });
+
       const head = el('div', 'glass-panel__head');
       head.append(
         el('span', 'glass-tag glass-tag--accent', first.item_code || 'PODIUM'),
@@ -468,7 +597,7 @@
       panel.append(head, el('h2', '', heading));
 
       const rows = el('div', 'glass-rows');
-      for (const res of [...results].sort((a, b) => Number(a.rank ?? 999) - Number(b.rank ?? 999))) {
+      for (const res of sortedResults) {
         const rankNum = Number(res.rank);
         const rowNode = el('div', 'glass-row');
         const rankBadge = el('span', 'glass-rank', Number.isFinite(rankNum) ? rankNum : '–');
@@ -484,6 +613,32 @@
         rows.append(rowNode);
       }
       panel.append(rows);
+
+      const previewBar = el('div', `result-card__poster-bar${matchedPosters.length ? ' is-ready' : ' is-empty'}`);
+      if (matchedPosters.length > 0) {
+        const leadPoster = matchedPosters[0];
+        const thumbImg = document.createElement('img');
+        thumbImg.className = 'result-card__poster-thumb';
+        thumbImg.src = leadPoster.thumb_url || leadPoster.image_url;
+        thumbImg.alt = `${heading} poster preview`;
+        thumbImg.loading = 'lazy';
+        thumbImg.decoding = 'async';
+        const previewMeta = el('div', 'result-card__poster-meta');
+        previewMeta.append(
+          el('strong', '', matchedPosters.length > 1 ? `${matchedPosters.length} Result Posters` : 'Poster Preview'),
+          el('small', '', 'Tap card to preview & download'),
+        );
+        previewBar.append(thumbImg, previewMeta, el('span', 'result-card__poster-cta', 'Open →'));
+      } else {
+        const emptyMeta = el('div', 'result-card__poster-meta');
+        emptyMeta.append(
+          el('strong', '', 'Preview not available'),
+          el('small', '', 'പ്രിവ്യൂ ലഭ്യല്ല · Tap for result card'),
+        );
+        previewBar.append(emptyMeta);
+      }
+      panel.append(previewBar);
+
       frag.append(panel);
       count++;
     }
@@ -850,6 +1005,7 @@
     const lightboxItems = filtered.map((m) => ({
       image: m.image_url,
       downloadUrl: m.download_url || m.image_url,
+      originalDownloadPath: m.original_download_path || '',
       alt: m.title || 'Media Center poster',
       title: m.title || 'poster',
     }));
@@ -863,8 +1019,8 @@
       poster.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
 
       const img = document.createElement('img');
-      img.src = item.image_url;
-      img.alt = item.title || 'Consoulium poster';
+      img.src = item.thumb_url || item.image_url;
+      img.alt = item.title || 'Consoulium media photo';
       img.loading = idx < 6 ? 'eager' : 'lazy';
       img.decoding = 'async';
 
@@ -887,10 +1043,8 @@
       viewBtn.type = 'button';
       viewBtn.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
       const dl = el('a', 'glass-btn glass-btn--primary', 'Download');
-      dl.href = item.download_url || item.image_url;
-      dl.target = '_blank';
-      dl.rel = 'noopener';
-      dl.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}.jpg`;
+      dl.href = item.original_download_path || item.download_url || item.image_url;
+      dl.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}`;
       actions.append(viewBtn, dl);
       foot.append(actions);
 
@@ -993,6 +1147,89 @@
     else if (page === 'brochure') renderBrochure();
   }
 
+  const SNAP_STORAGE_KEY = `conso_pub_snap_v1:${tenant}:${festivalId || 'active'}`;
+  const MEDIA_STORAGE_KEY = `conso_pub_media_v2:${tenant}:${festivalId || 'active'}:media`;
+  const RESULT_POSTERS_STORAGE_KEY = `conso_pub_media_v2:${tenant}:${festivalId || 'active'}:result`;
+  const MEDIA_MIN_CHECK_GAP_MS = 15_000;
+  const SNAP_VISIBILITY_THROTTLE_MS = 5_000;
+  let lastMediaCheckAt = 0;
+  let lastResultPostersCheckAt = 0;
+  let lastSnapVisibilityAt = 0;
+
+  async function fetchResultPosters(force = false) {
+    if (page !== 'results') return;
+    const cached = readSessionCache(RESULT_POSTERS_STORAGE_KEY);
+    if (cached?.data && cached.data.tenant_id === tenant && Array.isArray(cached.data.items)) {
+      if (!resultPosters.length) {
+        resultPosters = cached.data.items;
+        if (snapshot) render();
+      }
+      if (!force && Date.now() - Number(cached.fetchedAt || lastResultPostersCheckAt || 0) < MEDIA_MIN_CHECK_GAP_MS) {
+        return;
+      }
+    }
+
+    const posterParams = new URLSearchParams({ tenant_id: tenant, section: 'result' });
+    if (festivalId) posterParams.set('festival_id', festivalId);
+    const headers = { Accept: 'application/json' };
+    if (!force && cached?.etag) headers['If-None-Match'] = cached.etag;
+    lastResultPostersCheckAt = Date.now();
+
+    try {
+      const res = await fetch(`/api/public-media?${posterParams}`, {
+        cache: 'no-store',
+        credentials: 'omit',
+        headers,
+        signal: AbortSignal.timeout(10000),
+      });
+      if (res.status === 304 && cached?.data) {
+        writeSessionCache(RESULT_POSTERS_STORAGE_KEY, { ...cached, fetchedAt: Date.now() });
+        resultPosters = Array.isArray(cached.data.items) ? cached.data.items : [];
+        if (snapshot) render();
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.tenant_id !== tenant) return;
+      const etag = res.headers.get('ETag') || null;
+      if (data.enabled === false) {
+        clearSessionCache(RESULT_POSTERS_STORAGE_KEY);
+        resultPosters = [];
+      } else {
+        writeSessionCache(RESULT_POSTERS_STORAGE_KEY, { etag, data, fetchedAt: Date.now() });
+        resultPosters = Array.isArray(data.items) ? data.items : [];
+      }
+      if (snapshot) render();
+    } catch {
+      // Keep result cards working cleanly even if poster lookup fails
+    }
+  }
+
+  function readSessionCache(key) {
+    try {
+      const raw = sessionStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeSessionCache(key, value) {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // ignore storage quota errors
+    }
+  }
+
+  function clearSessionCache(key) {
+    try {
+      sessionStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }
+
   async function refresh(force = false) {
     const id = ++requestId;
     if (refreshBtn) refreshBtn.disabled = true;
@@ -1009,18 +1246,54 @@
       }
 
       if (page === 'media') {
-        const mediaParams = new URLSearchParams({ tenant_id: tenant });
+        const cachedMedia = readSessionCache(MEDIA_STORAGE_KEY);
+        if (!force && cachedMedia?.data && cachedMedia.data.tenant_id === tenant) {
+          if (!snapshot) {
+            snapshot = cachedMedia.data;
+            confirmedAt = Date.now();
+            if (updated && cachedMedia.data.generated_at) {
+              updated.textContent = `Updated ${formatDate(cachedMedia.data.generated_at, { timeStyle: 'short' })}`;
+            }
+            render();
+          }
+          if (Date.now() - Number(cachedMedia.fetchedAt || lastMediaCheckAt || 0) < MEDIA_MIN_CHECK_GAP_MS) {
+            return;
+          }
+        }
+
+        const mediaParams = new URLSearchParams({ tenant_id: tenant, section: 'media' });
         if (festivalId) mediaParams.set('festival_id', festivalId);
+        const headers = { Accept: 'application/json' };
+        if (cachedMedia?.etag) headers['If-None-Match'] = cachedMedia.etag;
+        lastMediaCheckAt = Date.now();
+
         const response = await fetch(`/api/public-media?${mediaParams}`, {
           cache: 'no-store',
           credentials: 'omit',
-          headers: { Accept: 'application/json' },
+          headers,
           signal: AbortSignal.timeout(10000),
         });
+        if (response.status === 304 && cachedMedia?.data) {
+          if (id !== requestId) return;
+          writeSessionCache(MEDIA_STORAGE_KEY, { ...cachedMedia, fetchedAt: Date.now() });
+          snapshot = cachedMedia.data;
+          confirmedAt = Date.now();
+          if (updated && cachedMedia.data.generated_at) {
+            updated.textContent = `Updated ${formatDate(cachedMedia.data.generated_at, { timeStyle: 'short' })}`;
+          }
+          render();
+          return;
+        }
         if (!response.ok) throw new Error('Media unavailable');
         const data = await response.json();
         if (data.tenant_id !== tenant) throw new Error('Invalid media scope');
         if (id !== requestId) return;
+        const etag = response.headers.get('ETag') || null;
+        if (data.enabled === false) {
+          clearSessionCache(MEDIA_STORAGE_KEY);
+        } else {
+          writeSessionCache(MEDIA_STORAGE_KEY, { etag, data, fetchedAt: Date.now() });
+        }
         snapshot = data;
         confirmedAt = Date.now();
         if (updated && data.generated_at) {
@@ -1031,6 +1304,7 @@
       }
 
       const searchTerm = page === 'results' && search ? search.value.trim() : '';
+      const storedSnapEntry = !searchTerm ? readSessionCache(SNAP_STORAGE_KEY) : null;
       if (!searchTerm) {
         const verRes = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenant)}`, {
           cache: 'no-store',
@@ -1051,10 +1325,26 @@
           throw new Error('Invalid version');
         }
         if (id !== requestId) return;
-        if (!force && snapshot && !loadedServerSearch && snapshot.revision === version.revision) {
+        if (version.revision === null) {
+          clearSessionCache(SNAP_STORAGE_KEY);
+        } else if (!force && snapshot && !loadedServerSearch && snapshot.revision === version.revision) {
           const wasFresh = Date.now() < confirmedAt + SNAPSHOT_TTL_MS;
           confirmedAt = Date.now();
           if (!wasFresh) render();
+          return;
+        } else if (
+          !force
+          && storedSnapEntry?.data
+          && storedSnapEntry.data.tenant_id === tenant
+          && storedSnapEntry.data.revision === version.revision
+        ) {
+          snapshot = storedSnapEntry.data;
+          confirmedAt = Date.now();
+          loadedServerSearch = '';
+          if (updated && storedSnapEntry.data.generated_at) {
+            updated.textContent = `Updated ${formatDate(storedSnapEntry.data.generated_at, { timeStyle: 'short' })}`;
+          }
+          render();
           return;
         }
       }
@@ -1063,12 +1353,28 @@
       if (festivalId) snapParams.set('festival_id', festivalId);
       if (searchTerm) snapParams.set('search', searchTerm);
 
+      const snapHeaders = { Accept: 'application/json' };
+      if (!force && !searchTerm && storedSnapEntry?.etag) {
+        snapHeaders['If-None-Match'] = storedSnapEntry.etag;
+      }
+
       const response = await fetch(`/api/public-snapshot?${snapParams}`, {
         cache: 'no-store',
         credentials: 'omit',
-        headers: { Accept: 'application/json' },
+        headers: snapHeaders,
         signal: AbortSignal.timeout(8000),
       });
+      if (response.status === 304 && storedSnapEntry?.data && storedSnapEntry.data.tenant_id === tenant) {
+        if (id !== requestId) return;
+        snapshot = storedSnapEntry.data;
+        confirmedAt = Date.now();
+        loadedServerSearch = searchTerm;
+        if (updated && storedSnapEntry.data.generated_at) {
+          updated.textContent = `Updated ${formatDate(storedSnapEntry.data.generated_at, { timeStyle: 'short' })}`;
+        }
+        render();
+        return;
+      }
       if (!response.ok) throw new Error('Data unavailable');
       const data = await response.json();
       if (
@@ -1081,15 +1387,28 @@
         throw new Error('Expired snapshot');
       }
       if (id !== requestId) return;
-      snapshot = sanitizePublicSnapshot(data);
+      const sanitized = sanitizePublicSnapshot(data);
+      snapshot = sanitized;
       confirmedAt = Date.now();
       loadedServerSearch = searchTerm;
+      if (!searchTerm) {
+        if (sanitized.revision && sanitized.features?.public_page === true) {
+          writeSessionCache(SNAP_STORAGE_KEY, {
+            etag: response.headers.get('ETag') || null,
+            data: sanitized,
+          });
+        } else {
+          clearSessionCache(SNAP_STORAGE_KEY);
+        }
+      }
       if (updated && data.generated_at) {
         updated.textContent = `Updated ${formatDate(data.generated_at, { timeStyle: 'short' })}`;
       }
       render();
     } catch {
       if (id !== requestId) return;
+      if (page === 'media') clearSessionCache(MEDIA_STORAGE_KEY);
+      else clearSessionCache(SNAP_STORAGE_KEY);
       snapshot = null;
       confirmedAt = 0;
       render();
@@ -1107,14 +1426,18 @@
       }
     });
   }
-  if (refreshBtn) refreshBtn.addEventListener('click', () => refresh(true));
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refresh();
+  if (refreshBtn) refreshBtn.addEventListener('click', () => {
+    refresh(true);
+    if (page === 'results') fetchResultPosters(true);
   });
-  if (page === 'media') {
-    window.setInterval(() => {
-      if (!document.hidden) refresh(true);
-    }, 30_000);
-  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) return;
+    const now = Date.now();
+    if (now - lastSnapVisibilityAt < SNAP_VISIBILITY_THROTTLE_MS) return;
+    lastSnapVisibilityAt = now;
+    refresh();
+    if (page === 'results') fetchResultPosters();
+  });
   refresh();
+  if (page === 'results') fetchResultPosters();
 })();

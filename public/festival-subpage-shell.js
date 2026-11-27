@@ -64,7 +64,7 @@
         <span class="sub-nav__brand-text">Consoulium 2k26</span>
       </a>
       <nav class="sub-nav__links" aria-label="Festival navigation">${linksHtml}</nav>
-      <a class="sub-nav__cta" href="#" id="sub-portal-btn">
+      <a class="sub-nav__cta" href="${withTenant('/candidate-search')}" id="sub-portal-btn">
         <span>Student Portal</span>
         <span class="sub-nav__cta-arrow" aria-hidden="true">→</span>
       </a>
@@ -137,7 +137,7 @@
             <strong class="sub-drawer__date">26 – 29 Nov 2026</strong>
             <span class="sub-drawer__venue">Bukhari Campus, Kondotty</span>
           </div>
-          <a class="sub-drawer__portal" href="#" id="sub-drawer-portal">
+          <a class="sub-drawer__portal" href="${withTenant('/candidate-search')}" id="sub-drawer-portal">
             <span>Student Portal</span>
             <span aria-hidden="true">→</span>
           </a>
@@ -149,10 +149,7 @@
 
   const openBtn = nav.querySelector('#sub-menu-open');
   const closeBtn = drawer.querySelector('#sub-menu-close');
-  const portalBtn = nav.querySelector('#sub-portal-btn');
-  const drawerPortalBtn = drawer.querySelector('#sub-drawer-portal');
-  if (portalBtn) portalBtn.addEventListener('click', (e) => e.preventDefault());
-  if (drawerPortalBtn) drawerPortalBtn.addEventListener('click', (e) => e.preventDefault());
+  // Student Portal links now navigate to the public candidate search page.
 
   const drawerBands = [...drawer.querySelectorAll('.sub-drawer__band')];
   const drawerSheet = drawer.querySelector('.sub-drawer__sheet');

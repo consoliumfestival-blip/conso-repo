@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Clipboard, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { ActivityIndicator, Clipboard, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/core/config/supabase';
 import { ui } from '@/constants/designSystem';
 import { getCurrentOriginAppUrl } from '@/core/utils/appUrls';
 import { PortalManagementPageLoading } from '@/components/layout/PortalManagementPage';
+import { SsfInput } from '@/components/ui/SsfInput';
+import { SsfSelectMenu } from '@/components/ui/SsfSelectMenu';
 
 type Entry = { item_id: string; queue_position: number; announced_at: string | null };
 type Item = { id: string; name: string; item_code?: string | null; category_codes?: string[] };
 type Team = { id: string; name: string };
 type Props = { tenantId: string; festivalId: string; userId: string };
-type TeamStrategy = { items: { item_id: string; team_rank: number; team_points: number; leader_gap: number; spread: number; max_adjacent_gap: number; target_is_first: boolean; target_tied_first: boolean; point_deltas: { organisation_id: string; points: number }[]; standings: { organisation_id: string; total_points: number; projected_rank: number }[] }[]; candidate_count: number; target_reaches_first: boolean; target_first_step: number | null; target_is_first_at_batch_end: boolean; target_tied_first_at_batch_end: boolean; lookahead_steps: number; lookahead_target_first_checkpoints: number; lookahead_max_spread: number; lookahead_first_step: number | null; search_width: number; selection_note: string; schedules: { item_id: string; start_time: string | null; venue: string | null }[] };
+type SuspenseMode = 'very_small' | 'small' | 'medium' | 'high' | 'auto';
+const modeLimits: Record<Exclude<SuspenseMode, 'auto'>, number> = { very_small: 5, small: 10, medium: 25, high: 50 };
+const modeLabels: Record<SuspenseMode, string> = { very_small: 'Very Small · 5', small: 'Small · 10', medium: 'Medium · 25', high: 'High · 50', auto: 'Auto · closest found' };
+type TeamStrategy = { batch_size: number; batch_spread: number; minimum_batch_spread: number | null; minimum_team_first_spread: number | null; mode_met: boolean; available_modes: Record<SuspenseMode, boolean>; items: { item_id: string; team_rank: number; team_points: number; leader_gap: number; spread: number; max_adjacent_gap: number; target_is_first: boolean; target_tied_first: boolean; point_deltas: { organisation_id: string; points: number }[]; standings: { organisation_id: string; total_points: number; projected_rank: number }[] }[]; candidate_count: number; target_reaches_first: boolean; target_first_step: number | null; target_is_first_at_batch_end: boolean; target_tied_first_at_batch_end: boolean; lookahead_steps: number; lookahead_target_first_checkpoints: number; lookahead_max_spread: number; lookahead_first_step: number | null; search_width: number; selection_note: string; schedules: { item_id: string; start_time: string | null; venue: string | null }[] };
 
 export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
   const client = useQueryClient();
@@ -22,6 +26,11 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
   const [credentialBusy, setCredentialBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [teamId, setTeamId] = useState('');
+  const [batchSize, setBatchSize] = useState<5 | 10>(5);
+  const [mode, setMode] = useState<SuspenseMode>('very_small');
+  const [fallbackFromMode, setFallbackFromMode] = useState<SuspenseMode | null>(null);
+  const [priority, setPriority] = useState<'team' | 'spread'>('team');
+  const [choosePriority, setChoosePriority] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState('');
   const [manualOrder, setManualOrder] = useState(false);
   const [pointDetailsId, setPointDetailsId] = useState<string | null>(null);
@@ -82,21 +91,29 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
     },
   });
   const strategy = useQuery({
-    queryKey: ['smart-announcer-team-strategy', userId, tenantId, festivalId, teamId],
+    queryKey: ['smart-announcer-team-strategy', userId, tenantId, festivalId, teamId, batchSize, mode, priority],
     enabled: !!teamId,
-    refetchInterval: 30000,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('smart_announcer_batch_preview', {
+      const { data, error } = await supabase.rpc('smart_announcer_batch_preview_v2', {
         p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId,
+        p_batch_size: batchSize, p_mode: mode, p_priority: priority,
       });
       if (error) throw error;
       return data as TeamStrategy;
     },
   });
-  const preview = useQuery({ queryKey: ['announcer-manual-preview', userId, tenantId, festivalId, teamId, selected],
+  useEffect(() => {
+    if (mode !== 'auto' && strategy.data?.items.length && strategy.data.available_modes?.[mode] === false) {
+      setFallbackFromMode(mode);
+      setMode('auto');
+      setPriority('team');
+      setManualOrder(false);
+    }
+  }, [mode, strategy.data]);
+  const preview = useQuery({ queryKey: ['announcer-manual-preview', userId, tenantId, festivalId, teamId, batchSize, mode, priority, selected],
     enabled: !!teamId && selected.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('smart_announcer_batch_preview', { p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId, p_item_ids: selected });
+      const { data, error } = await supabase.rpc('smart_announcer_batch_preview_v2', { p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId, p_item_ids: selected, p_batch_size: batchSize, p_mode: mode, p_priority: priority });
       if (error) throw error;
       return data as TeamStrategy;
     },
@@ -114,15 +131,15 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
           if (!manualOrder) return suggested;
           const retained = current.filter(id => eligible.has(id));
           const next = [...retained];
-          for (const id of suggested) if (!next.includes(id) && next.length < 5) next.push(id);
+          for (const id of suggested) if (!next.includes(id) && next.length < batchSize) next.push(id);
           return next;
         });
       }
     }
-  }, [teamId, candidates.data, strategy.data, manualOrder]);
+  }, [teamId, candidates.data, strategy.data, manualOrder, batchSize]);
   useEffect(() => { setPin(null); setSelected([]); }, [userId, tenantId, festivalId]);
-  const save = useMutation({ mutationFn: async () => {
-    const { error } = await supabase.rpc('smart_announcer_send_batch', { p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId, p_item_ids: selected });
+  const save = useMutation({ mutationFn: async (confirmCapOverride: boolean) => {
+    const { error } = await supabase.rpc('smart_announcer_send_batch_v2', { p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId, p_item_ids: selected, p_batch_size: batchSize, p_mode: mode, p_priority: priority, p_confirm_cap_override: confirmCapOverride });
     if (error) throw error;
   }, onSuccess: async () => {
     setMessage('Results sent to the announcer.');
@@ -203,13 +220,17 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
   return <View style={{ backgroundColor: ui.colors.surface, borderColor: ui.colors.border, borderWidth: 1, borderRadius: 12, padding: 16, marginBottom: 14, gap: 10 }}>
     <Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 16 }}>Announcer setup</Text>
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{token ? 'Session active until you close it' : 'Create a session to share announcer access'} · {pending} pending · {announced.size} announced</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+      <View style={{ flex: 1, minWidth: 180, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Results per batch</Text><SsfSelectMenu accessibilityLabel="Results per batch" value={String(batchSize)} options={[{ label: '5 results', value: '5' }, { label: '10 results', value: '10' }]} onValueChange={value => { setBatchSize(Number(value) as 5 | 10); setSelected([]); setManualOrder(false); }} /></View>
+      <View style={{ flex: 2, minWidth: 220, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Suspense · first to last team</Text><SsfSelectMenu accessibilityLabel="Suspense mode" value={mode} options={(Object.keys(modeLabels) as SuspenseMode[]).map(value => ({ label: modeLabels[value], value }))} onValueChange={value => { setMode(value as SuspenseMode); setFallbackFromMode(null); setPriority('team'); setChoosePriority(false); }} /></View>
+    </View>
+    {strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.candidate_count} eligible results considered · projected batch spread {strategy.data.batch_spread} points{mode === 'auto' ? '' : ' · limit ' + modeLimits[mode] + ' points'}</Text>}
+    {mode === 'auto' && fallbackFromMode && <Text accessibilityRole="alert" style={{ color: ui.colors.textMuted, fontSize: 12 }}>No order was found within {modeLimits[fallbackFromMode as Exclude<SuspenseMode, 'auto'>]} points. Auto is now using the closest spread found for this batch.</Text>}
+    {mode !== 'auto' && strategy.data && !strategy.data.available_modes?.[mode] && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>No order within this limit was found in the bounded search. Other modes with a found order: {(Object.keys(modeLabels) as SuspenseMode[]).filter(value => value !== 'auto' && strategy.data!.available_modes?.[value]).map(value => modeLabels[value]).join(', ') || 'none; Auto remains available'}. You can also review a manual selection.</Text>}
     {session.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Unable to load session. <Text onPress={() => void session.refetch()}>Retry</Text></Text>}
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Choose the team to prioritize. Review the system&apos;s next results, then send them to the announcer. Announcing does not publish results.</Text>
     {queue.error ? <Pressable onPress={() => void queue.refetch()}><Text style={{ color: ui.colors.danger }}>Queue unavailable. Tap to retry.</Text></Pressable> : <>
-      <Picker accessibilityLabel="Festival team" enabled={!save.isPending && teams.isSuccess} selectedValue={teamId} onValueChange={selectTeam}>
-        <Picker.Item label="Choose a team" value="" />
-        {teams.data?.map(team => <Picker.Item key={team.id} label={team.name} value={team.id} />)}
-      </Picker>
+      <View style={{ gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Team to prioritize</Text><SsfSelectMenu accessibilityLabel="Festival team" value={teamId} placeholder="Choose a team" searchable keepInViewport options={[{ label: 'Choose a team', value: '' }, ...(teams.data ?? []).map(team => ({ label: team.name, value: team.id }))]} onValueChange={selectTeam} active={!!teamId} /></View>
       {teams.isLoading && <ActivityIndicator color={ui.colors.primary} />}
       {teams.isError && <Pressable onPress={() => void teams.refetch()}><Text style={{ color: ui.colors.danger }}>Unable to load teams. Tap to retry.</Text></Pressable>}
       {teams.isSuccess && teams.data.length === 0 && <Text style={{ color: ui.colors.textMuted }}>No teams found for this festival.</Text>}
@@ -224,12 +245,12 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       {!!teamId && strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.target_reaches_first ? `The selected team ${strategy.data.items.find(item => item.target_is_first)?.target_tied_first ? 'shares first place' : 'reaches first place'} at position ${strategy.data.target_first_step}.` : 'The selected team does not reach first place within this batch based on available results.'} {strategy.data.target_is_first_at_batch_end ? strategy.data.target_tied_first_at_batch_end ? 'It shares first place at the end of this batch.' : 'It remains first at the end of this batch.' : `Projected spread at batch end: ${strategy.data.items.at(-1)?.spread ?? 0} points.`}</Text>}
       {!!teamId && strategy.data && strategy.data.lookahead_steps > 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Looking ahead at {strategy.data.lookahead_steps} more available results: the selected team is projected first at {strategy.data.lookahead_target_first_checkpoints} checkpoints; widest projected spread is {strategy.data.lookahead_max_spread} points. This is recalculated after the current batch.</Text>}
       {!!teamId && strategy.data?.selection_note && <Text style={{ color: ui.colors.textMuted, fontSize: 11 }}>{strategy.data.selection_note}</Text>}
-      {!!teamId && candidates.isSuccess && candidates.data.length > 0 && <TextInput accessibilityLabel="Search eligible results" value={candidateSearch} onChangeText={setCandidateSearch} placeholder="Search results by name, code, or category" placeholderTextColor={ui.colors.textMuted} style={{ minHeight: 40, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 10, color: ui.colors.text, fontSize: 13 }} />}
+      {!!teamId && candidates.isSuccess && candidates.data.length > 0 && <SsfInput label="Find a result" className="mb-0" accessibilityLabel="Search eligible results" value={candidateSearch} onChangeText={setCandidateSearch} placeholder="Search by name, code, or category" returnKeyType="search" style={{ minHeight: 44, borderRadius: 10 }} />}
       <ScrollView style={{ maxHeight: 240 }} nestedScrollEnabled contentContainerStyle={{ gap: 8 }}>
         {visibleItems.map(item => {
           const checked = selected.includes(item.id);
           return <View key={item.id} style={{ borderWidth: 1, borderRadius: 8, padding: 10, backgroundColor: checked ? ui.colors.primarySoft : ui.colors.surface, borderColor: checked ? ui.colors.primary : ui.colors.border }}>
-            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} aria-checked={checked} style={{ minHeight: 32, justifyContent: 'center' }} onPress={() => { setManualOrder(true); setSelected(current => checked ? current.filter(id => id !== item.id) : current.length >= 5 ? current : [...current, item.id]); }}>
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked }} aria-checked={checked} style={{ minHeight: 32, justifyContent: 'center' }} onPress={() => { setManualOrder(true); setSelected(current => checked ? current.filter(id => id !== item.id) : current.length >= batchSize ? current : [...current, item.id]); }}>
               <Text style={{ color: ui.colors.text }}>{checked ? '☑ ' : '☐ '}{item.name}</Text>
             </Pressable>
             {(item.item_code || item.category_codes?.length) ? <Text style={{ color: ui.colors.textMuted, marginTop: 4 }}>{[item.item_code, item.category_codes?.join(', ')].filter(Boolean).join(' · ')}</Text> : null}
@@ -253,13 +274,25 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       })}
       {preview.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Selection is no longer eligible. Refresh team results.</Text>}
       {preview.data?.items.at(-1)?.standings.map(projectedTeam => <Text key={projectedTeam.organisation_id} style={{ color: ui.colors.textMuted, fontSize: 12 }}>After this batch: #{projectedTeam.projected_rank} {teams.data?.find(team => team.id === projectedTeam.organisation_id)?.name || 'Team'} · {projectedTeam.total_points} points</Text>)}
+      <Modal visible={choosePriority} transparent animationType="fade" onRequestClose={() => setChoosePriority(false)}>
+        <View style={{ flex: 1, backgroundColor: '#0008', justifyContent: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: ui.colors.surface, borderRadius: 12, borderWidth: 1, borderColor: ui.colors.border, padding: 18, gap: 12, maxWidth: 440, width: '100%', alignSelf: 'center' }}>
+            <Text style={{ color: ui.colors.text, fontWeight: '700', fontSize: 16 }}>Choose priority for this batch</Text>
+            <Text style={{ color: ui.colors.text }}>This selected order exceeds the suspense limit. Choose whether to send this order for the selected team or search for a closer order.</Text>
+            <Pressable accessibilityRole="button" onPress={() => { setPriority('team'); setChoosePriority(false); save.mutate(true); }}><Text style={{ color: ui.colors.primary, paddingVertical: 8 }}>Prioritize selected team</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => { setPriority('spread'); setChoosePriority(false); setManualOrder(false); }}><Text style={{ color: ui.colors.primary, paddingVertical: 8 }}>Search for a closer order</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setChoosePriority(false)}><Text style={{ color: ui.colors.textMuted, paddingVertical: 8 }}>Cancel</Text></Pressable>
+          </View>
+        </View>
+      </Modal>
       {!!teamId && <Text style={{ color: ui.colors.textMuted }}>{pending > 0 ? 'Wait for the current batch to finish before sending the next batch.' : 'Review the next batch, then send it to the active announcer session.'}</Text>}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}><Pressable accessibilityRole="button" disabled={save.isPending || !token || pending > 0 || !teamId || selected.length === 0 || preview.isFetching || preview.isError || candidates.isError} onPress={() => save.mutate()}><Text style={{ color: ui.colors.primary, fontWeight: '700', paddingVertical: 12 }}>{save.isPending ? 'Sending…' : 'Send to Announcer'}</Text></Pressable>{!token && <Pressable accessibilityRole="button" disabled={credentialBusy || session.isLoading} onPress={() => void issue()}><Text style={{ color: ui.colors.primary, fontWeight: '700', paddingVertical: 12 }}>Create session</Text></Pressable>}{token && <Pressable accessibilityRole="button" disabled={credentialBusy} onPress={() => setConfirmClose(true)}><Text style={{ color: ui.colors.danger, fontWeight: '700', paddingVertical: 12 }}>Close session</Text></Pressable>}</View>
+      {mode !== 'auto' && priority === 'spread' && preview.data && !preview.data.mode_met && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>This order exceeds the selected limit. Adjust the results or choose another mode.</Text>}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}><Pressable accessibilityRole="button" disabled={save.isPending || !token || pending > 0 || !teamId || selected.length === 0 || !preview.data || preview.isFetching || preview.isError || candidates.isError || (mode !== 'auto' && priority === 'spread' && !preview.data?.mode_met)} onPress={() => { if (mode !== 'auto' && preview.data && !preview.data.mode_met && priority === 'team') setChoosePriority(true); else save.mutate(false); }}><Text style={{ color: ui.colors.primary, fontWeight: '700', paddingVertical: 12 }}>{save.isPending ? 'Sending…' : 'Send to Announcer'}</Text></Pressable>{!token && <Pressable accessibilityRole="button" disabled={credentialBusy || session.isLoading} onPress={() => void issue()}><Text style={{ color: ui.colors.primary, fontWeight: '700', paddingVertical: 12 }}>Create session</Text></Pressable>}{token && <Pressable accessibilityRole="button" disabled={credentialBusy} onPress={() => setConfirmClose(true)}><Text style={{ color: ui.colors.danger, fontWeight: '700', paddingVertical: 12 }}>Close session</Text></Pressable>}</View>
       {confirmClose && <View style={{ gap: 8 }}><Text style={{ color: ui.colors.text }}>Close this session and remove access from all announcer devices?</Text><Pressable accessibilityRole="button" disabled={credentialBusy} onPress={() => void revoke()}><Text style={{ color: ui.colors.danger, paddingVertical: 12 }}>Confirm close</Text></Pressable><Pressable accessibilityRole="button" onPress={() => setConfirmClose(false)}><Text style={{ color: ui.colors.primary, paddingVertical: 12 }}>Cancel</Text></Pressable></View>}
       {link && <View style={{ gap: 6 }}>
         <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Announcer link · active until closed by Admin</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TextInput accessibilityLabel="Announcer link" value={link} editable={false} selectTextOnFocus style={{ flex: 1, minWidth: 0, minHeight: 40, borderWidth: 1, borderColor: ui.colors.border, borderRadius: 8, paddingHorizontal: 10, color: ui.colors.text, fontSize: 12 }} />
+          <SsfInput accessibilityLabel="Announcer link" value={link} editable={false} selectTextOnFocus className="mb-0 flex-1" style={{ minHeight: 40, borderRadius: 10, fontSize: 12 }} />
           <Pressable accessibilityRole="button" accessibilityLabel="Copy link" onPress={() => void copy(link)} style={{ minHeight: 40, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, backgroundColor: ui.colors.primary }}><Text style={{ color: ui.colors.onPrimary, fontWeight: '700' }}>Copy</Text></Pressable>
         </View>
       </View>}

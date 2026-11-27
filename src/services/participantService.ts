@@ -5,6 +5,7 @@ import { stageManagementService } from './stageManagementService';
 import { getCollegeFestChestPrefix, isCollegeFestCategory } from '../core/festival/templatePolicy';
 import { supabase } from '../core/config/supabase';
 import { codeLetterAt, codeLetterOrder } from '../core/utils/codeLetters';
+import type { PublicCandidateSearchPage } from '../providers/database/DatabaseProvider';
 
 export type ParticipantStatus = 'pending' | 'approved' | 'rejected';
 
@@ -107,6 +108,17 @@ export const participantService = {
     const { data, error } = await participantRepository.getPublicCandidateProfile<PublicCandidateProfile>(slug);
     throwIfError(error);
     return data;
+  },
+
+  async searchPublicCandidateProfiles(input: {
+    tenantId: string;
+    festivalId?: string | null;
+    query: string;
+    cursor?: { name: string; id: string } | null;
+  }): Promise<PublicCandidateSearchPage> {
+    const { data, error } = await participantRepository.searchPublicCandidateProfiles(input);
+    throwIfError(error);
+    return data ?? { festival_id: input.festivalId ?? null, items: [], has_more: false, next_cursor: null };
   },
 
   async getParticipantRegistrations<T>(participantId: string): Promise<T[]> {

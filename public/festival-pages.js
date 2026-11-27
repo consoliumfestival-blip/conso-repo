@@ -1,7 +1,7 @@
 (() => {
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const SNAPSHOT_TTL_MS = 60_000;
-  const STATIC_PAGES = new Set(['gallery', 'news', 'media', 'brochure']);
+  const STATIC_PAGES = new Set(['gallery', 'news', 'brochure']);
   const params = new URLSearchParams(location.search);
   const rawTenant = params.get('tenant_id');
   const tenant = rawTenant === 'f87172d1-ed27-4db4-842c-cc00d3d56de2'
@@ -177,10 +177,21 @@
 
     const bar = el('div', 'lightbox__bar');
     const counter = el('span', 'meta-pill', `${lightboxIdx + 1} / ${lightboxList.length}`);
+    const actions = el('div', 'bulletin-bar__actions');
+    const dlUrl = item.downloadUrl || item.image;
+    if (dlUrl) {
+      const dlBtn = el('a', 'glass-btn glass-btn--primary', 'Download');
+      dlBtn.href = dlUrl;
+      dlBtn.target = '_blank';
+      dlBtn.rel = 'noopener';
+      dlBtn.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}.jpg`;
+      actions.append(dlBtn);
+    }
     const closeBtn = el('button', 'glass-btn', 'Close');
     closeBtn.type = 'button';
     closeBtn.addEventListener('click', closeModal);
-    bar.append(counter, closeBtn);
+    actions.append(closeBtn);
+    bar.append(counter, actions);
 
     const stage = el('div', 'lightbox__stage');
     const img = document.createElement('img');
@@ -385,6 +396,8 @@
   }
 
   function isVisible(data) {
+    if (page === 'news' || page === 'brochure') return false;
+    if (page === 'media') return data.enabled === true;
     if (STATIC_PAGES.has(page)) return true;
     if (data.features?.public_page !== true) return false;
     if (page === 'schedule') return data.features.sections?.schedule === true;
@@ -816,57 +829,72 @@
   }
 
   function renderMedia(term) {
-    const items = snapshot.media || [];
+    const items = snapshot.items || [];
     const formats = [...new Set(items.map((m) => m.format).filter(Boolean))];
-    renderFilterChips([['all', 'All Media'], ...formats.map((f) => [f, f])]);
+    renderFilterChips([['all', 'All Posters'], ...formats.map((f) => [f, f])]);
 
     const filtered = items.filter((m) => {
       if (activeFilter !== 'all' && m.format !== activeFilter) return false;
-      if (term && ![m.title, m.summary, m.format].some((v) => String(v || '').toLocaleLowerCase().includes(term))) return false;
+      if (term && ![m.title, m.subtitle, m.item_code, m.format, m.result_no != null ? `Result #${m.result_no}` : '']
+        .some((v) => String(v || '').toLocaleLowerCase().includes(term))) return false;
       return true;
     });
 
+    const lightboxItems = filtered.map((m) => ({
+      image: m.image_url,
+      downloadUrl: m.download_url || m.image_url,
+      alt: m.title || 'Media Center poster',
+      title: m.title || 'poster',
+    }));
+
     const frag = document.createDocumentFragment();
-    for (const item of filtered) {
+    filtered.forEach((item, idx) => {
       const card = el('article', 'glass-panel media-card');
-      const isPng = String(item.poster || '').endsWith('.png');
-      const poster = el('div', `media-card__poster${isPng ? ' media-card__poster--contain' : ''}`);
+      const poster = el('button', 'media-card__poster media-card__poster--poster');
+      poster.type = 'button';
+      poster.setAttribute('aria-label', `View ${item.title || 'poster'} in full clarity`);
+      poster.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
+
       const img = document.createElement('img');
-      img.src = item.poster || '/brand/gallery-01.svg';
-      img.alt = item.title || 'Media asset';
-      img.loading = 'lazy';
+      img.src = item.image_url;
+      img.alt = item.title || 'Consoulium poster';
+      img.loading = idx < 6 ? 'eager' : 'lazy';
+      img.decoding = 'async';
+
+      const badgeText = item.result_no != null ? `Result #${item.result_no}` : (item.format || 'Poster');
+      const resText = String(item.resolution || 'HD').toUpperCase();
       poster.append(
         img,
-        el('span', 'media-card__badge', item.format || 'Media'),
-        el('span', 'media-card__duration', item.duration || ''),
+        el('span', 'media-card__badge', badgeText),
+        el('span', 'media-card__duration', resText),
       );
 
       const body = el('div', 'media-card__body');
-      body.append(el('h2', '', item.title), el('p', 'glass-panel__sub', item.summary));
+      body.append(el('h2', '', item.title || 'Consoulium Poster'));
+      if (item.subtitle) body.append(el('p', 'glass-panel__sub', item.subtitle));
 
       const foot = el('div', 'media-card__foot');
-      foot.append(el('span', 'meta-pill', item.date || ''));
-      if (item.downloadUrl) {
-        const dl = el('a', 'glass-btn glass-btn--primary', 'Download');
-        dl.href = item.downloadUrl;
-        dl.download = '';
-        foot.append(dl);
-      } else {
-        const open = el('button', 'glass-btn', 'Preview →');
-        open.type = 'button';
-        open.addEventListener('click', () => {
-          const linkBtn = item.url ? el('a', 'glass-btn glass-btn--primary', 'Open section →') : null;
-          if (linkBtn) linkBtn.href = item.url;
-          openTextModal(item.format || 'Media', item.title, `${item.duration || ''} · ${item.date || ''}`, item.summary, linkBtn);
-        });
-        foot.append(open);
-      }
+      foot.append(el('span', 'meta-pill', formatDate(item.created_at, { dateStyle: 'medium' })));
+      const actions = el('div', 'media-card__actions');
+      const viewBtn = el('button', 'glass-btn', 'View');
+      viewBtn.type = 'button';
+      viewBtn.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
+      const dl = el('a', 'glass-btn glass-btn--primary', 'Download');
+      dl.href = item.download_url || item.image_url;
+      dl.target = '_blank';
+      dl.rel = 'noopener';
+      dl.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}.jpg`;
+      actions.append(viewBtn, dl);
+      foot.append(actions);
+
       body.append(foot);
       card.append(poster, body);
       frag.append(card);
-    }
+    });
     content.replaceChildren(frag);
-    if (!filtered.length) setMessage('No matching media items.');
+    if (!filtered.length) {
+      setMessage(term ? 'No matching posters found.' : 'No posters published in Media Center yet.');
+    }
   }
 
   function renderBrochure() {
@@ -973,6 +1001,28 @@
         return;
       }
 
+      if (page === 'media') {
+        const mediaParams = new URLSearchParams({ tenant_id: tenant });
+        if (festivalId) mediaParams.set('festival_id', festivalId);
+        const response = await fetch(`/api/public-media?${mediaParams}`, {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) throw new Error('Media unavailable');
+        const data = await response.json();
+        if (data.tenant_id !== tenant) throw new Error('Invalid media scope');
+        if (id !== requestId) return;
+        snapshot = data;
+        confirmedAt = Date.now();
+        if (updated && data.generated_at) {
+          updated.textContent = `Updated ${formatDate(data.generated_at, { timeStyle: 'short' })}`;
+        }
+        render();
+        return;
+      }
+
       const searchTerm = page === 'results' && search ? search.value.trim() : '';
       if (!searchTerm) {
         const verRes = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenant)}`, {
@@ -1054,5 +1104,10 @@
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refresh();
   });
+  if (page === 'media') {
+    window.setInterval(() => {
+      if (!document.hidden) refresh(true);
+    }, 30_000);
+  }
   refresh();
 })();

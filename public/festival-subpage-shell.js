@@ -22,9 +22,7 @@
     { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
     { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
     { id: 'gallery', label: 'Gallery', to: '/gallery', c: '#6D28D9' },
-    { id: 'news', label: 'News', to: '/news', c: '#2563EB', extra: true },
     { id: 'media', label: 'Media', to: '/media', c: '#E11D48', extra: true },
-    { id: 'brochure', label: 'Brochure', to: '/brochure', c: '#10B981', extra: true },
   ];
 
   const GLYPH_LIST = [
@@ -286,9 +284,7 @@
     ['Standings', '/standings', 'standings'],
     ['Schedule', '/schedule', 'schedule'],
     ['Gallery', '/gallery', 'gallery'],
-    ['News', '/news', 'news'],
     ['Media', '/media', 'media'],
-    ['Brochure', '/brochure', 'brochure'],
   ].map(([label, path, id]) => {
     const active = id === page ? ' aria-current="page"' : '';
     return `<a href="${withTenant(path)}"${active}>${label}</a>`;

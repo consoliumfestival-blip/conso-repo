@@ -29,6 +29,7 @@
     ['/festival-brochure.html', '/brochure'],
   ]);
   const cleanPages = new Set(['/explore', '/consoulium', '/results', '/standings', '/schedule', '/gallery', '/news', '/media', '/brochure']);
+  const hiddenTargets = new Set(['/news', '/brochure', '/speakers', '/partners', '#register', '/#register', '/festival-news.html', '/festival-brochure.html']);
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const searchParams = new URLSearchParams(location.search);
   const requestedTenant = searchParams.get('tenant_id');
@@ -39,6 +40,20 @@
   const update = () => {
     for (const link of document.querySelectorAll('.nav__links a[href], .menu__pages a[href], .menu__chips a[href], .footer__links a[href], a[href="/"]')) {
       const current = link.getAttribute('href');
+      const currentPath = current ? new URL(current, location.origin).pathname : '';
+      if (hiddenTargets.has(current) || hiddenTargets.has(currentPath)) {
+        const listItem = link.closest('.menu__list > li');
+        if (listItem) {
+          listItem.hidden = true;
+          listItem.style.display = 'none';
+        } else {
+          link.hidden = true;
+          link.style.display = 'none';
+        }
+        link.setAttribute('aria-hidden', 'true');
+        link.tabIndex = -1;
+        continue;
+      }
       const target = routes.get(current);
       if (!target) continue;
       if (link.classList.contains('public-link-pending')) link.classList.remove('public-link-pending');

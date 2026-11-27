@@ -260,63 +260,7 @@
       "body": "വിദ്യാർത്ഥികൾ രചിച്ച നാൽപതോളം കവിതകൾ ഉൾക്കൊള്ളിച്ചാണ് സാബിക് മുഖപത്രം സരണി കവിത പതിപ്പ് തയ്യാറാക്കിയത്."
     }
   ],
-  "media": [
-    {
-      "id": "media-01",
-      "title": "Ayatic Codex Official Theme Motion Teaser",
-      "format": "Broadcast",
-      "duration": "01:45",
-      "date": "2026-11-26",
-      "accent": "#6D28D9",
-      "poster": "/brand/gallery-01.svg",
-      "url": "/explore",
-      "summary": "Visual introduction to the cosmic order, rhythm, and five philosophical emblems of Consoulium 2k26."
-    },
-    {
-      "id": "media-02",
-      "title": "Five Houses Reveal Reel · Meet the Units",
-      "format": "Reels & Video",
-      "duration": "00:58",
-      "date": "2026-11-26",
-      "accent": "#E11D48",
-      "poster": "/brand/gallery-02.svg",
-      "url": "/standings",
-      "summary": "Dynamic spotlight on La-Cosmix, Al-Cognix, El-Clarix, Lo-Glifix, and Der-Zenix heading into launch day."
-    },
-    {
-      "id": "media-03",
-      "title": "Day 01 Inaugural Keynote Highlights",
-      "format": "Broadcast",
-      "duration": "04:20",
-      "date": "2026-11-26",
-      "accent": "#2563EB",
-      "poster": "/brand/gallery-03.svg",
-      "url": "/news",
-      "summary": "Excerpts and reflections from scholars and campus leaders at Bukhari Campus auditorium."
-    },
-    {
-      "id": "media-04",
-      "title": "Consoulium Official Emblem · High-Res Mark (512px)",
-      "format": "Press Kit",
-      "duration": "PNG · 512px",
-      "date": "2026-11-25",
-      "accent": "#10B981",
-      "poster": "/brand/consolium-icon-512.png",
-      "downloadUrl": "/brand/consolium-icon-512.png",
-      "summary": "Official square icon mark for press releases, event coverage, and digital partner badges."
-    },
-    {
-      "id": "media-05",
-      "title": "Consoulium Transparent Crest Mark",
-      "format": "Press Kit",
-      "duration": "PNG · 192px",
-      "date": "2026-11-25",
-      "accent": "#F59E0B",
-      "poster": "/brand/consolium-logo-footer.png",
-      "downloadUrl": "/brand/consolium-logo-footer.png",
-      "summary": "Transparent dark-mode crest overlay ready for broadcast lower-thirds and digital posters."
-    }
-  ],
+  "media": [],
   "brochure": {
     "title": "Consoulium 2k26 Official Prospectus & Codex Guide",
     "edition": "5th Edition · Ayatic Codex",

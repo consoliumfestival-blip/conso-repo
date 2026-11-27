@@ -786,7 +786,7 @@ img.nav__logo-img {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-rows: repeat(8, minmax(0, 1fr));
+    grid-template-rows: repeat(6, minmax(0, 1fr));
   }
 
   .menu__link {
@@ -808,4 +808,20 @@ img.nav__logo-img {
   .menu__aside {
     display: none;
   }
+}
+
+/* Temporarily hide News and Brochure links across explore navigation, menu, and footer */
+.nav__link[data-id="speakers"],
+.nav__link[data-id="register"],
+.nav__links a[href^="/news"],
+.nav__links a[href^="/brochure"],
+.menu__list li:has(a[href^="/news"]),
+.menu__list li:has(a[href^="/brochure"]),
+.menu__list li:has(a[href^="/speakers"]),
+.menu__list li:has(a[href^="/partners"]),
+.footer__links a[href^="/news"],
+.footer__links a[href^="/brochure"],
+.footer__links a[href^="/speakers"],
+.footer__links a[href^="/partners"] {
+  display: none !important;
 }

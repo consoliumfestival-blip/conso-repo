@@ -10,7 +10,7 @@ import { SsfCard } from '../../../components/ui/SsfCard';
 import { getPortalCardAccent, getPortalCardColumns, getPortalCardWidth, PORTAL_CARD_GAP } from '../../../components/admin/portalCardLayout';
 import { SsfButton } from '../../../components/ui/SsfButton';
 import { useStageManagement } from '../../../core/hooks/useStageManagement';
-import { Calendar, ChevronRight, MapPin, Clock, Search, X, Lock, Bell, RefreshCw, Copy, Check, ExternalLink, RotateCcw } from 'lucide-react-native';
+import { Calendar, ChevronRight, MapPin, Clock, Search, X, Lock, Bell, RefreshCw, Copy, Check, ExternalLink, RotateCcw, Eye, EyeOff } from 'lucide-react-native';
 import { SsfSelectMenu } from '../../../components/ui/SsfSelectMenu';
 import { SsfDatePicker } from '../../../components/ui/SsfDatePicker';
 import { scheduleLocalDateKey, sortStageSchedulesAroundToday } from '../../../core/utils/stageScheduleDate';
@@ -158,6 +158,8 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const [selectedStatus, setSelectedStatus] = React.useState('All');
   const [selectedSchedulePeriod, setSelectedSchedulePeriod] = React.useState<'all' | 'upcoming' | 'past' | 'postponed'>('all');
   const [selectedDate, setSelectedDate] = React.useState('');
+  const [hiddenVenueIds, setHiddenVenueIds] = React.useState<string[]>([]);
+  const [showHiddenVenues, setShowHiddenVenues] = React.useState(false);
   const [actionScheduleId, setActionScheduleId] = React.useState<string | null>(null);
   const [showStatusChoices, setShowStatusChoices] = React.useState(false);
   const [scheduleFilterNow, setScheduleFilterNow] = React.useState(() => Date.now());
@@ -171,6 +173,11 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
     const interval = setInterval(() => setScheduleFilterNow(Date.now()), 60_000);
     return () => clearInterval(interval);
   }, []);
+
+  React.useEffect(() => {
+    setHiddenVenueIds([]);
+    setShowHiddenVenues(false);
+  }, [stage.context?.tenant_id, stage.context?.festival_id]);
 
   const openStagePortal = (venueId: string) => {
     const path = `/stage-management/venue/${venueId}${optimizedRead ? '?read=v2' : ''}`;
@@ -224,6 +231,29 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
   const venuesList = React.useMemo(() => {
     return [{ id: 'All', name: 'All Venues' }, ...venues.map((v: any) => ({ id: v.id, name: v.name }))];
   }, [venues]);
+
+  const hiddenVenueIdSet = React.useMemo(() => new Set(hiddenVenueIds), [hiddenVenueIds]);
+  const visibleVenues = React.useMemo(
+    () => venues.filter((venue: any) => !hiddenVenueIdSet.has(venue.id)),
+    [venues, hiddenVenueIdSet],
+  );
+  const hiddenVenues = React.useMemo(
+    () => venues.filter((venue: any) => hiddenVenueIdSet.has(venue.id)),
+    [venues, hiddenVenueIdSet],
+  );
+  const venueIndexById = React.useMemo(
+    () => new Map(venues.map((venue: any, index: number) => [venue.id, index])),
+    [venues],
+  );
+
+  const hideVenue = (venueId: string) => {
+    setHiddenVenueIds((current) => current.includes(venueId) ? current : [...current, venueId]);
+  };
+
+  const unhideVenue = (venueId: string) => {
+    setHiddenVenueIds((current) => current.filter((id) => id !== venueId));
+    if (hiddenVenues.length <= 1) setShowHiddenVenues(false);
+  };
 
   const statusesList = [
     { id: 'All', name: 'All Statuses' },
@@ -423,13 +453,72 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
           <View className={isMobile ? 'flex-1 mr-3' : ''}>
             <Text className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-poppins-black text-ssf-text`}>Stage Management</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">
-              {venues.length} stages available
+              {hiddenVenues.length > 0 ? `${visibleVenues.length} of ${venues.length} stages visible` : `${venues.length} stages available`}
             </Text>
           </View>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stages" onPress={onRefresh} disabled={refreshing} className={`${isMobile ? 'h-11 w-11' : 'p-2'} items-center justify-center bg-core-surface-white border border-ssf-border rounded-xl`}>
-            <RefreshCw size={18} color={coreColor("#475569", 'text')} />
-          </TouchableOpacity>
+          <View className="flex-row items-center gap-2">
+            {hiddenVenues.length > 0 && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={`${showHiddenVenues ? 'Hide' : 'Show'} hidden stages (${hiddenVenues.length})`}
+                accessibilityState={{ expanded: showHiddenVenues }}
+                onPress={() => setShowHiddenVenues((current) => !current)}
+                className={`${isMobile ? 'h-11 w-11' : 'h-10 px-3'} flex-row items-center justify-center rounded-xl border border-ssf-border bg-core-surface-white`}
+              >
+                <View className="relative">
+                  <Eye size={17} color={coreColor('#475569', 'text')} />
+                  {isMobile && (
+                    <View className="absolute -right-2 -top-2 h-[18px] min-w-[18px] items-center justify-center rounded-full bg-button-primary px-1">
+                      <Text className="font-poppins-bold text-[9px] text-button-foreground">{hiddenVenues.length}</Text>
+                    </View>
+                  )}
+                </View>
+                {!isMobile && <Text className="ml-2 font-poppins-bold text-xs text-ui-text">Hidden · {hiddenVenues.length}</Text>}
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Refresh stages" onPress={onRefresh} disabled={refreshing} className={`${isMobile ? 'h-11 w-11' : 'p-2'} items-center justify-center bg-core-surface-white border border-ssf-border rounded-xl`}>
+              <RefreshCw size={18} color={coreColor('#475569', 'text')} />
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {showHiddenVenues && hiddenVenues.length > 0 && (
+          <View className={`mb-4 rounded-xl border border-ui-border bg-core-surface-white ${isMobile ? 'p-3' : 'p-4'}`}>
+            <View className="mb-3 flex-row items-start justify-between gap-3">
+              <View className="min-w-0 flex-1">
+                <Text className="font-poppins-bold text-sm text-ui-text">Hidden stages · {hiddenVenues.length}</Text>
+                <Text className="mt-0.5 font-poppins text-[11px] text-ui-text-muted">Hidden from this view only; stages and events remain active.</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close hidden stages"
+                onPress={() => setShowHiddenVenues(false)}
+                className="h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-ui-border bg-core-surface-white"
+              >
+                <X size={15} color={coreColor('#64748B', 'textMuted')} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView nestedScrollEnabled className="max-h-56">
+              {hiddenVenues.map((venue: any) => (
+                <View key={venue.id} className="mb-2 flex-row items-center justify-between gap-3 rounded-lg border border-ui-border bg-ssf-bg px-3 py-2">
+                  <View className="min-w-0 flex-1 flex-row items-center gap-2">
+                    <MapPin size={14} color={coreColor('#64748B', 'textMuted')} />
+                    <Text numberOfLines={1} className="flex-1 font-poppins-bold text-xs text-ui-text">{venue.name}</Text>
+                  </View>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Unhide ${venue.name}`}
+                    onPress={() => unhideVenue(venue.id)}
+                    className="h-11 shrink-0 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-3"
+                  >
+                    <Eye size={14} color={coreColor('#0F766E', 'primary')} />
+                    <Text className="ml-1.5 font-poppins-bold text-xs text-ui-text">Show</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {venues.length === 0 ? (
           <SsfCard className="items-center py-10">
@@ -437,14 +526,28 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
             <Text className="font-poppins-bold text-ssf-text mt-3">No stages available</Text>
             <Text className="font-poppins text-sm text-ssf-text-muted mt-1">Create venues from Schedule Management first.</Text>
           </SsfCard>
+        ) : visibleVenues.length === 0 ? (
+          <SsfCard className="items-center py-10">
+            <EyeOff size={36} color={coreColor('#94A3B8', 'textSubtle')} />
+            <Text className="mt-3 font-poppins-bold text-ssf-text">All stages are hidden</Text>
+            <Text className="mt-1 text-center font-poppins text-sm text-ssf-text-muted">Show a hidden stage to continue to its workspace.</Text>
+            <TouchableOpacity
+              accessibilityRole="button"
+              onPress={() => setShowHiddenVenues(true)}
+              className="mt-4 h-10 flex-row items-center justify-center rounded-lg border border-ui-border bg-core-surface-white px-4"
+            >
+              <Eye size={15} color={coreColor('#0F766E', 'primary')} />
+              <Text className="ml-2 font-poppins-bold text-xs text-ui-text">Show hidden stages</Text>
+            </TouchableOpacity>
+          </SsfCard>
         ) : (
           <View onLayout={event => setCardsWidth(event.nativeEvent.layout.width)} style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: PORTAL_CARD_GAP, paddingBottom: 20 }}>
-            {venues.map((venue: any, index: number) => {
+            {visibleVenues.map((venue: any) => {
               const stageSchedules = schedules.filter((schedule: any) =>
                 schedule.venue_id === venue.id || schedule.venues?.id === venue.id
               );
               const copied = copiedVenueId === venue.id;
-              const accent = getPortalCardAccent(index);
+              const accent = getPortalCardAccent(venueIndexById.get(venue.id) ?? 0);
 
               return (
                 <SsfCard key={venue.id} className="p-3" style={{
@@ -463,6 +566,15 @@ function StageManagementDashboardContent({ venueIdOverride, optimizedRead }: { v
                         <Text className="font-poppins-bold text-[10px] text-ui-text">{stageSchedules.length} events</Text>
                       </View>
                     </View>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Hide ${venue.name} from this page`}
+                      onPress={() => hideVenue(venue.id)}
+                      className="h-11 shrink-0 flex-row items-center justify-center rounded-lg border border-white/80 bg-core-surface-white px-2"
+                    >
+                      <EyeOff size={15} color={coreColor('#64748B', 'textMuted')} />
+                      <Text className="ml-1 font-poppins-bold text-[10px] text-ui-text">Hide</Text>
+                    </TouchableOpacity>
                   </View>
 
                   <View className="mt-3 flex-row gap-2">

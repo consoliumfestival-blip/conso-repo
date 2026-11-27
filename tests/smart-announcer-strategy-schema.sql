@@ -6,6 +6,7 @@ CREATE TABLE public.festival_leaderboard_settings(festival_id uuid,ranking_mode 
 CREATE TABLE public.points_config(festival_id uuid,enable_grace_marks boolean,config_version integer);
 CREATE TABLE public.items(id uuid PRIMARY KEY,tenant_id uuid,festival_id uuid,item_name_en text,item_name_ml text,item_code text,category_codes text[]);
 CREATE TABLE public.organisations(id uuid PRIMARY KEY,tenant_id uuid,parent_id uuid,name text,org_type text);
+CREATE TABLE public.festival_teams(festival_id uuid,organisation_id uuid);
 CREATE TABLE public.participants(id uuid PRIMARY KEY,organisation_id uuid);
 CREATE TABLE public.registrations(id uuid PRIMARY KEY,item_id uuid,participant_id uuid,organisation_id uuid,status text);
 CREATE TABLE public.results(id uuid PRIMARY KEY,item_id uuid,registration_id uuid,festival_id uuid,points_awarded integer,rank integer,grade text,published boolean,result_status text,public_visible boolean,published_at timestamptz);

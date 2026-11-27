@@ -93,11 +93,11 @@ body::-webkit-scrollbar,
 
 @media (max-width: 899px) {
   .hero {
-    min-height: calc(100svh - 116px);
+    min-height: auto;
     padding-top: calc(var(--nav-h) + var(--nav-top) + clamp(2px, 1vh, 10px));
-    padding-bottom: 10px;
+    padding-bottom: 18px;
     gap: 12px;
-    justify-content: space-between;
+    justify-content: flex-start;
     background:
       radial-gradient(85% 42% at 88% 16%, rgba(37, 99, 235, 0.075) 0%, transparent 65%),
       radial-gradient(75% 38% at 12% 62%, rgba(109, 40, 217, 0.06) 0%, transparent 65%),
@@ -113,6 +113,14 @@ body::-webkit-scrollbar,
   .hero__title-3d {
     width: min(100%, 356px);
     margin-left: 6px;
+  }
+
+  .ayatic-3d-scene .wordmark-3d use[href$="-ay"] {
+    fill: #ffffff !important;
+  }
+
+  .ayatic-3d-scene .wordmark-extrude use[href$="-ay"] {
+    fill: #cbd5e1 !important;
   }
 
   .hero .lanes {
@@ -142,13 +150,9 @@ body::-webkit-scrollbar,
     white-space: nowrap;
   }
 
-  /* Compact 2+1 mobile event strip (Date, Venue + Live Countdown) filling bottom naturally */
+  /* Compact 2+1 mobile event strip (Date, Venue + Live Countdown) hidden on mobile */
   .hero .hero__info {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 12px;
-    padding-top: 10px;
-    border-top: 1px solid rgba(32, 33, 36, 0.12);
+    display: none !important;
   }
 
   .hero .hero__info > div {

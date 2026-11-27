@@ -99,9 +99,13 @@ body::-webkit-scrollbar,
     gap: 12px;
     justify-content: flex-start;
     background:
-      radial-gradient(85% 42% at 88% 16%, rgba(37, 99, 235, 0.075) 0%, transparent 65%),
-      radial-gradient(75% 38% at 12% 62%, rgba(109, 40, 217, 0.06) 0%, transparent 65%),
-      transparent;
+      radial-gradient(85% 42% at 88% 16%, rgba(255, 237, 213, 0.22) 0%, transparent 65%),
+      radial-gradient(75% 38% at 12% 48%, rgba(254, 215, 170, 0.16) 0%, transparent 65%),
+      linear-gradient(180deg, #cc7a63 0%, #de8c72 45%, #e69b84 72%, rgba(230, 155, 132, 0) 100%);
+  }
+
+  .race {
+    background: linear-gradient(180deg, transparent 0%, var(--sky-2) 180px);
   }
 
   .hero .hero__grid {
@@ -115,12 +119,26 @@ body::-webkit-scrollbar,
     margin-left: 6px;
   }
 
+  .ayatic-3d-scene {
+    shape-rendering: auto;
+    will-change: auto;
+    transform: none;
+  }
+
   .ayatic-3d-scene .wordmark-3d use[href$="-ay"] {
     fill: #ffffff !important;
   }
 
-  .ayatic-3d-scene .wordmark-extrude use[href$="-ay"] {
-    fill: #cbd5e1 !important;
+  .ayatic-3d-scene .wordmark-3d use[href$="-co"] {
+    fill: #2563EB !important;
+    stroke: rgba(37, 99, 235, 0.25);
+    stroke-width: 0.4px;
+  }
+
+  .ayatic-3d-scene .wordmark-extrude,
+  .ayatic-3d-scene .wordmark-shadow,
+  .ayatic-3d-scene .wordmark-highlight {
+    display: none !important;
   }
 
   .hero .lanes {

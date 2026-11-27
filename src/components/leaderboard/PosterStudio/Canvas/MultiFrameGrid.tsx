@@ -567,10 +567,9 @@ export default function MultiFrameGrid({ festivalId, tenantId, customFontReferen
                         <input
                           style={styles.input}
                           disabled={isBatchRunning}
+                          readOnly
+                          aria-label={`Official public result number for ${frame.itemName}`}
                           value={frame.variables.result_no || ''}
-                          onChange={(e) =>
-                            updateBatchItemVariables(frame.itemId, { result_no: e.target.value })
-                          }
                         />
                       </div>
                       <div style={{ flex: 1 }}>

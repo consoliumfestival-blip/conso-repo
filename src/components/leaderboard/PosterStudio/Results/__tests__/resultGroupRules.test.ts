@@ -1,34 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, resolveOfficialResultNumber } from '../resultGroupRules';
+import { buildRankVariables, compareOfficialResultNumbers, fingerprintOfficialResults, getOfficialResultNumberLabel, resolvePublicOrder } from '../resultGroupRules';
 import { resolveTemplateVariables } from '../../Utils/resolver';
 
-test('uses the stored official number instead of the group display order', () => {
-  const result = resolveOfficialResultNumber([
-    { public_result_no: 24 },
-    { public_result_no: 24 },
-  ]);
-
-  assert.deepEqual(result, { value: '24', conflict: false });
+test('uses the Public Item Results order as the poster number even when stored number differs', () => {
+  const publicOrder = resolvePublicOrder(1);
+  assert.deepEqual(publicOrder, { value: '1', conflict: false });
+  assert.notEqual(publicOrder.value, String(33));
 });
 
-test('keeps a missing official number blank without inventing a sequence', () => {
-  assert.deepEqual(resolveOfficialResultNumber([
-    { public_result_no: null },
-    {},
-  ]), { value: '', conflict: false });
+test('public items without a Public Item Results order remain blank', () => {
+  assert.deepEqual(resolvePublicOrder(undefined), { value: '', conflict: false });
+  assert.deepEqual(resolvePublicOrder(0), { value: '', conflict: true });
 });
 
-test('reports conflicting stored numbers and returns no arbitrary number', () => {
-  assert.deepEqual(resolveOfficialResultNumber([
-    { public_result_no: 24 },
-    { public_result_no: 25 },
-  ]), { value: '', conflict: true });
-});
-
-test('flags zero or negative stored result numbers instead of displaying them as official', () => {
-  assert.deepEqual(resolveOfficialResultNumber([{ public_result_no: 0 }]), { value: '', conflict: true });
-  assert.deepEqual(resolveOfficialResultNumber([{ public_result_no: -1 }]), { value: '', conflict: true });
+test('keeps a missing public order blank without inventing a sequence', () => {
+  assert.deepEqual(resolvePublicOrder(undefined), { value: '', conflict: false });
+  assert.equal(getOfficialResultNumberLabel({ value: '', conflict: false }, false), 'Not public; number assigned on publish');
 });
 
 test('labels missing or conflicting public numbers instead of rendering a misleading blank number', () => {
@@ -37,14 +25,14 @@ test('labels missing or conflicting public numbers instead of rendering a mislea
   assert.equal(getOfficialResultNumberLabel({ value: '', conflict: false }, false), 'Not public; number assigned on publish');
 });
 
-test('sorts published competitions by their stored publication-order number, numerically', () => {
+test('sorts published competitions by their public item number, numerically', () => {
   assert.ok(compareOfficialResultNumbers({ value: '2', conflict: false }, { value: '10', conflict: false }) < 0);
   assert.ok(compareOfficialResultNumbers({ value: '24', conflict: false }, { value: '', conflict: false }) < 0);
   assert.ok(compareOfficialResultNumbers({ value: '', conflict: true }, { value: '', conflict: false }) === 0);
 });
 
 test('keeps a missing-number warning in Studio UI and exports an empty result-number token', () => {
-  const officialNumber = resolveOfficialResultNumber([{ public_result_no: null }]);
+  const officialNumber = resolvePublicOrder(undefined);
   const label = getOfficialResultNumberLabel(officialNumber, false);
   assert.equal(resolveTemplateVariables('{result_no}', { result_no: officialNumber.value }), '');
   assert.notEqual(label, resolveTemplateVariables('{result_no}', { result_no: officialNumber.value }));
@@ -92,7 +80,7 @@ test('omits participants with missing, zero, or negative points and unranked res
   assert.equal(variables.points_1, '');
 });
 
-test('official source fingerprint ignores query row order but changes when a result changes', () => {
+test('source fingerprint ignores query row order but changes when a result or public order changes', () => {
   const first = {
     result_id: 'result-a',
     participant_id: 'participant-a',
@@ -102,11 +90,11 @@ test('official source fingerprint ignores query row order but changes when a res
     organisation_name: 'Unit A',
     grade: 'A',
     points_awarded: 5,
-    public_result_no: 24,
     registration_id: 'registration-a',
   };
   const second = { ...first, result_id: 'result-b', participant_id: 'participant-b', participant_name: 'ANU' };
   const original = fingerprintOfficialResults([first, second]);
   assert.equal(original, fingerprintOfficialResults([second, first]));
   assert.notEqual(original, fingerprintOfficialResults([{ ...first, points_awarded: 4 }, second]));
+  assert.notEqual(original, fingerprintOfficialResults([first, second], 1));
 });

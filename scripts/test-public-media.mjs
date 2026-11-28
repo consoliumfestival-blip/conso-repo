@@ -363,3 +363,74 @@ test('separates media and result sections cleanly and exposes fast thumb_url alo
     globalThis.fetch = origFetch;
   }
 });
+
+test('emits X-Public-Media-Dropped when presign fails, applies optional CF resizing when enabled, and preserves null visibility rows', async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{ festival_id: festivalId, is_public_visible: true }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify([
+        {
+          id: 'legacy-null-vis',
+          render_hash: 'manual_media_legacy',
+          event_name: 'Legacy Stage Shot',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/legacy.webp',
+          is_current: null,
+          visibility_status: null,
+          created_at: '2026-11-28T01:00:00Z',
+        },
+        {
+          id: 'hidden-explicit',
+          render_hash: 'manual_media_hidden',
+          event_name: 'Hidden Media',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/hidden.webp',
+          is_current: true,
+          visibility_status: 'hidden',
+          created_at: '2026-11-28T01:05:00Z',
+        },
+        {
+          id: 'unresolved-r2',
+          render_hash: 'manual_media_bad_r2',
+          event_name: 'Unresolved R2 Photo',
+          resolution: 'hd',
+          public_url: 'r2://festivals/f1/posters/bad.webp',
+          storage_path: 'festivals/f1/posters/bad.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T01:10:00Z',
+        },
+      ]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/functions/v1/r2-presign')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    const res = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=media`),
+      env: { ...env, CF_IMAGE_RESIZING: 'true' },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('X-Public-Media-Dropped'), '1');
+    const body = await res.json();
+    assert.equal(body.dropped_count, undefined);
+    assert.equal(body.items.length, 1);
+    assert.equal(body.items[0].render_hash, 'manual_media_legacy');
+    assert.equal(
+      body.items[0].thumb_url,
+      'https://consoulium.sabicofficial.in/cdn-cgi/image/format=auto,quality=86,fit=scale-down,width=640/https://cdn.example.com/posters/legacy.webp',
+    );
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

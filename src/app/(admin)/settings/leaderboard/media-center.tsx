@@ -11,7 +11,7 @@ import { useFestival } from '@/core/hooks/useFestival';
 import { useExportQueueStore } from '@/services/exportQueueService';
 import { storageService } from '@/services/storage/storageService';
 import { uploadService } from '@/services/storage/uploadService';
-import { uploadMediaFilesInBatches, generateUniqueRenderHash, type BatchMediaProgress } from '@/services/storage/mediaBatchUpload';
+import { uploadMediaFilesInBatches, generateUniqueRenderHash, formatBytesLabel, type BatchMediaProgress } from '@/services/storage/mediaBatchUpload';
 import { useAuthStore } from '@/core/store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jsPDF } from 'jspdf';
@@ -138,6 +138,14 @@ function getAssetSection(asset: any): 'media' | 'result' {
   return 'result';
 }
 
+function inferImageMimeType(pathOrUrl: string): string {
+  const ext = String(pathOrUrl || '').split('?')[0].split('.').pop()?.toLowerCase();
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
 export default function MediaCenterPage() {
   const { useActiveFestival } = useFestival();
   const { data: activeFestival } = useActiveFestival();
@@ -156,9 +164,11 @@ export default function MediaCenterPage() {
   const retryOwnerIdRef = React.useRef<string | null>(null);
   const [localPreviewUrls, setLocalPreviewUrls] = useState<Record<string, string>>({});
 
-  // Upload modal states (Media vs Result + Folder Dual-WebP batch upload)
+  // Upload modal states (Media vs Result + Folder Dual-WebP Auto-Compressor)
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadTarget, setUploadTarget] = useState<'media' | 'result'>('media');
+  const [autoCompress, setAutoCompress] = useState(true);
+  const [uploadErrorBanner, setUploadErrorBanner] = useState<string | null>(null);
   const [uploadEventName, setUploadEventName] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -272,6 +282,12 @@ export default function MediaCenterPage() {
     staleTime: 60_000,
   });
 
+  const openUploadModal = (target?: 'media' | 'result') => {
+    setUploadTarget(target ?? (sectionFilter === 'result' ? 'result' : 'media'));
+    setUploadErrorBanner(null);
+    setShowUploadModal(true);
+  };
+
   const resetUploadModal = () => {
     setShowUploadModal(false);
     setSelectedFile(null);
@@ -281,6 +297,7 @@ export default function MediaCenterPage() {
     setUploadEventName('');
     setUploadProgress(0);
     setBatchProgress(null);
+    setUploadErrorBanner(null);
     setSelectedResultItemId(null);
     setSelectedResultId(null);
     setResultSearchQuery('');
@@ -342,6 +359,7 @@ export default function MediaCenterPage() {
 
   const handleUploadPoster = async () => {
     if (!activeFestival?.id || !tenant_id) return;
+    setUploadErrorBanner(null);
 
     if (uploadTarget === 'media') {
       const filesToUpload = selectedFiles.length > 0 ? selectedFiles : (selectedFile ? [selectedFile] : []);
@@ -367,6 +385,7 @@ export default function MediaCenterPage() {
           tenantId: tenant_id,
           baseTitle: uploadEventName.trim() || undefined,
           existingFingerprints: new Set(savedFingerprints),
+          autoCompress,
           batchSize: 10,
           concurrency: 3,
           signal: controller.signal,
@@ -380,15 +399,23 @@ export default function MediaCenterPage() {
         }
         queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
         if (result.cancelled) {
-          alert(`Upload stopped. ${result.completed} uploaded before cancel.`);
+          const msg = `Upload stopped. ${result.completed} uploaded before cancel.`;
+          setUploadErrorBanner(msg);
+          alert(msg);
         } else if (result.failed > 0 || result.errors.length > 0) {
-          alert(`Uploaded ${result.completed} media items (${result.skipped} skipped, ${result.failed} failed).\n${result.errors.slice(0, 3).join('\n')}`);
+          const msg = `Uploaded ${result.completed} media items (${result.skipped} skipped, ${result.failed} failed).\n${result.errors.slice(0, 3).join('\n')}`;
+          setUploadErrorBanner(msg);
+          alert(msg);
+        } else if (result.completed === 0 && result.skipped > 0) {
+          setUploadErrorBanner(`All ${result.skipped} selected files were already uploaded or are unsupported image types.`);
         }
-        if (!result.cancelled && result.failed === 0 && result.errors.length === 0) {
+        if (!result.cancelled && result.failed === 0 && result.errors.length === 0 && result.completed > 0) {
           resetUploadModal();
         }
       } catch (err: any) {
-        alert('Media upload failed: ' + (err?.message || 'Unknown error'));
+        const msg = 'Media upload failed: ' + (err?.message || 'Unknown error');
+        setUploadErrorBanner(msg);
+        alert(msg);
       } finally {
         uploadAbortRef.current = null;
         setIsUploading(false);
@@ -430,7 +457,9 @@ export default function MediaCenterPage() {
       queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
       resetUploadModal();
     } catch (err: any) {
-      alert('Upload failed: ' + err.message);
+      const msg = 'Upload failed: ' + (err?.message || 'Unknown error');
+      setUploadErrorBanner(msg);
+      alert(msg);
     } finally {
       setIsUploading(false);
     }
@@ -700,7 +729,7 @@ export default function MediaCenterPage() {
             if (cachedUrl) {
               asset.resolutions[res] = cachedUrl;
             } else {
-              const signedUrl = await storageService.getPresignedUrl(objectKey, 'image/jpeg', 'download');
+              const signedUrl = await storageService.getPresignedUrl(objectKey, inferImageMimeType(objectKey), 'download');
               asset.resolutions[res] = signedUrl;
               const expires = now + 55 * 60 * 1000;
               signedUrlCache.set(objectKey, { url: signedUrl, expires });
@@ -1041,9 +1070,9 @@ export default function MediaCenterPage() {
               {isExportingZip ? 'Exporting ZIP...' : `Batch Export (${filteredAssets.length})`}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }]} onPress={() => setShowUploadModal(true)}>
+          <TouchableOpacity style={[styles.btnPrimary, { backgroundColor: coreColor('#0F766E', 'primary') }]} onPress={() => openUploadModal()}>
             <Upload size={16} color={ui.colors.onPrimary} />
-            <Text style={styles.btnPrimaryText}>Upload Poster</Text>
+            <Text style={styles.btnPrimaryText}>Upload Media / Poster</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -1051,19 +1080,9 @@ export default function MediaCenterPage() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {isLoading ? (
           <ActivityIndicator size="large" color={coreColor(colors.navy, 'primaryText')} style={{ marginTop: 40 }} />
-        ) : mediaAssets.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🗂️</Text>
-            <Text style={styles.emptyTitle}>No assets generated yet</Text>
-            <Text style={styles.emptySub}>
-              {isCloudAssetsError
-                ? 'Cloud assets could not be loaded and no matching local posters were found on this device.'
-                : 'Publish results in Poster Studio to see them here.'}
-            </Text>
-          </View>
         ) : (
           <>
-            {/* Filter Tabs */}
+            {/* Section & Status Filter Tabs (always visible) */}
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
               {([
                 { key: 'all', label: `All Sections (${mediaAssets.length})` },
@@ -1119,6 +1138,38 @@ export default function MediaCenterPage() {
                 );
               })}
             </View>
+
+            {filteredAssets.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>{sectionFilter === 'media' ? '🖼️' : '🗂️'}</Text>
+                <Text style={styles.emptyTitle}>
+                  {sectionFilter === 'media'
+                    ? 'No media photos uploaded yet'
+                    : sectionFilter === 'result'
+                    ? 'No result posters found'
+                    : 'No assets generated yet'}
+                </Text>
+                <Text style={styles.emptySub}>
+                  {isCloudAssetsError
+                    ? 'Cloud assets could not be loaded and no matching local posters were found on this device.'
+                    : sectionFilter === 'media'
+                    ? 'Upload a photo or an entire folder directly with auto-compression for /media.'
+                    : sectionFilter === 'result'
+                    ? 'Publish results in Poster Studio or upload a result poster below.'
+                    : 'Upload event media folders or publish result posters in Poster Studio.'}
+                </Text>
+                <TouchableOpacity
+                  style={[styles.btnPrimary, { backgroundColor: colors.teal, marginTop: 16 }]}
+                  onPress={() => openUploadModal(sectionFilter === 'result' ? 'result' : 'media')}
+                >
+                  <Upload size={16} color={ui.colors.onPrimary} />
+                  <Text style={styles.btnPrimaryText}>
+                    {sectionFilter === 'result' ? 'Upload Result Poster' : 'Upload Media / Folder'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
             <View style={{ marginBottom: 20, padding: 16, backgroundColor: colors.card, borderRadius: 8, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
                 <View style={{ flex: 1, minWidth: 250 }}>
@@ -1246,7 +1297,7 @@ export default function MediaCenterPage() {
                       <Text style={styles.actionText}>{exportingPdfId === asset.render_hash ? 'PDF...' : 'PDF'}</Text>
                     </TouchableOpacity>
                     
-                    {!asset.is_local_delivery && <TouchableOpacity
+                    {!asset.is_local_delivery && getAssetSection(asset) === 'result' && <TouchableOpacity
                       style={styles.actionBtn}
                       onPress={() => handleEditAsset(asset)}
                     >
@@ -1312,6 +1363,8 @@ export default function MediaCenterPage() {
               </View>
             ))}
           </View>
+            </>
+            )}
           </>
         )}
       </ScrollView>
@@ -1501,6 +1554,59 @@ export default function MediaCenterPage() {
                 )}
               </View>
 
+              {uploadTarget === 'media' && (
+                <View style={{
+                  marginBottom: 16,
+                  padding: 12,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: autoCompress ? '#0F766E' : colors.border,
+                  backgroundColor: autoCompress ? '#F0FDFA' : colors.bg,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.navy }}>
+                      Auto-Compress (High-Clarity WebP)
+                    </Text>
+                    <Text style={{ fontSize: 11.5, color: colors.muted, marginTop: 2 }}>
+                      Shrinks large photos up to 80–90% at crisp 2048px clarity + fast thumbnails before Cloudflare R2 upload.
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    disabled={isUploading}
+                    onPress={() => setAutoCompress((v) => !v)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 7,
+                      borderRadius: 999,
+                      backgroundColor: autoCompress ? colors.teal : '#CBD5E1',
+                    }}
+                  >
+                    <Text style={{ fontSize: 11.5, fontWeight: '700', color: autoCompress ? '#FFFFFF' : '#1E293B' }}>
+                      {autoCompress ? 'ON · High Clarity' : 'OFF · Original'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!!uploadErrorBanner && (
+                <View style={{
+                  marginBottom: 14,
+                  padding: 12,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: '#FCA5A5',
+                  backgroundColor: '#FEF2F2',
+                }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#B91C1C' }}>
+                    {uploadErrorBanner}
+                  </Text>
+                </View>
+              )}
+
               {isUploading && uploadTarget === 'media' && batchProgress && (
                 <View style={{ marginBottom: 14, gap: 6 }}>
                   <View style={styles.progressContainer}>
@@ -1516,6 +1622,14 @@ export default function MediaCenterPage() {
                     {batchProgress.skipped > 0 ? ` · ${batchProgress.skipped} skipped` : ''}
                     {batchProgress.failed > 0 ? ` · ${batchProgress.failed} failed` : ''}
                   </Text>
+                  {batchProgress.originalBytes > 0 && (
+                    <Text style={{ fontSize: 11.5, color: colors.teal, fontWeight: '600' }}>
+                      Compressed: {formatBytesLabel(batchProgress.originalBytes)} → {formatBytesLabel(batchProgress.compressedBytes)}
+                      {batchProgress.compressedBytes < batchProgress.originalBytes
+                        ? ` (${Math.round(((batchProgress.originalBytes - batchProgress.compressedBytes) / batchProgress.originalBytes) * 100)}% saved)`
+                        : ''}
+                    </Text>
+                  )}
                   {!!batchProgress.currentFileName && (
                     <Text style={{ fontSize: 11, color: colors.muted }} numberOfLines={1}>
                       Processing: {batchProgress.currentFileName}

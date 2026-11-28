@@ -6,6 +6,8 @@ export interface BatchMediaProgress {
   skipped: number;
   total: number;
   currentFileName: string;
+  originalBytes: number;
+  compressedBytes: number;
   errors: string[];
 }
 
@@ -15,6 +17,7 @@ export interface UploadMediaBatchParams {
   tenantId: string;
   baseTitle?: string;
   existingFingerprints?: Set<string>;
+  autoCompress?: boolean;
   batchSize?: number;
   concurrency?: number;
   signal?: AbortSignal;
@@ -26,6 +29,8 @@ export interface UploadMediaBatchResult {
   failed: number;
   skipped: number;
   cancelled: boolean;
+  originalBytes: number;
+  compressedBytes: number;
   uploadedFingerprints: string[];
   errors: string[];
 }
@@ -36,7 +41,10 @@ export interface UploadedObjectRef {
 }
 
 export interface MediaBatchUploadDeps {
-  convertToDualWebp?: (file: File) => Promise<{
+  convertToDualWebp?: (
+    file: File,
+    options?: { autoCompress?: boolean },
+  ) => Promise<{
     hdBlob: Blob;
     hdExt: string;
     thumbBlob: Blob | null;
@@ -57,6 +65,14 @@ const DEFAULT_BATCH_SIZE = 10;
 const DEFAULT_CONCURRENCY = 3;
 const HD_MAX_EDGE = 2048;
 const THUMB_MAX_EDGE = 480;
+const HD_TARGET_MAX_BYTES = 950 * 1024;
+
+export function formatBytesLabel(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
 
 export function generateUniqueRenderHash(prefix = 'manual_media'): string {
   const uuid = typeof globalThis !== 'undefined' && typeof globalThis.crypto?.randomUUID === 'function'
@@ -213,28 +229,50 @@ function renderScaledWebp(
 }
 
 /**
- * Converts a local image File into both HD and Thumb WebP blobs strictly inside
- * the browser without sending uncompressed originals to Supabase.
+ * High-clarity adaptive auto-compressor: converts local photos to crisp HD WebP
+ * (2048px, quality 0.90 -> 0.84 adaptive ceiling ~950KB, never bloating already-small
+ * originals) plus a lightweight 480px WebP thumbnail for fast grid loading on Cloudflare R2.
  */
-export async function convertImageToDualWebp(file: File): Promise<{
+export async function convertImageToDualWebp(
+  file: File,
+  options?: { autoCompress?: boolean },
+): Promise<{
   hdBlob: Blob;
   hdExt: string;
   thumbBlob: Blob | null;
 }> {
+  const autoCompress = options?.autoCompress !== false;
+  const fallbackExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+
   if (typeof document === 'undefined') {
-    const ext = (file.name.split('.').pop() || 'webp').toLowerCase();
-    return { hdBlob: file, hdExt: ext, thumbBlob: null };
+    return { hdBlob: file, hdExt: fallbackExt, thumbBlob: null };
   }
 
   const source = await decodeImageSource(file);
   try {
-    const hdWebp = await renderScaledWebp(source, HD_MAX_EDGE, 0.86);
-    const thumbWebp = hdWebp ? await renderScaledWebp(source, THUMB_MAX_EDGE, 0.78) : null;
+    const thumbWebp = await renderScaledWebp(source, THUMB_MAX_EDGE, 0.8);
+    if (!autoCompress) {
+      return { hdBlob: file, hdExt: fallbackExt, thumbBlob: thumbWebp };
+    }
+
+    let hdWebp = await renderScaledWebp(source, HD_MAX_EDGE, 0.9);
+    if (hdWebp && hdWebp.size > HD_TARGET_MAX_BYTES) {
+      const tighter = await renderScaledWebp(source, HD_MAX_EDGE, 0.84);
+      if (tighter && tighter.size < hdWebp.size) {
+        hdWebp = tighter;
+      }
+    }
+
+    const maxDim = Math.max(source.width, source.height);
+    const isStandardWebImage = file.type === 'image/webp' || file.type === 'image/jpeg' || file.type === 'image/png';
     if (hdWebp) {
+      if (isStandardWebImage && maxDim <= HD_MAX_EDGE && file.size > 0 && file.size <= hdWebp.size) {
+        return { hdBlob: file, hdExt: fallbackExt, thumbBlob: thumbWebp };
+      }
       return { hdBlob: hdWebp, hdExt: 'webp', thumbBlob: thumbWebp };
     }
-    const fallbackExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    return { hdBlob: file, hdExt: fallbackExt, thumbBlob: null };
+
+    return { hdBlob: file, hdExt: fallbackExt, thumbBlob: thumbWebp };
   } finally {
     source.release();
   }
@@ -247,6 +285,7 @@ export async function runMediaBatchUpload(
     tenantId,
     baseTitle,
     existingFingerprints,
+    autoCompress = true,
     batchSize = DEFAULT_BATCH_SIZE,
     concurrency = DEFAULT_CONCURRENCY,
     signal,
@@ -282,6 +321,8 @@ export async function runMediaBatchUpload(
   let failed = 0;
   let cancelled = false;
   let lastBatchIndex = 0;
+  let originalBytes = 0;
+  let compressedBytes = 0;
   const uploadedFingerprints: string[] = [];
   const errors: string[] = [];
 
@@ -294,13 +335,24 @@ export async function runMediaBatchUpload(
       skipped,
       total,
       currentFileName,
+      originalBytes,
+      compressedBytes,
       errors: [...errors],
     });
   };
 
   if (total === 0) {
     emit(0, '');
-    return { completed: 0, failed: 0, skipped, cancelled: false, uploadedFingerprints: [], errors: [] };
+    return {
+      completed: 0,
+      failed: 0,
+      skipped,
+      cancelled: false,
+      originalBytes: 0,
+      compressedBytes: 0,
+      uploadedFingerprints: [],
+      errors: [],
+    };
   }
 
   for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
@@ -316,6 +368,8 @@ export async function runMediaBatchUpload(
     const batchUploadedKeys: string[] = [];
     const batchFingerprints: string[] = [];
     let batchUploadedCount = 0;
+    let batchOrigBytes = 0;
+    let batchCompBytes = 0;
     let cursor = 0;
 
     const workerCount = Math.min(safeConcurrency, chunk.length);
@@ -330,7 +384,7 @@ export async function runMediaBatchUpload(
         emit(lastBatchIndex, file.name);
 
         try {
-          const { hdBlob, hdExt, thumbBlob } = await convert(file);
+          const { hdBlob, hdExt, thumbBlob } = await convert(file, { autoCompress });
           const hdMeta = await withRetry(
             () => deps.uploadObject({
               blob: hdBlob,
@@ -399,6 +453,8 @@ export async function runMediaBatchUpload(
           batchUploadedKeys.push(...itemKeys);
           batchFingerprints.push(buildMediaFingerprint(file));
           batchUploadedCount++;
+          batchOrigBytes += Number(file.size || 0);
+          batchCompBytes += Number(hdBlob.size || 0);
           emit(lastBatchIndex, file.name);
         } catch (err) {
           if (isAbortError(err, signal)) {
@@ -418,6 +474,8 @@ export async function runMediaBatchUpload(
       try {
         await withRetry(() => deps.insertAssets(batchRows), signal);
         completed += batchUploadedCount;
+        originalBytes += batchOrigBytes;
+        compressedBytes += batchCompBytes;
         uploadedFingerprints.push(...batchFingerprints);
       } catch (dbErr) {
         if (isAbortError(dbErr, signal)) {
@@ -439,5 +497,14 @@ export async function runMediaBatchUpload(
   }
 
   emit(lastBatchIndex, '');
-  return { completed, failed, skipped, cancelled, uploadedFingerprints, errors };
+  return {
+    completed,
+    failed,
+    skipped,
+    cancelled,
+    originalBytes,
+    compressedBytes,
+    uploadedFingerprints,
+    errors,
+  };
 }

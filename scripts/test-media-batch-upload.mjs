@@ -4,6 +4,7 @@ import {
   abortableSleep,
   buildMediaFingerprint,
   cleanMediaFileTitle,
+  formatBytesLabel,
   generateUniqueRenderHash,
   runMediaBatchUpload,
 } from '../src/services/storage/mediaBatchUploadCore.ts';
@@ -197,4 +198,49 @@ test('propagates AbortError during thumbnail upload, aborts backoff sleep immedi
   const lastEvent = progressEvents.at(-1);
   assert.equal(lastEvent.totalBatches, 3);
   assert.equal(lastEvent.batchIndex, 1);
+});
+
+test('tracks originalBytes/compressedBytes accurately, excludes failed DB batches, passes autoCompress option, and formats bytes', async () => {
+  assert.equal(formatBytesLabel(0), '0 B');
+  assert.equal(formatBytesLabel(512), '512 B');
+  assert.equal(formatBytesLabel(1536), '1.5 KB');
+  assert.equal(formatBytesLabel(2 * 1024 * 1024), '2.00 MB');
+
+  const seenOptions = [];
+  const res = await runMediaBatchUpload(
+    {
+      files: [makeFakeFile('a.jpg', 2000), makeFakeFile('b.jpg', 4000)],
+      festivalId: 'fest-1',
+      tenantId: 'tenant-1',
+      autoCompress: false,
+      batchSize: 1,
+      concurrency: 1,
+    },
+    {
+      convertToDualWebp: async (file, opts) => {
+        seenOptions.push(opts);
+        return {
+          hdBlob: new Blob([new Uint8Array(file.size === 2000 ? 500 : 1200)], { type: 'image/jpeg' }),
+          hdExt: 'jpg',
+          thumbBlob: null,
+        };
+      },
+      uploadObject: async ({ extension }) => ({
+        object_key: `festivals/fest-1/posters/k.${extension}`,
+        file_url: `r2://festivals/fest-1/posters/k.${extension}`,
+      }),
+      insertAssets: async (rows) => {
+        if (String(rows[0].event_name) === 'b') {
+          throw new Error('DB reject batch 2');
+        }
+      },
+      deleteObject: async () => {},
+    },
+  );
+
+  assert.deepEqual(seenOptions, [{ autoCompress: false }, { autoCompress: false }]);
+  assert.equal(res.completed, 1);
+  assert.equal(res.failed, 1);
+  assert.equal(res.originalBytes, 2000);
+  assert.equal(res.compressedBytes, 500);
 });

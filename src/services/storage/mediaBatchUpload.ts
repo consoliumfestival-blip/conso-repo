@@ -11,6 +11,7 @@ export {
   buildMediaFingerprint,
   cleanMediaFileTitle,
   convertImageToDualWebp,
+  formatBytesLabel,
   generateUniqueRenderHash,
   runMediaBatchUpload,
   withRetry,

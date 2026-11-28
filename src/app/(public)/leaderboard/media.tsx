@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Image, ActivityIndicator, Platform } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { SahithyolsavLandingPage } from '../../../components/publicLanding/SahithyolsavLandingPage.web';
 import { useQuery } from '@tanstack/react-query';
@@ -10,11 +10,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTenantFeatures } from '@/core/hooks/useTenantFeatures';
 import { PublicUnavailableScreen } from '@/components/publicLanding/PublicUnavailableScreen';
 
+type PublicMediaCard = {
+  id: string;
+  render_hash: string;
+  event_name: string;
+  created_at: string;
+  download_url?: string;
+  resolutions: Record<string, string | undefined>;
+};
+
+const DEFAULT_TENANT_ID = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
 const signedUrlCache = new Map<string, { url: string, expires: number }>();
 
 export default function PublicMediaCenter() {
   const params = useLocalSearchParams();
-  const tenantId = params.tenant_id as string;
+  const rawTenantId = Array.isArray(params.tenant_id) ? params.tenant_id[0] : (params.tenant_id as string | undefined);
+  const tenantId = rawTenantId || DEFAULT_TENANT_ID;
+  const festivalIdParam = Array.isArray(params.festival_id) ? params.festival_id[0] : (params.festival_id as string | undefined);
   const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(tenantId, true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeSlide, setActiveSlide] = useState(0);
@@ -22,7 +34,7 @@ export default function PublicMediaCenter() {
   const { data: festivalInfo } = useQuery({
     queryKey: ['public-tenant-festival', tenantId],
     queryFn: async () => {
-      if (!tenantId) return null;
+      if (Platform.OS === 'web' || !tenantId) return null;
       const { data, error } = await supabase
         .from('festival_calendar')
         .select('id, custom_name')
@@ -32,12 +44,36 @@ export default function PublicMediaCenter() {
       if (error) return null;
       return data;
     },
-    enabled: !!tenantId && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media
+    enabled: Platform.OS !== 'web' && !!tenantId && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media
   });
 
-  const { data: posters = [], isLoading } = useQuery({
-    queryKey: ['public-generated-posters', festivalInfo?.id],
-    queryFn: async () => {
+  const { data: posters = [], isLoading } = useQuery<PublicMediaCard[]>({
+    queryKey: ['public-generated-posters', tenantId, festivalIdParam || festivalInfo?.id || 'active'],
+    queryFn: async (): Promise<PublicMediaCard[]> => {
+      if (Platform.OS === 'web') {
+        const qs = new URLSearchParams({ tenant_id: tenantId, section: 'media' });
+        if (festivalIdParam) qs.set('festival_id', festivalIdParam);
+        const res = await fetch(`/api/public-media?${qs.toString()}`, {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) throw new Error('Public media is unavailable');
+        const payload = await res.json();
+        if (payload?.enabled === false || !Array.isArray(payload?.items)) return [];
+        return payload.items.map((item: any) => ({
+          id: item.id,
+          render_hash: item.render_hash,
+          event_name: item.title || 'Event Media',
+          created_at: item.created_at,
+          download_url: item.original_download_path || item.download_url || item.image_url,
+          resolutions: {
+            hd: item.image_url,
+            thumb: item.thumb_url || item.image_url,
+          },
+        }));
+      }
+
       if (!festivalInfo?.id) return [];
       const { data, error } = await supabase
         .from('generated_assets')
@@ -60,7 +96,7 @@ export default function PublicMediaCenter() {
           acc[key] = {
             id: curr.id,
             render_hash: key,
-            event_name: curr.event_name || curr.item?.item_name_en || curr.item?.item_name_ml || 'Result Poster',
+            event_name: curr.event_name || curr.item?.item_name_en || curr.item?.item_name_ml || 'Event Media',
             created_at: curr.created_at,
             resolutions: {}
           };
@@ -108,7 +144,7 @@ export default function PublicMediaCenter() {
       }
       return resultAssets;
     },
-    enabled: !!festivalInfo?.id && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media,
+    enabled: (Platform.OS === 'web' || !!festivalInfo?.id) && !publicFeaturesLoading && publicFeatures.modules.public_page && publicFeatures.sections.public_page.media,
   });
 
   useEffect(() => {
@@ -144,7 +180,7 @@ export default function PublicMediaCenter() {
           <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4 bg-white/5 p-6 rounded-[2rem] border border-white/10 backdrop-blur-md">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 font-['Handjet'] tracking-widest uppercase">Media Center</h1>
-              <p className="text-white/60 text-sm">Download and share competition result posters</p>
+              <p className="text-white/60 text-sm">Download and share official festival photos and event media</p>
             </div>
             
             <button 
@@ -169,12 +205,13 @@ export default function PublicMediaCenter() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {posters.map((poster, idx) => {
-                const imgUrl = poster.resolutions.hd || poster.resolutions.standard || poster.resolutions.share || Object.values(poster.resolutions)[0] as string;
+                const thumbUrl = poster.resolutions.thumb || poster.resolutions.hd || poster.resolutions.standard || poster.resolutions.share || (Object.values(poster.resolutions)[0] as string);
+                const fullUrl = poster.download_url || poster.resolutions.hd || poster.resolutions.standard || thumbUrl;
                 return (
                   <div key={idx} className="bg-[#121212]/70 backdrop-blur-md border border-[#333] rounded-[2rem] overflow-hidden shadow-xl group hover:border-[#555] transition-colors flex flex-col">
                     <div className="aspect-square w-full relative bg-black/50">
-                      {imgUrl ? (
-                        <img src={imgUrl} alt={poster.event_name} className="w-full h-full object-cover" />
+                      {thumbUrl ? (
+                        <img src={thumbUrl} alt={poster.event_name} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-white/20">
                           No Image
@@ -184,7 +221,7 @@ export default function PublicMediaCenter() {
                     <div className="p-5 flex-1 flex flex-col justify-between gap-4">
                       <h4 className="text-white font-bold line-clamp-2 leading-tight">{poster.event_name}</h4>
                       <button 
-                        onClick={() => handleDownload(imgUrl, `${poster.event_name}_poster.jpg`)}
+                        onClick={() => handleDownload(fullUrl, `${poster.event_name}_media.webp`)}
                         className="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl flex items-center justify-center gap-2 transition-colors border border-white/5"
                       >
                         <Download size={16} color="white" />

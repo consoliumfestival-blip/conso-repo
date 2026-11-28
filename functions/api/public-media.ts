@@ -2,6 +2,7 @@ type Environment = {
   EXPO_PUBLIC_SUPABASE_URL?: string;
   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
   EXPO_PUBLIC_SUPABASE_ANON_KEY?: string;
+  CF_IMAGE_RESIZING?: string;
 };
 
 type PagesContext = {
@@ -62,7 +63,7 @@ function matchesIfNoneMatch(headerValue: string | null, etag: string): boolean {
   });
 }
 
-function json(body: unknown, status = 200, cacheStatus?: string, etag?: string): Response {
+function json(body: unknown, status = 200, cacheStatus?: string, etag?: string, droppedCount = 0): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
@@ -71,6 +72,7 @@ function json(body: unknown, status = 200, cacheStatus?: string, etag?: string):
       'X-Content-Type-Options': 'nosniff',
       ...(cacheStatus ? { 'X-Public-Media-Cache': cacheStatus } : {}),
       ...(etag ? { ETag: etag } : {}),
+      ...(droppedCount > 0 ? { 'X-Public-Media-Dropped': String(droppedCount) } : {}),
     },
   });
 }
@@ -296,7 +298,8 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
     const row = rows[idx];
     if (!row || typeof row !== 'object') continue;
     if (row.is_current === false) continue;
-    if (row.visibility_status && row.visibility_status !== 'published') continue;
+    if (row.visibility_status === 'draft' || row.visibility_status === 'hidden') continue;
+    if (row.visibility_status != null && row.visibility_status !== 'published') continue;
     if (row.result && row.result.public_visible === false) continue;
 
     const hashKey = (typeof row.render_hash === 'string' && row.render_hash.trim())
@@ -359,17 +362,27 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
   };
 
   const candidates = Array.from(grouped.values());
+  let droppedCount = 0;
+  const useCfTransform = env.CF_IMAGE_RESIZING === 'true';
   const resolvedItems = await mapWithConcurrency(candidates, 8, async (item) => {
     const best = pickBestResolution(item.resolutions);
-    if (!best) return null;
+    if (!best) {
+      droppedCount++;
+      return null;
+    }
 
     const imageUrl = await resolveEntryUrl(best);
-    if (!imageUrl) return null;
+    if (!imageUrl) {
+      droppedCount++;
+      return null;
+    }
 
     let thumbUrl = imageUrl;
     const thumbEntry = item.resolutions.thumb;
     if (thumbEntry && best.resolution !== 'thumb' && (thumbEntry.public_url || thumbEntry.storage_path)) {
       thumbUrl = (await resolveEntryUrl(thumbEntry)) || imageUrl;
+    } else if (useCfTransform && /^https:\/\//.test(imageUrl)) {
+      thumbUrl = `${requestOrigin}/cdn-cgi/image/format=auto,quality=86,fit=scale-down,width=640/${imageUrl}`;
     }
 
     const dlParams = new URLSearchParams({ tenant_id: tenantId, download: '1', asset: item.render_hash || item.id });
@@ -394,11 +407,16 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
     };
   });
 
+  if (droppedCount > 0) {
+    console.warn('Public media dropped unresolved assets', { tenantId, festivalId, droppedCount });
+  }
+
   return {
     tenant_id: tenantId,
     festival_id: festivalId,
     enabled: true,
     generated_at: generatedAt,
+    dropped_count: droppedCount,
     items: resolvedItems.filter((item): item is NonNullable<typeof item> => item !== null),
   };
 }
@@ -473,9 +491,16 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
 
     const rawSection = requestUrl.searchParams.get('section')?.trim().toLowerCase();
     const sectionFilter = (rawSection === 'media' || rawSection === 'result') ? rawSection : null;
-    const responsePayload = sectionFilter
-      ? { ...payload, items: payload.items.filter((item) => item.section === sectionFilter) }
-      : payload;
+    const droppedCount = Number((payload as { dropped_count?: number }).dropped_count || 0);
+    const responsePayload = {
+      tenant_id: payload.tenant_id,
+      festival_id: payload.festival_id,
+      enabled: payload.enabled,
+      generated_at: payload.generated_at,
+      items: sectionFilter
+        ? payload.items.filter((item) => item.section === sectionFilter)
+        : payload.items,
+    };
 
     const etag = buildMediaEtag(responsePayload, sectionFilter || 'all');
     if (matchesIfNoneMatch(request.headers.get('If-None-Match'), etag)) {
@@ -486,11 +511,12 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
           'Cache-Control': 'private, no-store, max-age=0',
           'X-Content-Type-Options': 'nosniff',
           'X-Public-Media-Cache': cacheStatus,
+          ...(droppedCount > 0 ? { 'X-Public-Media-Dropped': String(droppedCount) } : {}),
         },
       });
     }
 
-    return json(responsePayload, 200, cacheStatus, etag);
+    return json(responsePayload, 200, cacheStatus, etag, droppedCount);
   } catch (error) {
     console.error('Public media read failed', error);
     return json({ error: 'Public media is temporarily unavailable' }, 503);

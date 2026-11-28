@@ -502,7 +502,6 @@ body::-webkit-scrollbar,
   }
 
   .nav__link[data-id="speakers"],
-  .nav__link[data-id="team"],
   .nav__link[data-id="register"] {
     display: none;
   }

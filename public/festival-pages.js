@@ -1023,6 +1023,11 @@
       img.alt = item.title || 'Consoulium media photo';
       img.loading = idx < 6 ? 'eager' : 'lazy';
       img.decoding = 'async';
+      img.onerror = () => {
+        if (item.image_url && img.src !== item.image_url) {
+          img.src = item.image_url;
+        }
+      };
 
       const badgeText = item.result_no != null ? `Result #${item.result_no}` : (item.format || 'Poster');
       const resText = String(item.resolution || 'HD').toUpperCase();
@@ -1054,7 +1059,7 @@
     });
     content.replaceChildren(frag);
     if (!filtered.length) {
-      setMessage(term ? 'No matching posters found.' : 'No posters published in Media Center yet.');
+      setMessage(term ? 'No matching media found.' : 'No event photos or media uploaded yet.');
     }
   }
 

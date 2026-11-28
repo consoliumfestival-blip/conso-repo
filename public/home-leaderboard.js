@@ -169,7 +169,7 @@ async function install(section) {
   block.setAttribute('aria-label', 'Festival sections');
   const navList = node('div', 'public-section__nav-list');
   if (mega) {
-    for (const labelText of ['Results', 'Schedule', 'Standings', 'Gallery']) {
+    for (const labelText of ['Results', 'Schedule', 'Standings', 'Gallery', 'Media']) {
       const btn = node('button', 'mega public-section__banner public-section__nav-btn');
       btn.type = 'button';
       for (const child of mega.children) {

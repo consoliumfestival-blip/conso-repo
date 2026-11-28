@@ -101,8 +101,11 @@ export default function LeaderboardControlsPage() {
     Boolean(tenant_id && festivalId && settingsQuery.isSuccess),
   );
 
+  const DEFAULT_CONSOULIUM_TENANT_ID = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const publicLeaderboardUrl = tenant_id && typeof window !== 'undefined'
-    ? window.location.origin + '/leaderboard?tenant_id=' + tenant_id
+    ? (tenant_id === DEFAULT_CONSOULIUM_TENANT_ID
+      ? window.location.origin + '/consoulium'
+      : window.location.origin + '/leaderboard?tenant_id=' + tenant_id)
     : '';
 
   const handleCopyPublicLink = async () => {

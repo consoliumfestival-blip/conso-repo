@@ -1,5 +1,12 @@
 // Live public standings from /api/public-version & /api/public-snapshot without changing the home scene.
+import { v as smoothScrollTo } from '/assets/RouteLink-conso26v2.js';
+
+if (typeof window !== 'undefined') {
+  window.__consoSmoothScrollTo = smoothScrollTo;
+}
+
 const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
+const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
 const SNAPSHOT_TTL_MS = 60_000;
 let cachedSnapshot = null;
 let confirmedAt = 0;
@@ -7,11 +14,11 @@ let confirmedAt = 0;
 function getScope() {
   const params = new URLSearchParams(location.search);
   const rawTenant = params.get('tenant_id');
-  const tenant = rawTenant === 'f87172d1-ed27-4db4-842c-cc00d3d56de2'
-    ? DEFAULT_TENANT
-    : rawTenant || DEFAULT_TENANT;
+  const isDefaultTenant = !rawTenant || rawTenant === DEFAULT_TENANT || rawTenant === LEGACY_TENANT_ALIAS;
+  const tenant = isDefaultTenant ? DEFAULT_TENANT : rawTenant;
+  const customTenant = isDefaultTenant ? null : rawTenant;
   const festivalId = params.get('festival_id');
-  return { tenant, festivalId };
+  return { tenant, customTenant, festivalId };
 }
 
 async function fetchStandings(force = false) {
@@ -161,8 +168,8 @@ async function install(section) {
       btn.addEventListener('click', (event) => {
         event.preventDefault();
         const url = new URL('/' + labelText.toLowerCase(), location.origin);
-        const { tenant, festivalId } = getScope();
-        if (tenant) url.searchParams.set('tenant_id', tenant);
+        const { customTenant, festivalId } = getScope();
+        if (customTenant) url.searchParams.set('tenant_id', customTenant);
         if (festivalId) url.searchParams.set('festival_id', festivalId);
         const nextUrl = url.pathname + url.search;
         if (window.__consoTransition) window.__consoTransition.go(nextUrl, labelText);

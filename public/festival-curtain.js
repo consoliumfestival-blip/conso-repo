@@ -272,6 +272,18 @@
 
   function go(url, explicitLabel) {
     if (navigating) return;
+    try {
+      const dest = new URL(url, location.origin);
+      if (dest.origin === location.origin && dest.pathname === location.pathname && dest.search === location.search) {
+        if (dest.hash) {
+          const hashTarget = document.getElementById(dest.hash.slice(1));
+          if (hashTarget) {
+            hashTarget.scrollIntoView({ behavior: REDUCED ? 'instant' : 'smooth' });
+          }
+        }
+        return;
+      }
+    } catch {}
     navigating = true;
     const label = inferLabel(url, explicitLabel);
 

@@ -36,6 +36,7 @@ type PublicMediaCatalog = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const VERSION_EDGE_TTL_SECONDS = 5;
 const LIST_EDGE_TTL_SECONDS = 15;
 const PRESIGN_EDGE_TTL_SECONDS = 1800;
 const IMMUTABLE_IMAGE_TTL_SECONDS = 31536000;
@@ -340,6 +341,26 @@ async function loadPublicMediaCatalog(
 
   if (!Array.isArray(rows)) throw new Error('Invalid generated_assets response');
 
+  const enforceResultLimit =
+    settingRow?.limit_public_results === true &&
+    settingRow?.ranking_mode === 'LIMITED' &&
+    Number(settingRow?.item_limit) > 0;
+  let allowedResultItemIds: Record<string, true> | null = null;
+  let allowedResultIds: Record<string, true> | null = null;
+  if (enforceResultLimit) {
+    const allowedResults = await supabaseRest<any[]>(env, 'rpc/get_public_published_results_scoped', {
+      p_tenant_id: tenantId,
+      p_festival_id: festivalId,
+      p_include_participant_details: false,
+    });
+    allowedResultItemIds = {};
+    allowedResultIds = {};
+    for (const r of (Array.isArray(allowedResults) ? allowedResults : [])) {
+      if (typeof r?.item_id === 'string' && r.item_id) allowedResultItemIds[r.item_id] = true;
+      if (typeof r?.result_id === 'string' && r.result_id) allowedResultIds[r.result_id] = true;
+    }
+  }
+
   const grouped = new Map<string, CatalogCandidate>();
 
   for (let idx = 0; idx < rows.length; idx++) {
@@ -354,21 +375,28 @@ async function loadPublicMediaCatalog(
       ? row.render_hash.trim()
       : `_ungrouped_${row.id || idx}`;
 
+    const eventId = typeof row.event_id === 'string' && row.event_id ? row.event_id : null;
+    const resultId = typeof row.result_id === 'string' && row.result_id ? row.result_id : null;
+    const resultNo = row.result?.public_result_no != null && Number.isFinite(Number(row.result.public_result_no))
+      ? Number(row.result.public_result_no)
+      : null;
+    const isManualMedia = hashKey.startsWith('manual_media_');
+    const isManualResult = hashKey.startsWith('manual_result_');
+    const hasResultLink = Boolean(eventId || resultId || row.item || resultNo !== null);
+    const section: 'media' | 'result' = isManualMedia
+      ? 'media'
+      : (isManualResult || hasResultLink ? 'result' : 'media');
+
+    if (enforceResultLimit && section === 'result') {
+      const matchesItem = Boolean(eventId && allowedResultItemIds && Object.prototype.hasOwnProperty.call(allowedResultItemIds, eventId));
+      const matchesResult = Boolean(resultId && allowedResultIds && Object.prototype.hasOwnProperty.call(allowedResultIds, resultId));
+      if (!matchesItem && !matchesResult) continue;
+    }
+
     if (!grouped.has(hashKey)) {
       const title = String(row.event_name || row.item?.item_name_en || row.item?.item_name_ml || 'Result Poster').trim();
       const itemMl = String(row.item?.item_name_ml || '').trim();
       const subtitle = itemMl && itemMl !== title ? itemMl : '';
-      const resultNo = row.result?.public_result_no != null && Number.isFinite(Number(row.result.public_result_no))
-        ? Number(row.result.public_result_no)
-        : null;
-      const eventId = typeof row.event_id === 'string' && row.event_id ? row.event_id : null;
-      const resultId = typeof row.result_id === 'string' && row.result_id ? row.result_id : null;
-      const isManualMedia = hashKey.startsWith('manual_media_');
-      const isManualResult = hashKey.startsWith('manual_result_');
-      const hasResultLink = Boolean(eventId || resultId || row.item || resultNo !== null);
-      const section: 'media' | 'result' = isManualMedia
-        ? 'media'
-        : (isManualResult || hasResultLink ? 'result' : 'media');
       const format = section === 'media' ? 'Media Upload' : 'Result Poster';
 
       grouped.set(hashKey, {
@@ -482,6 +510,19 @@ function inferDownloadExtension(contentType: string, sourceUrl: string): string 
   return 'bin';
 }
 
+async function loadMediaRevision(env: Environment, tenantId: string): Promise<string | null> {
+  try {
+    const raw = await supabaseRest<number | string | null>(env, 'rpc/get_public_snapshot_revision', {
+      p_tenant_id: tenantId,
+    });
+    if (raw === null) return null;
+    const revision = String(raw);
+    return /^(0|[1-9][0-9]*)$/.test(revision) ? revision : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function onRequestGet({ request, env }: PagesContext): Promise<Response> {
   const requestUrl = new URL(request.url);
   const rawTenantId = requestUrl.searchParams.get('tenant_id');
@@ -497,10 +538,20 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
   const requestedFestivalId = rawFestivalId ? rawFestivalId.toLowerCase() : null;
 
   try {
-    const catalogCacheUrl = new URL('/_public-media-catalog/v3', requestUrl.origin);
-    catalogCacheUrl.searchParams.set('tenant_id', tenantId);
-    if (requestedFestivalId) catalogCacheUrl.searchParams.set('festival_id', requestedFestivalId);
-    const catalogCacheReq = new Request(catalogCacheUrl.toString());
+    const getCatalogCacheReq = async () => {
+      const versionUrl = new URL('/_public-media-version/v1', requestUrl.origin);
+      versionUrl.searchParams.set('tenant_id', tenantId);
+      const { value: revision } = await shared(
+        new Request(versionUrl.toString()),
+        VERSION_EDGE_TTL_SECONDS,
+        () => loadMediaRevision(env, tenantId),
+      );
+      const catalogCacheUrl = new URL('/_public-media-catalog/v4', requestUrl.origin);
+      catalogCacheUrl.searchParams.set('tenant_id', tenantId);
+      if (requestedFestivalId) catalogCacheUrl.searchParams.set('festival_id', requestedFestivalId);
+      if (revision !== null) catalogCacheUrl.searchParams.set('revision', revision);
+      return new Request(catalogCacheUrl.toString());
+    };
 
     // 1. Immutable image proxy for stable permanent browser caching across R2 presign rotations
     if (requestUrl.searchParams.get('img') === '1') {
@@ -542,7 +593,7 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
       }
 
       const { value: catalog } = await shared(
-        catalogCacheReq,
+        await getCatalogCacheReq(),
         LIST_EDGE_TTL_SECONDS,
         () => loadPublicMediaCatalog(env, tenantId, requestedFestivalId),
       );
@@ -597,7 +648,7 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
     }
 
     const { value: catalog, cacheStatus } = await shared(
-      catalogCacheReq,
+      await getCatalogCacheReq(),
       LIST_EDGE_TTL_SECONDS,
       () => loadPublicMediaCatalog(env, tenantId, requestedFestivalId),
     );

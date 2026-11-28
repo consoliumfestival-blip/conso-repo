@@ -52,8 +52,12 @@ export const useUpdateLeaderboardSettings = (tenantId: string, festivalId: strin
       queryClient.invalidateQueries({ queryKey: ['public-leaderboard'] });
       queryClient.invalidateQueries({ queryKey: ['public-leaderboard-settings'] });
       queryClient.invalidateQueries({ queryKey: ['public-published-results'] });
+      queryClient.invalidateQueries({ queryKey: ['public-snapshot-version'] });
+      queryClient.invalidateQueries({ queryKey: ['public-snapshot'] });
+      queryClient.invalidateQueries({ queryKey: ['public-generated-posters'] });
       queryClient.invalidateQueries({ queryKey: ['publicCandidateProfile'] });
       queryClient.invalidateQueries({ queryKey: ['unitProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-item-results-filtered'] });
     },
   });
 };

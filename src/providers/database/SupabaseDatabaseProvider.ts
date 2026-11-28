@@ -892,11 +892,27 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
   }
 
   async upsertLeaderboardSettings<T>(payload: Record<string, unknown>): Promise<QueryResult<T>> {
-    const { data, error } = await supabase
-      .from('festival_leaderboard_settings')
-      .upsert(payload, { onConflict: 'tenant_id,festival_id' })
-      .select()
-      .single();
+    const attemptUpsert = (row: Record<string, unknown>) =>
+      supabase
+        .from('festival_leaderboard_settings')
+        .upsert(row, { onConflict: 'tenant_id,festival_id' })
+        .select()
+        .single();
+
+    let { data, error } = await attemptUpsert(payload);
+
+    // Parallel safety: if the target DB has not run the limit_public_results migration yet,
+    // allow saving other settings when the new toggle is off rather than breaking existing controls.
+    if (
+      error &&
+      Object.prototype.hasOwnProperty.call(payload, 'limit_public_results') &&
+      payload.limit_public_results !== true &&
+      (['42703', 'PGRST204'].indexOf((error as any).code) !== -1 ||
+        String((error as any).message || '').indexOf('limit_public_results') !== -1)
+    ) {
+      const { limit_public_results: _ignored, ...legacyPayload } = payload;
+      ({ data, error } = await attemptUpsert(legacyPayload));
+    }
 
     return { data: (data as T) ?? null, error: normalizeError(error) };
   }

@@ -256,3 +256,53 @@ test('supports ETag 304 conditional requests, long revision-keyed snapshot TTL, 
   const updatedBody = await updatedRes.json();
   assert.equal(updatedBody.revision, '8');
 });
+
+test('passes ranking_mode, item_limit, and limit_public_results settings through to snapshot consumers', async () => {
+  globalThis.caches = fakeCache();
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (input, options) => {
+    const url = new URL(input);
+    switch (url.pathname) {
+      case '/rest/v1/rpc/get_public_tenant_feature_settings':
+        return new Response(JSON.stringify({
+          public_page: true,
+          public_leaderboard: true,
+          sections: { schedule: true, results: true, participant_results: true, media: true },
+        }), { status: 200 });
+      case '/rest/v1/rpc/get_public_snapshot_revision':
+        return new Response(JSON.stringify(12), { status: 200 });
+      case '/rest/v1/rpc/get_public_leaderboard_settings':
+        return new Response(JSON.stringify([{
+          festival_id: festivalA,
+          is_public_visible: true,
+          show_individual_rankings: true,
+          show_competition_points_grades: true,
+          ranking_mode: 'LIMITED',
+          item_limit: 60,
+          limit_public_results: true,
+        }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_leaderboard_scoped':
+        return new Response(JSON.stringify([{ organisation_id: tenantA, organisation_name: 'Unit A', total_points: '600' }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_team_roster_scoped':
+        return new Response(JSON.stringify([{ organisation_id: tenantA, organisation_name: 'Unit A' }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_published_results_scoped':
+      case '/rest/v1/rpc/get_public_participant_results_scoped':
+        return new Response(JSON.stringify([{ result_id: 'r-60', item_id: itemA, item_category_codes: ['SR'], rank: '1', points_awarded: '10' }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_schedules_scoped':
+        return new Response(JSON.stringify([]), { status: 200 });
+      case '/rest/v1/items':
+        return new Response(JSON.stringify([{ id: itemA, item_code: 'IT60' }]), { status: 200 });
+      default:
+        throw new Error(`Unexpected origin call: ${url.pathname}`);
+    }
+  };
+  try {
+    const { response, body } = await snapshot(tenantA);
+    assert.equal(response.status, 200);
+    assert.equal(body.settings.ranking_mode, 'LIMITED');
+    assert.equal(body.settings.item_limit, 60);
+    assert.equal(body.settings.limit_public_results, true);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

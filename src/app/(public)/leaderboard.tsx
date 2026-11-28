@@ -192,17 +192,19 @@ const toOrganisationRows = (
     const totalPoints = useOfficialTeamPoints
       ? row.total_points
       : stats.points + (row.grace_marks_awarded || 0);
+    const resultCount = useOfficialTeamPoints ? row.result_count : stats.results;
+    const firstPlaces = useOfficialTeamPoints ? row.first_place_count : stats.firstPlaces;
 
     return {
       id: orgId,
       name: row.organisation_name,
-      subtitle: `${stats.results} results - ${stats.firstPlaces} first places`,
+      subtitle: `${resultCount} results - ${firstPlaces} first places`,
       points: totalPoints,
       rank: 0, 
       badgeLabel: label,
       accent: '',
       calculatedPoints: totalPoints,
-      calculatedFirstPlaces: stats.firstPlaces,
+      calculatedFirstPlaces: firstPlaces,
     };
   })
   .sort((a, b) => b.calculatedPoints - a.calculatedPoints || b.calculatedFirstPlaces - a.calculatedFirstPlaces || a.name.localeCompare(b.name))
@@ -444,7 +446,11 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
     );
   }, [categoryFilteredResults, searchQuery]);
 
-  const organisationRows = useMemo(() => toOrganisationRows(organisationData, categoryFilteredResults, hierarchyLabel, !showCompetitionPointsGrades), [organisationData, categoryFilteredResults, hierarchyLabel, showCompetitionPointsGrades]);
+  const useOfficialTeamPoints = !showCompetitionPointsGrades || categoryFilter === 'All';
+  const organisationRows = useMemo(
+    () => toOrganisationRows(organisationData, categoryFilteredResults, hierarchyLabel, useOfficialTeamPoints),
+    [organisationData, categoryFilteredResults, hierarchyLabel, useOfficialTeamPoints]
+  );
   const filteredOrganisationRows = useMemo(() => {
     return organisationRows.filter((row) => includesQuery([row.name, row.subtitle], searchQuery));
   }, [organisationRows, searchQuery]);

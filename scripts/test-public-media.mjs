@@ -640,3 +640,123 @@ test('paginates backend results lazily (limit=20), skips 404 R2 items cleanly, a
     globalThis.caches = origCaches;
   }
 });
+
+test('limits result posters to included leaderboard items when limit_public_results is enabled and invalidates cache on revision change', async () => {
+  const entries = new Map();
+  const origCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      async match(req) {
+        const entry = entries.get(req.url);
+        return entry && Date.now() < entry.expires ? entry.response.clone() : undefined;
+      },
+      async put(req, res) {
+        const age = Number(/max-age=(\d+)/.exec(res.headers.get('Cache-Control') ?? '')?.[1] ?? 0);
+        entries.set(req.url, { response: res.clone(), expires: Date.now() + age * 1000 });
+      },
+    },
+  };
+
+  let currentRevision = 1;
+  let limitEnabled = true;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith('/rpc/get_public_snapshot_revision')) {
+      return new Response(JSON.stringify(currentRevision), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{
+        festival_id: festivalId,
+        is_public_visible: true,
+        ranking_mode: 'LIMITED',
+        item_limit: 1,
+        limit_public_results: limitEnabled,
+      }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_published_results_scoped')) {
+      return new Response(JSON.stringify(
+        limitEnabled
+          ? [{ result_id: 'res-1', item_id: 'item-1' }]
+          : [{ result_id: 'res-1', item_id: 'item-1' }, { result_id: 'res-2', item_id: 'item-2' }],
+      ), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify([
+        {
+          id: 'p-1',
+          render_hash: 'poster_item_1',
+          event_id: 'item-1',
+          result_id: 'res-1',
+          event_name: 'Included Item',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/p1.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T09:00:00Z',
+        },
+        {
+          id: 'p-2',
+          render_hash: 'poster_item_2',
+          event_id: 'item-2',
+          result_id: 'res-2',
+          event_name: 'Preview Only Item',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/p2.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T09:05:00Z',
+        },
+        {
+          id: 'm-1',
+          render_hash: 'manual_media_gallery',
+          event_name: 'Stage Inauguration',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/media/stage.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T09:10:00Z',
+        },
+      ]), { status: 200 });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    const restrictedRes = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}`),
+      env,
+    });
+    assert.equal(restrictedRes.status, 200);
+    const restrictedBody = await restrictedRes.json();
+    assert.deepEqual(
+      restrictedBody.items.map((i) => i.render_hash),
+      ['poster_item_1', 'manual_media_gallery'],
+      'Excludes result poster outside leaderboard limit while keeping manual media',
+    );
+
+    // Toggle OFF + revision bump -> edge cache invalidates on new revision and serves p2 too
+    limitEnabled = false;
+    currentRevision = 2;
+    for (const key of entries.keys()) {
+      if (key.includes('/_public-media-version/')) entries.delete(key);
+    }
+
+    const unrestrictedRes = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}`),
+      env,
+    });
+    assert.equal(unrestrictedRes.status, 200);
+    const unrestrictedBody = await unrestrictedRes.json();
+    assert.deepEqual(
+      unrestrictedBody.items.map((i) => i.render_hash),
+      ['poster_item_1', 'poster_item_2', 'manual_media_gallery'],
+    );
+  } finally {
+    globalThis.fetch = origFetch;
+    globalThis.caches = origCaches;
+  }
+});

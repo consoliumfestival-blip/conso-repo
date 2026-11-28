@@ -92,6 +92,7 @@ export default function LeaderboardControlsPage() {
   const [publicLinkCopied, setPublicLinkCopied] = useState(false);
   const [rankingMode, setRankingMode] = useState<string>('ALL');
   const [itemLimit, setItemLimit] = useState<string>('');
+  const [limitPublicResults, setLimitPublicResults] = useState<boolean>(false);
 
   const { data: publicPreview, isFetching: isPreviewFetching, isError: isPreviewError } = useLeaderboardPreview(
     tenant_id, 
@@ -142,6 +143,7 @@ export default function LeaderboardControlsPage() {
       setPublicFestivalName(settings.public_festival_name ?? activeFestival?.custom_name ?? '');
       setRankingMode(settings.ranking_mode || 'ALL');
       setItemLimit(settings.item_limit ? settings.item_limit.toString() : '');
+      setLimitPublicResults(settings.limit_public_results ?? false);
     }
   }, [settings, activeFestival?.custom_name]);
 
@@ -165,6 +167,7 @@ export default function LeaderboardControlsPage() {
     public_festival_name: publicFestivalName.trim() || null,
     ranking_mode: rankingMode,
     item_limit: itemLimit && !isNaN(parseInt(itemLimit, 10)) ? parseInt(itemLimit, 10) : null,
+    limit_public_results: limitPublicResults,
     ...overrides,
   });
 
@@ -429,6 +432,32 @@ export default function LeaderboardControlsPage() {
                       await persistSetting({ ranking_mode: 'LIMITED', item_limit: parseInt(itemLimit, 10) });
                     }
                   }}
+                />
+              </View>
+
+              <View style={[styles.rankingLimitSyncRow, limitPublicResults && styles.rankingLimitSyncRowActive]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.controlLabel}>Apply Limit to Public Results &amp; Posters</Text>
+                  <Text style={styles.controlHint}>
+                    {rankingMode === 'LIMITED' && itemLimit && parseInt(itemLimit, 10) > 0
+                      ? (limitPublicResults
+                        ? `Active: Public results, profiles & posters only show the first ${parseInt(itemLimit, 10)} leaderboard items. Admin Live Points Preview still includes all published items.`
+                        : `Off: Only unit standings are capped at ${parseInt(itemLimit, 10)} items; public results still show all published items.`)
+                      : 'Select a preset or Custom Number above to cap public results alongside the leaderboard.'}
+                  </Text>
+                </View>
+                <Switch
+                  value={limitPublicResults}
+                  onValueChange={async (value) => {
+                    const previous = limitPublicResults;
+                    setLimitPublicResults(value);
+                    const saved = await persistSetting({ limit_public_results: value });
+                    if (!saved) setLimitPublicResults(previous);
+                  }}
+                  disabled={updateSettingsMutation.isPending}
+                  trackColor={{ false: coreColor('#CBD5E1', 'primarySoft'), true: coreColor('#99F6E4', 'primarySoft') }}
+                  thumbColor={limitPublicResults ? colors.teal : ui.colors.surface}
+                  accessibilityLabel="Apply unit ranking item limit to public results and posters"
                 />
               </View>
             </View>
@@ -824,6 +853,24 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     marginTop: 0,
     marginBottom: 0,
+  },
+  rankingLimitSyncRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: ui.colors.background,
+  },
+  rankingLimitSyncRowActive: {
+    borderColor: colors.teal,
+    backgroundColor: ui.colors.infoSoft,
   },
   settingsDisabled: {
     opacity: 0.55,

@@ -18,6 +18,7 @@ import { SsfSelectMenu, type SsfSelectOption } from '@/components/ui/SsfSelectMe
 import { ItemResultsViewContext } from '@/core/contexts/itemResultsViewContext';
 import { useFestival } from '../../../../core/hooks/useFestival';
 import { useFestivalCategories } from '../../../../core/hooks/useFestivalCategories';
+import { useGetLeaderboardSettings } from '../../../../core/hooks/useLeaderboardSettings';
 import { useResultVisibility } from '../../../../core/hooks/useResultVisibility';
 import { useAuthStore } from '../../../../core/store/authStore';
 import { FestivalResult, ResultStatus } from '../../../../services/resultVisibilityService';
@@ -127,6 +128,14 @@ export default function ItemResultsPage() {
   const { useActiveFestival, useItems } = useFestival();
   const { data: activeFestival } = useActiveFestival();
   const festivalId = activeFestival?.id;
+  const { data: leaderboardSettings } = useGetLeaderboardSettings(festivalId);
+  const publicResultLimit =
+    leaderboardSettings?.limit_public_results === true &&
+    leaderboardSettings?.ranking_mode === 'LIMITED' &&
+    typeof leaderboardSettings?.item_limit === 'number' &&
+    leaderboardSettings.item_limit > 0
+      ? leaderboardSettings.item_limit
+      : null;
   const { data: festivalCategories = [] } = useFestivalCategories(festivalId, true);
   const { data: festivalItems = [] } = useItems(festivalId);
 
@@ -361,6 +370,8 @@ export default function ItemResultsPage() {
             {groupedResults.map(group => {
               const isAllPublic = itemStats[group.item_id]?.all_public === true;
               const isAllPublicHidden = itemStats[group.item_id]?.all_hidden === true;
+              const publicOrder = publicOrderMap.get(group.item_id);
+              const isBeyondPublicLimit = publicResultLimit !== null && publicOrder !== undefined && publicOrder > publicResultLimit;
               const expanded = expandedItemId === group.item_id;
               return (
                 <React.Fragment key={group.item_id}>
@@ -372,7 +383,26 @@ export default function ItemResultsPage() {
                       accessibilityLabel={`${group.item_name_ml || group.item_name}, ${group.results.length} results`}
                       onPress={() => setExpandedItemId(expanded ? null : group.item_id)}
                     >
+                      {publicOrder !== undefined && (
+                        <View style={{
+                          backgroundColor: isBeyondPublicLimit ? ui.colors.surfaceMuted : coreColor('#0F766E', 'primary'),
+                          borderRadius: 6,
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                        }}>
+                          <Text style={{
+                            color: isBeyondPublicLimit ? ui.colors.textMuted : coreColor('#FFFFFF', 'onPrimary'),
+                            fontFamily: 'Outfit_700Bold',
+                            fontSize: 10,
+                          }}>#{publicOrder}</Text>
+                        </View>
+                      )}
                       <Text style={styles.itemGroupTitle} numberOfLines={1}>{group.item_name_ml || group.item_name}</Text>
+                      {isBeyondPublicLimit && (
+                        <View style={{ backgroundColor: ui.colors.infoSoft, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: ui.colors.textMuted, fontFamily: 'Outfit_700Bold', fontSize: 10 }}>Preview Only (&gt;{publicResultLimit})</Text>
+                        </View>
+                      )}
                       {!!itemDetailsMap.get(group.item_id)?.item_code && <Text style={styles.tableItemCode}>{itemDetailsMap.get(group.item_id)?.item_code}</Text>}
                       <Text style={styles.tableItemCount}>{group.results.length} results</Text>
                       <ChevronDown size={15} color={colors.muted} style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }} />
@@ -423,6 +453,8 @@ export default function ItemResultsPage() {
           {groupedResults.map(group => {
             const isAllPublic = itemStats[group.item_id]?.all_public === true;
             const isAllPublicHidden = itemStats[group.item_id]?.all_hidden === true;
+            const publicOrder = publicOrderMap.get(group.item_id);
+            const isBeyondPublicLimit = publicResultLimit !== null && publicOrder !== undefined && publicOrder > publicResultLimit;
 
             return (
               <View key={group.item_id} style={styles.itemGroupCard}>
@@ -434,12 +466,28 @@ export default function ItemResultsPage() {
                   onPress={() => setExpandedItemId(expandedItemId === group.item_id ? null : group.item_id)}
                 >
                   <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    {publicOrderMap.has(group.item_id) && (
-                      <View style={{ backgroundColor: coreColor('#0F766E', 'primary'), borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, minWidth: 32, alignItems: 'center' }}>
-                        <Text style={{ color: coreColor('#FFFFFF', 'onPrimary'), fontFamily: "Outfit_700Bold", fontSize: 12 }}>#{publicOrderMap.get(group.item_id)}</Text>
+                    {publicOrder !== undefined && (
+                      <View style={{
+                        backgroundColor: isBeyondPublicLimit ? ui.colors.surfaceMuted : coreColor('#0F766E', 'primary'),
+                        borderRadius: 8,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        minWidth: 32,
+                        alignItems: 'center',
+                      }}>
+                        <Text style={{
+                          color: isBeyondPublicLimit ? ui.colors.textMuted : coreColor('#FFFFFF', 'onPrimary'),
+                          fontFamily: "Outfit_700Bold",
+                          fontSize: 12,
+                        }}>#{publicOrder}</Text>
                       </View>
                     )}
                     <Text style={styles.itemGroupTitle} numberOfLines={1}>{group.item_name_ml || group.item_name}</Text>
+                      {isBeyondPublicLimit && (
+                        <View style={[styles.itemTypeBadge, { backgroundColor: ui.colors.infoSoft }]}>
+                          <Text style={[styles.itemTypeBadgeText, { color: ui.colors.textMuted }]}>Preview Only (&gt;{publicResultLimit})</Text>
+                        </View>
+                      )}
                       {itemDetailsMap.get(group.item_id)?.item_code && (
                         <View style={[styles.itemTypeBadge, { backgroundColor: coreColor('#f3f4f6', 'surface'), borderColor: coreColor('#e5e7eb', 'border'), borderWidth: 1 }]}>
                           <Text style={[styles.itemTypeBadgeText, { color: coreColor('#4b5563', 'text') }]}>{itemDetailsMap.get(group.item_id).item_code}</Text>

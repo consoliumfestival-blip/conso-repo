@@ -23,6 +23,7 @@ export type LeaderboardSettings = {
   public_festival_name?: string | null;
   ranking_mode?: string;
   item_limit?: number | null;
+  limit_public_results?: boolean;
 };
 
 export type PublicLeaderboardSettings = {
@@ -35,6 +36,7 @@ export type PublicLeaderboardSettings = {
   public_festival_name?: string | null;
   ranking_mode?: string;
   item_limit?: number | null;
+  limit_public_results?: boolean;
 };
 
 export type PosterTemplate = {

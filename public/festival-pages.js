@@ -1,5 +1,6 @@
 (() => {
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
+  const CAMPUS_TENANT = '73ee92f3-d795-43eb-997e-380e52856424';
   const STATIC_PAGES = new Set(['gallery', 'news', 'brochure']);
   const MEDIA_PAGE_SIZE = 20;
   const navEntry = typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')?.[0] : null;
@@ -12,6 +13,14 @@
   const festivalId = params.get('festival_id');
 
   const page = document.body.dataset.page || '';
+  if (tenant === CAMPUS_TENANT && (page === 'results' || page === 'standings')) {
+    document.body.classList.add('campus-festival-page');
+    document.title = `${page === 'results' ? 'Results' : 'Standings'} · Campus`;
+    const eyebrow = document.querySelector('.sub-eyebrow');
+    if (eyebrow) eyebrow.textContent = 'Campus festival';
+    const lede = document.querySelector('.sub-lede');
+    if (lede) lede.textContent = 'Published Campus competition results.';
+  }
   const content = document.getElementById('content');
   const updated = document.getElementById('updated');
   const search = document.getElementById('search');
@@ -19,6 +28,14 @@
   const refreshBtn = document.getElementById('refresh');
   const featuredHost = document.getElementById('featured');
   const mediaPaginationHost = document.getElementById('media-pagination');
+  const campusCategoryHost = tenant === CAMPUS_TENANT && page === 'standings'
+    ? document.getElementById('campus-category') : null;
+  const campusCategoryContent = campusCategoryHost?.querySelector('#campus-category-content');
+  let campusCategoryStatus = 'idle';
+  let campusCategoryFestivalId = null;
+  let campusCategoryRevision = null;
+  let campusCategoryRows = [];
+  let campusCategoryRequest = 0;
 
   const TEAM_PALETTE = ['#6D28D9', '#E11D48', '#2563EB', '#10B981', '#F59E0B'];
   const TEAM_COLOR_RULES = [
@@ -35,6 +52,12 @@
   ];
 
   function resolveTeamColor(team, stableIndex) {
+    if (tenant === CAMPUS_TENANT) {
+      const identity = String(team?.organisation_id || team?.organisation_name || 'team');
+      let hash = 0;
+      for (const char of identity) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
+      return `hsl(${Math.abs(hash) % 360} 72% 42%)`;
+    }
     if (team?.color) return team.color;
     const name = String(team?.organisation_name || '').toLowerCase();
     for (const [needle, color] of TEAM_COLOR_RULES) {
@@ -778,6 +801,83 @@
     }
   }
 
+  function renderCampusCategories() {
+    if (!campusCategoryHost || !campusCategoryContent || !snapshot?.festival_id) return;
+    campusCategoryHost.hidden = false;
+    if (campusCategoryFestivalId !== snapshot.festival_id || campusCategoryRevision !== snapshot.revision) {
+      campusCategoryRequest++;
+      campusCategoryFestivalId = snapshot.festival_id;
+      campusCategoryRevision = snapshot.revision;
+      campusCategoryRows = [];
+      campusCategoryStatus = 'idle';
+    }
+    if (campusCategoryStatus === 'idle') {
+      campusCategoryStatus = 'loading';
+      const request = ++campusCategoryRequest;
+      const scope = new URLSearchParams({ tenant_id: CAMPUS_TENANT, festival_id: campusCategoryFestivalId });
+      fetch(`/api/campus-category-standings?${scope}`, {
+        cache: 'no-store', credentials: 'omit', signal: AbortSignal.timeout(8000),
+      }).then(async (response) => {
+        if (!response.ok) throw new Error('Category standings unavailable');
+        const data = await response.json();
+        if (data.tenant_id !== CAMPUS_TENANT || data.festival_id !== campusCategoryFestivalId || !Array.isArray(data.rows)) {
+          throw new Error('Invalid category standings scope');
+        }
+        if (request !== campusCategoryRequest) return;
+        campusCategoryRows = data.rows;
+        campusCategoryStatus = 'ready';
+        renderCampusCategories();
+      }).catch(() => {
+        if (request !== campusCategoryRequest) return;
+        campusCategoryStatus = 'error';
+        renderCampusCategories();
+      });
+    }
+    if (campusCategoryStatus === 'loading') {
+      campusCategoryContent.replaceChildren(el('p', 'campus-category__status', 'Loading category standings…'));
+      return;
+    }
+    if (campusCategoryStatus === 'error') {
+      const message = el('p', 'campus-category__status', 'Category standings are temporarily unavailable. Overall standings remain available.');
+      const retry = el('button', 'glass-btn campus-category__retry', 'Try again');
+      retry.type = 'button';
+      retry.addEventListener('click', () => { campusCategoryStatus = 'idle'; renderCampusCategories(); });
+      campusCategoryContent.replaceChildren(message, retry);
+      return;
+    }
+    if (!campusCategoryRows.length) {
+      campusCategoryContent.replaceChildren(el('p', 'campus-category__status', 'No public category standings yet.'));
+      return;
+    }
+    const grouped = new Map();
+    for (const row of campusCategoryRows) {
+      const code = String(row.category_code || '');
+      if (!grouped.has(code)) grouped.set(code, []);
+      grouped.get(code).push(row);
+    }
+    const cards = [...grouped.values()]
+      .sort((a, b) => Number(a[0].category_sort_order || 0) - Number(b[0].category_sort_order || 0))
+      .map((rows) => {
+        const card = el('article', 'campus-category__card');
+        card.append(el('h3', '', rows[0].category_name || rows[0].category_code || 'Category'));
+        const list = el('ol', 'home-leaderboard__list campus-category__rows');
+        for (const row of rows) {
+          const entry = el('li', 'home-leaderboard__card');
+          entry.style.setProperty('--team-c', resolveTeamColor(row, 0));
+          const left = el('div', 'home-leaderboard__left');
+          left.append(
+            el('span', 'home-leaderboard__rank', `#${Number(row.rank_position || 0)}`),
+            el('span', 'home-leaderboard__name', row.organisation_name || 'Team'),
+          );
+          entry.append(left, el('strong', 'home-leaderboard__points', `${Number(row.total_points || 0)} pts`));
+          list.append(entry);
+        }
+        card.append(list);
+        return card;
+      });
+    campusCategoryContent.replaceChildren(...cards);
+  }
+
   function renderGallery() {
     const items = snapshot.gallery || [];
     if (updated) updated.textContent = items.length ? `${items.length} Moments` : '';
@@ -1294,6 +1394,7 @@
       return;
     }
     if (!isVisible(snapshot)) {
+      if (campusCategoryHost) campusCategoryHost.hidden = true;
       if (filtersHost) filtersHost.replaceChildren();
       if (mediaPaginationHost) {
         mediaPaginationHost.hidden = true;
@@ -1307,7 +1408,10 @@
     const term = search ? search.value.trim().toLocaleLowerCase() : '';
     if (page === 'results') renderResults(term);
     else if (page === 'schedule') renderSchedule(term);
-    else if (page === 'standings') renderStandings(term);
+    else if (page === 'standings') {
+      renderStandings(term);
+      if (campusCategoryHost) renderCampusCategories();
+    }
     else if (page === 'gallery') renderGallery(term);
     else if (page === 'news') renderNews(term);
     else if (page === 'media') renderMedia();
@@ -1583,6 +1687,10 @@
     });
   }
   if (refreshBtn) refreshBtn.addEventListener('click', () => {
+    if (campusCategoryHost) {
+      campusCategoryRequest++;
+      campusCategoryStatus = 'idle';
+    }
     refresh(true);
     if (page === 'results') fetchResultPosters(true, snapshot?.revision || null);
   });

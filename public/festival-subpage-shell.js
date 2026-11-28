@@ -3,9 +3,12 @@
   const searchParams = new URLSearchParams(location.search);
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
+  const CAMPUS_TENANT = '73ee92f3-d795-43eb-997e-380e52856424';
   const rawTenant = searchParams.get('tenant_id');
   const isDefaultTenant = !rawTenant || rawTenant === DEFAULT_TENANT || rawTenant === LEGACY_TENANT_ALIAS;
   const customTenant = isDefaultTenant ? null : rawTenant;
+  const isCampus = customTenant === CAMPUS_TENANT;
+  const homePath = isCampus ? '/campus.html' : '/explore';
   const festivalId = searchParams.get('festival_id');
 
   if (rawTenant && isDefaultTenant) {
@@ -17,19 +20,19 @@
   function withTenant(path) {
     if (!path.startsWith('/')) return path;
     const url = new URL(path, location.origin);
-    if (customTenant) url.searchParams.set('tenant_id', customTenant);
+    if (customTenant && path !== '/campus.html') url.searchParams.set('tenant_id', customTenant);
     if (festivalId) url.searchParams.set('festival_id', festivalId);
     return url.pathname + url.search + url.hash;
   }
 
   const NAV_ITEMS = [
-    { id: 'home', label: 'Home', to: '/explore', c: '#6D28D9' },
+    { id: 'home', label: 'Home', to: homePath, c: '#6D28D9' },
     { id: 'results', label: 'Results', to: '/results', c: '#E11D48' },
     { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
     { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
     { id: 'media', label: 'Media', to: '/media', c: '#6D28D9' },
     { id: 'find-me', label: 'Find Me', to: '/candidate-search', c: '#2563EB', menuOnly: true },
-  ];
+  ].filter((item) => !isCampus || ['home', 'results', 'standings', 'find-me'].includes(item.id));
 
   const GLYPH_LIST = [
     '<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48" fill="#6D28D9"/><polygon points="50,14 61,39 86,50 61,61 50,86 39,61 14,50 39,39" fill="#fff"/><circle cx="50" cy="50" r="10" fill="#6D28D9"/></svg>',
@@ -65,9 +68,9 @@
 
   nav.innerHTML = `
     <div class="sub-nav__shell">
-      <a class="sub-nav__brand" href="${withTenant('/explore')}" aria-label="Consoulium 2k26 home" data-nav-label="Home">
+      <a class="sub-nav__brand" href="${withTenant(homePath)}" aria-label="${isCampus ? 'Campus' : 'Consoulium 2k26'} home" data-nav-label="Home">
         <img class="sub-nav__logo" src="/brand/consolium-logo-footer.png" alt="" width="28" height="28" decoding="async">
-        <span class="sub-nav__brand-text">Consoulium 2k26</span>
+        <span class="sub-nav__brand-text">${isCampus ? 'Campus' : 'Consoulium 2k26'}</span>
       </a>
       <nav class="sub-nav__links" aria-label="Festival navigation">${linksHtml}</nav>
       <a class="sub-nav__cta" href="${withTenant('/candidate-search')}" id="sub-portal-btn" data-nav-label="Find Me">
@@ -121,7 +124,8 @@
     ['Schedule', '/schedule'],
     ['Media', '/media'],
     ['Find Me', '/candidate-search'],
-  ].map(([label, path]) => `<a class="sub-drawer__chip" href="${withTenant(path)}" data-nav-label="${label}">${label}</a>`).join('');
+  ].filter(([label]) => !isCampus || ['Results', 'Standings', 'Find Me'].includes(label))
+    .map(([label, path]) => `<a class="sub-drawer__chip" href="${withTenant(path)}" data-nav-label="${label}">${label}</a>`).join('');
 
   drawer.innerHTML = `
     ${bandsHtml}
@@ -129,7 +133,7 @@
       <div class="sub-drawer__inner">
         <div class="sub-drawer__pages">
           <div class="sub-drawer__top" data-menu-fade>
-            <span class="sub-drawer__eyebrow">Consoulium 2k26 · Ayatic Codex</span>
+            <span class="sub-drawer__eyebrow">${isCampus ? 'Campus' : 'Consoulium 2k26 · Ayatic Codex'}</span>
             <button class="sub-drawer__close" type="button" id="sub-menu-close">Close</button>
           </div>
           <ul class="sub-drawer__list">${drawerItems}</ul>
@@ -139,11 +143,11 @@
             <span class="sub-drawer__eyebrow">Quick Sections</span>
             <div class="sub-drawer__chips">${quickChipsHtml}</div>
           </div>
-          <div class="sub-drawer__event">
+          ${isCampus ? '' : `<div class="sub-drawer__event">
             <span class="sub-drawer__eyebrow">Ayatic Codex · 5th Edition</span>
             <strong class="sub-drawer__date">26 – 29 Nov 2026</strong>
             <span class="sub-drawer__venue">Bukhari Campus, Kondotty</span>
-          </div>
+          </div>`}
           <a class="sub-drawer__portal" href="${withTenant('/candidate-search')}" id="sub-drawer-portal" data-nav-label="Find Me">
             <span>Find Me</span>
             <span aria-hidden="true">→</span>
@@ -284,13 +288,13 @@
   const footer = document.createElement('footer');
   footer.className = 'footer footer--compact';
   const footerLinks = [
-    ['Home', '/explore', 'home'],
+    ['Home', homePath, 'home'],
     ['Results', '/results', 'results'],
     ['Standings', '/standings', 'standings'],
     ['Schedule', '/schedule', 'schedule'],
     ['Media', '/media', 'media'],
     ['Find Me', '/candidate-search', 'find-me'],
-  ].map(([label, path, id]) => {
+  ].filter(([, , id]) => !isCampus || ['home', 'results', 'standings', 'find-me'].includes(id)).map(([label, path, id]) => {
     const active = id === page ? ' aria-current="page"' : '';
     return `<a href="${withTenant(path)}"${active}>${label}</a>`;
   }).join('');
@@ -302,8 +306,8 @@
           <img src="/brand/consolium-logo-footer.png" alt="" width="36" height="36" loading="lazy" decoding="async">
         </span>
         <div class="footer__brand-meta">
-          <strong class="footer__wordmark">Consoulium 2k26</strong>
-          <span class="footer__sub">Ayatic Codex · 26–29 Nov 2026</span>
+          <strong class="footer__wordmark">${isCampus ? 'Campus' : 'Consoulium 2k26'}</strong>
+          <span class="footer__sub">${isCampus ? 'Published festival updates' : 'Ayatic Codex · 26–29 Nov 2026'}</span>
         </div>
       </div>
       <nav class="footer__links footer__links--compact" aria-label="Footer">${footerLinks}</nav>

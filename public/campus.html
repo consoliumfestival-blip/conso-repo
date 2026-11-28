@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Campus · Consoulium 2k26</title>
+    <meta name="theme-color" content="#050816" />
+    <link rel="icon" href="/brand/favicon.ico" />
+    <link rel="stylesheet" href="/festival-pages.css?v=20261128f" />
+    <style>
+      .campus-page { min-height: 100vh; display: grid; place-items: center; padding: 32px clamp(16px, 5vw, 88px); }
+      .campus-shell { width: min(100%, 1744px); }
+      .campus-back { display: inline-flex; align-items: center; min-height: 44px; color: #dbeafe; text-decoration: none; font-weight: 700; }
+      .campus-back:hover, .campus-back:focus-visible { color: #fff; text-decoration: underline; }
+      .campus-heading { margin: 28px 0 24px; }
+      .campus-heading h1 { margin: 8px 0; }
+      .campus-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 28px); }
+      .campus-action { display: flex; align-items: center; isolation: isolate; position: relative; overflow: hidden; min-width: 0; min-height: clamp(92px, 8.5vw, 154px); padding: 18px clamp(24px, 4vw, 76px); border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: linear-gradient(135deg, rgba(255,251,242,.9), rgba(248,241,225,.78) 55%, rgba(243,233,214,.85)); color: #202124; text-decoration: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.78), 0 18px 44px -18px rgba(10,12,28,.45); transition: color .5s, box-shadow .5s; }
+      .campus-action:hover, .campus-action:focus-visible { color: #fff; box-shadow: 0 30px 90px -10px #faab0073; outline: 3px solid #93c5fd; outline-offset: 3px; }
+      .campus-action__fill { z-index: -1; display: grid; grid-template-rows: repeat(5, 1fr); position: absolute; inset: 0; pointer-events: none; }
+      .campus-action__fill i { transform: translateX(-101%); transition: transform .6s cubic-bezier(.16,1,.3,1); }
+      .campus-action__fill i:nth-child(1) { background: #6D28D9; }
+      .campus-action__fill i:nth-child(2) { background: #E11D48; transition-delay: 40ms; }
+      .campus-action__fill i:nth-child(3) { background: #2563EB; transition-delay: 80ms; }
+      .campus-action__fill i:nth-child(4) { background: #10B981; transition-delay: 120ms; }
+      .campus-action__fill i:nth-child(5) { background: #F59E0B; transition-delay: 160ms; }
+      .campus-action:hover .campus-action__fill i, .campus-action:focus-visible .campus-action__fill i { transform: none; }
+      .campus-action strong { position: relative; font-size: clamp(1.6rem, .9rem + 1.8vw, 2.75rem); line-height: 1.1; letter-spacing: -.04em; }
+      @media (max-width: 700px) { .campus-actions { grid-template-columns: 1fr; } .campus-action { min-height: 76px; padding: 16px 26px; } .campus-action strong { font-size: clamp(1.5rem, 7vw, 2rem); } }
+      @media (prefers-reduced-motion: reduce) { .campus-action, .campus-action__fill i { transition: none; } }
+    </style>
+  </head>
+  <body>
+    <main class="campus-page">
+      <div class="campus-shell">
+        <a class="campus-back" href="/consoulium.html">← Back to Consoulium</a>
+        <div class="campus-heading">
+          <span class="sub-eyebrow">Public festival updates</span>
+          <h1>Campus</h1>
+          <p class="sub-lede">Choose a section to see published Campus information.</p>
+        </div>
+        <nav class="campus-actions" aria-label="Campus sections">
+          <a class="campus-action" href="/results?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Results</strong></a>
+          <a class="campus-action" href="/standings?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Standings</strong></a>
+          <a class="campus-action" href="/candidate-search?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Find Me</strong></a>
+        </nav>
+      </div>
+    </main>
+  </body>
+</html>

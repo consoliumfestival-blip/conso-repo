@@ -10,6 +10,7 @@
     <script src="/festival-curtain.js?v=20261128i"></script>
     <link rel="stylesheet" href="/festival-pages.css?v=20261128f" />
     <link rel="stylesheet" href="/home-leaderboard.css?v=20261127e" />
+    <link rel="stylesheet" href="/campus-standings.css?v=20261128b" />
   </head>
   <body data-page="standings">
     <div class="sub-page">
@@ -27,10 +28,14 @@
         <ol id="content" class="home-leaderboard__list" aria-label="Team points" aria-live="polite">
           <li class="home-leaderboard__empty">Loading unit standings…</li>
         </ol>
+        <section id="campus-category" class="campus-category" aria-labelledby="campus-category-title" hidden>
+          <h2 id="campus-category-title">Category standings</h2>
+          <div id="campus-category-content" class="campus-category__grid" aria-live="polite" tabindex="0" aria-label="Category standings; scroll horizontally on small screens"></div>
+        </section>
       </main>
     </div>
     <script src="/festival-subpage-shell.js?v=20261128h" defer></script>
     <script src="/festival-cursor.js?v=20261127d" defer></script>
-    <script src="/festival-pages.js?v=20261128g" defer></script>
+    <script src="/festival-pages.js?v=20261128h" defer></script>
   </body>
 </html>

@@ -11,6 +11,7 @@ import { FestivalAccentBar, PUBLIC_GLASS_THEME, PublicGlassBackdrop, webGlassSur
 import { PublicFestivalMenu, navigateBackFromCandidateSearch } from '../../components/publicLanding/PublicFestivalMenu';
 
 const DEFAULT_TENANT_ID = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
+const CAMPUS_TENANT_ID = '73ee92f3-d795-43eb-997e-380e52856424';
 const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
 
 const CARD_ACCENTS = [
@@ -61,6 +62,106 @@ function getStableAccentIndex(slug: string, fallbackIndex: number): number {
 }
 
 export default function CandidateSearchPage() {
+  const params = useLocalSearchParams<{ tenant_id?: string | string[]; festival_id?: string | string[] }>();
+  // Explicit tenant links retain their established one-festival behavior.
+  return params.tenant_id || params.festival_id
+    ? <ScopedCandidateSearchPage />
+    : <DualCandidateSearchPage />;
+}
+
+function DualCandidateSearchPage() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const consolium = usePublicCandidateSearch(DEFAULT_TENANT_ID, null, debouncedSearch.toLowerCase(), true);
+  const campus = usePublicCandidateSearch(CAMPUS_TENANT_ID, null, debouncedSearch.toLowerCase(), true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchText.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  const sources = [
+    { name: 'Consoulium', tenantId: DEFAULT_TENANT_ID, search: consolium },
+    { name: 'Campus', tenantId: CAMPUS_TENANT_ID, search: campus },
+  ];
+  const isDebouncing = searchText.trim() !== debouncedSearch;
+
+  return (
+    <PublicGlassBackdrop>
+      <Head><title>Find Me · Consoulium and Campus</title></Head>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={[styles.container, { maxWidth: width >= 760 ? 1020 : 580 }]}>
+          <View style={styles.topBar}>
+            <TouchableOpacity accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : Platform.OS === 'web' ? window.location.assign('/consoulium') : router.replace('/leaderboard' as any)} style={[styles.backButton, webGlassSurface(16)]}>
+              <ArrowLeft size={16} color={PUBLIC_GLASS_THEME.ink} /><Text style={styles.backText}>Back</Text>
+            </TouchableOpacity>
+            <View style={[styles.brandPill, webGlassSurface(16)]}>
+              <Image source={require('@/assets/images/consolium-crest.png')} resizeMode="contain" accessibilityLabel="Consolium logo" style={styles.brandLogo} />
+              <Text style={styles.brandName}>CONSOULIUM 2K26</Text>
+            </View>
+          </View>
+          <View style={styles.headingBlock}>
+            <Text style={[styles.title, width >= 760 && styles.titleDesktop]}>Find a candidate</Text>
+            <Text style={styles.subtitle}>Search both Consoulium and Campus by name or chest number. Results are grouped by festival.</Text>
+          </View>
+          <View style={[styles.searchBox, webGlassSurface(20)]}>
+            <View style={styles.searchIconChip}><Search size={18} color={PUBLIC_GLASS_THEME.blue} /></View>
+            <TextInput
+              accessibilityLabel="Search Consoulium and Campus candidates"
+              autoCapitalize="none"
+              autoCorrect={false}
+              onChangeText={setSearchText}
+              placeholder="Chest number or name"
+              placeholderTextColor="#64748B"
+              returnKeyType="search"
+              style={styles.searchInput}
+              value={searchText}
+            />
+            {searchText ? <TouchableOpacity accessibilityLabel="Clear search" accessibilityRole="button" onPress={() => setSearchText('')} style={styles.clearButton}><X size={16} color={PUBLIC_GLASS_THEME.ink} /></TouchableOpacity> : null}
+          </View>
+          {!debouncedSearch || isDebouncing ? (
+            <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
+              <FestivalAccentBar height={5} />
+              <View style={styles.stateCardBody}><Text style={styles.mutedText}>{isDebouncing ? 'Updating search…' : 'Enter a name or chest number to search both festivals.'}</Text></View>
+            </View>
+          ) : sources.map(({ name, tenantId, search }) => {
+            const candidates = search.data?.pages.flatMap((page) => page.items) ?? [];
+            return (
+              <View key={tenantId} style={{ marginTop: 22 }} accessibilityLiveRegion="polite">
+                <Text style={styles.sectionTitle}>{name} · {candidates.length}{search.hasNextPage ? '+' : ''} candidates</Text>
+                {search.isPending || (search.isFetching && !candidates.length) ? (
+                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blue} /><Text style={styles.mutedText}>Searching {name}…</Text></View></View>
+                ) : search.isError && !candidates.length ? (
+                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><Text style={styles.stateTitle}>{name} search unavailable</Text><Text style={styles.mutedText}>Other festival results remain available.</Text><TouchableOpacity accessibilityRole="button" onPress={() => void search.refetch()} style={[styles.retryButton, webPrimaryGradient]}><Text style={styles.retryText}>Try again</Text></TouchableOpacity></View></View>
+                ) : !candidates.length ? (
+                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><Text style={styles.mutedText}>No matching {name} candidates.</Text></View></View>
+                ) : (
+                  <View style={[styles.resultsGrid, width >= 760 && styles.resultsGridWide]}>
+                    {candidates.map((candidate, index) => {
+                      const accent = CARD_ACCENTS[getStableAccentIndex(candidate.slug, index)];
+                      return <TouchableOpacity key={`${tenantId}:${candidate.slug}`} accessibilityRole="button" accessibilityHint={`Opens ${name} candidate profile`} onPress={() => router.push({ pathname: '/candidate/[slug]', params: { slug: candidate.slug, tenant_id: tenantId } } as any)} style={[styles.candidateCard, webGlassSurface(18), { backgroundColor: accent.bg, borderColor: accent.border }, width >= 760 && styles.candidateCardWide]}>
+                        <View style={[styles.avatarBadge, { backgroundColor: accent.avatarBg, borderColor: accent.border }]}><Text style={[styles.avatarBadgeText, { color: accent.text }]}>{candidate.name?.trim().charAt(0).toUpperCase() || 'C'}</Text></View>
+                        <View style={styles.candidateInfo}><Text numberOfLines={2} style={styles.candidateName}>{candidate.name}</Text><View style={styles.metadataRow}><View style={styles.chestTag}><Text style={styles.chestTagText}>{name} · Chest {candidate.chest_number || '–'}</Text></View></View></View>
+                        <View style={styles.chevronChip}><ChevronRight size={17} color={PUBLIC_GLASS_THEME.ink} /></View>
+                      </TouchableOpacity>;
+                    })}
+                  </View>
+                )}
+                {search.isFetchNextPageError ? <TouchableOpacity accessibilityRole="button" onPress={() => void search.fetchNextPage()} style={styles.inlineRetryPill}><Text style={styles.inlineRetryText}>Retry loading {name}</Text></TouchableOpacity> : null}
+                {search.hasNextPage && !search.isFetchNextPageError ? <TouchableOpacity accessibilityRole="button" disabled={search.isFetchingNextPage} onPress={() => void search.fetchNextPage()} style={[styles.loadMoreButton, webPrimaryGradient]}><Text style={styles.loadMoreText}>{search.isFetchingNextPage ? 'Loading…' : `Load more ${name} candidates`}</Text></TouchableOpacity> : null}
+              </View>
+            );
+          })}
+        </View>
+      </ScrollView>
+      <PublicFestivalMenu currentId="find-me" tenantId={DEFAULT_TENANT_ID} />
+    </PublicGlassBackdrop>
+  );
+}
+
+function ScopedCandidateSearchPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ tenant_id?: string | string[]; festival_id?: string | string[] }>();
   const authTenantId = useAuthStore((state) => state.tenant_id);

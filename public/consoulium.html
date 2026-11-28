@@ -99,9 +99,9 @@
       /* Modern equal-size pill buttons aligned with the live portal theme */
       .festival-landing .festival-actions {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
-        width: min(100%, 404px);
+        width: min(100%, 570px);
       }
       .festival-landing .festival-button {
         position: relative;
@@ -222,7 +222,7 @@
         .festival-landing .motif-arches { left: 0; top: clamp(14px, 4vh, 36px); width: 32vw; }
         .festival-landing .motif-flower { right: -14%; top: -2%; width: 41vw; }
         .festival-landing .motif-crystal { right: -13%; bottom: 16%; width: 29vw; opacity: .72; }
-        .festival-landing .festival-actions { gap: 10px; width: min(100%, 344px); }
+        .festival-landing .festival-actions { gap: 8px; width: min(100%, 420px); }
         .festival-landing .festival-button { height: 48px; min-height: 48px; padding: 0 14px; font-size: 14px; gap: 7px; }
         .festival-landing .btn__bars { left: 16px; right: 16px; bottom: 5px; }
         .festival-landing .theme-lockup { width: min(78%, 280px); }
@@ -345,6 +345,10 @@
           </a>
           <a class="festival-button portal-button" href="/candidate-search" id="landing-portal">
             <span>Find Me</span>
+            <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          </a>
+          <a class="festival-button explore-button" href="/campus.html" id="landing-campus">
+            <span>Campus</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
         </div>

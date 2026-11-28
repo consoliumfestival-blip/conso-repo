@@ -93,6 +93,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
   const strategy = useQuery({
     queryKey: ['smart-announcer-team-strategy', userId, tenantId, festivalId, teamId, batchSize, mode, priority],
     enabled: !!teamId,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('smart_announcer_batch_preview_v2', {
         p_tenant_id: tenantId, p_festival_id: festivalId, p_team_id: teamId,
@@ -226,7 +227,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
     </View>
     {strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.candidate_count} eligible results considered · projected batch spread {strategy.data.batch_spread} points{mode === 'auto' ? '' : ' · limit ' + modeLimits[mode] + ' points'}</Text>}
     {mode === 'auto' && fallbackFromMode && <Text accessibilityRole="alert" style={{ color: ui.colors.textMuted, fontSize: 12 }}>No order was found within {modeLimits[fallbackFromMode as Exclude<SuspenseMode, 'auto'>]} points. Auto is now using the closest spread found for this batch.</Text>}
-    {mode !== 'auto' && strategy.data && !strategy.data.available_modes?.[mode] && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>No order within this limit was found in the bounded search. Other modes with a found order: {(Object.keys(modeLabels) as SuspenseMode[]).filter(value => value !== 'auto' && strategy.data!.available_modes?.[value]).map(value => modeLabels[value]).join(', ') || 'none; Auto remains available'}. You can also review a manual selection.</Text>}
+    {strategy.data && strategy.data.items.length === 0 && <Text style={{ color: ui.colors.textMuted }}>No results can be suggested right now. Check remaining eligible results and the leaderboard item limit.</Text>}
     {session.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Unable to load session. <Text onPress={() => void session.refetch()}>Retry</Text></Text>}
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Choose the team to prioritize. Review the system&apos;s next results, then send them to the announcer. Announcing does not publish results.</Text>
     {queue.error ? <Pressable onPress={() => void queue.refetch()}><Text style={{ color: ui.colors.danger }}>Queue unavailable. Tap to retry.</Text></Pressable> : <>
@@ -240,7 +241,7 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       {!!teamId && candidates.isSuccess && candidates.data.length === 0 && <Text style={{ color: ui.colors.textMuted }}>No unpublished eligible results remain for this festival.</Text>}
       {!!teamId && <Pressable accessibilityRole="button" disabled={candidates.isFetching || strategy.isFetching} onPress={() => { void candidates.refetch(); void strategy.refetch(); void queue.refetch(); }}><Text style={{ color: ui.colors.primary }}>Refresh team results</Text></Pressable>}
       {!!teamId && strategy.isLoading && <ActivityIndicator color={ui.colors.primary} />}
-      {!!teamId && strategy.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Unable to calculate suggestions. Refresh team results.</Text>}
+      {!!teamId && strategy.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>{(strategy.error as { code?: string })?.code === '57014' ? 'Calculation exceeded the server time limit. Refresh team results to try again.' : 'Unable to calculate suggestions. Refresh team results.'}</Text>}
       {!!teamId && strategy.data && <Pressable accessibilityRole="button" disabled={save.isPending || strategy.isFetching} onPress={() => { setManualOrder(false); setSelected(strategy.data!.items.map(item => item.item_id)); }}><Text style={{ color: ui.colors.primary }}>Use suggested order</Text></Pressable>}
       {!!teamId && strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.target_reaches_first ? `The selected team ${strategy.data.items.find(item => item.target_is_first)?.target_tied_first ? 'shares first place' : 'reaches first place'} at position ${strategy.data.target_first_step}.` : 'The selected team does not reach first place within this batch based on available results.'} {strategy.data.target_is_first_at_batch_end ? strategy.data.target_tied_first_at_batch_end ? 'It shares first place at the end of this batch.' : 'It remains first at the end of this batch.' : `Projected spread at batch end: ${strategy.data.items.at(-1)?.spread ?? 0} points.`}</Text>}
       {!!teamId && strategy.data && strategy.data.lookahead_steps > 0 && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Looking ahead at {strategy.data.lookahead_steps} more available results: the selected team is projected first at {strategy.data.lookahead_target_first_checkpoints} checkpoints; widest projected spread is {strategy.data.lookahead_max_spread} points. This is recalculated after the current batch.</Text>}

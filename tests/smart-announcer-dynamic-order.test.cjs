@@ -13,6 +13,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
     await db.exec(read('supabase/migrations/20261127101423_smart_announcer_dynamic_order.sql'));
     await db.exec(read('supabase/migrations/20261127194500_smart_announcer_full_pool_suspense.sql'));
     await db.exec(read('supabase/migrations/20261128033612_smart_announcer_50_result_horizon.sql'));
+    await db.exec(read('supabase/migrations/20261128034151_smart_announcer_70_result_horizon.sql'));
     const strategyFixture = read('tests/smart-announcer-strategy.sql');
     const firstTest = strategyFixture.indexOf('DO $test$');
     await db.exec(strategyFixture.slice(0, firstTest));

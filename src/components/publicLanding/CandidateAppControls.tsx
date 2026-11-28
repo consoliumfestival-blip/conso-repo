@@ -388,16 +388,27 @@ export function CandidateStandaloneLogin({
 
               {debounced.length === 0 ? (
                 <Text style={styles.hintText}>Type a chest number (e.g. 105) or candidate name.</Text>
-              ) : search.isPending ? (
+              ) : search.isPending || (search.isFetching && candidates.length === 0) ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blue} />
                   <Text style={styles.hintText}>Finding candidate…</Text>
+                </View>
+              ) : search.isError && candidates.length === 0 ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.hintText}>Search could not be completed. Check your connection and try again.</Text>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    onPress={() => void search.refetch()}
+                    style={[styles.retryBtn, webPrimaryGradient]}
+                  >
+                    <Text style={styles.retryBtnText}>Try again</Text>
+                  </TouchableOpacity>
                 </View>
               ) : candidates.length === 0 ? (
                 <Text style={styles.hintText}>No matching candidate found.</Text>
               ) : (
                 <View style={styles.resultList}>
-                  {candidates.slice(0, 12).map((item) => (
+                  {candidates.map((item) => (
                     <TouchableOpacity
                       key={item.slug}
                       onPress={() => onSelectCandidate(item.slug, item.name)}
@@ -417,6 +428,20 @@ export function CandidateStandaloneLogin({
                       <ChevronRight size={16} color={PUBLIC_GLASS_THEME.ink} />
                     </TouchableOpacity>
                   ))}
+                  {search.hasNextPage ? (
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      disabled={search.isFetchingNextPage}
+                      onPress={() => void search.fetchNextPage()}
+                      style={styles.loadMoreBtn}
+                    >
+                      {search.isFetchingNextPage ? (
+                        <ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blueText} />
+                      ) : (
+                        <Text style={styles.loadMoreBtnText}>Load more candidates</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               )}
             </View>
@@ -756,5 +781,40 @@ const styles = StyleSheet.create({
     color: PUBLIC_GLASS_THEME.inkMuted,
     fontSize: 12,
     marginTop: 2,
+  },
+  errorBox: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  retryBtn: {
+    height: 38,
+    borderRadius: 999,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PUBLIC_GLASS_THEME.ink,
+  },
+  retryBtnText: {
+    fontFamily: 'Outfit_700Bold',
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  loadMoreBtn: {
+    height: 40,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PUBLIC_GLASS_THEME.blueBorder,
+    backgroundColor: PUBLIC_GLASS_THEME.blueSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  loadMoreBtnText: {
+    fontFamily: 'Outfit_700Bold',
+    color: PUBLIC_GLASS_THEME.blueText,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

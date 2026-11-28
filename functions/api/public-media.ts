@@ -41,6 +41,8 @@ const LIST_EDGE_TTL_SECONDS = 15;
 const PRESIGN_EDGE_TTL_SECONDS = 1800;
 const IMMUTABLE_IMAGE_TTL_SECONDS = 31536000;
 const MAX_PAGE_LIMIT = 100;
+const REST_CHUNK_SIZE = 500;
+const REST_MAX_ROWS = 10_000;
 const RESOLUTION_PRIORITY = ['original', 'print', 'hd', 'standard', 'share', 'thumb'];
 const pending = new Map<string, Promise<unknown>>();
 
@@ -112,6 +114,14 @@ function credentials(env: Environment) {
   return { url: url.replace(/\/$/, ''), key };
 }
 
+function parseContentRangeTotal(headerValue: string | null): number | null {
+  if (!headerValue) return null;
+  const slash = headerValue.lastIndexOf('/');
+  if (slash < 0) return null;
+  const totalPart = headerValue.slice(slash + 1).trim();
+  return /^\d+$/.test(totalPart) ? Number(totalPart) : null;
+}
+
 async function supabaseRest<T>(env: Environment, path: string, body?: Record<string, unknown>): Promise<T> {
   const { url, key } = credentials(env);
   const response = await fetch(`${url}/rest/v1/${path}`, {
@@ -126,6 +136,54 @@ async function supabaseRest<T>(env: Environment, path: string, body?: Record<str
   });
   if (!response.ok) throw new Error(`Public media source returned ${response.status}`);
   return response.json() as Promise<T>;
+}
+
+async function supabaseRestPaged<T>(
+  env: Environment,
+  path: string,
+  body?: Record<string, unknown>,
+  pageSize = REST_CHUNK_SIZE,
+  maxRows = REST_MAX_ROWS,
+): Promise<T[]> {
+  const { url, key } = credentials(env);
+  const rows: T[] = [];
+  let expectedTotal: number | null = null;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const separator = path.includes('?') ? '&' : '?';
+    const response = await fetch(`${url}/rest/v1/${path}${separator}limit=${pageSize}&offset=${offset}`, {
+      method: body ? 'POST' : 'GET',
+      signal: AbortSignal.timeout(8_000),
+      headers: {
+        apikey: key,
+        Accept: 'application/json',
+        Prefer: 'count=exact',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!response.ok) throw new Error(`Public media source returned ${response.status}`);
+
+    const total = parseContentRangeTotal(response.headers.get('Content-Range'));
+    if (total !== null) expectedTotal = total;
+
+    const page = await response.json() as unknown;
+    if (!Array.isArray(page)) throw new Error('Invalid public media list response');
+    rows.push(...(page as T[]));
+
+    if (expectedTotal !== null) {
+      if (rows.length >= expectedTotal) break;
+      if (page.length === 0) throw new Error('Public media response truncated');
+    } else if (page.length < pageSize) {
+      break;
+    }
+
+    if (rows.length >= maxRows) {
+      throw new Error('Public media exceeded maximum row guard');
+    }
+  }
+
+  return rows;
 }
 
 async function shared<T>(key: Request, ttlSeconds: number, build: () => Promise<T>): Promise<{ value: T; cacheStatus: string }> {
@@ -323,20 +381,18 @@ async function loadPublicMediaCatalog(
   const joinedParams = new URLSearchParams({
     select: 'id,render_hash,event_id,result_id,event_name,resolution,public_url,storage_path,asset_type,is_current,visibility_status,created_at,item:items(item_name_en,item_name_ml,item_type,item_code),result:results(public_result_no,public_visible)',
     festival_id: `eq.${festivalId}`,
-    order: 'created_at.desc',
-    limit: '1000',
+    order: 'created_at.desc,id.desc',
   });
   let rows: any[];
   try {
-    rows = await supabaseRest<any[]>(env, `generated_assets?${joinedParams}`);
+    rows = await supabaseRestPaged<any>(env, `generated_assets?${joinedParams}`);
   } catch {
     const basicParams = new URLSearchParams({
       select: 'id,render_hash,event_id,result_id,event_name,resolution,public_url,storage_path,asset_type,is_current,visibility_status,created_at',
       festival_id: `eq.${festivalId}`,
-      order: 'created_at.desc',
-      limit: '1000',
+      order: 'created_at.desc,id.desc',
     });
-    rows = await supabaseRest<any[]>(env, `generated_assets?${basicParams}`);
+    rows = await supabaseRestPaged<any>(env, `generated_assets?${basicParams}`);
   }
 
   if (!Array.isArray(rows)) throw new Error('Invalid generated_assets response');
@@ -348,7 +404,7 @@ async function loadPublicMediaCatalog(
   let allowedResultItemIds: Record<string, true> | null = null;
   let allowedResultIds: Record<string, true> | null = null;
   if (enforceResultLimit) {
-    const allowedResults = await supabaseRest<any[]>(env, 'rpc/get_public_published_results_scoped', {
+    const allowedResults = await supabaseRestPaged<any>(env, 'rpc/get_public_published_results_scoped', {
       p_tenant_id: tenantId,
       p_festival_id: festivalId,
       p_include_participant_details: false,

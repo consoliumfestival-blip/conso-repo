@@ -23,7 +23,7 @@ export default function CandidateSearchPage() {
   const rawTenantId = routeTenant || authTenantId || LEGACY_TENANT_ALIAS;
   const tenantId = rawTenantId === LEGACY_TENANT_ALIAS ? DEFAULT_TENANT_ID : rawTenantId;
   const festivalId = Array.isArray(params.festival_id) ? params.festival_id[0] : params.festival_id;
-  const { settings: publicFeatures, isLoading: featuresLoading } = useTenantFeatures(tenantId, true);
+  const { settings: publicFeatures, isLoading: featuresLoading, isError: featuresError, refetch: refetchFeatures } = useTenantFeatures(tenantId, true);
   const publicSearchEnabled = publicFeatures.modules.public_page
     && publicFeatures.sections.public_page.results
     && publicFeatures.sections.public_page.participant_results;
@@ -42,6 +42,20 @@ export default function CandidateSearchPage() {
       <ActivityIndicator size="large" color="#10B981" />
       <Text style={styles.mutedText}>Loading Student Portal…</Text>
     </View>;
+  }
+
+  if (featuresError) {
+    return (
+      <View style={styles.loadingScreen}>
+        <View style={[styles.stateCard, { width: '100%', maxWidth: 420 }]}>
+          <Text style={styles.stateTitle}>Could not load Student Portal</Text>
+          <Text style={styles.mutedText}>Please check your connection and try again.</Text>
+          <TouchableOpacity accessibilityRole="button" onPress={() => refetchFeatures()} style={styles.retryButton}>
+            <Text style={styles.retryText}>Try again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   }
 
   if (!publicSearchEnabled) {

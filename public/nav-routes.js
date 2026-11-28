@@ -255,6 +255,16 @@
       const nextHref = url.pathname + url.search + url.hash;
       if (current !== nextHref) link.setAttribute('href', nextHref);
     }
+    for (const portalLink of document.querySelectorAll('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta')) {
+      const portalUrl = new URL('/candidate-search', location.origin);
+      if (customTenant) portalUrl.searchParams.set('tenant_id', customTenant);
+      if (festivalId) portalUrl.searchParams.set('festival_id', festivalId);
+      const nextPortalHref = portalUrl.pathname + portalUrl.search;
+      if (portalLink.getAttribute('href') !== nextPortalHref) {
+        portalLink.setAttribute('href', nextPortalHref);
+      }
+      portalLink.removeAttribute('aria-haspopup');
+    }
   };
 
   let updateFrame = 0;
@@ -280,14 +290,17 @@
       return;
     }
 
-    // 2. Student Portal buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> Available Soon popup
+    // 2. Student Portal buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
     const rawHref = link.getAttribute('href') || '';
     if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta') || rawHref.startsWith('/candidate-search')) {
       event.preventDefault();
       event.stopImmediatePropagation();
       const openMenuBtn = document.querySelector('.nav__menu.is-open, .nav__menu[aria-expanded="true"]');
       if (openMenuBtn) openMenuBtn.click();
-      openComingSoonModal();
+      const portalUrl = new URL('/candidate-search', location.origin);
+      if (customTenant) portalUrl.searchParams.set('tenant_id', customTenant);
+      if (festivalId) portalUrl.searchParams.set('festival_id', festivalId);
+      location.assign(portalUrl.pathname + portalUrl.search);
       return;
     }
 

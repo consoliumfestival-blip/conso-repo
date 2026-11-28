@@ -171,6 +171,18 @@ test('browser discards a public snapshot at the 60-second boundary', () => {
   assert.equal(readFreshPublicSnapshot(value, tenantA, created + 3650_000, created + 3590_000), undefined);
 });
 
+test('browser preserves snapshot under clock skew behind server generated_at', () => {
+  const created = Date.parse('2026-11-16T12:00:00.000Z');
+  const value = {
+    tenant_id: tenantA,
+    generated_at: new Date(created).toISOString(),
+    expires_at: new Date(created + 60_000).toISOString(),
+  };
+  assert.equal(readFreshPublicSnapshot(value, tenantA, created - 2_500), value);
+  assert.equal(readFreshPublicSnapshot(value, tenantA, created - 31_000), undefined);
+  assert.equal(readFreshPublicSnapshot(value, tenantA, created - 600_000, created - 600_000), value);
+});
+
 test('version checks return a small revision without reading snapshot data', async () => {
   globalThis.caches = fakeCache();
   const calls = installSource();

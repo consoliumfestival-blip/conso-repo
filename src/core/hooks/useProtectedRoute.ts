@@ -39,7 +39,7 @@ export function useProtectedRoute() {
   // team's child tenant ID to this RPC causes a legitimate 42501 denial.
   const needsPrivateFeatures = !!user && (segments[0] === '(admin)' || segments[0] === 'judge' || pathname.startsWith('/team-leaders'));
   const { settings: tenantFeatures, isLoading: tenantFeaturesLoading } = useTenantFeatures(needsPrivateFeatures ? tenant_id : null);
-  const { settings: publicFeatures, isLoading: publicFeaturesLoading } = useTenantFeatures(publicTenantId, true);
+  const { settings: publicFeatures, isLoading: publicFeaturesLoading, isError: publicFeaturesError } = useTenantFeatures(publicTenantId, true);
   const installedPortalMode = getInstalledPortalMode();
   const inTeamGroup = segments[0] === 'team';
   const inJudgeRoute = segments[0] === 'judge';
@@ -95,7 +95,7 @@ export function useProtectedRoute() {
           || pathname.includes('/leaderboard/unit-rankings') ? 'results' : null;
   const publicBoardRoute = segments[0] === 'unit-profile' || pathname.includes('/leaderboard/unit-rankings') || pathname.includes('/leaderboard/individual-rankings');
   const blockedPublicModule = Boolean(isPublicPath && publicTenantId && pathname !== '/unavailable'
-    && !publicFeaturesLoading && (
+    && !publicFeaturesLoading && !publicFeaturesError && (
       !publicFeatures.modules.public_page
       || (publicBoardRoute && !publicFeatures.modules.public_leaderboard)
       || (publicSection === 'schedule' && !publicFeatures.sections.public_page.schedule)

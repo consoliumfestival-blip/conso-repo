@@ -1,4 +1,5 @@
 const MAX_AGE_MS = 60_000;
+const MAX_CLOCK_SKEW_MS = 30_000;
 
 export function readFreshPublicSnapshot<T extends {
   tenant_id: string;
@@ -9,6 +10,8 @@ export function readFreshPublicSnapshot<T extends {
   const created = Date.parse(snapshot.generated_at);
   const expires = Date.parse(snapshot.expires_at);
   if (!Number.isFinite(created) || !Number.isFinite(expires) || expires > created + MAX_AGE_MS) return undefined;
-  const leaseUntil = confirmedAt && confirmedAt >= created ? confirmedAt + MAX_AGE_MS : expires;
-  return now >= created && now < leaseUntil ? snapshot : undefined;
+  if (confirmedAt !== undefined && Number.isFinite(confirmedAt)) {
+    return now >= confirmedAt - MAX_CLOCK_SKEW_MS && now < confirmedAt + MAX_AGE_MS ? snapshot : undefined;
+  }
+  return now >= created - MAX_CLOCK_SKEW_MS && now < expires ? snapshot : undefined;
 }

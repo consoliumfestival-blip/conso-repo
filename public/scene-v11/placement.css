@@ -155,10 +155,14 @@ body::-webkit-scrollbar,
   }
 
   .hero .hero__ctas {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    display: flex;
+    justify-content: center;
     width: 100%;
+  }
+
+  .hero .hero__ctas .btn--primary,
+  .hero .hero__ctas a[href="#journey"] {
+    display: none !important;
   }
 
   .hero .hero__ctas .btn {

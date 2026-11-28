@@ -148,4 +148,44 @@ BEGIN
     RAISE EXCEPTION 'Manual preview failed after leaderboard cap';
   END IF;
 END $capped$;
+DO $top3_spread$
+DECLARE planned jsonb;
+BEGIN
+  -- Add a 3rd contender C (within 5 pts of A/B) and a trailing 4th team D (55+ pts behind).
+  -- Top-3 spread must ignore trailing team D so Very Small (<= 5) succeeds.
+  INSERT INTO organisations VALUES
+    (md5('C')::uuid, md5('tenant')::uuid, NULL, 'C', 'unit'),
+    (md5('D')::uuid, md5('tenant')::uuid, NULL, 'D', 'unit');
+  INSERT INTO festival_teams VALUES
+    (md5('festival')::uuid, md5('C')::uuid),
+    (md5('festival')::uuid, md5('D')::uuid);
+  INSERT INTO items VALUES
+    (md5('top3-base')::uuid, md5('tenant')::uuid, md5('festival')::uuid, 'Top3 Base', NULL, 'top3-base', ARRAY['GN']),
+    (md5('top3-c1')::uuid, md5('tenant')::uuid, md5('festival')::uuid, 'Top3 C1', NULL, 'top3-c1', ARRAY['GN']),
+    (md5('top3-c2')::uuid, md5('tenant')::uuid, md5('festival')::uuid, 'Top3 C2', NULL, 'top3-c2', ARRAY['GN']);
+  INSERT INTO registrations VALUES
+    (md5('top3-C')::uuid, md5('top3-base')::uuid, NULL, md5('C')::uuid, 'approved'),
+    (md5('top3-D')::uuid, md5('top3-base')::uuid, NULL, md5('D')::uuid, 'approved'),
+    (md5('top3-c1-C')::uuid, md5('top3-c1')::uuid, NULL, md5('C')::uuid, 'approved'),
+    (md5('top3-c1-B')::uuid, md5('top3-c1')::uuid, NULL, md5('B')::uuid, 'approved'),
+    (md5('top3-c2-C')::uuid, md5('top3-c2')::uuid, NULL, md5('C')::uuid, 'approved'),
+    (md5('top3-c2-B')::uuid, md5('top3-c2')::uuid, NULL, md5('B')::uuid, 'approved');
+  INSERT INTO results VALUES
+    (md5('top3-res-C')::uuid, md5('top3-base')::uuid, md5('top3-C')::uuid, md5('festival')::uuid, 113, 1, 'A', true, 'published', true, now()),
+    (md5('top3-res-D')::uuid, md5('top3-base')::uuid, md5('top3-D')::uuid, md5('festival')::uuid, 60, 4, 'C', true, 'published', true, now()),
+    (md5('top3-res-c1-C')::uuid, md5('top3-c1')::uuid, md5('top3-c1-C')::uuid, md5('festival')::uuid, 3, 2, 'B', true, 'published', false, now()),
+    (md5('top3-res-c1-B')::uuid, md5('top3-c1')::uuid, md5('top3-c1-B')::uuid, md5('festival')::uuid, 4, 1, 'A', true, 'published', false, now()),
+    (md5('top3-res-c2-C')::uuid, md5('top3-c2')::uuid, md5('top3-c2-C')::uuid, md5('festival')::uuid, 2, 3, 'C', true, 'published', false, now()),
+    (md5('top3-res-c2-B')::uuid, md5('top3-c2')::uuid, md5('top3-c2-B')::uuid, md5('festival')::uuid, 3, 2, 'B', true, 'published', false, now());
+  DELETE FROM festival_leaderboard_settings WHERE festival_id = md5('festival')::uuid;
+  INSERT INTO festival_leaderboard_settings VALUES (md5('festival')::uuid, 'ALL', NULL);
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('A')::uuid,
+    5, 'very_small', 'team');
+  IF (planned->>'batch_spread')::bigint > 5
+    OR planned->'available_modes'->>'very_small' <> 'true'
+    OR planned->>'mode_met' <> 'true' THEN
+    RAISE EXCEPTION 'Top-3 spread was skewed by trailing 4th team D: %', planned;
+  END IF;
+END $top3_spread$;
 ROLLBACK;

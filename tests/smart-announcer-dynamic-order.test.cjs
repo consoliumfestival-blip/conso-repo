@@ -18,6 +18,7 @@ const read = file => fs.readFileSync(path.join(root, file), 'utf8');
     await db.exec(read('supabase/migrations/20261128040640_smart_announcer_bounded_runtime.sql'));
     await db.exec(read('supabase/migrations/20261128040757_smart_announcer_bulk_all_mode_deltas.sql'));
     await db.exec(read('supabase/migrations/20261128040926_smart_announcer_shortlist_expansion.sql'));
+    await db.exec(read('supabase/migrations/20261128151500_smart_announcer_top3_spread.sql'));
     const strategyFixture = read('tests/smart-announcer-strategy.sql');
     const firstTest = strategyFixture.indexOf('DO $test$');
     await db.exec(strategyFixture.slice(0, firstTest));

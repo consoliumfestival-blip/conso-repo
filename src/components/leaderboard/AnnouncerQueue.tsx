@@ -28,7 +28,6 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
   const [teamId, setTeamId] = useState('');
   const [batchSize, setBatchSize] = useState<5 | 10>(5);
   const [mode, setMode] = useState<SuspenseMode>('very_small');
-  const [fallbackFromMode, setFallbackFromMode] = useState<SuspenseMode | null>(null);
   const [priority, setPriority] = useState<'team' | 'spread'>('team');
   const [choosePriority, setChoosePriority] = useState(false);
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -103,14 +102,6 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
       return data as TeamStrategy;
     },
   });
-  useEffect(() => {
-    if (mode !== 'auto' && strategy.data?.items.length && strategy.data.available_modes?.[mode] === false) {
-      setFallbackFromMode(mode);
-      setMode('auto');
-      setPriority('team');
-      setManualOrder(false);
-    }
-  }, [mode, strategy.data]);
   const preview = useQuery({ queryKey: ['announcer-manual-preview', userId, tenantId, festivalId, teamId, batchSize, mode, priority, selected],
     enabled: !!teamId && selected.length > 0,
     queryFn: async () => {
@@ -223,10 +214,10 @@ export function AnnouncerQueue({ tenantId, festivalId, userId }: Props) {
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{token ? 'Session active until you close it' : 'Create a session to share announcer access'} · {pending} pending · {announced.size} announced</Text>
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
       <View style={{ flex: 1, minWidth: 180, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Results per batch</Text><SsfSelectMenu accessibilityLabel="Results per batch" value={String(batchSize)} options={[{ label: '5 results', value: '5' }, { label: '10 results', value: '10' }]} onValueChange={value => { setBatchSize(Number(value) as 5 | 10); setSelected([]); setManualOrder(false); }} /></View>
-      <View style={{ flex: 2, minWidth: 220, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Suspense · first to last team</Text><SsfSelectMenu accessibilityLabel="Suspense mode" value={mode} options={(Object.keys(modeLabels) as SuspenseMode[]).map(value => ({ label: modeLabels[value], value }))} onValueChange={value => { setMode(value as SuspenseMode); setFallbackFromMode(null); setPriority('team'); setChoosePriority(false); }} /></View>
+      <View style={{ flex: 2, minWidth: 220, gap: 6 }}><Text style={{ color: ui.colors.textMuted, fontSize: 12, fontWeight: '600' }}>Suspense · top 3 teams</Text><SsfSelectMenu accessibilityLabel="Suspense mode" value={mode} options={(Object.keys(modeLabels) as SuspenseMode[]).map(value => ({ label: modeLabels[value], value }))} onValueChange={value => { setMode(value as SuspenseMode); setPriority('team'); setChoosePriority(false); setManualOrder(false); }} /></View>
     </View>
-    {strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.candidate_count} eligible results considered · projected batch spread {strategy.data.batch_spread} points{mode === 'auto' ? '' : ' · limit ' + modeLimits[mode] + ' points'}</Text>}
-    {mode === 'auto' && fallbackFromMode && <Text accessibilityRole="alert" style={{ color: ui.colors.textMuted, fontSize: 12 }}>No order was found within {modeLimits[fallbackFromMode as Exclude<SuspenseMode, 'auto'>]} points. Auto is now using the closest spread found for this batch.</Text>}
+    {strategy.data && <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>{strategy.data.candidate_count} eligible results considered · projected top-3 spread {strategy.data.batch_spread} points{mode === 'auto' ? '' : ' · limit ' + modeLimits[mode] + ' points'}</Text>}
+    {mode !== 'auto' && strategy.data && strategy.data.items.length > 0 && !strategy.data.mode_met && <Text accessibilityRole="alert" style={{ color: '#B45309', fontSize: 12 }}>No order stayed within {modeLimits[mode]} points across the top 3 teams (closest spread found: {strategy.data.minimum_batch_spread ?? strategy.data.batch_spread} points). Showing the best order for your selection.</Text>}
     {strategy.data && strategy.data.items.length === 0 && <Text style={{ color: ui.colors.textMuted }}>No results can be suggested right now. Check remaining eligible results and the leaderboard item limit.</Text>}
     {session.isError && <Text accessibilityRole="alert" style={{ color: ui.colors.danger }}>Unable to load session. <Text onPress={() => void session.refetch()}>Retry</Text></Text>}
     <Text style={{ color: ui.colors.textMuted, fontSize: 12 }}>Choose the team to prioritize. Review the system&apos;s next results, then send them to the announcer. Announcing does not publish results.</Text>

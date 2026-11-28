@@ -61,3 +61,20 @@ test('passes the exact tenant and festival to the public category RPC', async ()
     assert.deepEqual(calls[1].body, { p_tenant_id: CAMPUS, p_festival_id: FESTIVAL });
   } finally { global.fetch = original; }
 });
+
+test('explore phone hero keeps Find Me and Campus Hub in one row and Campus Hub uses tenant shell', () => {
+  const navJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'nav-routes.js'), 'utf8');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'scene-v11', 'placement.css'), 'utf8');
+  const campusHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'campus.html'), 'utf8');
+
+  assert.match(navJs, /hero__campus-cta/);
+  assert.match(navJs, /Campus Hub/);
+  assert.match(navJs, /href\s*=\s*'\/campus'/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.btn--campus-hub[\s\S]*rgba\(255,\s*255,\s*255/);
+  assert.match(css, /\.btn--campus-hub[\s\S]*backdrop-filter:\s*blur/);
+  assert.match(campusHtml, new RegExp(`data-tenant-id="${CAMPUS}"`));
+  assert.match(campusHtml, new RegExp(`/results\\?tenant_id=${CAMPUS}`));
+  assert.match(campusHtml, new RegExp(`/standings\\?tenant_id=${CAMPUS}`));
+  assert.match(campusHtml, new RegExp(`/candidate-search\\?tenant_id=${CAMPUS}`));
+});

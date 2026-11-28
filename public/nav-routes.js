@@ -28,7 +28,7 @@
     ['/festival-media.html', '/media'],
     ['/festival-brochure.html', '/brochure'],
   ]);
-  const cleanPages = new Set(['/explore', '/consoulium', '/results', '/standings', '/schedule', '/news', '/media', '/brochure']);
+  const cleanPages = new Set(['/explore', '/consoulium', '/campus', '/results', '/standings', '/schedule', '/news', '/media', '/brochure']);
   const hiddenTargets = new Set(['/news', '/brochure', '/speakers', '/partners', '#register', '/#register', '/festival-news.html', '/festival-brochure.html']);
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
@@ -272,6 +272,20 @@
       }
       portalLink.removeAttribute('aria-haspopup');
     }
+    const heroCtas = document.querySelector('.hero__ctas');
+    if (heroCtas) {
+      let campusLink = heroCtas.querySelector('.hero__campus-cta');
+      if (!campusLink) {
+        campusLink = document.createElement('a');
+        campusLink.className = 'btn btn--campus-hub hero__campus-cta';
+        campusLink.href = '/campus';
+        campusLink.setAttribute('data-nav-label', 'Campus Hub');
+        campusLink.innerHTML = '<span>Campus Hub</span>';
+        heroCtas.append(campusLink);
+      } else if (campusLink.getAttribute('href') !== '/campus') {
+        campusLink.setAttribute('href', '/campus');
+      }
+    }
   };
 
   let updateFrame = 0;
@@ -297,7 +311,18 @@
       return;
     }
 
-    // 2. Find Me buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
+    // 2b. Campus Hub CTA on hero -> /campus
+    if (link.matches('.hero__campus-cta') || rawHref === '/campus' || rawHref === '/campus.html') {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const openMenuBtn = document.querySelector('.nav__menu.is-open, .nav__menu[aria-expanded="true"]');
+      if (openMenuBtn) openMenuBtn.click();
+      if (window.__consoTransition) window.__consoTransition.go('/campus', 'Campus Hub');
+      else location.assign('/campus');
+      return;
+    }
+
+    // 3. Find Me buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
     const rawHref = link.getAttribute('href') || '';
     if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta') || rawHref.startsWith('/candidate-search')) {
       event.preventDefault();

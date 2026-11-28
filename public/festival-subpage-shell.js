@@ -4,14 +4,14 @@
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
   const CAMPUS_TENANT = '73ee92f3-d795-43eb-997e-380e52856424';
-  const rawTenant = searchParams.get('tenant_id');
+  const rawTenant = searchParams.get('tenant_id') || document.body.dataset.tenantId || '';
   const isDefaultTenant = !rawTenant || rawTenant === DEFAULT_TENANT || rawTenant === LEGACY_TENANT_ALIAS;
   const customTenant = isDefaultTenant ? null : rawTenant;
   const isCampus = customTenant === CAMPUS_TENANT;
   const homePath = isCampus ? '/campus' : '/explore';
   const festivalId = searchParams.get('festival_id');
 
-  if (rawTenant && isDefaultTenant) {
+  if (searchParams.has('tenant_id') && isDefaultTenant) {
     searchParams.delete('tenant_id');
     const cleanedSearch = searchParams.toString();
     history.replaceState(history.state, '', location.pathname + (cleanedSearch ? '?' + cleanedSearch : '') + location.hash);

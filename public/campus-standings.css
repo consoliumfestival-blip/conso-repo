@@ -1,46 +1,103 @@
-/* Campus uses the public leaderboard's card language without changing other tenants. */
+/* Campus uses modern frosted glass cards aligned with Consoulium's subpage system. */
 body.campus-festival-page[data-page="standings"] .sub-hero,
 body.campus-festival-page[data-page="standings"] .campus-category h2 {
-  background: linear-gradient(135deg, rgba(255,251,242,.9), rgba(248,241,225,.78) 55%, rgba(243,233,214,.85));
-  border: 1px solid rgba(255,255,255,.55);
-  border-radius: 999px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.78), 0 18px 44px -18px rgba(10,12,28,.45);
-  color: #202124;
+  background:
+    radial-gradient(90% 95% at 100% 0%, rgba(16, 185, 129, 0.16) 0%, transparent 62%),
+    rgba(16, 24, 54, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 26px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 18px 44px -20px rgba(3, 7, 22, 0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  color: #f8fafc;
 }
+
 body.campus-festival-page[data-page="standings"] .sub-hero {
   align-items: center;
-  min-height: clamp(92px, 8.5vw, 154px);
-  padding: 20px clamp(24px, 4vw, 64px);
+  padding: clamp(20px, 3vw, 34px) clamp(20px, 3.2vw, 38px);
 }
-body.campus-festival-page[data-page="standings"] .sub-hero h1 { color: #202124; }
-body.campus-festival-page[data-page="standings"] .sub-hero .sub-eyebrow { color: #1e3a5f; }
-body.campus-festival-page[data-page="standings"] .sub-hero .meta-pill { color: #202124; border-color: #20212433; }
-body.campus-festival-page[data-page="standings"] .sub-hero .glass-btn { color: #202124; border-color: #20212455; }
 
-.campus-category { margin-top: clamp(32px, 5vw, 64px); }
+body.campus-festival-page[data-page="standings"] .sub-hero h1 { color: #ffffff; }
+body.campus-festival-page[data-page="standings"] .sub-hero .sub-eyebrow { color: #93c5fd; }
+body.campus-festival-page[data-page="standings"] .sub-hero .meta-pill {
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+body.campus-festival-page[data-page="standings"] .sub-hero .glass-btn {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.campus-category { margin-top: clamp(28px, 4.5vw, 52px); }
 body.campus-festival-page[data-page="standings"] .campus-category h2 {
   display: flex;
   align-items: center;
-  min-height: 76px;
-  margin: 0 0 20px;
-  padding: 14px clamp(24px, 4vw, 64px);
-  font-size: clamp(1.6rem, 3vw, 2.75rem);
+  min-height: 68px;
+  margin: 0 0 18px;
+  padding: 14px clamp(20px, 3vw, 32px);
+  font-size: clamp(1.35rem, 2.4vw, 2rem);
 }
-.campus-category__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(16px, 2vw, 28px); }
-.campus-category__card { min-width: 0; }
-.campus-category__card h3 { margin: 0 0 14px; color: #fff; font-size: clamp(1.1rem, 1.6vw, 1.5rem); }
+
+.campus-category__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(14px, 2vw, 22px);
+}
+
+.campus-category__card {
+  min-width: 0;
+  padding: clamp(16px, 2.2vw, 22px);
+  border-radius: 22px;
+  background: rgba(15, 23, 52, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 16px 36px -22px rgba(2, 6, 20, 0.7);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  backdrop-filter: blur(16px) saturate(1.35);
+}
+
+.campus-category__card h3 {
+  margin: 0 0 14px;
+  color: #ffffff;
+  font-size: clamp(1.06rem, 1.4vw, 1.32rem);
+  letter-spacing: -0.02em;
+}
+
 .campus-category__rows { max-width: none; gap: 10px; }
 body.campus-festival-page[data-page="standings"] .campus-category__rows .home-leaderboard__card {
-  min-height: 64px;
-  padding: 12px clamp(14px, 1.8vw, 24px);
-  border-radius: 20px;
+  min-height: 60px;
+  padding: 11px clamp(13px, 1.6vw, 20px);
+  border-radius: 18px;
 }
-body.campus-festival-page[data-page="standings"] .campus-category__rows .home-leaderboard__name { font-size: clamp(.85rem, 1vw, 1rem); }
-body.campus-festival-page[data-page="standings"] .campus-category__rows .home-leaderboard__points { padding: 6px 10px; font-size: .85rem; }
+
+body.campus-festival-page[data-page="standings"] .campus-category__rows .home-leaderboard__name {
+  font-size: clamp(0.84rem, 1vw, 0.98rem);
+}
+
+body.campus-festival-page[data-page="standings"] .campus-category__rows .home-leaderboard__points {
+  padding: 6px 10px;
+  font-size: 0.84rem;
+}
+
 .campus-category__status { color: #cbd5e1; }
 .campus-category__retry { min-height: 44px; margin-top: 10px; }
+
 @media (max-width: 700px) {
-  body.campus-festival-page[data-page="standings"] .sub-hero { border-radius: 36px; }
-  .campus-category__grid { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 16px; scroll-snap-type: x mandatory; scrollbar-width: thin; }
-  .campus-category__card { flex: 0 0 min(86vw, 360px); scroll-snap-align: start; }
+  body.campus-festival-page[data-page="standings"] .sub-hero,
+  body.campus-festival-page[data-page="standings"] .campus-category h2 {
+    border-radius: 22px;
+  }
+
+  .campus-category__grid {
+    display: flex;
+    overflow-x: auto;
+    gap: 14px;
+    padding-bottom: 14px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+  }
+
+  .campus-category__card {
+    flex: 0 0 min(86vw, 350px);
+    scroll-snap-align: start;
+  }
 }

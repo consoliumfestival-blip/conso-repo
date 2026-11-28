@@ -3,48 +3,486 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Campus · Consoulium 2k26</title>
+    <script>if (location.pathname === "/campus.html") history.replaceState(null, "", "/campus" + location.search + location.hash);</script>
+    <title>Campus Hub · Consoulium 2k26</title>
+    <meta name="description" content="Explore Campus competition results, unit & category standings, and candidate profiles for Consoulium 2k26." />
     <meta name="theme-color" content="#050816" />
     <link rel="icon" href="/brand/favicon.ico" />
+    <script src="/festival-curtain.js?v=20261128i"></script>
     <link rel="stylesheet" href="/festival-pages.css?v=20261128f" />
     <style>
-      .campus-page { min-height: 100vh; display: grid; place-items: center; padding: 32px clamp(16px, 5vw, 88px); }
-      .campus-shell { width: min(100%, 1744px); }
-      .campus-back { display: inline-flex; align-items: center; min-height: 44px; color: #dbeafe; text-decoration: none; font-weight: 700; }
-      .campus-back:hover, .campus-back:focus-visible { color: #fff; text-decoration: underline; }
-      .campus-heading { margin: 28px 0 24px; }
-      .campus-heading h1 { margin: 8px 0; }
-      .campus-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(14px, 2vw, 28px); }
-      .campus-action { display: flex; align-items: center; isolation: isolate; position: relative; overflow: hidden; min-width: 0; min-height: clamp(92px, 8.5vw, 154px); padding: 18px clamp(24px, 4vw, 76px); border: 1px solid rgba(255,255,255,.55); border-radius: 999px; background: linear-gradient(135deg, rgba(255,251,242,.9), rgba(248,241,225,.78) 55%, rgba(243,233,214,.85)); color: #202124; text-decoration: none; box-shadow: inset 0 1px 0 rgba(255,255,255,.78), 0 18px 44px -18px rgba(10,12,28,.45); transition: color .5s, box-shadow .5s; }
-      .campus-action:hover, .campus-action:focus-visible { color: #fff; box-shadow: 0 30px 90px -10px #faab0073; outline: 3px solid #93c5fd; outline-offset: 3px; }
-      .campus-action__fill { z-index: -1; display: grid; grid-template-rows: repeat(5, 1fr); position: absolute; inset: 0; pointer-events: none; }
-      .campus-action__fill i { transform: translateX(-101%); transition: transform .6s cubic-bezier(.16,1,.3,1); }
-      .campus-action__fill i:nth-child(1) { background: #6D28D9; }
-      .campus-action__fill i:nth-child(2) { background: #E11D48; transition-delay: 40ms; }
-      .campus-action__fill i:nth-child(3) { background: #2563EB; transition-delay: 80ms; }
-      .campus-action__fill i:nth-child(4) { background: #10B981; transition-delay: 120ms; }
-      .campus-action__fill i:nth-child(5) { background: #F59E0B; transition-delay: 160ms; }
-      .campus-action:hover .campus-action__fill i, .campus-action:focus-visible .campus-action__fill i { transform: none; }
-      .campus-action strong { position: relative; font-size: clamp(1.6rem, .9rem + 1.8vw, 2.75rem); line-height: 1.1; letter-spacing: -.04em; }
-      @media (max-width: 700px) { .campus-actions { grid-template-columns: 1fr; } .campus-action { min-height: 76px; padding: 16px 26px; } .campus-action strong { font-size: clamp(1.5rem, 7vw, 2rem); } }
-      @media (prefers-reduced-motion: reduce) { .campus-action, .campus-action__fill i { transition: none; } }
+      .campus-hub {
+        width: min(1100px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: clamp(16px, 2.4vw, 24px);
+      }
+
+      .campus-top {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .campus-top-actions {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .campus-nav-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 15px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #f8fafc;
+        font-size: 0.84rem;
+        font-weight: 600;
+        -webkit-backdrop-filter: blur(14px) saturate(1.4);
+        backdrop-filter: blur(14px) saturate(1.4);
+        transition: transform 0.25s var(--ease-out), background-color 0.25s, border-color 0.25s;
+      }
+
+      .campus-nav-pill:hover {
+        transform: translateY(-1px);
+        background: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .campus-live-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.14);
+        border: 1px solid rgba(16, 185, 129, 0.36);
+        color: #a7f3d0;
+        font-size: 0.74rem;
+        font-weight: 700;
+        letter-spacing: 0.11em;
+        text-transform: uppercase;
+      }
+
+      .campus-live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #10b981;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.85);
+      }
+
+      .campus-hero {
+        position: relative;
+        overflow: hidden;
+        padding: clamp(22px, 3.6vw, 38px) clamp(20px, 3.6vw, 38px);
+        border-radius: 28px;
+        background:
+          radial-gradient(85% 95% at 100% 0%, rgba(37, 99, 235, 0.22) 0%, transparent 62%),
+          radial-gradient(75% 95% at 0% 100%, rgba(109, 40, 217, 0.2) 0%, transparent 60%),
+          rgba(14, 21, 48, 0.74);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.18),
+          0 28px 64px -26px rgba(3, 7, 22, 0.78);
+        -webkit-backdrop-filter: blur(22px) saturate(1.45);
+        backdrop-filter: blur(22px) saturate(1.45);
+      }
+
+      .campus-hero__bars {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+      }
+
+      .campus-hero__bars i:nth-child(1) { background: #6d28d9; }
+      .campus-hero__bars i:nth-child(2) { background: #e11d48; }
+      .campus-hero__bars i:nth-child(3) { background: #2563eb; }
+      .campus-hero__bars i:nth-child(4) { background: #10b981; }
+      .campus-hero__bars i:nth-child(5) { background: #f59e0b; }
+
+      .campus-hero__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #dbeafe;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .campus-hero h1 {
+        margin: 14px 0 8px;
+        font-size: clamp(2rem, 1.3rem + 2.6vw, 3.25rem);
+        line-height: 1.04;
+        letter-spacing: -0.04em;
+        color: #ffffff;
+      }
+
+      .campus-hero__lede {
+        margin: 0;
+        max-width: 62ch;
+        color: #cbd5e1;
+        font-size: clamp(0.95rem, 0.9rem + 0.28vw, 1.08rem);
+        line-height: 1.58;
+      }
+
+      .campus-hero__chips {
+        margin-top: 18px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .campus-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #e2e8f0;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+
+      .campus-chip i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--dot, #60a5fa);
+      }
+
+      .campus-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(12px, 1.8vw, 18px);
+      }
+
+      .campus-card {
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 18px;
+        min-height: 214px;
+        padding: clamp(18px, 2.4vw, 24px);
+        border-radius: 24px;
+        background:
+          radial-gradient(90% 85% at 100% 0%, var(--card-glow, rgba(37, 99, 235, 0.18)) 0%, transparent 65%),
+          rgba(16, 24, 54, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.15),
+          0 18px 42px -22px rgba(2, 6, 20, 0.75);
+        -webkit-backdrop-filter: blur(18px) saturate(1.4);
+        backdrop-filter: blur(18px) saturate(1.4);
+        transition: transform 0.3s var(--ease-out), border-color 0.28s, box-shadow 0.3s var(--ease-out), background-color 0.28s;
+      }
+
+      .campus-card:hover,
+      .campus-card:focus-visible {
+        transform: translateY(-4px);
+        border-color: var(--card-border, rgba(255, 255, 255, 0.34));
+        background-color: rgba(22, 33, 70, 0.86);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.24),
+          0 24px 52px -20px var(--card-shadow, rgba(37, 99, 235, 0.35));
+      }
+
+      .campus-card__head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .campus-card__icon {
+        width: 48px;
+        height: 48px;
+        flex: none;
+        border-radius: 15px;
+        display: grid;
+        place-items: center;
+        background: var(--icon-bg, rgba(37, 99, 235, 0.18));
+        border: 1px solid var(--icon-border, rgba(96, 165, 250, 0.36));
+        color: var(--icon-color, #93c5fd);
+      }
+
+      .campus-card__icon svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .campus-card__tag {
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .campus-card__body h2 {
+        margin: 0 0 6px;
+        font-size: clamp(1.22rem, 1.1rem + 0.65vw, 1.48rem);
+        letter-spacing: -0.025em;
+        color: #ffffff;
+      }
+
+      .campus-card__body p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+
+      .campus-card__foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.09);
+        color: #f8fafc;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+
+      .campus-card__arrow {
+        width: 34px;
+        height: 34px;
+        flex: none;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #ffffff;
+        transition: transform 0.28s var(--ease-out), background-color 0.25s;
+      }
+
+      .campus-card:hover .campus-card__arrow {
+        transform: translateX(3px);
+        background: #ffffff;
+        color: #0f172a;
+      }
+
+      .campus-card--results {
+        --card-glow: rgba(225, 29, 72, 0.2);
+        --card-border: rgba(251, 113, 133, 0.48);
+        --card-shadow: rgba(225, 29, 72, 0.34);
+        --icon-bg: rgba(225, 29, 72, 0.18);
+        --icon-border: rgba(251, 113, 133, 0.4);
+        --icon-color: #fda4af;
+      }
+
+      .campus-card--standings {
+        --card-glow: rgba(16, 185, 129, 0.2);
+        --card-border: rgba(52, 211, 153, 0.48);
+        --card-shadow: rgba(16, 185, 129, 0.32);
+        --icon-bg: rgba(16, 185, 129, 0.18);
+        --icon-border: rgba(52, 211, 153, 0.4);
+        --icon-color: #6ee7b7;
+      }
+
+      .campus-card--findme {
+        --card-glow: rgba(37, 99, 235, 0.22);
+        --card-border: rgba(96, 165, 250, 0.5);
+        --card-shadow: rgba(37, 99, 235, 0.34);
+        --icon-bg: rgba(37, 99, 235, 0.2);
+        --icon-border: rgba(96, 165, 250, 0.42);
+        --icon-color: #93c5fd;
+      }
+
+      @media (max-width: 900px) {
+        .campus-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .campus-card--findme {
+          grid-column: 1 / -1;
+          min-height: 0;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .campus-hero {
+          border-radius: 22px;
+          padding: 20px 18px;
+        }
+
+        .campus-hero__chips {
+          display: none;
+        }
+
+        .campus-grid {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .campus-card,
+        .campus-card--findme {
+          grid-column: auto;
+          min-height: 0;
+          padding: 15px 16px;
+          border-radius: 20px;
+          display: grid;
+          grid-template-columns: 46px minmax(0, 1fr) 36px;
+          align-items: center;
+          gap: 13px;
+        }
+
+        .campus-card__head {
+          display: contents;
+        }
+
+        .campus-card__icon {
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+        }
+
+        .campus-card__tag,
+        .campus-card__foot > span:first-child {
+          display: none;
+        }
+
+        .campus-card__body {
+          min-width: 0;
+        }
+
+        .campus-card__body h2 {
+          font-size: 1.12rem;
+          margin-bottom: 3px;
+        }
+
+        .campus-card__body p {
+          font-size: 0.82rem;
+          line-height: 1.4;
+        }
+
+        .campus-card__foot {
+          display: contents;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .campus-nav-pill,
+        .campus-card,
+        .campus-card__arrow {
+          transition: none;
+        }
+      }
     </style>
   </head>
-  <body>
-    <main class="campus-page">
-      <div class="campus-shell">
-        <a class="campus-back" href="/consoulium.html">← Back to Consoulium</a>
-        <div class="campus-heading">
-          <span class="sub-eyebrow">Public festival updates</span>
-          <h1>Campus</h1>
-          <p class="sub-lede">Choose a section to see published Campus information.</p>
+  <body class="campus-festival-page" data-page="home" data-tenant-id="73ee92f3-d795-43eb-997e-380e52856424">
+    <div class="sub-page">
+      <main class="sub-main campus-hub">
+        <div class="campus-top">
+          <div class="campus-top-actions">
+            <a class="campus-nav-pill" href="/explore" data-nav-label="Explore">
+              <span aria-hidden="true">←</span>
+              <span>Back to Consoulium</span>
+            </a>
+          </div>
+          <span class="campus-live-badge">
+            <span class="campus-live-dot" aria-hidden="true"></span>
+            <span>Campus Edition</span>
+          </span>
         </div>
-        <nav class="campus-actions" aria-label="Campus sections">
-          <a class="campus-action" href="/results?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Results</strong></a>
-          <a class="campus-action" href="/standings?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Standings</strong></a>
-          <a class="campus-action" href="/candidate-search?tenant_id=73ee92f3-d795-43eb-997e-380e52856424"><span class="campus-action__fill" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><strong>Find Me</strong></a>
+
+        <section class="campus-hero" aria-labelledby="campus-hub-title">
+          <div class="campus-hero__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+          <span class="campus-hero__eyebrow">Consoulium 2k26 · Campus Hub</span>
+          <h1 id="campus-hub-title">Campus Hub</h1>
+          <p class="campus-hero__lede">
+            Follow published competition results, live team &amp; category standings, and individual candidate profiles across Campus events.
+          </p>
+          <div class="campus-hero__chips" aria-hidden="true">
+            <span class="campus-chip"><i style="--dot:#E11D48"></i>Item Results</span>
+            <span class="campus-chip"><i style="--dot:#10B981"></i>Team &amp; Category Standings</span>
+            <span class="campus-chip"><i style="--dot:#2563EB"></i>Candidate Lookup</span>
+          </div>
+        </section>
+
+        <nav class="campus-grid" aria-label="Campus sections">
+          <a class="campus-card campus-card--results" href="/results?tenant_id=73ee92f3-d795-43eb-997e-380e52856424" data-nav-label="Results">
+            <div class="campus-card__head">
+              <span class="campus-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+              </span>
+              <span class="campus-card__tag">Scores</span>
+            </div>
+            <div class="campus-card__body">
+              <h2>Results</h2>
+              <p>Published item winners, grades, and competition scores.</p>
+            </div>
+            <div class="campus-card__foot">
+              <span>View item results</span>
+              <span class="campus-card__arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
+          <a class="campus-card campus-card--standings" href="/standings?tenant_id=73ee92f3-d795-43eb-997e-380e52856424" data-nav-label="Standings">
+            <div class="campus-card__head">
+              <span class="campus-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+              </span>
+              <span class="campus-card__tag">Leaderboard</span>
+            </div>
+            <div class="campus-card__body">
+              <h2>Standings</h2>
+              <p>Live overall team points and category-wise trophy rankings.</p>
+            </div>
+            <div class="campus-card__foot">
+              <span>View standings</span>
+              <span class="campus-card__arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
+
+          <a class="campus-card campus-card--findme" href="/candidate-search?tenant_id=73ee92f3-d795-43eb-997e-380e52856424" data-nav-label="Find Me">
+            <div class="campus-card__head">
+              <span class="campus-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              </span>
+              <span class="campus-card__tag">Candidates</span>
+            </div>
+            <div class="campus-card__body">
+              <h2>Find Me</h2>
+              <p>Search Campus participants by chest number or name.</p>
+            </div>
+            <div class="campus-card__foot">
+              <span>Search candidates</span>
+              <span class="campus-card__arrow" aria-hidden="true">→</span>
+            </div>
+          </a>
         </nav>
-      </div>
-    </main>
+      </main>
+    </div>
+    <script src="/festival-subpage-shell.js?v=20261128i" defer></script>
+    <script src="/festival-cursor.js?v=20261127d" defer></script>
   </body>
 </html>

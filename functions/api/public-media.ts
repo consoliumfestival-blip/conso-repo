@@ -177,6 +177,21 @@ async function resolveR2DownloadUrl(requestOrigin: string, env: Environment, obj
       ? payload.publicUrl
       : (payload?.url && /^https:\/\//.test(payload.url) ? payload.url : null);
 
+    if (resolved) {
+      // Lightweight 1-byte GET (GetObject SigV4 only signs GET, not HEAD) to avoid serving dead 404 R2 keys
+      const probe = await fetch(resolved, {
+        method: 'GET',
+        headers: { Range: 'bytes=0-0' },
+        signal: AbortSignal.timeout(5_000),
+      }).catch(() => null);
+      if (probe) {
+        try { await probe.body?.cancel(); } catch {}
+        if (probe.status === 404) {
+          return null;
+        }
+      }
+    }
+
     if (resolved && cache) {
       await cache.put(cacheReq, new Response(JSON.stringify({ url: resolved }), {
         headers: {

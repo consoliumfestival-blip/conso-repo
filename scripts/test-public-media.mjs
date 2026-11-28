@@ -86,6 +86,11 @@ test('returns published posters and manual uploads at highest clarity and resolv
       const body = JSON.parse(String(init.body));
       return new Response(JSON.stringify({ url: `https://signed.example.com/${body.objectKey}` }), { status: 200 });
     }
+    if (parsed.hostname === 'signed.example.com') {
+      assert.equal(init.method, 'GET');
+      assert.equal(init.headers?.Range, 'bytes=0-0');
+      return new Response(new Uint8Array([1]), { status: 206 });
+    }
     return new Response('Not found', { status: 404 });
   };
 
@@ -430,6 +435,59 @@ test('emits X-Public-Media-Dropped when presign fails, applies optional CF resiz
       body.items[0].thumb_url,
       'https://consoulium.sabicofficial.in/cdn-cgi/image/format=auto,quality=86,fit=scale-down,width=640/https://cdn.example.com/posters/legacy.webp',
     );
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});
+
+test('drops R2 assets whose presigned URL returns 404 NoSuchKey and reports X-Public-Media-Dropped', async () => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{ festival_id: festivalId, is_public_visible: true }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify([
+        {
+          id: 'missing-r2-row',
+          render_hash: 'manual_media_gone_r2',
+          event_name: 'Deleted Object Photo',
+          resolution: 'hd',
+          public_url: 'r2://festivals/f1/posters/gone.webp',
+          storage_path: 'festivals/f1/posters/gone.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T02:00:00Z',
+        },
+      ]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/functions/v1/r2-presign')) {
+      const body = JSON.parse(String(initBodyFallback(url)));
+      return new Response(JSON.stringify({ url: `https://missing.example.com/${body.objectKey || 'posters/gone.webp'}` }), { status: 200 });
+    }
+    if (parsed.hostname === 'missing.example.com') {
+      return new Response('<?xml version="1.0" encoding="UTF-8"?><Error><Code>NoSuchKey</Code></Error>', { status: 404 });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  function initBodyFallback() {
+    return JSON.stringify({ objectKey: 'festivals/f1/posters/gone.webp' });
+  }
+
+  try {
+    const res = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=media`),
+      env,
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('X-Public-Media-Dropped'), '1');
+    const body = await res.json();
+    assert.deepEqual(body.items, []);
   } finally {
     globalThis.fetch = origFetch;
   }

@@ -161,6 +161,8 @@ export default function MediaCenterPage() {
   const [savedFestivalContext, setSavedFestivalContext] = useState<string | null>(null);
   const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
   const [togglingVisibilityHash, setTogglingVisibilityHash] = useState<string | null>(null);
+  const [brokenAssetHashes, setBrokenAssetHashes] = useState<Record<string, boolean>>({});
+  const [isCleaningBroken, setIsCleaningBroken] = useState(false);
   const retryOwnerIdRef = React.useRef<string | null>(null);
   const [localPreviewUrls, setLocalPreviewUrls] = useState<Record<string, string>>({});
 
@@ -282,6 +284,17 @@ export default function MediaCenterPage() {
     staleTime: 60_000,
   });
 
+  React.useEffect(() => {
+    setBrokenAssetHashes({});
+  }, [activeFestival?.id]);
+
+  const clearUploadedFingerprintsCache = (festivalId?: string) => {
+    if (Platform.OS !== 'web' || !festivalId) return;
+    try {
+      localStorage.removeItem(`mediaCenter:uploadedFingerprints:${festivalId}`);
+    } catch {}
+  };
+
   const openUploadModal = (target?: 'media' | 'result') => {
     setUploadTarget(target ?? (sectionFilter === 'result' ? 'result' : 'media'));
     setUploadErrorBanner(null);
@@ -370,12 +383,17 @@ export default function MediaCenterPage() {
       setBatchProgress(null);
       const fpStorageKey = `mediaCenter:uploadedFingerprints:${activeFestival.id}`;
       let savedFingerprints: string[] = [];
+      const hasAnyCloudMedia = mediaAssets.some((a: any) => !a.is_local_delivery && getAssetSection(a) === 'media');
       if (Platform.OS === 'web') {
-        try {
-          const raw = localStorage.getItem(fpStorageKey);
-          const parsed = raw ? JSON.parse(raw) : [];
-          if (Array.isArray(parsed)) savedFingerprints = parsed.filter((v): v is string => typeof v === 'string');
-        } catch {}
+        if (!hasAnyCloudMedia) {
+          clearUploadedFingerprintsCache(activeFestival.id);
+        } else {
+          try {
+            const raw = localStorage.getItem(fpStorageKey);
+            const parsed = raw ? JSON.parse(raw) : [];
+            if (Array.isArray(parsed)) savedFingerprints = parsed.filter((v): v is string => typeof v === 'string');
+          } catch {}
+        }
       }
 
       try {
@@ -509,12 +527,58 @@ export default function MediaCenterPage() {
       if (error) throw error;
       for (const objectKey of (asset.storage_paths || []) as string[]) {
         if (objectKey) {
+          signedUrlCache.delete(objectKey);
+          await AsyncStorage.removeItem(`presigned_${objectKey}`).catch(() => {});
           try { await uploadService.deleteObject(objectKey); } catch (_) {}
         }
       }
+      setBrokenAssetHashes((prev) => {
+        if (!prev[asset.render_hash]) return prev;
+        const next = { ...prev };
+        delete next[asset.render_hash];
+        return next;
+      });
+      clearUploadedFingerprintsCache(activeFestival.id);
       queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
     } catch (err: any) {
       alert('Delete failed: ' + err.message);
+    }
+  };
+
+  const handleCleanupBrokenAssets = async () => {
+    if (!activeFestival?.id || !tenant_id || isCleaningBroken) return;
+    const brokenList = mediaAssets.filter((a: any) => !a.is_local_delivery && brokenAssetHashes[a.render_hash]);
+    if (!brokenList.length) return;
+    if (!confirm(`Remove ${brokenList.length} broken entry(s) whose files are missing in R2 storage? You can re-upload them right after.`)) {
+      return;
+    }
+    setIsCleaningBroken(true);
+    try {
+      for (const asset of brokenList) {
+        const baseQuery = supabase
+          .from('generated_assets')
+          .delete()
+          .eq('festival_id', activeFestival.id)
+          .eq('tenant_id', tenant_id);
+        const query = String(asset.render_hash || '').startsWith('_ungrouped_')
+          ? baseQuery.eq('id', asset.id)
+          : baseQuery.eq('render_hash', asset.render_hash);
+        const { error } = await query;
+        if (error) throw error;
+        for (const objectKey of (asset.storage_paths || []) as string[]) {
+          if (objectKey) {
+            signedUrlCache.delete(objectKey);
+            await AsyncStorage.removeItem(`presigned_${objectKey}`).catch(() => {});
+          }
+        }
+      }
+      clearUploadedFingerprintsCache(activeFestival.id);
+      setBrokenAssetHashes({});
+      queryClient.invalidateQueries({ queryKey: ['generated-assets', activeFestival.id] });
+    } catch (err: any) {
+      alert('Cleanup failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setIsCleaningBroken(false);
     }
   };
 
@@ -1212,15 +1276,67 @@ export default function MediaCenterPage() {
                 </Text>
               </View>
             </View>
+            {Object.keys(brokenAssetHashes).length > 0 && (
+              <View style={{
+                marginBottom: 16,
+                padding: 14,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#FDBA74',
+                backgroundColor: '#FFF7ED',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}>
+                <View style={{ flex: 1, minWidth: 220 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: '#9A3412' }}>
+                    {Object.keys(brokenAssetHashes).length} item(s) could not load from R2 storage (404 NoSuchKey).
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#9A3412', marginTop: 2 }}>
+                    Their image files are missing from the current R2 bucket. Remove these broken entries and re-upload.
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.btnPrimary, { backgroundColor: '#C2410C' }, isCleaningBroken && styles.btnDisabled]}
+                  onPress={handleCleanupBrokenAssets}
+                  disabled={isCleaningBroken}
+                >
+                  <Trash2 size={15} color="#FFFFFF" />
+                  <Text style={styles.btnPrimaryText}>{isCleaningBroken ? 'Removing...' : 'Remove Broken Entries'}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <View style={styles.grid}>
-              {filteredAssets.map((asset: any) => (
+              {filteredAssets.map((asset: any) => {
+              const isBroken = Boolean(!asset.is_local_delivery && brokenAssetHashes[asset.render_hash]);
+              return (
               <View key={asset.render_hash} style={styles.card}>
                 <View style={styles.imageContainer}>
                   <Image 
                     source={{ uri: asset.resolutions?.thumb || asset.resolutions?.standard || asset.resolutions?.hd || 'https://via.placeholder.com/400' }}
                     style={styles.thumbnail}
                     resizeMode="cover"
+                    onError={() => setBrokenAssetHashes((prev) => prev[asset.render_hash] ? prev : { ...prev, [asset.render_hash]: true })}
                   />
+                  {isBroken && (
+                    <View style={{
+                      position: 'absolute',
+                      inset: 0,
+                      backgroundColor: 'rgba(15, 23, 42, 0.86)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 16,
+                    }}>
+                      <Text style={{ color: '#FDBA74', fontSize: 13, fontWeight: '700', textAlign: 'center' }}>
+                        File missing in R2 (404)
+                      </Text>
+                      <Text style={{ color: '#E2E8F0', fontSize: 11.5, textAlign: 'center', marginTop: 4 }}>
+                        Delete & re-upload this image
+                      </Text>
+                    </View>
+                  )}
                   <View
                     style={[
                       styles.qualityBadge,
@@ -1279,9 +1395,9 @@ export default function MediaCenterPage() {
                       </>
                     ) : (
                       <TouchableOpacity
-                        style={[styles.actionBtn, !asset.resolutions?.hd && styles.actionBtnDisabled]}
-                        onPress={() => asset.resolutions?.hd && openUrl(asset.resolutions.hd)}
-                        disabled={!asset.resolutions?.hd}
+                        style={[styles.actionBtn, (!asset.resolutions?.hd || isBroken) && styles.actionBtnDisabled]}
+                        onPress={() => asset.resolutions?.hd && !isBroken && openUrl(asset.resolutions.hd)}
+                        disabled={!asset.resolutions?.hd || isBroken}
                       >
                         <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
                         <Text style={styles.actionText}>HD Image</Text>
@@ -1289,9 +1405,9 @@ export default function MediaCenterPage() {
                     )}
                     
                     <TouchableOpacity 
-                      style={[styles.actionBtn, (!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash) && styles.actionBtnDisabled]}
+                      style={[styles.actionBtn, (!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash || isBroken) && styles.actionBtnDisabled]}
                       onPress={() => handleDownloadPdf(asset)}
-                      disabled={!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash}
+                      disabled={!(asset.resolutions?.hd || asset.resolutions?.standard) || exportingPdfId === asset.render_hash || isBroken}
                     >
                       <Download size={14} color={coreColor(colors.navy, 'primaryText')} />
                       <Text style={styles.actionText}>{exportingPdfId === asset.render_hash ? 'PDF...' : 'PDF'}</Text>
@@ -1306,7 +1422,8 @@ export default function MediaCenterPage() {
                     </TouchableOpacity>}
 
                     {!asset.is_local_delivery && <TouchableOpacity
-                      style={styles.actionBtn}
+                      style={[styles.actionBtn, isBroken && styles.actionBtnDisabled]}
+                      disabled={isBroken}
                       onPress={() => {
                         const url = asset.resolutions?.share || asset.resolutions?.hd || asset.resolutions?.standard;
                         if(Platform.OS === 'web') {
@@ -1320,7 +1437,8 @@ export default function MediaCenterPage() {
                     </TouchableOpacity>}
                     
                     {!asset.is_local_delivery && <TouchableOpacity
-                      style={[styles.actionBtn, styles.actionBtnWhatsApp]}
+                      style={[styles.actionBtn, styles.actionBtnWhatsApp, isBroken && styles.actionBtnDisabled]}
+                      disabled={isBroken}
                       onPress={() => handleWhatsAppShare(asset)}
                     >
                       <Share2 size={14} color={ui.colors.onPrimary} />
@@ -1361,7 +1479,8 @@ export default function MediaCenterPage() {
                   </View>
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
             </>
             )}

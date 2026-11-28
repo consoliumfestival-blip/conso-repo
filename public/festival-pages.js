@@ -1024,8 +1024,14 @@
       img.loading = idx < 6 ? 'eager' : 'lazy';
       img.decoding = 'async';
       img.onerror = () => {
-        if (item.image_url && img.src !== item.image_url) {
+        if (!img.dataset.fallbackTried && item.image_url && img.src !== item.image_url) {
+          img.dataset.fallbackTried = '1';
           img.src = item.image_url;
+          return;
+        }
+        card.remove();
+        if (content.children.length === 0) {
+          setMessage(term ? 'No matching media found.' : 'No event photos or media uploaded yet.');
         }
       };
 

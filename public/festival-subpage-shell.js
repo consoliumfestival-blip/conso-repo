@@ -8,7 +8,7 @@
   const isDefaultTenant = !rawTenant || rawTenant === DEFAULT_TENANT || rawTenant === LEGACY_TENANT_ALIAS;
   const customTenant = isDefaultTenant ? null : rawTenant;
   const isCampus = customTenant === CAMPUS_TENANT;
-  const homePath = isCampus ? '/campus.html' : '/explore';
+  const homePath = isCampus ? '/campus' : '/explore';
   const festivalId = searchParams.get('festival_id');
 
   if (rawTenant && isDefaultTenant) {
@@ -20,7 +20,7 @@
   function withTenant(path) {
     if (!path.startsWith('/')) return path;
     const url = new URL(path, location.origin);
-    if (customTenant && path !== '/campus.html') url.searchParams.set('tenant_id', customTenant);
+    if (customTenant && path !== '/campus') url.searchParams.set('tenant_id', customTenant);
     if (festivalId) url.searchParams.set('festival_id', festivalId);
     return url.pathname + url.search + url.hash;
   }

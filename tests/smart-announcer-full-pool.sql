@@ -110,7 +110,7 @@ BEGIN
     10, 'auto', 'team');
   IF (planned->>'candidate_count')::integer < 160
     OR jsonb_array_length(planned->'items') <> 10
-    OR (planned->>'lookahead_steps')::integer <> 90 THEN
+    OR (planned->>'lookahead_steps')::integer <> 40 THEN
     RAISE EXCEPTION 'Full pool or 10-result batch was truncated: %', planned;
   END IF;
   IF planned->'available_modes'->>'auto' <> 'true' THEN

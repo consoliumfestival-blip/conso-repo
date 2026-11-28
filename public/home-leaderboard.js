@@ -21,9 +21,31 @@ if (typeof window !== 'undefined') {
 
 const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
 const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
-const SNAPSHOT_TTL_MS = 60_000;
 let cachedSnapshot = null;
-let confirmedAt = 0;
+
+function readStoredSnapshot(key) {
+  try {
+    const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredSnapshot(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }
+}
+
+function clearStoredSnapshot(key) {
+  try { localStorage.removeItem(key); } catch {}
+  try { sessionStorage.removeItem(key); } catch {}
+}
 
 function getScope() {
   const params = new URLSearchParams(location.search);
@@ -37,7 +59,12 @@ function getScope() {
 
 async function fetchStandings(force = false) {
   const { tenant, festivalId } = getScope();
-  const snapStorageKey = `conso_pub_snap_v1:${tenant}:${festivalId || 'active'}`;
+  const snapStorageKey = `conso_pub_snap_v2:${tenant}:${festivalId || 'active'}`;
+  const stored = readStoredSnapshot(snapStorageKey);
+  if (!cachedSnapshot && stored?.data && stored.data.tenant_id === tenant) {
+    cachedSnapshot = stored.data;
+  }
+
   const verParams = new URLSearchParams({ tenant_id: tenant });
   const verRes = await fetch(`/api/public-version?${verParams}`, {
     cache: 'no-store',
@@ -59,23 +86,9 @@ async function fetchStandings(force = false) {
   }
 
   if (version.revision === null) {
-    try { sessionStorage.removeItem(snapStorageKey); } catch {}
-  } else {
-    if (!force && cachedSnapshot && cachedSnapshot.revision === version.revision && Date.now() < confirmedAt + SNAPSHOT_TTL_MS) {
-      confirmedAt = Date.now();
-      return cachedSnapshot;
-    }
-    if (!force) {
-      try {
-        const raw = sessionStorage.getItem(snapStorageKey);
-        const stored = raw ? JSON.parse(raw) : null;
-        if (stored?.data && stored.data.tenant_id === tenant && stored.data.revision === version.revision) {
-          cachedSnapshot = stored.data;
-          confirmedAt = Date.now();
-          return stored.data;
-        }
-      } catch {}
-    }
+    clearStoredSnapshot(snapStorageKey);
+  } else if (!force && cachedSnapshot && cachedSnapshot.revision === version.revision) {
+    return cachedSnapshot;
   }
 
   const snapParams = new URLSearchParams({ tenant_id: tenant });
@@ -92,24 +105,18 @@ async function fetchStandings(force = false) {
     data.tenant_id !== tenant
     || data.revision !== version.revision
     || !Number.isFinite(Date.parse(data.generated_at))
-    || !Number.isFinite(Date.parse(data.expires_at))
-    || Date.now() >= Date.parse(data.expires_at)
-    || Date.parse(data.expires_at) - Date.parse(data.generated_at) > SNAPSHOT_TTL_MS
   ) {
-    throw new Error('Expired snapshot');
+    throw new Error('Invalid snapshot');
   }
   cachedSnapshot = data;
-  confirmedAt = Date.now();
-  try {
-    if (data.revision && data.features?.public_page === true) {
-      sessionStorage.setItem(snapStorageKey, JSON.stringify({
-        etag: snapRes.headers.get('ETag') || null,
-        data,
-      }));
-    } else {
-      sessionStorage.removeItem(snapStorageKey);
-    }
-  } catch {}
+  if (data.revision && data.features?.public_page === true) {
+    writeStoredSnapshot(snapStorageKey, {
+      etag: snapRes.headers.get('ETag') || null,
+      data,
+    });
+  } else {
+    clearStoredSnapshot(snapStorageKey);
+  }
   return data;
 }
 
@@ -169,7 +176,7 @@ async function install(section) {
   block.setAttribute('aria-label', 'Festival sections');
   const navList = node('div', 'public-section__nav-list');
   if (mega) {
-    for (const labelText of ['Results', 'Schedule', 'Standings', 'Gallery', 'Media']) {
+    for (const labelText of ['Results', 'Schedule', 'Standings', 'Media']) {
       const btn = node('button', 'mega public-section__banner public-section__nav-btn');
       btn.type = 'button';
       for (const child of mega.children) {
@@ -366,33 +373,31 @@ async function install(section) {
   async function refresh(force = false) {
     if (pending || !section.isConnected) return;
     pending = true;
-    if (!snapshot && !loadError && views[0]) {
+    const { tenant, festivalId } = getScope();
+    const initialStored = readStoredSnapshot(`conso_pub_snap_v2:${tenant}:${festivalId || 'active'}`);
+    if (!snapshot && initialStored?.data && initialStored.data.tenant_id === tenant) {
+      cachedSnapshot = initialStored.data;
+      snapshot = initialStored.data;
+      loadError = false;
+      if (section.isConnected) render(undefined, false);
+    } else if (!snapshot && !loadError && views[0]) {
       views[0].content.replaceChildren(node('li', 'home-leaderboard__empty', 'Loading live standings…'));
     }
     try {
-      snapshot = await fetchStandings(force);
+      const next = await fetchStandings(force);
+      const changed = !snapshot || snapshot.revision !== next.revision;
+      snapshot = next;
       loadError = false;
-      if (section.isConnected) render(undefined, true);
+      if (section.isConnected && (changed || force)) render(undefined, changed);
     } catch {
-      cachedSnapshot = null;
-      confirmedAt = 0;
-      snapshot = null;
-      loadError = true;
-      if (section.isConnected) render(undefined, false);
+      if (!snapshot) {
+        loadError = true;
+        if (section.isConnected) render(undefined, false);
+      }
     } finally {
       pending = false;
     }
   }
-  let lastVisibilityCheckAt = 0;
-  const onVisible = () => {
-    if (!section.isConnected) { document.removeEventListener('visibilitychange', onVisible); return; }
-    if (document.hidden) return;
-    const now = Date.now();
-    if (now - lastVisibilityCheckAt < 5_000) return;
-    lastVisibilityCheckAt = now;
-    refresh(false);
-  };
-  document.addEventListener('visibilitychange', onVisible);
   await refresh();
 
 }

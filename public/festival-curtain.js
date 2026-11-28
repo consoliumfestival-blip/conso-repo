@@ -262,9 +262,8 @@
     if (path.includes('results')) return 'Results';
     if (path.includes('standings')) return 'Standings';
     if (path.includes('schedule')) return 'Schedule';
-    if (path.includes('gallery')) return 'Gallery';
+    if (path.includes('gallery') || path.includes('media')) return 'Media';
     if (path.includes('news')) return 'News';
-    if (path.includes('media')) return 'Media';
     if (path.includes('brochure')) return 'Brochure';
     if (path.includes('explore')) return 'Home';
     return 'Consoulium';

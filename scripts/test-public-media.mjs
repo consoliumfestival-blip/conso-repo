@@ -492,3 +492,151 @@ test('drops R2 assets whose presigned URL returns 404 NoSuchKey and reports X-Pu
     globalThis.fetch = origFetch;
   }
 });
+
+test('paginates backend results lazily (limit=20), skips 404 R2 items cleanly, and serves immutable cached images (?img=1)', async () => {
+  const entries = new Map();
+  const origCaches = globalThis.caches;
+  globalThis.caches = {
+    default: {
+      async match(req) {
+        const entry = entries.get(req.url);
+        return entry && Date.now() < entry.expires ? entry.response.clone() : undefined;
+      },
+      async put(req, res) {
+        const age = Number(/max-age=(\d+)/.exec(res.headers.get('Cache-Control') ?? '')?.[1] ?? 0);
+        entries.set(req.url, { response: res.clone(), expires: Date.now() + age * 1000 });
+      },
+    },
+  };
+
+  // 25 media items where index 2 (3rd item) points to a missing R2 object
+  const rows = [];
+  for (let i = 0; i < 25; i++) {
+    const num = String(i + 1).padStart(2, '0');
+    const isGone = i === 2;
+    rows.push(
+      {
+        id: `media-hd-${num}`,
+        render_hash: `manual_media_item_${num}`,
+        event_name: `Stage Photo ${num}`,
+        resolution: 'hd',
+        public_url: isGone ? 'r2://festivals/f1/posters/gone-page.webp' : `https://cdn.example.com/media/p-${num}-hd.webp`,
+        storage_path: isGone ? 'festivals/f1/posters/gone-page.webp' : null,
+        is_current: true,
+        visibility_status: 'published',
+        created_at: `2026-11-28T03:${num}:00Z`,
+      },
+      {
+        id: `media-th-${num}`,
+        render_hash: `manual_media_item_${num}`,
+        event_name: `Stage Photo ${num}`,
+        resolution: 'thumb',
+        public_url: isGone ? 'r2://festivals/f1/posters/gone-page.webp' : `https://cdn.example.com/media/p-${num}-th.webp`,
+        storage_path: isGone ? 'festivals/f1/posters/gone-page.webp' : null,
+        is_current: true,
+        visibility_status: 'published',
+        created_at: `2026-11-28T03:${num}:00Z`,
+      },
+    );
+  }
+
+  let presignCalls = 0;
+  let imageUpstreamFetches = 0;
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    const parsed = new URL(u);
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{ festival_id: festivalId, is_public_visible: true }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify(rows), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/functions/v1/r2-presign')) {
+      presignCalls++;
+      const body = JSON.parse(String(init.body));
+      return new Response(JSON.stringify({ url: `https://missing-page.example.com/${body.objectKey}` }), { status: 200 });
+    }
+    if (parsed.hostname === 'missing-page.example.com') {
+      return new Response('NoSuchKey', { status: 404 });
+    }
+    if (u === 'https://cdn.example.com/media/p-01-th.webp') {
+      imageUpstreamFetches++;
+      return new Response(new Uint8Array([82, 73, 70, 70]), {
+        status: 200,
+        headers: { 'Content-Type': 'image/webp' },
+      });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    // Page 1: limit=20&offset=0 -> skips 1 dropped R2 item and fills exact 20 valid items with next_offset=21
+    const p1Res = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=media&limit=20&offset=0`),
+      env,
+    });
+    assert.equal(p1Res.status, 200);
+    assert.equal(p1Res.headers.get('X-Public-Media-Dropped'), '1');
+    const p1 = await p1Res.json();
+    assert.equal(p1.items.length, 20);
+    assert.equal(p1.pagination.limit, 20);
+    assert.equal(p1.pagination.offset, 0);
+    assert.equal(p1.pagination.has_more, true);
+    assert.equal(p1.pagination.next_offset, 21);
+    assert.equal(presignCalls, 1, 'Should only presign objects scanned for page 1');
+    assert.ok(p1.items[0].cached_thumb_url.includes('img=1'));
+    assert.ok(p1.items[0].cached_thumb_url.includes('variant=thumb'));
+    assert.ok(p1.items[0].cached_image_url.includes('variant=hd'));
+
+    // Page 2: limit=20&offset=21 -> returns remaining 4 items with zero overlap
+    const p2Res = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}&section=media&limit=20&offset=21`),
+      env,
+    });
+    assert.equal(p2Res.status, 200);
+    const p2 = await p2Res.json();
+    assert.equal(p2.items.length, 4);
+    assert.equal(p2.pagination.has_more, false);
+    assert.equal(p2.pagination.next_offset, null);
+    const p1Keys = new Set(p1.items.map((x) => x.render_hash));
+    assert.ok(p2.items.every((x) => !p1Keys.has(x.render_hash)));
+
+    // Immutable cached image endpoint (?img=1&asset=...&variant=thumb)
+    const imgPath = p1.items[0].cached_thumb_url;
+    const imgFirst = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in${imgPath}`),
+      env,
+    });
+    assert.equal(imgFirst.status, 200);
+    assert.equal(imgFirst.headers.get('Content-Type'), 'image/webp');
+    assert.equal(imgFirst.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    const imgEtag = imgFirst.headers.get('ETag');
+    assert.ok(imgEtag);
+    assert.equal(imageUpstreamFetches, 1);
+
+    // Repeat fetch hits caches.default with zero upstream fetch, and If-None-Match returns 304
+    const imgCached = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in${imgPath}`),
+      env,
+    });
+    assert.equal(imgCached.status, 200);
+    assert.equal(imgCached.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+    assert.equal(imageUpstreamFetches, 1);
+
+    const imgNotMod = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in${imgPath}`, {
+        headers: { 'If-None-Match': imgEtag },
+      }),
+      env,
+    });
+    assert.equal(imgNotMod.status, 304);
+    assert.equal(imgNotMod.headers.get('Cache-Control'), 'public, max-age=31536000, immutable');
+  } finally {
+    globalThis.fetch = origFetch;
+    globalThis.caches = origCaches;
+  }
+});

@@ -10,9 +10,36 @@ type PagesContext = {
   env: Environment;
 };
 
+type ResolutionEntry = { public_url?: string | null; storage_path?: string | null };
+
+type CatalogCandidate = {
+  id: string;
+  render_hash: string;
+  section: 'media' | 'result';
+  event_id: string | null;
+  result_id: string | null;
+  title: string;
+  subtitle: string;
+  format: string;
+  result_no: number | null;
+  item_code: string;
+  created_at: string;
+  resolutions: Record<string, ResolutionEntry>;
+};
+
+type PublicMediaCatalog = {
+  tenant_id: string;
+  festival_id: string | null;
+  enabled: boolean;
+  generated_at: string;
+  candidates: CatalogCandidate[];
+};
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const LIST_EDGE_TTL_SECONDS = 15;
 const PRESIGN_EDGE_TTL_SECONDS = 1800;
+const IMMUTABLE_IMAGE_TTL_SECONDS = 31536000;
+const MAX_PAGE_LIMIT = 100;
 const RESOLUTION_PRIORITY = ['original', 'print', 'hd', 'standard', 'share', 'thumb'];
 const pending = new Map<string, Promise<unknown>>();
 
@@ -239,7 +266,26 @@ function pickBestResolution(resolutions: Record<string, { public_url?: string | 
   return null;
 }
 
-async function resolvePublicMedia(requestOrigin: string, env: Environment, tenantId: string, requestedFestivalId: string | null) {
+function isImageAsset(sourceUrl: string, rawPath?: string | null): boolean {
+  const probe = `${sourceUrl} ${rawPath || ''}`.toLowerCase();
+  return !/\.(mp4|webm|mov|m4v|pdf)(\?|$|\s)/i.test(probe);
+}
+
+async function resolveEntryUrl(requestOrigin: string, env: Environment, entry: ResolutionEntry): Promise<string | null> {
+  if (entry.public_url && /^https:\/\//.test(entry.public_url)) {
+    return entry.public_url;
+  }
+  const objectKey = (entry.public_url && entry.public_url.startsWith('r2://'))
+    ? entry.public_url.slice(5)
+    : (entry.storage_path || '');
+  return objectKey ? resolveR2DownloadUrl(requestOrigin, env, objectKey) : null;
+}
+
+async function loadPublicMediaCatalog(
+  env: Environment,
+  tenantId: string,
+  requestedFestivalId: string | null,
+): Promise<PublicMediaCatalog> {
   const generatedAt = new Date().toISOString();
   const [rawFeatures, rawSettings] = await Promise.all([
     supabaseRest<any>(env, 'rpc/get_public_tenant_feature_settings', { p_tenant_id: tenantId }),
@@ -254,7 +300,7 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
       festival_id: null,
       enabled: false,
       generated_at: generatedAt,
-      items: [],
+      candidates: [],
     };
   }
 
@@ -269,7 +315,7 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
       festival_id: null,
       enabled: true,
       generated_at: generatedAt,
-      items: [],
+      candidates: [],
     };
   }
 
@@ -294,20 +340,7 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
 
   if (!Array.isArray(rows)) throw new Error('Invalid generated_assets response');
 
-  const grouped = new Map<string, {
-    id: string;
-    render_hash: string;
-    section: 'media' | 'result';
-    event_id: string | null;
-    result_id: string | null;
-    title: string;
-    subtitle: string;
-    format: string;
-    result_no: number | null;
-    item_code: string;
-    created_at: string;
-    resolutions: Record<string, { public_url?: string | null; storage_path?: string | null }>;
-  }>();
+  const grouped = new Map<string, CatalogCandidate>();
 
   for (let idx = 0; idx < rows.length; idx++) {
     const row = rows[idx];
@@ -366,73 +399,73 @@ async function resolvePublicMedia(requestOrigin: string, env: Environment, tenan
     }
   }
 
-  const resolveEntryUrl = async (entry: { public_url?: string | null; storage_path?: string | null }): Promise<string | null> => {
-    if (entry.public_url && /^https:\/\//.test(entry.public_url)) {
-      return entry.public_url;
-    }
-    const objectKey = (entry.public_url && entry.public_url.startsWith('r2://'))
-      ? entry.public_url.slice(5)
-      : (entry.storage_path || '');
-    return objectKey ? resolveR2DownloadUrl(requestOrigin, env, objectKey) : null;
-  };
-
-  const candidates = Array.from(grouped.values());
-  let droppedCount = 0;
-  const useCfTransform = env.CF_IMAGE_RESIZING === 'true';
-  const resolvedItems = await mapWithConcurrency(candidates, 8, async (item) => {
-    const best = pickBestResolution(item.resolutions);
-    if (!best) {
-      droppedCount++;
-      return null;
-    }
-
-    const imageUrl = await resolveEntryUrl(best);
-    if (!imageUrl) {
-      droppedCount++;
-      return null;
-    }
-
-    let thumbUrl = imageUrl;
-    const thumbEntry = item.resolutions.thumb;
-    if (thumbEntry && best.resolution !== 'thumb' && (thumbEntry.public_url || thumbEntry.storage_path)) {
-      thumbUrl = (await resolveEntryUrl(thumbEntry)) || imageUrl;
-    } else if (useCfTransform && /^https:\/\//.test(imageUrl)) {
-      thumbUrl = `${requestOrigin}/cdn-cgi/image/format=auto,quality=86,fit=scale-down,width=640/${imageUrl}`;
-    }
-
-    const dlParams = new URLSearchParams({ tenant_id: tenantId, download: '1', asset: item.render_hash || item.id });
-    if (requestedFestivalId) dlParams.set('festival_id', requestedFestivalId);
-    return {
-      id: item.id,
-      render_hash: item.render_hash,
-      section: item.section,
-      event_id: item.event_id,
-      result_id: item.result_id,
-      title: item.title,
-      subtitle: item.subtitle,
-      format: item.format,
-      result_no: item.result_no,
-      item_code: item.item_code,
-      resolution: best.resolution,
-      image_url: imageUrl,
-      thumb_url: thumbUrl,
-      download_url: imageUrl,
-      original_download_path: `/api/public-media?${dlParams}`,
-      created_at: item.created_at,
-    };
-  });
-
-  if (droppedCount > 0) {
-    console.warn('Public media dropped unresolved assets', { tenantId, festivalId, droppedCount });
-  }
-
   return {
     tenant_id: tenantId,
     festival_id: festivalId,
     enabled: true,
     generated_at: generatedAt,
-    dropped_count: droppedCount,
-    items: resolvedItems.filter((item): item is NonNullable<typeof item> => item !== null),
+    candidates: Array.from(grouped.values()),
+  };
+}
+
+async function resolveCandidateItem(
+  requestOrigin: string,
+  env: Environment,
+  tenantId: string,
+  requestedFestivalId: string | null,
+  item: CatalogCandidate,
+) {
+  const best = pickBestResolution(item.resolutions);
+  if (!best) return null;
+
+  const imageUrl = await resolveEntryUrl(requestOrigin, env, best);
+  if (!imageUrl) return null;
+
+  const useCfTransform = env.CF_IMAGE_RESIZING === 'true';
+  let thumbUrl = imageUrl;
+  const thumbEntry = item.resolutions.thumb;
+  if (thumbEntry && best.resolution !== 'thumb' && (thumbEntry.public_url || thumbEntry.storage_path)) {
+    thumbUrl = (await resolveEntryUrl(requestOrigin, env, thumbEntry)) || imageUrl;
+  } else if (useCfTransform && /^https:\/\//.test(imageUrl)) {
+    thumbUrl = `${requestOrigin}/cdn-cgi/image/format=auto,quality=86,fit=scale-down,width=640/${imageUrl}`;
+  }
+
+  const assetKey = item.render_hash || item.id;
+  const dlParams = new URLSearchParams({ tenant_id: tenantId, download: '1', asset: assetKey });
+  if (requestedFestivalId) dlParams.set('festival_id', requestedFestivalId);
+
+  let cachedImageUrl: string | undefined;
+  let cachedThumbUrl: string | undefined;
+  if (isImageAsset(imageUrl, best.storage_path || best.public_url)) {
+    const hdImgParams = new URLSearchParams({ tenant_id: tenantId, img: '1', asset: assetKey, variant: 'hd' });
+    const thumbImgParams = new URLSearchParams({ tenant_id: tenantId, img: '1', asset: assetKey, variant: 'thumb' });
+    if (requestedFestivalId) {
+      hdImgParams.set('festival_id', requestedFestivalId);
+      thumbImgParams.set('festival_id', requestedFestivalId);
+    }
+    cachedImageUrl = `/api/public-media?${hdImgParams}`;
+    cachedThumbUrl = `/api/public-media?${thumbImgParams}`;
+  }
+
+  return {
+    id: item.id,
+    render_hash: item.render_hash,
+    section: item.section,
+    event_id: item.event_id,
+    result_id: item.result_id,
+    title: item.title,
+    subtitle: item.subtitle,
+    format: item.format,
+    result_no: item.result_no,
+    item_code: item.item_code,
+    resolution: best.resolution,
+    image_url: imageUrl,
+    thumb_url: thumbUrl,
+    ...(cachedImageUrl ? { cached_image_url: cachedImageUrl } : {}),
+    ...(cachedThumbUrl ? { cached_thumb_url: cachedThumbUrl } : {}),
+    download_url: imageUrl,
+    original_download_path: `/api/public-media?${dlParams}`,
+    created_at: item.created_at,
   };
 }
 
@@ -464,33 +497,130 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
   const requestedFestivalId = rawFestivalId ? rawFestivalId.toLowerCase() : null;
 
   try {
-    const listCacheUrl = new URL('/_public-media-list/v2', requestUrl.origin);
-    listCacheUrl.searchParams.set('tenant_id', tenantId);
-    if (requestedFestivalId) listCacheUrl.searchParams.set('festival_id', requestedFestivalId);
-    const listCacheReq = new Request(listCacheUrl.toString());
+    const catalogCacheUrl = new URL('/_public-media-catalog/v3', requestUrl.origin);
+    catalogCacheUrl.searchParams.set('tenant_id', tenantId);
+    if (requestedFestivalId) catalogCacheUrl.searchParams.set('festival_id', requestedFestivalId);
+    const catalogCacheReq = new Request(catalogCacheUrl.toString());
 
-    const { value: payload, cacheStatus } = await shared(
-      listCacheReq,
+    // 1. Immutable image proxy for stable permanent browser caching across R2 presign rotations
+    if (requestUrl.searchParams.get('img') === '1') {
+      const assetParam = requestUrl.searchParams.get('asset')?.trim();
+      if (!assetParam) return json({ error: 'Asset identifier is required' }, 400);
+      const variant = requestUrl.searchParams.get('variant') === 'thumb' ? 'thumb' : 'hd';
+
+      const cache = (globalThis as any).caches?.default as Cache | undefined;
+      const imgCacheUrl = new URL('/_public-media-img/v1', requestUrl.origin);
+      imgCacheUrl.searchParams.set('tenant_id', tenantId);
+      if (requestedFestivalId) imgCacheUrl.searchParams.set('festival_id', requestedFestivalId);
+      imgCacheUrl.searchParams.set('asset', assetParam);
+      imgCacheUrl.searchParams.set('variant', variant);
+      const imgCacheReq = new Request(imgCacheUrl.toString());
+
+      const cachedImg = await cache?.match(imgCacheReq).catch(() => undefined);
+      if (cachedImg) {
+        const cachedEtag = cachedImg.headers.get('ETag') || `"img:${assetParam}:${variant}"`;
+        if (matchesIfNoneMatch(request.headers.get('If-None-Match'), cachedEtag)) {
+          return new Response(null, {
+            status: 304,
+            headers: {
+              ETag: cachedEtag,
+              'Cache-Control': `public, max-age=${IMMUTABLE_IMAGE_TTL_SECONDS}, immutable`,
+              'X-Content-Type-Options': 'nosniff',
+            },
+          });
+        }
+        return new Response(cachedImg.body, {
+          status: 200,
+          headers: {
+            'Content-Type': cachedImg.headers.get('Content-Type') || 'image/webp',
+            'Cache-Control': `public, max-age=${IMMUTABLE_IMAGE_TTL_SECONDS}, immutable`,
+            ETag: cachedEtag,
+            'X-Content-Type-Options': 'nosniff',
+            ...(cachedImg.headers.get('Content-Length') ? { 'Content-Length': cachedImg.headers.get('Content-Length')! } : {}),
+          },
+        });
+      }
+
+      const { value: catalog } = await shared(
+        catalogCacheReq,
+        LIST_EDGE_TTL_SECONDS,
+        () => loadPublicMediaCatalog(env, tenantId, requestedFestivalId),
+      );
+      if (!catalog.enabled) return json({ error: 'Media asset not found' }, 404);
+      const match = catalog.candidates.find((item) => item.render_hash === assetParam || item.id === assetParam);
+      if (!match) return json({ error: 'Media asset not found' }, 404);
+
+      const imgEtag = `"img:${match.render_hash}:${variant}"`;
+      if (matchesIfNoneMatch(request.headers.get('If-None-Match'), imgEtag)) {
+        return new Response(null, {
+          status: 304,
+          headers: {
+            ETag: imgEtag,
+            'Cache-Control': `public, max-age=${IMMUTABLE_IMAGE_TTL_SECONDS}, immutable`,
+            'X-Content-Type-Options': 'nosniff',
+          },
+        });
+      }
+
+      let resolvedUrl: string | null = null;
+      const thumbEntry = match.resolutions.thumb;
+      if (variant === 'thumb' && thumbEntry && (thumbEntry.public_url || thumbEntry.storage_path)) {
+        resolvedUrl = await resolveEntryUrl(requestUrl.origin, env, thumbEntry);
+      }
+      if (!resolvedUrl) {
+        const best = pickBestResolution(match.resolutions);
+        if (best) resolvedUrl = await resolveEntryUrl(requestUrl.origin, env, best);
+      }
+      if (!resolvedUrl) return json({ error: 'Media asset not found' }, 404);
+
+      const upstream = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+      if (!upstream) return json({ error: 'Media file is temporarily unavailable' }, 502);
+      if (upstream.status === 404) return json({ error: 'Media asset not found' }, 404);
+      if (!upstream.ok) return json({ error: 'Media file is temporarily unavailable' }, 502);
+
+      const bodyBuf = await upstream.arrayBuffer();
+      const contentType = upstream.headers.get('content-type') || 'image/webp';
+      const imgResponse = new Response(bodyBuf, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': String(bodyBuf.byteLength),
+          'Cache-Control': `public, max-age=${IMMUTABLE_IMAGE_TTL_SECONDS}, immutable`,
+          ETag: imgEtag,
+          'X-Content-Type-Options': 'nosniff',
+        },
+      });
+      if (cache) {
+        await cache.put(imgCacheReq, imgResponse.clone()).catch(() => undefined);
+      }
+      return imgResponse;
+    }
+
+    const { value: catalog, cacheStatus } = await shared(
+      catalogCacheReq,
       LIST_EDGE_TTL_SECONDS,
-      () => resolvePublicMedia(requestUrl.origin, env, tenantId, requestedFestivalId),
+      () => loadPublicMediaCatalog(env, tenantId, requestedFestivalId),
     );
 
+    // 2. Attachment download for a single asset
     if (requestUrl.searchParams.get('download') === '1') {
       const assetParam = requestUrl.searchParams.get('asset')?.trim();
       if (!assetParam) return json({ error: 'Asset identifier is required' }, 400);
-      if (!payload.enabled) return json({ error: 'Media asset not found' }, 404);
-      const match = payload.items.find((item) => item.render_hash === assetParam || item.id === assetParam);
-      if (!match || !match.download_url) {
+      if (!catalog.enabled) return json({ error: 'Media asset not found' }, 404);
+      const match = catalog.candidates.find((item) => item.render_hash === assetParam || item.id === assetParam);
+      const best = match ? pickBestResolution(match.resolutions) : null;
+      const downloadUrl = best ? await resolveEntryUrl(requestUrl.origin, env, best) : null;
+      if (!match || !downloadUrl) {
         return json({ error: 'Media asset not found' }, 404);
       }
 
-      const upstream = await fetch(match.download_url, { signal: AbortSignal.timeout(15_000) });
+      const upstream = await fetch(downloadUrl, { signal: AbortSignal.timeout(15_000) });
       if (!upstream.ok) {
         return json({ error: 'Media file is temporarily unavailable' }, 502);
       }
       const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
       const contentLength = upstream.headers.get('content-length');
-      const ext = inferDownloadExtension(contentType, match.download_url);
+      const ext = inferDownloadExtension(contentType, downloadUrl);
       const safeName = (match.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'poster';
       return new Response(upstream.body, {
         status: 200,
@@ -504,20 +634,103 @@ export async function onRequestGet({ request, env }: PagesContext): Promise<Resp
       });
     }
 
+    // 3. Paginated or full list
+    const rawLimit = requestUrl.searchParams.get('limit');
+    const rawOffset = requestUrl.searchParams.get('offset');
+    let limit: number | null = null;
+    let offset = 0;
+    if (rawLimit !== null) {
+      const trimmed = rawLimit.trim();
+      if (!/^\d+$/.test(trimmed) || Number(trimmed) < 1) {
+        return json({ error: 'Valid limit is required' }, 400);
+      }
+      limit = Math.min(MAX_PAGE_LIMIT, Number(trimmed));
+    }
+    if (rawOffset !== null) {
+      const trimmed = rawOffset.trim();
+      if (!/^\d+$/.test(trimmed)) {
+        return json({ error: 'Valid offset is required' }, 400);
+      }
+      offset = Number(trimmed);
+    }
+
     const rawSection = requestUrl.searchParams.get('section')?.trim().toLowerCase();
     const sectionFilter = (rawSection === 'media' || rawSection === 'result') ? rawSection : null;
-    const droppedCount = Number((payload as { dropped_count?: number }).dropped_count || 0);
+    const isPaginated = limit !== null;
+
+    if (!catalog.enabled) {
+      const disabledPayload = {
+        tenant_id: catalog.tenant_id,
+        festival_id: null,
+        enabled: false,
+        generated_at: catalog.generated_at,
+        items: [],
+        ...(isPaginated ? { pagination: { limit: limit!, offset, count: 0, total: 0, has_more: false, next_offset: null } } : {}),
+      };
+      const etag = buildMediaEtag(disabledPayload, `${sectionFilter || 'all'}:${isPaginated ? `${offset}:${limit}` : 'all'}`);
+      return json(disabledPayload, 200, cacheStatus, etag);
+    }
+
+    const filteredCandidates = sectionFilter
+      ? catalog.candidates.filter((item) => item.section === sectionFilter)
+      : catalog.candidates;
+
+    let droppedCount = 0;
+    let items: NonNullable<Awaited<ReturnType<typeof resolveCandidateItem>>>[] = [];
+    let pagination: { limit: number; offset: number; count: number; total: number; has_more: boolean; next_offset: number | null } | undefined;
+
+    if (isPaginated && limit !== null) {
+      let cursor = Math.min(offset, filteredCandidates.length);
+      while (cursor < filteredCandidates.length && items.length < limit) {
+        const remaining = limit - items.length;
+        const batch = filteredCandidates.slice(cursor, cursor + remaining);
+        cursor += batch.length;
+        const batchResolved = await mapWithConcurrency(batch, 8, (item) =>
+          resolveCandidateItem(requestUrl.origin, env, tenantId, requestedFestivalId, item),
+        );
+        for (const resolved of batchResolved) {
+          if (resolved) items.push(resolved);
+          else droppedCount++;
+        }
+      }
+      const hasMore = cursor < filteredCandidates.length;
+      const adjustedTotal = Math.max(items.length, filteredCandidates.length - droppedCount);
+      pagination = {
+        limit,
+        offset,
+        count: items.length,
+        total: adjustedTotal,
+        has_more: hasMore,
+        next_offset: hasMore ? cursor : null,
+      };
+    } else {
+      const resolvedAll = await mapWithConcurrency(filteredCandidates, 8, (item) =>
+        resolveCandidateItem(requestUrl.origin, env, tenantId, requestedFestivalId, item),
+      );
+      for (const resolved of resolvedAll) {
+        if (resolved) items.push(resolved);
+        else droppedCount++;
+      }
+    }
+
+    if (droppedCount > 0) {
+      console.warn('Public media dropped unresolved assets', {
+        tenantId,
+        festivalId: catalog.festival_id,
+        droppedCount,
+      });
+    }
+
     const responsePayload = {
-      tenant_id: payload.tenant_id,
-      festival_id: payload.festival_id,
-      enabled: payload.enabled,
-      generated_at: payload.generated_at,
-      items: sectionFilter
-        ? payload.items.filter((item) => item.section === sectionFilter)
-        : payload.items,
+      tenant_id: catalog.tenant_id,
+      festival_id: catalog.festival_id,
+      enabled: catalog.enabled,
+      generated_at: catalog.generated_at,
+      items,
+      ...(pagination ? { pagination } : {}),
     };
 
-    const etag = buildMediaEtag(responsePayload, sectionFilter || 'all');
+    const etag = buildMediaEtag(responsePayload, `${sectionFilter || 'all'}:${isPaginated ? `${offset}:${limit}` : 'all'}`);
     if (matchesIfNoneMatch(request.headers.get('If-None-Match'), etag)) {
       return new Response(null, {
         status: 304,

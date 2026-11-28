@@ -12,23 +12,23 @@
     ['/results', '/results'],
     ['/standings', '/standings'],
     ['/schedule', '/schedule'],
-    ['/gallery', '/gallery'],
+    ['/gallery', '/media'],
     ['/news', '/news'],
     ['/media', '/media'],
     ['/brochure', '/brochure'],
-    ['/contributors', '/gallery'],
+    ['/contributors', '/media'],
     ['/speakers', '/news'],
     ['/team', '/media'],
     ['/partners', '/brochure'],
     ['/festival-results.html', '/results'],
     ['/festival-standings.html', '/standings'],
     ['/festival-schedule.html', '/schedule'],
-    ['/festival-gallery.html', '/gallery'],
+    ['/festival-gallery.html', '/media'],
     ['/festival-news.html', '/news'],
     ['/festival-media.html', '/media'],
     ['/festival-brochure.html', '/brochure'],
   ]);
-  const cleanPages = new Set(['/explore', '/consoulium', '/results', '/standings', '/schedule', '/gallery', '/news', '/media', '/brochure']);
+  const cleanPages = new Set(['/explore', '/consoulium', '/results', '/standings', '/schedule', '/news', '/media', '/brochure']);
   const hiddenTargets = new Set(['/news', '/brochure', '/speakers', '/partners', '#register', '/#register', '/festival-news.html', '/festival-brochure.html']);
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
@@ -209,11 +209,26 @@
     window.scrollTo({ top: fallbackTop, behavior: reduced ? 'instant' : 'smooth' });
   }
 
+  function replaceGalleryLabel(link) {
+    if (link.childElementCount === 0) {
+      if (/gallery/i.test(link.textContent || '')) link.textContent = 'Media';
+      return;
+    }
+    const walker = document.createTreeWalker(link, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (/gallery/i.test(node.nodeValue || '')) {
+        node.nodeValue = node.nodeValue.replace(/gallery/gi, (m) => (m[0] === 'G' ? 'Media' : 'media'));
+      }
+    }
+  }
+
   const update = () => {
     for (const link of document.querySelectorAll('.nav__links a[href], .menu__pages a[href], .menu__chips a[href], .footer__links a[href], a[href="/"]')) {
       const current = link.getAttribute('href');
       const currentPath = current ? new URL(current, location.origin).pathname : '';
-      if (hiddenTargets.has(current) || hiddenTargets.has(currentPath)) {
+      const isDrawerGallery = link.closest('.menu__pages') && (currentPath === '/contributors' || currentPath === '/gallery');
+      if (isDrawerGallery || hiddenTargets.has(current) || hiddenTargets.has(currentPath)) {
         const listItem = link.closest('.menu__list > li');
         if (listItem) {
           listItem.hidden = true;
@@ -226,8 +241,11 @@
         link.tabIndex = -1;
         continue;
       }
-      const target = routes.get(current);
+      const target = routes.get(current) || routes.get(currentPath);
       if (!target) continue;
+      if (target === '/media' && (currentPath === '/gallery' || currentPath === '/festival-gallery.html')) {
+        replaceGalleryLabel(link);
+      }
       if (link.classList.contains('public-link-pending')) link.classList.remove('public-link-pending');
       if (link.hasAttribute('aria-disabled')) link.removeAttribute('aria-disabled');
       if (link.hasAttribute('tabindex')) link.removeAttribute('tabindex');
@@ -292,6 +310,9 @@
     }
 
     const url = new URL(link.href, location.origin);
+    if (url.pathname === '/gallery' || url.pathname === '/festival-gallery.html' || url.pathname === '/contributors') {
+      url.pathname = '/media';
+    }
     if (!cleanPages.has(url.pathname) && (!url.pathname.startsWith('/festival-') || !url.pathname.endsWith('.html'))) return;
     event.preventDefault();
     event.stopImmediatePropagation();

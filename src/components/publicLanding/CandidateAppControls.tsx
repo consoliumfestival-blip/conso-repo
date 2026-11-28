@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Bell, BellOff, ChevronRight, Download, Search, Share2, Smartphone, X } from 'lucide-react-native';
+import { Bell, CheckCircle2, ChevronRight, Download, Search, Share2, Smartphone, X } from 'lucide-react-native';
 import { usePublicCandidateSearch } from '../../core/hooks/useParticipants';
 import {
   CandidatePushStatus,
@@ -189,7 +189,12 @@ export function CandidateAppBanner({
   return (
     <View style={styles.actionsWrap}>
       <View style={styles.bannerRow}>
-        {!isStandalone && !isAppInstalled ? (
+        {isStandalone || isAppInstalled ? (
+          <View style={styles.installedBadge}>
+            <CheckCircle2 size={15} color={PUBLIC_GLASS_THEME.greenText} />
+            <Text style={styles.installedBadgeText}>Installed</Text>
+          </View>
+        ) : (
           <TouchableOpacity
             accessibilityRole="button"
             onPress={() => void handleInstallButtonPress()}
@@ -198,7 +203,7 @@ export function CandidateAppBanner({
             <Download size={15} color="#FFFFFF" />
             <Text style={styles.installButtonText}>Install App</Text>
           </TouchableOpacity>
-        ) : null}
+        )}
 
         {pushStatus?.supported !== false ? (
           <TouchableOpacity
@@ -216,7 +221,7 @@ export function CandidateAppBanner({
             ) : pushStatus?.subscribed ? (
               <Bell size={15} color={PUBLIC_GLASS_THEME.greenText} />
             ) : (
-              <BellOff size={15} color={PUBLIC_GLASS_THEME.blueText} />
+              <Bell size={15} color={PUBLIC_GLASS_THEME.blueText} />
             )}
             <Text
               style={[
@@ -224,7 +229,7 @@ export function CandidateAppBanner({
                 pushStatus?.subscribed && styles.notifyButtonTextActive,
               ]}
             >
-              {pushStatus?.subscribed ? 'Alerts Active' : 'Enable Alerts'}
+              {pushStatus?.subscribed ? 'Notifications Enabled' : 'Enable Notification'}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -445,6 +450,23 @@ const styles = StyleSheet.create({
   installButtonText: {
     fontFamily: 'Outfit_700Bold',
     color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  installedBadge: {
+    height: 38,
+    borderRadius: 999,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: PUBLIC_GLASS_THEME.greenSoft,
+    borderWidth: 1,
+    borderColor: PUBLIC_GLASS_THEME.greenBorder,
+  },
+  installedBadgeText: {
+    fontFamily: 'Outfit_700Bold',
+    color: PUBLIC_GLASS_THEME.greenText,
     fontSize: 13,
     fontWeight: '700',
   },

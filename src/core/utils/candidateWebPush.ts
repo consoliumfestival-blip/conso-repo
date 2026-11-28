@@ -11,6 +11,34 @@ const PINNED_KEY = 'conso_pinned_candidate_v1';
 const LOGGED_OUT_KEY = 'conso_candidate_logged_out_v1';
 const APP_SESSION_KEY = 'conso_candidate_app_mode_v1';
 const INSTALLED_APP_KEY = 'conso_candidate_app_installed_v1';
+const PUSH_SUB_KEY = 'conso_candidate_push_sub_v1';
+
+function readLocalPushRecord(): { slug: string; endpoint: string } | null {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(PUSH_SUB_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed.slug === 'string' && typeof parsed.endpoint === 'string') {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function writeLocalPushRecord(slug: string, endpoint: string): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(PUSH_SUB_KEY, JSON.stringify({ slug, endpoint }));
+  } catch {}
+}
+
+function clearLocalPushRecord(): void {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  try {
+    window.localStorage.removeItem(PUSH_SUB_KEY);
+  } catch {}
+}
 
 export function markCandidateAppInstalled(): void {
   if (Platform.OS !== 'web' || typeof window === 'undefined') return;
@@ -106,22 +134,6 @@ export function updateCandidateManifestMetadata(opts: {
   festivalId?: string | null;
 }): void {
   if (Platform.OS !== 'web' || typeof document === 'undefined' || !opts.slug) return;
-  const manifestUrl = new URL('/portal-manifest', window.location.origin);
-  manifestUrl.searchParams.set('portal', 'candidate');
-  manifestUrl.searchParams.set('identity', opts.slug);
-  if (opts.name) manifestUrl.searchParams.set('name', opts.name);
-  if (opts.tenantId) manifestUrl.searchParams.set('tenant_id', opts.tenantId);
-  if (opts.festivalId) manifestUrl.searchParams.set('festival_id', opts.festivalId);
-
-  let link = document.getElementById('candidate-portal-manifest') as HTMLLinkElement | null;
-  if (!link) {
-    link = document.createElement('link');
-    link.id = 'candidate-portal-manifest';
-    link.rel = 'manifest';
-    document.head.appendChild(link);
-  }
-  link.href = manifestUrl.pathname + manifestUrl.search;
-
   if (opts.name) {
     const titleMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
     if (titleMeta) {
@@ -191,17 +203,26 @@ export async function getCandidatePushStatus(slug: string): Promise<CandidatePus
   } catch {}
 
   let subscribed = false;
+  const localRecord = readLocalPushRecord();
   try {
     const reg = await registerCandidateServiceWorker();
     const existing = await reg?.pushManager.getSubscription();
-    if (existing) {
+    if (existing && Notification.permission === 'granted') {
+      if (localRecord && localRecord.slug === slug && localRecord.endpoint === existing.endpoint) {
+        subscribed = true;
+      }
       const statusRes = await fetch(
         `/api/candidate-push?action=status&slug=${encodeURIComponent(slug)}&endpoint=${encodeURIComponent(existing.endpoint)}`,
         { cache: 'no-store' },
       );
       if (statusRes.ok) {
         const statusJson = await statusRes.json();
-        subscribed = Boolean(statusJson?.subscribed);
+        if (typeof statusJson?.subscribed === 'boolean') {
+          subscribed = statusJson.subscribed;
+          if (subscribed) {
+            writeLocalPushRecord(slug, existing.endpoint);
+          }
+        }
       }
     }
   } catch {}
@@ -277,6 +298,10 @@ export async function enableCandidatePushNotifications(opts: {
     return { ok: false, error: errBody?.error || 'Could not save notification subscription.' };
   }
 
+  if (subJson.endpoint) {
+    writeLocalPushRecord(opts.slug, subJson.endpoint);
+  }
+
   // Send an immediate confirmation push notification if configured.
   fetch('/api/candidate-push', {
     method: 'POST',
@@ -296,6 +321,7 @@ export async function enableCandidatePushNotifications(opts: {
 }
 
 export async function disableCandidatePushNotifications(): Promise<void> {
+  clearLocalPushRecord();
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
   try {
     const reg = await navigator.serviceWorker.getRegistration('/candidate/');

@@ -65,23 +65,23 @@
     <script>
       (function () {
         var path = location.pathname;
-        if (/^\/candidate\/.+/.test(path)) {
+        if (/^\/candidate(\/|$)/.test(path)) {
           document.documentElement.setAttribute('data-public-candidate', '');
-          var candSlug = decodeURIComponent(path.split('/')[2] || '');
-          var candParams = new URLSearchParams(location.search);
-          var candManifestUrl = '/portal-manifest?portal=candidate&identity=' + encodeURIComponent(candSlug);
-          if (candParams.get('tenant_id')) candManifestUrl += '&tenant_id=' + encodeURIComponent(candParams.get('tenant_id'));
-          if (candParams.get('festival_id')) candManifestUrl += '&festival_id=' + encodeURIComponent(candParams.get('festival_id'));
           var candManifestLink = document.createElement('link');
           candManifestLink.id = 'candidate-portal-manifest';
           candManifestLink.rel = 'manifest';
-          candManifestLink.href = candManifestUrl;
+          candManifestLink.href = '/candidate-manifest.json';
           document.head.appendChild(candManifestLink);
 
           window.addEventListener('beforeinstallprompt', function (event) {
             event.preventDefault();
             window.__candidatePortalInstallEvent = event;
             window.dispatchEvent(new Event('candidateportalinstallavailable'));
+          });
+
+          window.addEventListener('appinstalled', function () {
+            try { localStorage.setItem('conso_candidate_app_installed_v1', '1'); } catch (_) {}
+            window.__candidatePortalInstallEvent = null;
           });
 
           if ('serviceWorker' in navigator) {

@@ -122,7 +122,15 @@ export default function PublicCandidateProfileScreen() {
       tenantId: routeTenant || null,
       festivalId: festivalId || null,
     });
-  }, [slug, candidate?.profile?.name, routeTenant, festivalId]);
+    if (candidate?.profile && !isCandidateLoggedOut()) {
+      writePinnedCandidate({
+        slug: candidate.profile.slug,
+        name: candidate.profile.name,
+        tenant_id: routeTenant || null,
+        festival_id: festivalId || null,
+      });
+    }
+  }, [slug, candidate?.profile, routeTenant, festivalId]);
 
   useEffect(() => {
     if (!isStandalone || loggedOutInApp) return;

@@ -129,4 +129,22 @@ BEGIN
     RAISE EXCEPTION 'Ten-result batch did not reach the send path';
   END IF;
 END $send_ten$;
+DO $capped$
+DECLARE planned jsonb; ids uuid[];
+BEGIN
+  DELETE FROM festival_leaderboard_settings WHERE festival_id = md5('festival')::uuid;
+  INSERT INTO festival_leaderboard_settings VALUES (md5('festival')::uuid, 'LIMITED', 1);
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('A')::uuid, 5, 'auto', 'team');
+  IF jsonb_array_length(planned->'items') <> 5 OR planned->>'selection_note' NOT LIKE '%limit has been reached%' THEN
+    RAISE EXCEPTION 'Leaderboard cap incorrectly blocked announcer recommendations';
+  END IF;
+  SELECT array_agg((value->>'item_id')::uuid ORDER BY n) INTO ids
+  FROM jsonb_array_elements(planned->'items') WITH ORDINALITY AS s(value,n);
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('A')::uuid, 5, 'auto', 'team', ids);
+  IF jsonb_array_length(planned->'items') <> 5 THEN
+    RAISE EXCEPTION 'Manual preview failed after leaderboard cap';
+  END IF;
+END $capped$;
 ROLLBACK;

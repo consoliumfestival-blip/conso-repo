@@ -6,6 +6,11 @@ import { ArrowLeft, ChevronRight, Search, UserRound, X } from 'lucide-react-nati
 import { useAuthStore } from '../../core/store/authStore';
 import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
 import { usePublicCandidateSearch } from '../../core/hooks/useParticipants';
+import {
+  mergeAndSortDualCandidates,
+  sortCandidatesByRelevance,
+} from '../../core/utils/candidateSearchSort';
+import type { PublicCandidateSearchItem } from '../../providers/database/DatabaseProvider';
 import { PublicUnavailableScreen } from '../../components/publicLanding/PublicUnavailableScreen';
 import { FestivalAccentBar, PUBLIC_GLASS_THEME, PublicGlassBackdrop, webGlassSurface, webPrimaryGradient } from '../../components/publicLanding/PublicGlassBackdrop';
 import { PublicFestivalMenu, navigateBackFromCandidateSearch } from '../../components/publicLanding/PublicFestivalMenu';
@@ -61,6 +66,74 @@ function getStableAccentIndex(slug: string, fallbackIndex: number): number {
   return hash % CARD_ACCENTS.length;
 }
 
+function CandidateSearchResultCard({
+  candidate,
+  index,
+  isWide,
+  festivalName,
+  onPress,
+}: {
+  candidate: PublicCandidateSearchItem;
+  index: number;
+  isWide: boolean;
+  festivalName?: string;
+  onPress: () => void;
+}) {
+  const accent = CARD_ACCENTS[getStableAccentIndex(candidate.slug, index)];
+  const initials = (candidate.name || 'C')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join('')
+    .toUpperCase();
+  const chestBadge = festivalName
+    ? `${festivalName} · Chest ${candidate.chest_number || '–'}`
+    : candidate.chest_number
+      ? `Chest ${candidate.chest_number}`
+      : null;
+
+  return (
+    <TouchableOpacity
+      accessibilityHint={festivalName ? `Opens ${festivalName} candidate profile` : "Opens the candidate's public profile"}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[
+        styles.candidateCard,
+        webGlassSurface(18),
+        {
+          backgroundColor: accent.bg,
+          borderColor: accent.border,
+          ...(Platform.OS === 'web' ? { backgroundImage: accent.gradient } as any : {}),
+        },
+        isWide && styles.candidateCardWide,
+      ]}
+    >
+      <View style={[styles.avatarBadge, { backgroundColor: accent.avatarBg, borderColor: accent.border }]}>
+        <Text style={[styles.avatarBadgeText, { color: accent.text }]}>{initials}</Text>
+      </View>
+      <View style={styles.candidateInfo}>
+        <Text numberOfLines={2} style={styles.candidateName}>{candidate.name}</Text>
+        <View style={styles.metadataRow}>
+          {chestBadge ? (
+            <View style={styles.chestTag}>
+              <Text style={styles.chestTagText}>{chestBadge}</Text>
+            </View>
+          ) : null}
+          {candidate.category_code ? (
+            <View style={styles.categoryTag}>
+              <Text style={styles.categoryTagText}>{candidate.category_code}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <View style={styles.chevronChip}>
+        <ChevronRight size={17} color={PUBLIC_GLASS_THEME.ink} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function CandidateSearchPage() {
   const params = useLocalSearchParams<{ tenant_id?: string | string[]; festival_id?: string | string[] }>();
   // Explicit tenant links retain their established one-festival behavior.
@@ -72,8 +145,12 @@ export default function CandidateSearchPage() {
 function DualCandidateSearchPage() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const scrollRef = useRef<ScrollView>(null);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Keep backend tenant isolation intact; only the frontend result list is unified.
   const consolium = usePublicCandidateSearch(DEFAULT_TENANT_ID, null, debouncedSearch.toLowerCase(), true);
   const campus = usePublicCandidateSearch(CAMPUS_TENANT_ID, null, debouncedSearch.toLowerCase(), true);
 
@@ -82,17 +159,59 @@ function DualCandidateSearchPage() {
     return () => clearTimeout(timer);
   }, [searchText]);
 
-  const sources = [
-    { name: 'Consoulium', tenantId: DEFAULT_TENANT_ID, search: consolium },
-    { name: 'Campus', tenantId: CAMPUS_TENANT_ID, search: campus },
-  ];
+  const sources = useMemo(
+    () => [
+      { name: 'Consoulium', tenantId: DEFAULT_TENANT_ID, search: consolium },
+      { name: 'Campus', tenantId: CAMPUS_TENANT_ID, search: campus },
+    ],
+    [consolium, campus],
+  );
+
+  const mergedCandidates = useMemo(
+    () =>
+      debouncedSearch
+        ? mergeAndSortDualCandidates(
+            sources.map(({ name, tenantId, search }) => ({
+              tenantId,
+              festivalName: name,
+              items: search.data?.pages.flatMap((page) => page.items) ?? [],
+            })),
+            debouncedSearch,
+          )
+        : [],
+    [debouncedSearch, sources],
+  );
+
+  const isWide = width >= 760;
   const isDebouncing = searchText.trim() !== debouncedSearch;
+  const isAnyInitialLoading = sources.some(
+    ({ search }) => search.isPending || (search.isFetching && !search.data),
+  );
+  const failedSources = sources.filter(({ search }) => search.isError && !search.data);
+  const allSourcesFailed = failedSources.length === sources.length;
+  const hasAnyMore = sources.some(({ search }) => search.hasNextPage);
+  const isFetchingMore = sources.some(({ search }) => search.isFetchingNextPage);
+  const hasNextPageError = sources.some(({ search }) => search.isFetchNextPageError);
+
+  const retryFailedSources = () => {
+    failedSources.forEach(({ search }) => {
+      void search.refetch();
+    });
+  };
+
+  const loadMoreFromAllSources = () => {
+    sources.forEach(({ search }) => {
+      if (search.hasNextPage && !search.isFetchingNextPage) {
+        void search.fetchNextPage();
+      }
+    });
+  };
 
   return (
     <PublicGlassBackdrop>
       <Head><title>Find Me · Consoulium and Campus</title></Head>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={[styles.container, { maxWidth: width >= 760 ? 1020 : 580 }]}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={[styles.container, { maxWidth: isWide ? 1020 : 580 }]}>
           <View style={styles.topBar}>
             <TouchableOpacity accessibilityRole="button" onPress={() => router.canGoBack() ? router.back() : Platform.OS === 'web' ? window.location.assign('/consoulium') : router.replace('/leaderboard' as any)} style={[styles.backButton, webGlassSurface(16)]}>
               <ArrowLeft size={16} color={PUBLIC_GLASS_THEME.ink} /><Text style={styles.backText}>Back</Text>
@@ -103,16 +222,24 @@ function DualCandidateSearchPage() {
             </View>
           </View>
           <View style={styles.headingBlock}>
-            <Text style={[styles.title, width >= 760 && styles.titleDesktop]}>Find a candidate</Text>
-            <Text style={styles.subtitle}>Search both Consoulium and Campus by name or chest number. Results are grouped by festival.</Text>
+            <View style={styles.eyebrowPill}>
+              <View style={styles.eyebrowDot} />
+              <Text style={styles.eyebrow}>FIND ME · AYATIC CODEX</Text>
+            </View>
+            <Text style={[styles.title, isWide && styles.titleDesktop]}>Find a candidate</Text>
+            <Text style={styles.subtitle}>Search by candidate name or chest number to view registered items and published results.</Text>
           </View>
-          <View style={[styles.searchBox, webGlassSurface(20)]}>
-            <View style={styles.searchIconChip}><Search size={18} color={PUBLIC_GLASS_THEME.blue} /></View>
+          <View style={[styles.searchBox, webGlassSurface(20), isSearchFocused && styles.searchBoxFocused]}>
+            <View style={[styles.searchIconChip, isSearchFocused && styles.searchIconChipActive]}>
+              <Search size={18} color={isSearchFocused ? '#FFFFFF' : PUBLIC_GLASS_THEME.blue} />
+            </View>
             <TextInput
               accessibilityLabel="Search Consoulium and Campus candidates"
               autoCapitalize="none"
               autoCorrect={false}
+              onBlur={() => setIsSearchFocused(false)}
               onChangeText={setSearchText}
+              onFocus={() => setIsSearchFocused(true)}
               placeholder="Chest number or name"
               placeholderTextColor="#64748B"
               returnKeyType="search"
@@ -121,42 +248,138 @@ function DualCandidateSearchPage() {
             />
             {searchText ? <TouchableOpacity accessibilityLabel="Clear search" accessibilityRole="button" onPress={() => setSearchText('')} style={styles.clearButton}><X size={16} color={PUBLIC_GLASS_THEME.ink} /></TouchableOpacity> : null}
           </View>
-          {!debouncedSearch || isDebouncing ? (
+
+          <View accessibilityLiveRegion="polite" style={styles.resultsHeading}>
+            <Text style={styles.sectionTitle}>
+              {isDebouncing ? 'Updating search' : debouncedSearch ? 'Search results' : 'Search to get started'}
+            </Text>
+            {!isDebouncing && mergedCandidates.length > 0 ? (
+              <View style={styles.countPill}>
+                <Text style={styles.resultCount}>
+                  {mergedCandidates.length}{hasAnyMore ? '+' : ''} {mergedCandidates.length === 1 && !hasAnyMore ? 'candidate' : 'candidates'}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          {isDebouncing ? (
             <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
               <FestivalAccentBar height={5} />
-              <View style={styles.stateCardBody}><Text style={styles.mutedText}>{isDebouncing ? 'Updating search…' : 'Enter a name or chest number to search both festivals.'}</Text></View>
-            </View>
-          ) : sources.map(({ name, tenantId, search }) => {
-            const candidates = search.data?.pages.flatMap((page) => page.items) ?? [];
-            return (
-              <View key={tenantId} style={{ marginTop: 22 }} accessibilityLiveRegion="polite">
-                <Text style={styles.sectionTitle}>{name} · {candidates.length}{search.hasNextPage ? '+' : ''} candidates</Text>
-                {search.isPending || (search.isFetching && !candidates.length) ? (
-                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blue} /><Text style={styles.mutedText}>Searching {name}…</Text></View></View>
-                ) : search.isError && !candidates.length ? (
-                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><Text style={styles.stateTitle}>{name} search unavailable</Text><Text style={styles.mutedText}>Other festival results remain available.</Text><TouchableOpacity accessibilityRole="button" onPress={() => void search.refetch()} style={[styles.retryButton, webPrimaryGradient]}><Text style={styles.retryText}>Try again</Text></TouchableOpacity></View></View>
-                ) : !candidates.length ? (
-                  <View style={[styles.stateCardWrap, webGlassSurface(18)]}><View style={styles.stateCardBody}><Text style={styles.mutedText}>No matching {name} candidates.</Text></View></View>
-                ) : (
-                  <View style={[styles.resultsGrid, width >= 760 && styles.resultsGridWide]}>
-                    {candidates.map((candidate, index) => {
-                      const accent = CARD_ACCENTS[getStableAccentIndex(candidate.slug, index)];
-                      return <TouchableOpacity key={`${tenantId}:${candidate.slug}`} accessibilityRole="button" accessibilityHint={`Opens ${name} candidate profile`} onPress={() => router.push({ pathname: '/candidate/[slug]', params: { slug: candidate.slug, tenant_id: tenantId } } as any)} style={[styles.candidateCard, webGlassSurface(18), { backgroundColor: accent.bg, borderColor: accent.border }, width >= 760 && styles.candidateCardWide]}>
-                        <View style={[styles.avatarBadge, { backgroundColor: accent.avatarBg, borderColor: accent.border }]}><Text style={[styles.avatarBadgeText, { color: accent.text }]}>{candidate.name?.trim().charAt(0).toUpperCase() || 'C'}</Text></View>
-                        <View style={styles.candidateInfo}><Text numberOfLines={2} style={styles.candidateName}>{candidate.name}</Text><View style={styles.metadataRow}><View style={styles.chestTag}><Text style={styles.chestTagText}>{name} · Chest {candidate.chest_number || '–'}</Text></View></View></View>
-                        <View style={styles.chevronChip}><ChevronRight size={17} color={PUBLIC_GLASS_THEME.ink} /></View>
-                      </TouchableOpacity>;
-                    })}
-                  </View>
-                )}
-                {search.isFetchNextPageError ? <TouchableOpacity accessibilityRole="button" onPress={() => void search.fetchNextPage()} style={styles.inlineRetryPill}><Text style={styles.inlineRetryText}>Retry loading {name}</Text></TouchableOpacity> : null}
-                {search.hasNextPage && !search.isFetchNextPageError ? <TouchableOpacity accessibilityRole="button" disabled={search.isFetchingNextPage} onPress={() => void search.fetchNextPage()} style={[styles.loadMoreButton, webPrimaryGradient]}><Text style={styles.loadMoreText}>{search.isFetchingNextPage ? 'Loading…' : `Load more ${name} candidates`}</Text></TouchableOpacity> : null}
+              <View style={styles.stateCardBody}>
+                <ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blue} />
+                <Text style={styles.mutedText}>Updating search…</Text>
               </View>
-            );
-          })}
+            </View>
+          ) : !debouncedSearch ? (
+            <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
+              <FestivalAccentBar height={5} />
+              <View style={styles.stateCardBody}>
+                <View style={styles.emptyBadge}>
+                  <Search size={21} color={PUBLIC_GLASS_THEME.blue} />
+                </View>
+                <Text style={styles.stateTitle}>Enter a name or chest number</Text>
+                <Text style={styles.mutedText}>Matching candidate profiles will appear here.</Text>
+              </View>
+            </View>
+          ) : mergedCandidates.length === 0 && isAnyInitialLoading ? (
+            <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
+              <FestivalAccentBar height={5} />
+              <View style={styles.stateCardBody}>
+                <ActivityIndicator size="small" color={PUBLIC_GLASS_THEME.blue} />
+                <Text style={styles.mutedText}>Searching candidates…</Text>
+              </View>
+            </View>
+          ) : mergedCandidates.length === 0 && allSourcesFailed ? (
+            <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
+              <FestivalAccentBar height={5} />
+              <View style={styles.stateCardBody}>
+                <Text style={styles.stateTitle}>Search could not be completed</Text>
+                <Text style={styles.mutedText}>Check your connection and try again.</Text>
+                <TouchableOpacity accessibilityRole="button" onPress={retryFailedSources} style={[styles.retryButton, webPrimaryGradient]}>
+                  <Text style={styles.retryText}>Try again</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : mergedCandidates.length === 0 ? (
+            <View style={[styles.stateCardWrap, webGlassSurface(18)]}>
+              <FestivalAccentBar height={5} />
+              <View style={styles.stateCardBody}>
+                <View style={[styles.emptyBadge, { backgroundColor: PUBLIC_GLASS_THEME.redSoft, borderColor: PUBLIC_GLASS_THEME.redBorder }]}>
+                  <UserRound size={20} color={PUBLIC_GLASS_THEME.redText} />
+                </View>
+                <Text style={styles.stateTitle}>No candidates found</Text>
+                <Text style={styles.mutedText}>
+                  {failedSources.length > 0
+                    ? `${failedSources.map((s) => s.name).join(' & ')} search unavailable. Try again.`
+                    : 'Try another spelling or chest number.'}
+                </Text>
+                {failedSources.length > 0 ? (
+                  <TouchableOpacity accessibilityRole="button" onPress={retryFailedSources} style={[styles.retryButton, webPrimaryGradient]}>
+                    <Text style={styles.retryText}>Try again</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.resultsGrid, isWide && styles.resultsGridWide]}>
+              {mergedCandidates.map((item, index) => (
+                <CandidateSearchResultCard
+                  key={`${item.tenantId}:${item.candidate.slug}`}
+                  candidate={item.candidate}
+                  festivalName={item.festivalName}
+                  index={index}
+                  isWide={isWide}
+                  onPress={() => router.push({ pathname: '/candidate/[slug]', params: { slug: item.candidate.slug, tenant_id: item.tenantId } } as any)}
+                />
+              ))}
+            </View>
+          )}
+
+          {debouncedSearch && mergedCandidates.length > 0 && failedSources.length > 0 ? (
+            <View style={[styles.inlineError, webGlassSurface(16)]}>
+              <Text style={styles.inlineErrorText}>
+                {failedSources.map((s) => s.name).join(' & ')} search unavailable.
+              </Text>
+              <TouchableOpacity accessibilityRole="button" onPress={retryFailedSources} style={styles.inlineRetryPill}>
+                <Text style={styles.inlineRetryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {hasNextPageError ? (
+            <View style={[styles.inlineError, webGlassSurface(16)]}>
+              <Text style={styles.inlineErrorText}>More results could not be loaded.</Text>
+              <TouchableOpacity
+                accessibilityRole="button"
+                onPress={() => {
+                  sources.forEach(({ search }) => {
+                    if (search.isFetchNextPageError) void search.fetchNextPage();
+                  });
+                }}
+                style={styles.inlineRetryPill}
+              >
+                <Text style={styles.inlineRetryText}>Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {hasAnyMore && !hasNextPageError ? (
+            <TouchableOpacity
+              accessibilityRole="button"
+              disabled={isFetchingMore}
+              onPress={loadMoreFromAllSources}
+              style={[styles.loadMoreButton, webPrimaryGradient]}
+            >
+              {isFetchingMore ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text style={styles.loadMoreText}>Load more candidates</Text>}
+            </TouchableOpacity>
+          ) : null}
         </View>
       </ScrollView>
-      <PublicFestivalMenu currentId="find-me" tenantId={DEFAULT_TENANT_ID} />
+      <PublicFestivalMenu
+        currentId="find-me"
+        tenantId={DEFAULT_TENANT_ID}
+        onResetScroll={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+      />
     </PublicGlassBackdrop>
   );
 }
@@ -180,7 +403,10 @@ function ScopedCandidateSearchPage() {
     && publicFeatures.sections.public_page.results
     && publicFeatures.sections.public_page.participant_results;
   const search = usePublicCandidateSearch(tenantId, festivalId, debouncedSearch.trim().toLowerCase(), !featuresLoading && publicSearchEnabled);
-  const candidates = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
+  const candidates = useMemo(
+    () => sortCandidatesByRelevance(search.data?.pages.flatMap((page) => page.items) ?? [], debouncedSearch),
+    [search.data, debouncedSearch],
+  );
   const isWide = width >= 760;
   const isDebouncing = searchText.trim() !== debouncedSearch;
 
@@ -367,56 +593,15 @@ function ScopedCandidateSearchPage() {
             </View>
           ) : (
             <View style={[styles.resultsGrid, isWide && styles.resultsGridWide]}>
-              {candidates.map((candidate, index) => {
-                const accent = CARD_ACCENTS[getStableAccentIndex(candidate.slug, index)];
-                const initials = (candidate.name || 'C')
-                  .trim()
-                  .split(/\s+/)
-                  .slice(0, 2)
-                  .map((p) => p.charAt(0))
-                  .join('')
-                  .toUpperCase();
-                return (
-                  <TouchableOpacity
-                    key={candidate.slug}
-                    accessibilityHint="Opens the candidate's public profile"
-                    accessibilityRole="button"
-                    onPress={() => openProfile(candidate.slug)}
-                    style={[
-                      styles.candidateCard,
-                      webGlassSurface(18),
-                      {
-                        backgroundColor: accent.bg,
-                        borderColor: accent.border,
-                        ...(Platform.OS === 'web' ? { backgroundImage: accent.gradient } as any : {}),
-                      },
-                      isWide && styles.candidateCardWide,
-                    ]}
-                  >
-                    <View style={[styles.avatarBadge, { backgroundColor: accent.avatarBg, borderColor: accent.border }]}>
-                      <Text style={[styles.avatarBadgeText, { color: accent.text }]}>{initials}</Text>
-                    </View>
-                    <View style={styles.candidateInfo}>
-                      <Text numberOfLines={2} style={styles.candidateName}>{candidate.name}</Text>
-                      <View style={styles.metadataRow}>
-                        {candidate.chest_number ? (
-                          <View style={styles.chestTag}>
-                            <Text style={styles.chestTagText}>Chest {candidate.chest_number}</Text>
-                          </View>
-                        ) : null}
-                        {candidate.category_code ? (
-                          <View style={styles.categoryTag}>
-                            <Text style={styles.categoryTagText}>{candidate.category_code}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-                    <View style={styles.chevronChip}>
-                      <ChevronRight size={17} color={PUBLIC_GLASS_THEME.ink} />
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+              {candidates.map((candidate, index) => (
+                <CandidateSearchResultCard
+                  key={candidate.slug}
+                  candidate={candidate}
+                  index={index}
+                  isWide={isWide}
+                  onPress={() => openProfile(candidate.slug)}
+                />
+              ))}
             </View>
           )}
 

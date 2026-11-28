@@ -227,8 +227,8 @@
     for (const link of document.querySelectorAll('.nav__links a[href], .menu__pages a[href], .menu__chips a[href], .footer__links a[href], a[href="/"]')) {
       const current = link.getAttribute('href');
       const currentPath = current ? new URL(current, location.origin).pathname : '';
-      const isDrawerGallery = link.closest('.menu__pages') && (currentPath === '/contributors' || currentPath === '/gallery');
-      if (isDrawerGallery || hiddenTargets.has(current) || hiddenTargets.has(currentPath)) {
+      const isDuplicateGallery = link.closest('.nav__links, .menu__pages') && (currentPath === '/contributors' || currentPath === '/gallery');
+      if (isDuplicateGallery || hiddenTargets.has(current) || hiddenTargets.has(currentPath)) {
         const listItem = link.closest('.menu__list > li');
         if (listItem) {
           listItem.hidden = true;

@@ -154,8 +154,8 @@
         <div class="conso-coming-soon-dialog">
           <div class="conso-coming-soon-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           <div class="conso-coming-soon-badge">Student Portal</div>
-          <h2 class="conso-coming-soon-title" id="conso-coming-soon-heading">Coming Soon</h2>
-          <p class="conso-coming-soon-desc">Student Portal will be available soon. Stay tuned for candidate search and live updates.</p>
+          <h2 class="conso-coming-soon-title" id="conso-coming-soon-heading">Available Soon</h2>
+          <p class="conso-coming-soon-desc">Student Portal will be available very soon! You will be able to check candidate profiles, chest numbers, and live results right here.</p>
           <button type="button" class="conso-coming-soon-btn" data-close-coming-soon>Got it</button>
         </div>
       `;
@@ -178,25 +178,33 @@
   }
 
   function scrollBelowHero() {
+    document.documentElement.classList.remove('is-locked');
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const candidates = [
-      document.getElementById('journey'),
-      document.getElementById('race'),
-      document.getElementById('register'),
-    ];
+    const isMobileViewport = matchMedia('(max-width: 899px)').matches;
+    const candidates = isMobileViewport
+      ? [
+          document.getElementById('race') || document.querySelector('section.race'),
+          document.getElementById('register') || document.querySelector('section.register'),
+        ]
+      : [
+          document.getElementById('journey') || document.querySelector('section.journey'),
+          document.getElementById('race') || document.querySelector('section.race'),
+          document.getElementById('register') || document.querySelector('section.register'),
+        ];
     const target = candidates.find((el) => el && getComputedStyle(el).display !== 'none' && el.offsetHeight > 0);
+    const navOffset = isMobileViewport ? -56 : 0;
     if (target) {
       if (!reduced && typeof window.__consoSmoothScrollTo === 'function') {
-        window.__consoSmoothScrollTo(target, 0);
+        window.__consoSmoothScrollTo(target, navOffset);
       } else {
-        const top = Math.max(0, Math.round(target.getBoundingClientRect().top + window.scrollY));
+        const top = Math.max(0, Math.round(target.getBoundingClientRect().top + window.scrollY + navOffset));
         window.scrollTo({ top, behavior: reduced ? 'instant' : 'smooth' });
       }
       return;
     }
     const hero = document.querySelector('.hero');
     const fallbackTop = hero
-      ? Math.max(0, Math.round(hero.getBoundingClientRect().bottom + window.scrollY))
+      ? Math.max(0, Math.round(hero.getBoundingClientRect().bottom + window.scrollY + navOffset))
       : window.innerHeight;
     window.scrollTo({ top: fallbackTop, behavior: reduced ? 'instant' : 'smooth' });
   }
@@ -254,8 +262,9 @@
       return;
     }
 
-    // 2. Student Portal buttons (top nav, hero ghost CTA, mobile menu drawer) -> Coming Soon popup
-    if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta')) {
+    // 2. Student Portal buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> Available Soon popup
+    const rawHref = link.getAttribute('href') || '';
+    if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta') || rawHref.startsWith('/candidate-search')) {
       event.preventDefault();
       event.stopImmediatePropagation();
       const openMenuBtn = document.querySelector('.nav__menu.is-open, .nav__menu[aria-expanded="true"]');
@@ -265,7 +274,6 @@
     }
 
     if (!link.href) return;
-    const rawHref = link.getAttribute('href') || '';
     if (rawHref === '#' || rawHref.startsWith('#')) {
       if (rawHref.length > 1) {
         const hashTarget = document.getElementById(rawHref.slice(1));

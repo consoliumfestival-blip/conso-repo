@@ -1,8 +1,22 @@
 // Live public standings from /api/public-version & /api/public-snapshot without changing the home scene.
-import { v as smoothScrollTo } from '/assets/RouteLink-conso26v2.js';
+import { m as getLenis, v as smoothScrollTo } from '/assets/RouteLink-conso26v2.js';
 
 if (typeof window !== 'undefined') {
-  window.__consoSmoothScrollTo = smoothScrollTo;
+  window.__consoSmoothScrollTo = (target, offset = 0) => {
+    document.documentElement.classList.remove('is-locked');
+    const lenis = typeof getLenis === 'function' ? getLenis() : null;
+    if (lenis && typeof lenis.scrollTo === 'function') {
+      lenis.start?.();
+      lenis.scrollTo(target, {
+        offset,
+        duration: 1.15,
+        easing: (t) => 1 - Math.pow(1 - t, 4),
+        force: true,
+      });
+      return;
+    }
+    smoothScrollTo(target, offset);
+  };
 }
 
 const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';

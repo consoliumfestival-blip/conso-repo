@@ -22,12 +22,13 @@ export default function CandidateSearchPage() {
   const routeTenant = Array.isArray(params.tenant_id) ? params.tenant_id[0] : params.tenant_id;
   const rawTenantId = routeTenant || authTenantId || LEGACY_TENANT_ALIAS;
   const tenantId = rawTenantId === LEGACY_TENANT_ALIAS ? DEFAULT_TENANT_ID : rawTenantId;
+  const isConsouliumPortal = tenantId === DEFAULT_TENANT_ID;
   const festivalId = Array.isArray(params.festival_id) ? params.festival_id[0] : params.festival_id;
-  const { settings: publicFeatures, isLoading: featuresLoading } = useTenantFeatures(tenantId, true);
+  const { settings: publicFeatures, isLoading: featuresLoading } = useTenantFeatures(tenantId, !isConsouliumPortal);
   const publicSearchEnabled = publicFeatures.modules.public_page
     && publicFeatures.sections.public_page.results
     && publicFeatures.sections.public_page.participant_results;
-  const search = usePublicCandidateSearch(tenantId, festivalId, debouncedSearch.trim().toLowerCase(), !featuresLoading && publicSearchEnabled);
+  const search = usePublicCandidateSearch(tenantId, festivalId, debouncedSearch.trim().toLowerCase(), !isConsouliumPortal && !featuresLoading && publicSearchEnabled);
   const candidates = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
   const isWide = width >= 760;
   const isDebouncing = searchText.trim() !== debouncedSearch;
@@ -36,6 +37,47 @@ export default function CandidateSearchPage() {
     const timer = setTimeout(() => setDebouncedSearch(searchText.trim()), 300);
     return () => clearTimeout(timer);
   }, [searchText]);
+
+  if (isConsouliumPortal) {
+    const handleClosePortalPopup = () => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          window.location.assign('/explore');
+        }
+        return;
+      }
+      router.back();
+    };
+
+    return (
+      <View style={styles.popupBackdrop}>
+        <Head>
+          <title>Student Portal · Available Soon</title>
+        </Head>
+        <View style={styles.popupCard} accessibilityRole="alert">
+          <View style={styles.popupBars}>
+            <View style={[styles.popupBarSegment, { backgroundColor: '#6D28D9' }]} />
+            <View style={[styles.popupBarSegment, { backgroundColor: '#E11D48' }]} />
+            <View style={[styles.popupBarSegment, { backgroundColor: '#2563EB' }]} />
+            <View style={[styles.popupBarSegment, { backgroundColor: '#10B981' }]} />
+            <View style={[styles.popupBarSegment, { backgroundColor: '#F59E0B' }]} />
+          </View>
+          <View style={styles.popupBadge}>
+            <Text style={styles.popupBadgeText}>STUDENT PORTAL</Text>
+          </View>
+          <Text style={styles.popupTitle}>Available Soon</Text>
+          <Text style={styles.popupMessage}>
+            Student Portal will be available very soon! You will be able to check candidate profiles, chest numbers, and live results right here.
+          </Text>
+          <TouchableOpacity accessibilityRole="button" onPress={handleClosePortalPopup} style={styles.popupActionBtn}>
+            <Text style={styles.popupActionText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   if (featuresLoading) {
     return <View style={styles.loadingScreen}>
@@ -209,4 +251,14 @@ const styles = {
   inlineRetryText: { color: '#6EE7B7', fontSize: 13, fontWeight: '700' as const },
   loadMoreButton: { minHeight: 46, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, marginTop: 12, borderRadius: 11, backgroundColor: '#087F68' },
   loadMoreText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' as const },
+  popupBackdrop: { flex: 1, minHeight: (Platform.OS === 'web' ? '100vh' : undefined) as any, backgroundColor: '#0B1124', alignItems: 'center' as const, justifyContent: 'center' as const, padding: 20 },
+  popupCard: { position: 'relative' as const, width: '100%' as const, maxWidth: 380, backgroundColor: '#FFFFFF', borderRadius: 24, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24, alignItems: 'center' as const, overflow: 'hidden' as const, borderWidth: 1, borderColor: 'rgba(32,33,36,0.12)' },
+  popupBars: { position: 'absolute' as const, top: 0, left: 0, right: 0, height: 5, flexDirection: 'row' as const },
+  popupBarSegment: { flex: 1, height: 5 },
+  popupBadge: { backgroundColor: 'rgba(37,99,235,0.1)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 12 },
+  popupBadgeText: { color: '#2563EB', fontSize: 11, fontWeight: '800' as const, letterSpacing: 1.3 },
+  popupTitle: { color: '#10142F', fontSize: 24, fontWeight: '800' as const, textAlign: 'center' as const, marginBottom: 8 },
+  popupMessage: { color: '#5F6368', fontSize: 14.5, lineHeight: 22, textAlign: 'center' as const, marginBottom: 20 },
+  popupActionBtn: { backgroundColor: '#202124', borderRadius: 999, paddingHorizontal: 28, paddingVertical: 13, alignItems: 'center' as const, justifyContent: 'center' as const },
+  popupActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' as const },
 };

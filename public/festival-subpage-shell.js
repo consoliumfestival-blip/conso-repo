@@ -264,8 +264,8 @@
         <div class="conso-coming-soon-dialog">
           <div class="conso-coming-soon-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
           <div class="conso-coming-soon-badge">Student Portal</div>
-          <h2 class="conso-coming-soon-title" id="conso-sub-coming-soon-heading">Coming Soon</h2>
-          <p class="conso-coming-soon-desc">Student Portal will be available soon. Stay tuned for candidate search and live updates.</p>
+          <h2 class="conso-coming-soon-title" id="conso-sub-coming-soon-heading">Available Soon</h2>
+          <p class="conso-coming-soon-desc">Student Portal will be available very soon! You will be able to check candidate profiles, chest numbers, and live results right here.</p>
           <button type="button" class="conso-coming-soon-btn" data-close-coming-soon>Got it</button>
         </div>
       `;
@@ -403,6 +403,13 @@
     if (!rawHref || rawHref.startsWith('#')) return;
     const url = new URL(link.href, location.origin);
     if (url.origin !== location.origin) return;
+    if (url.pathname === '/candidate-search') {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (drawer.classList.contains('is-open')) setDrawer(false);
+      openComingSoonModal();
+      return;
+    }
     e.preventDefault();
     if (url.pathname === location.pathname && !url.hash) {
       if (drawer.classList.contains('is-open')) setDrawer(false);

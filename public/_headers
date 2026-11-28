@@ -42,3 +42,18 @@
 
 /media
   Cache-Control: public, max-age=0, must-revalidate
+
+/candidate-search
+  Cache-Control: public, max-age=0, must-revalidate
+
+/nav-routes.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/festival-subpage-shell.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/festival-curtain.js
+  Cache-Control: public, max-age=0, must-revalidate
+
+/home-leaderboard.js
+  Cache-Control: public, max-age=0, must-revalidate

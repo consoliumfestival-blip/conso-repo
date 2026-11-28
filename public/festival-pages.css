@@ -122,13 +122,16 @@ button {
   );
 }
 
-/* Gallery page: deep darker forest-green gradient backdrop preserving all glass effects */
+/* Gallery & Media pages: deep darker forest-green gradient backdrop preserving all glass effects */
 html:has(body[data-page="gallery"]),
-body[data-page="gallery"] {
+html:has(body[data-page="media"]),
+body[data-page="gallery"],
+body[data-page="media"] {
   background: #081509;
 }
 
-body[data-page="gallery"] .sub-atmosphere {
+body[data-page="gallery"] .sub-atmosphere,
+body[data-page="media"] .sub-atmosphere {
   background:
     radial-gradient(64% 52% at 16% 18%, rgba(24, 63, 22, 0.72) 0%, rgba(16, 44, 15, 0.36) 50%, transparent 78%),
     radial-gradient(66% 58% at 84% 72%, rgba(54, 93, 34, 0.44) 0%, rgba(28, 63, 24, 0.24) 52%, transparent 80%),
@@ -136,11 +139,13 @@ body[data-page="gallery"] .sub-atmosphere {
     linear-gradient(150deg, #050d06 0%, #0a1b0c 28%, #102a12 54%, #183f16 78%, #071208 100%);
 }
 
-body[data-page="gallery"] .sub-atmosphere__svg {
+body[data-page="gallery"] .sub-atmosphere__svg,
+body[data-page="media"] .sub-atmosphere__svg {
   opacity: 0.4;
 }
 
-body[data-page="gallery"] .sub-atmosphere__horizon {
+body[data-page="gallery"] .sub-atmosphere__horizon,
+body[data-page="media"] .sub-atmosphere__horizon {
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -801,6 +806,13 @@ body[data-page="gallery"] .sub-atmosphere__horizon {
   margin-bottom: 24px;
 }
 
+.sub-hero__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .sub-eyebrow {
   display: inline-flex;
   align-items: center;
@@ -1287,6 +1299,23 @@ body[data-page="standings"] .sub-hero {
   grid-auto-flow: dense;
   grid-auto-rows: calc(((100cqi - 11 * var(--gal-gap)) / 12) * 1.38);
   gap: var(--gal-gap);
+}
+
+.bento-gallery > .empty {
+  grid-column: 1 / -1;
+}
+
+.media-pagination {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.media-pagination[hidden] {
+  display: none;
 }
 
 .bento-card {

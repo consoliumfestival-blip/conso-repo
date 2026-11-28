@@ -5,34 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <script>if (location.pathname === "/festival-media.html") history.replaceState(null, "", "/media" + location.search + location.hash);</script>
     <title>Media · Consoulium 2k26</title>
-    <meta name="theme-color" content="#050816" />
+    <meta name="theme-color" content="#081509" />
     <link rel="icon" href="/brand/favicon.ico" />
-    <script src="/festival-curtain.js?v=20261128c"></script>
-    <link rel="stylesheet" href="/festival-pages.css?v=20261128a" />
+    <script src="/festival-curtain.js?v=20261128f"></script>
+    <link rel="stylesheet" href="/festival-pages.css?v=20261128f" />
   </head>
   <body data-page="media">
     <div class="sub-page">
       <main class="sub-main">
         <div class="sub-hero">
           <div>
-            <span class="sub-eyebrow">Media Center · Event Media</span>
+            <span class="sub-eyebrow">Visual Moments · Ayatic Codex</span>
             <h1>Media</h1>
-            <p class="sub-lede">Official Consoulium 2k26 event photos and media updates in full clarity.</p>
           </div>
-          <span class="meta-pill" id="updated"></span>
+          <div class="sub-hero__actions">
+            <span class="meta-pill" id="updated"></span>
+            <button class="glass-btn" id="refresh" type="button" aria-label="Reload new photos">Reload</button>
+          </div>
         </div>
-        <div class="glass-tools">
-          <input id="search" type="search" placeholder="Search photos or media" aria-label="Search media" />
-          <button class="glass-btn" id="refresh" type="button">Refresh</button>
-        </div>
-        <div class="filter-chips" id="filters" aria-label="Filter media by format"></div>
-        <div id="content" class="media-grid" aria-live="polite">
-          <div class="empty">Loading media assets…</div>
+        <div class="bento-wrap">
+          <div id="content" class="bento-gallery" aria-live="polite">
+            <div class="empty">Loading media moments…</div>
+          </div>
+          <div id="media-pagination" class="media-pagination" hidden></div>
         </div>
       </main>
     </div>
-    <script src="/festival-subpage-shell.js?v=20261128c" defer></script>
+    <script src="/festival-subpage-shell.js?v=20261128f" defer></script>
     <script src="/festival-cursor.js?v=20261127d" defer></script>
-    <script src="/festival-pages.js?v=20261128e" defer></script>
+    <script src="/festival-pages.js?v=20261128f" defer></script>
   </body>
 </html>

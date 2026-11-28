@@ -1,7 +1,9 @@
 (() => {
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
-  const SNAPSHOT_TTL_MS = 60_000;
   const STATIC_PAGES = new Set(['gallery', 'news', 'brochure']);
+  const MEDIA_PAGE_SIZE = 20;
+  const navEntry = typeof performance !== 'undefined' ? performance.getEntriesByType?.('navigation')?.[0] : null;
+  const isHardReload = navEntry?.type === 'reload';
   const params = new URLSearchParams(location.search);
   const rawTenant = params.get('tenant_id');
   const tenant = rawTenant === 'f87172d1-ed27-4db4-842c-cc00d3d56de2'
@@ -16,6 +18,7 @@
   const filtersHost = document.getElementById('filters');
   const refreshBtn = document.getElementById('refresh');
   const featuredHost = document.getElementById('featured');
+  const mediaPaginationHost = document.getElementById('media-pagination');
 
   const TEAM_PALETTE = ['#6D28D9', '#E11D48', '#2563EB', '#10B981', '#F59E0B'];
   const TEAM_COLOR_RULES = [
@@ -115,14 +118,13 @@
   }
 
   let snapshot = null;
-  let confirmedAt = 0;
-  let loadedServerSearch = '';
-  let searchTimer = 0;
   let activeFilter = 'all';
   let requestId = 0;
   let standingsLimit = 5;
   const cardStore = new Map();
   const teamColorIndex = new Map();
+  const mediaCardMap = new Map();
+  let mediaState = { items: [], pagination: null, loadingMore: false, etagPage1: null };
 
   // Shared modal / lightbox host (for Gallery, News, Media)
   const modal = document.createElement('div');
@@ -160,9 +162,10 @@
     if (lightboxList.length <= 1) return;
     for (const offset of [-1, 1]) {
       const neighbor = lightboxList[(idx + offset + lightboxList.length) % lightboxList.length];
-      if (neighbor?.image) {
+      const src = neighbor?.cachedImage || neighbor?.image;
+      if (src) {
         const pre = new Image();
-        pre.src = neighbor.image;
+        pre.src = src;
       }
     }
   }
@@ -200,9 +203,15 @@
     const stage = el('div', 'lightbox__stage');
     const img = document.createElement('img');
     img.className = 'lightbox__img';
-    img.src = item.image || item.thumb;
-    img.alt = item.alt || `Gallery photo ${lightboxIdx + 1}`;
+    img.src = item.cachedImage || item.image || item.thumb;
+    img.alt = item.alt || `Media photo ${lightboxIdx + 1}`;
     img.decoding = 'async';
+    img.onerror = () => {
+      if (!img.dataset.lbFallback && item.image && img.src !== item.image) {
+        img.dataset.lbFallback = '1';
+        img.src = item.image;
+      }
+    };
     stage.append(img);
 
     const nav = el('div', 'lightbox__nav');
@@ -368,7 +377,7 @@
   document.addEventListener('keydown', (e) => {
     if (modal.hidden) return;
     if (e.key === 'Escape') closeModal();
-    if (page === 'gallery' && lightboxList.length > 1) {
+    if ((page === 'gallery' || page === 'media') && lightboxList.length > 1) {
       if (e.key === 'ArrowRight') {
         lightboxIdx = (lightboxIdx + 1) % lightboxList.length;
         renderGalleryLightbox();
@@ -516,9 +525,15 @@
         const posterBox = el('div', 'result-modal__poster-item');
         const img = document.createElement('img');
         img.className = 'result-modal__poster-img';
-        img.src = poster.image_url || poster.thumb_url;
+        img.src = poster.cached_image_url || poster.image_url || poster.cached_thumb_url || poster.thumb_url;
         img.alt = `${headingText} Result Poster`;
         img.decoding = 'async';
+        img.onerror = () => {
+          if (!img.dataset.fallback && poster.image_url && img.src !== poster.image_url) {
+            img.dataset.fallback = '1';
+            img.src = poster.image_url;
+          }
+        };
 
         const posterActions = el('div', 'result-modal__poster-actions');
         const badge = el('span', 'meta-pill', poster.result_no != null ? `Result #${poster.result_no}` : (poster.format || 'Result Poster'));
@@ -619,10 +634,17 @@
         const leadPoster = matchedPosters[0];
         const thumbImg = document.createElement('img');
         thumbImg.className = 'result-card__poster-thumb';
-        thumbImg.src = leadPoster.thumb_url || leadPoster.image_url;
+        thumbImg.src = leadPoster.cached_thumb_url || leadPoster.thumb_url || leadPoster.cached_image_url || leadPoster.image_url;
         thumbImg.alt = `${heading} poster preview`;
         thumbImg.loading = 'lazy';
         thumbImg.decoding = 'async';
+        thumbImg.onerror = () => {
+          const direct = leadPoster.thumb_url || leadPoster.image_url;
+          if (!thumbImg.dataset.fallback && direct && thumbImg.src !== direct) {
+            thumbImg.dataset.fallback = '1';
+            thumbImg.src = direct;
+          }
+        };
         const previewMeta = el('div', 'result-card__poster-meta');
         previewMeta.append(
           el('strong', '', matchedPosters.length > 1 ? `${matchedPosters.length} Result Posters` : 'Poster Preview'),
@@ -990,83 +1012,215 @@
     if (!filtered.length && !(featuredHost && featuredHost.childElementCount)) setMessage('No bulletins found.');
   }
 
-  function renderMedia(term) {
-    const items = snapshot.items || [];
-    const formats = [...new Set(items.map((m) => m.format).filter(Boolean))];
-    renderFilterChips([['all', 'All Media'], ...formats.map((f) => [f, f])]);
+  const MEDIA_BENTO_SPANS = [
+    'hero', 'sm', 'sm',
+    'sm', 'sm', 'sm',
+    'md', 'md',
+    'sm', 'sm', 'sm',
+    'sm', 'sm', 'hero',
+    'sm', 'sm', 'sm',
+    'sm', 'sm', 'sm',
+  ];
 
-    const filtered = items.filter((m) => {
-      if (activeFilter !== 'all' && m.format !== activeFilter) return false;
-      if (term && ![m.title, m.subtitle, m.item_code, m.format, m.result_no != null ? `Result #${m.result_no}` : '']
-        .some((v) => String(v || '').toLocaleLowerCase().includes(term))) return false;
-      return true;
+  function persistMediaCache() {
+    if (!snapshot) return;
+    writeBrowserCache(MEDIA_STORAGE_KEY, {
+      etagPage1: mediaState.etagPage1 || null,
+      data: {
+        tenant_id: tenant,
+        festival_id: snapshot.festival_id ?? festivalId ?? null,
+        enabled: snapshot.enabled !== false,
+        generated_at: snapshot.generated_at || new Date().toISOString(),
+        items: mediaState.items,
+        pagination: mediaState.pagination,
+      },
+      fetchedAt: Date.now(),
     });
+  }
 
-    const lightboxItems = filtered.map((m) => ({
+  function renderMediaPagination() {
+    if (!mediaPaginationHost) return;
+    const items = mediaState.items || [];
+    const pag = mediaState.pagination;
+    const hasMore = Boolean(pag?.has_more && pag?.next_offset != null);
+    if (!hasMore || !items.length) {
+      mediaPaginationHost.hidden = true;
+      mediaPaginationHost.replaceChildren();
+      return;
+    }
+    const total = Math.max(items.length, Number(pag.total || items.length));
+    const countLabel = el('span', 'meta-pill', `Showing ${items.length} of ${total}`);
+    const moreBtn = el('button', 'glass-btn glass-btn--primary', mediaState.loadingMore ? 'Loading next 20…' : 'Show More');
+    moreBtn.type = 'button';
+    moreBtn.disabled = mediaState.loadingMore;
+    moreBtn.addEventListener('click', () => loadMoreMedia());
+    mediaPaginationHost.replaceChildren(countLabel, moreBtn);
+    mediaPaginationHost.hidden = false;
+  }
+
+  async function loadMoreMedia() {
+    const pag = mediaState.pagination;
+    if (mediaState.loadingMore || !pag?.has_more || pag?.next_offset == null) return;
+    mediaState.loadingMore = true;
+    renderMediaPagination();
+    try {
+      const nextParams = new URLSearchParams({
+        tenant_id: tenant,
+        section: 'media',
+        limit: String(MEDIA_PAGE_SIZE),
+        offset: String(pag.next_offset),
+      });
+      if (festivalId) nextParams.set('festival_id', festivalId);
+      const res = await fetch(`/api/public-media?${nextParams}`, {
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(12000),
+      });
+      if (!res.ok) throw new Error('Failed to load next media batch');
+      const data = await res.json();
+      if (data.tenant_id !== tenant) throw new Error('Invalid media scope');
+
+      const incoming = Array.isArray(data.items) ? data.items : [];
+      const seen = new Set(mediaState.items.map((item) => item.render_hash || item.id));
+      const merged = [...mediaState.items];
+      for (const item of incoming) {
+        const k = item.render_hash || item.id;
+        if (k && !seen.has(k)) {
+          seen.add(k);
+          merged.push(item);
+        }
+      }
+      mediaState.items = merged;
+      mediaState.pagination = data.pagination || { has_more: false, next_offset: null, total: merged.length };
+      if (snapshot) snapshot = { ...snapshot, items: merged, pagination: mediaState.pagination };
+      persistMediaCache();
+      renderMedia();
+    } catch {
+      // Keep already-loaded media intact cleanly on transient failure
+    } finally {
+      mediaState.loadingMore = false;
+      renderMediaPagination();
+    }
+  }
+
+  function renderMedia() {
+    const items = mediaState.items || [];
+    if (updated) {
+      const total = Number(mediaState.pagination?.total || items.length);
+      updated.textContent = items.length
+        ? (total > items.length ? `${items.length} of ${total} Moments` : `${items.length} Moments`)
+        : '';
+    }
+
+    if (!items.length) {
+      mediaCardMap.clear();
+      if (mediaPaginationHost) {
+        mediaPaginationHost.hidden = true;
+        mediaPaginationHost.replaceChildren();
+      }
+      setMessage('No event photos or media uploaded yet.');
+      return;
+    }
+
+    const lightboxItems = items.map((m) => ({
       image: m.image_url,
+      cachedImage: m.cached_image_url || '',
+      thumb: m.thumb_url,
       downloadUrl: m.download_url || m.image_url,
       originalDownloadPath: m.original_download_path || '',
-      alt: m.title || 'Media Center poster',
+      alt: m.title || 'Media photo',
       title: m.title || 'poster',
     }));
 
-    const frag = document.createDocumentFragment();
-    filtered.forEach((item, idx) => {
-      const card = el('article', 'glass-panel media-card');
-      const poster = el('button', 'media-card__poster media-card__poster--poster');
-      poster.type = 'button';
-      poster.setAttribute('aria-label', `View ${item.title || 'poster'} in full clarity`);
-      poster.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
-
-      const img = document.createElement('img');
-      img.src = item.thumb_url || item.image_url;
-      img.alt = item.title || 'Consoulium media photo';
-      img.loading = idx < 6 ? 'eager' : 'lazy';
-      img.decoding = 'async';
-      img.onerror = () => {
-        if (!img.dataset.fallbackTried && item.image_url && img.src !== item.image_url) {
-          img.dataset.fallbackTried = '1';
-          img.src = item.image_url;
-          return;
-        }
-        card.remove();
-        if (content.children.length === 0) {
-          setMessage(term ? 'No matching media found.' : 'No event photos or media uploaded yet.');
-        }
-      };
-
-      const badgeText = item.result_no != null ? `Result #${item.result_no}` : (item.format || 'Poster');
-      const resText = String(item.resolution || 'HD').toUpperCase();
-      poster.append(
-        img,
-        el('span', 'media-card__badge', badgeText),
-        el('span', 'media-card__duration', resText),
-      );
-
-      const body = el('div', 'media-card__body');
-      body.append(el('h2', '', item.title || 'Consoulium Poster'));
-      if (item.subtitle) body.append(el('p', 'glass-panel__sub', item.subtitle));
-
-      const foot = el('div', 'media-card__foot');
-      foot.append(el('span', 'meta-pill', formatDate(item.created_at, { dateStyle: 'medium' })));
-      const actions = el('div', 'media-card__actions');
-      const viewBtn = el('button', 'glass-btn', 'View');
-      viewBtn.type = 'button';
-      viewBtn.addEventListener('click', () => openGalleryLightbox(lightboxItems, idx));
-      const dl = el('a', 'glass-btn glass-btn--primary', 'Download');
-      dl.href = item.original_download_path || item.download_url || item.image_url;
-      dl.download = `${(item.title || 'poster').replace(/[^a-zA-Z0-9_-]+/g, '_')}`;
-      actions.append(viewBtn, dl);
-      foot.append(actions);
-
-      body.append(foot);
-      card.append(poster, body);
-      frag.append(card);
-    });
-    content.replaceChildren(frag);
-    if (!filtered.length) {
-      setMessage(term ? 'No matching media found.' : 'No event photos or media uploaded yet.');
+    const activeKeys = new Set(items.map((item) => item.render_hash || item.id));
+    for (const [k] of mediaCardMap) {
+      if (!activeKeys.has(k)) mediaCardMap.delete(k);
     }
+
+    const nodes = [];
+    items.forEach((item, idx) => {
+      const key = item.render_hash || item.id;
+      const span = items.length < 3 ? 'md' : MEDIA_BENTO_SPANS[idx % MEDIA_BENTO_SPANS.length];
+      let entry = mediaCardMap.get(key);
+      if (!entry) {
+        const card = el('button', `bento-card bento-card--${span} is-loading`);
+        card.type = 'button';
+        card.style.setProperty('--card-accent', TEAM_PALETTE[idx % TEAM_PALETTE.length]);
+        card.setAttribute('aria-label', item.title || `Open photo ${idx + 1}`);
+
+        const img = document.createElement('img');
+        img.src = item.cached_thumb_url || item.thumb_url || item.cached_image_url || item.image_url;
+        img.alt = item.title || `Consoulium media photo ${idx + 1}`;
+        img.decoding = 'async';
+        if (idx < 6) {
+          img.loading = 'eager';
+          img.setAttribute('fetchpriority', 'high');
+        } else {
+          img.loading = 'lazy';
+        }
+
+        const markLoaded = () => {
+          card.classList.remove('is-loading');
+          card.classList.add('is-loaded');
+        };
+        img.addEventListener('load', markLoaded, { once: true });
+        img.addEventListener('error', () => {
+          if (!img.dataset.fallbackStage && (item.cached_image_url || item.image_url)) {
+            const nextSrc = img.src === item.cached_thumb_url
+              ? (item.cached_image_url || item.thumb_url || item.image_url)
+              : item.image_url;
+            if (nextSrc && nextSrc !== img.src) {
+              img.dataset.fallbackStage = '1';
+              img.src = nextSrc;
+              return;
+            }
+          }
+          if (!img.dataset.directFallback && item.image_url && img.src !== item.image_url) {
+            img.dataset.directFallback = '1';
+            img.src = item.image_url;
+            return;
+          }
+          mediaCardMap.delete(key);
+          card.remove();
+          mediaState.items = mediaState.items.filter((x) => (x.render_hash || x.id) !== key);
+          persistMediaCache();
+          renderMediaPagination();
+          if (content.children.length === 0) {
+            setMessage('No event photos or media uploaded yet.');
+          }
+        });
+        if (img.complete && img.naturalWidth > 0) markLoaded();
+
+        card.append(img);
+        entry = { card, img, span, onClick: null };
+        card.addEventListener('click', () => entry.onClick?.());
+        mediaCardMap.set(key, entry);
+      } else if (entry.span !== span) {
+        entry.span = span;
+        const loaded = entry.card.classList.contains('is-loaded');
+        entry.card.className = `bento-card bento-card--${span} ${loaded ? 'is-loaded' : 'is-loading'}`;
+      }
+      entry.onClick = () => openGalleryLightbox(lightboxItems, idx);
+      nodes.push(entry.card);
+    });
+
+    const existing = Array.from(content.children);
+    const hasOnlyPrefixMatch = existing.length > 0
+      && existing.length <= nodes.length
+      && existing.every((node, i) => node === nodes[i]);
+
+    if (hasOnlyPrefixMatch) {
+      if (nodes.length > existing.length) {
+        const frag = document.createDocumentFragment();
+        for (let i = existing.length; i < nodes.length; i++) frag.append(nodes[i]);
+        content.append(frag);
+      }
+    } else if (existing.length !== nodes.length || !existing.every((node, i) => node === nodes[i])) {
+      content.replaceChildren(...nodes);
+    }
+
+    renderMediaPagination();
   }
 
   function renderBrochure() {
@@ -1133,16 +1287,16 @@
   }
 
   function render() {
-    if (!snapshot || (!STATIC_PAGES.has(page) && Date.now() >= confirmedAt + SNAPSHOT_TTL_MS)) {
-      if (!STATIC_PAGES.has(page)) {
-        snapshot = null;
-        if (updated) updated.textContent = '';
-      }
+    if (!snapshot) {
       setMessage('Public data is temporarily unavailable. Please try again.', true);
       return;
     }
     if (!isVisible(snapshot)) {
       if (filtersHost) filtersHost.replaceChildren();
+      if (mediaPaginationHost) {
+        mediaPaginationHost.hidden = true;
+        mediaPaginationHost.replaceChildren();
+      }
       setMessage(page === 'results' && snapshot.features?.sections?.results === true
         ? 'Results are not public yet.'
         : 'This public section is currently unavailable.');
@@ -1154,28 +1308,49 @@
     else if (page === 'standings') renderStandings(term);
     else if (page === 'gallery') renderGallery(term);
     else if (page === 'news') renderNews(term);
-    else if (page === 'media') renderMedia(term);
+    else if (page === 'media') renderMedia();
     else if (page === 'brochure') renderBrochure();
   }
 
-  const SNAP_STORAGE_KEY = `conso_pub_snap_v1:${tenant}:${festivalId || 'active'}`;
-  const MEDIA_STORAGE_KEY = `conso_pub_media_v2:${tenant}:${festivalId || 'active'}:media`;
-  const RESULT_POSTERS_STORAGE_KEY = `conso_pub_media_v2:${tenant}:${festivalId || 'active'}:result`;
-  const MEDIA_MIN_CHECK_GAP_MS = 15_000;
-  const SNAP_VISIBILITY_THROTTLE_MS = 5_000;
-  let lastMediaCheckAt = 0;
-  let lastResultPostersCheckAt = 0;
-  let lastSnapVisibilityAt = 0;
+  const SNAP_STORAGE_KEY = `conso_pub_snap_v2:${tenant}:${festivalId || 'active'}`;
+  const MEDIA_STORAGE_KEY = `conso_pub_media_v3:${tenant}:${festivalId || 'active'}:media`;
+  const RESULT_POSTERS_STORAGE_KEY = `conso_pub_media_v3:${tenant}:${festivalId || 'active'}:result`;
 
-  async function fetchResultPosters(force = false) {
+  function readBrowserCache(key) {
+    try {
+      const raw = localStorage.getItem(key) ?? sessionStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeBrowserCache(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      try {
+        sessionStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // ignore storage quota errors
+      }
+    }
+  }
+
+  function clearBrowserCache(key) {
+    try { localStorage.removeItem(key); } catch {}
+    try { sessionStorage.removeItem(key); } catch {}
+  }
+
+  async function fetchResultPosters(force = false, targetRevision = null) {
     if (page !== 'results') return;
-    const cached = readSessionCache(RESULT_POSTERS_STORAGE_KEY);
+    const cached = readBrowserCache(RESULT_POSTERS_STORAGE_KEY);
     if (cached?.data && cached.data.tenant_id === tenant && Array.isArray(cached.data.items)) {
       if (!resultPosters.length) {
         resultPosters = cached.data.items;
         if (snapshot) render();
       }
-      if (!force && Date.now() - Number(cached.fetchedAt || lastResultPostersCheckAt || 0) < MEDIA_MIN_CHECK_GAP_MS) {
+      if (!force && (!targetRevision || cached.revision === targetRevision)) {
         return;
       }
     }
@@ -1184,7 +1359,6 @@
     if (festivalId) posterParams.set('festival_id', festivalId);
     const headers = { Accept: 'application/json' };
     if (!force && cached?.etag) headers['If-None-Match'] = cached.etag;
-    lastResultPostersCheckAt = Date.now();
 
     try {
       const res = await fetch(`/api/public-media?${posterParams}`, {
@@ -1194,7 +1368,11 @@
         signal: AbortSignal.timeout(10000),
       });
       if (res.status === 304 && cached?.data) {
-        writeSessionCache(RESULT_POSTERS_STORAGE_KEY, { ...cached, fetchedAt: Date.now() });
+        writeBrowserCache(RESULT_POSTERS_STORAGE_KEY, {
+          ...cached,
+          revision: targetRevision ?? cached.revision ?? snapshot?.revision ?? null,
+          fetchedAt: Date.now(),
+        });
         resultPosters = Array.isArray(cached.data.items) ? cached.data.items : [];
         if (snapshot) render();
         return;
@@ -1204,40 +1382,20 @@
       if (data.tenant_id !== tenant) return;
       const etag = res.headers.get('ETag') || null;
       if (data.enabled === false) {
-        clearSessionCache(RESULT_POSTERS_STORAGE_KEY);
+        clearBrowserCache(RESULT_POSTERS_STORAGE_KEY);
         resultPosters = [];
       } else {
-        writeSessionCache(RESULT_POSTERS_STORAGE_KEY, { etag, data, fetchedAt: Date.now() });
+        writeBrowserCache(RESULT_POSTERS_STORAGE_KEY, {
+          etag,
+          data,
+          revision: targetRevision ?? snapshot?.revision ?? null,
+          fetchedAt: Date.now(),
+        });
         resultPosters = Array.isArray(data.items) ? data.items : [];
       }
       if (snapshot) render();
     } catch {
       // Keep result cards working cleanly even if poster lookup fails
-    }
-  }
-
-  function readSessionCache(key) {
-    try {
-      const raw = sessionStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function writeSessionCache(key, value) {
-    try {
-      sessionStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // ignore storage quota errors
-    }
-  }
-
-  function clearSessionCache(key) {
-    try {
-      sessionStorage.removeItem(key);
-    } catch {
-      // ignore
     }
   }
 
@@ -1251,47 +1409,53 @@
         const data = await response.json();
         if (id !== requestId) return;
         snapshot = data;
-        confirmedAt = Number.POSITIVE_INFINITY;
         render();
         return;
       }
 
       if (page === 'media') {
-        const cachedMedia = readSessionCache(MEDIA_STORAGE_KEY);
-        if (!force && cachedMedia?.data && cachedMedia.data.tenant_id === tenant) {
+        const cachedMedia = readBrowserCache(MEDIA_STORAGE_KEY);
+        if (cachedMedia?.data && cachedMedia.data.tenant_id === tenant && Array.isArray(cachedMedia.data.items)) {
           if (!snapshot) {
             snapshot = cachedMedia.data;
-            confirmedAt = Date.now();
-            if (updated && cachedMedia.data.generated_at) {
-              updated.textContent = `Updated ${formatDate(cachedMedia.data.generated_at, { timeStyle: 'short' })}`;
-            }
+            mediaState = {
+              items: cachedMedia.data.items,
+              pagination: cachedMedia.data.pagination || null,
+              loadingMore: false,
+              etagPage1: cachedMedia.etagPage1 || null,
+            };
             render();
           }
-          if (Date.now() - Number(cachedMedia.fetchedAt || lastMediaCheckAt || 0) < MEDIA_MIN_CHECK_GAP_MS) {
+          if (!force && !isHardReload) {
             return;
           }
         }
 
-        const mediaParams = new URLSearchParams({ tenant_id: tenant, section: 'media' });
+        const mediaParams = new URLSearchParams({
+          tenant_id: tenant,
+          section: 'media',
+          limit: String(MEDIA_PAGE_SIZE),
+          offset: '0',
+        });
         if (festivalId) mediaParams.set('festival_id', festivalId);
         const headers = { Accept: 'application/json' };
-        if (cachedMedia?.etag) headers['If-None-Match'] = cachedMedia.etag;
-        lastMediaCheckAt = Date.now();
+        if (!force && cachedMedia?.etagPage1) headers['If-None-Match'] = cachedMedia.etagPage1;
 
         const response = await fetch(`/api/public-media?${mediaParams}`, {
           cache: 'no-store',
           credentials: 'omit',
           headers,
-          signal: AbortSignal.timeout(10000),
+          signal: AbortSignal.timeout(12000),
         });
         if (response.status === 304 && cachedMedia?.data) {
           if (id !== requestId) return;
-          writeSessionCache(MEDIA_STORAGE_KEY, { ...cachedMedia, fetchedAt: Date.now() });
           snapshot = cachedMedia.data;
-          confirmedAt = Date.now();
-          if (updated && cachedMedia.data.generated_at) {
-            updated.textContent = `Updated ${formatDate(cachedMedia.data.generated_at, { timeStyle: 'short' })}`;
-          }
+          mediaState = {
+            items: cachedMedia.data.items || [],
+            pagination: cachedMedia.data.pagination || null,
+            loadingMore: false,
+            etagPage1: cachedMedia.etagPage1 || null,
+          };
           render();
           return;
         }
@@ -1299,73 +1463,65 @@
         const data = await response.json();
         if (data.tenant_id !== tenant) throw new Error('Invalid media scope');
         if (id !== requestId) return;
-        const etag = response.headers.get('ETag') || null;
+        const etagPage1 = response.headers.get('ETag') || null;
         if (data.enabled === false) {
-          clearSessionCache(MEDIA_STORAGE_KEY);
+          clearBrowserCache(MEDIA_STORAGE_KEY);
+          mediaState = { items: [], pagination: null, loadingMore: false, etagPage1: null };
         } else {
-          writeSessionCache(MEDIA_STORAGE_KEY, { etag, data, fetchedAt: Date.now() });
+          mediaState = {
+            items: Array.isArray(data.items) ? data.items : [],
+            pagination: data.pagination || null,
+            loadingMore: false,
+            etagPage1,
+          };
         }
         snapshot = data;
-        confirmedAt = Date.now();
-        if (updated && data.generated_at) {
-          updated.textContent = `Updated ${formatDate(data.generated_at, { timeStyle: 'short' })}`;
-        }
+        if (data.enabled !== false) persistMediaCache();
         render();
         return;
       }
 
-      const searchTerm = page === 'results' && search ? search.value.trim() : '';
-      const storedSnapEntry = !searchTerm ? readSessionCache(SNAP_STORAGE_KEY) : null;
-      if (!searchTerm) {
-        const verRes = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenant)}`, {
-          cache: 'no-store',
-          credentials: 'omit',
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(8000),
-        });
-        if (!verRes.ok) throw new Error('Version unavailable');
-        const version = await verRes.json();
-        const checkedAt = Date.parse(version.checked_at);
-        if (
-          version.tenant_id !== tenant
-          || !(version.revision === null || (typeof version.revision === 'string' && /^(0|[1-9][0-9]*)$/.test(version.revision)))
-          || !Number.isFinite(checkedAt)
-          || checkedAt > Date.now() + 10000
-          || checkedAt < Date.now() - 15000
-        ) {
-          throw new Error('Invalid version');
+      const storedSnapEntry = readBrowserCache(SNAP_STORAGE_KEY);
+      if (!snapshot && storedSnapEntry?.data && storedSnapEntry.data.tenant_id === tenant) {
+        snapshot = storedSnapEntry.data;
+        if (updated && storedSnapEntry.data.generated_at) {
+          updated.textContent = `Updated ${formatDate(storedSnapEntry.data.generated_at, { timeStyle: 'short' })}`;
         }
-        if (id !== requestId) return;
-        if (version.revision === null) {
-          clearSessionCache(SNAP_STORAGE_KEY);
-        } else if (!force && snapshot && !loadedServerSearch && snapshot.revision === version.revision) {
-          const wasFresh = Date.now() < confirmedAt + SNAPSHOT_TTL_MS;
-          confirmedAt = Date.now();
-          if (!wasFresh) render();
-          return;
-        } else if (
-          !force
-          && storedSnapEntry?.data
-          && storedSnapEntry.data.tenant_id === tenant
-          && storedSnapEntry.data.revision === version.revision
-        ) {
-          snapshot = storedSnapEntry.data;
-          confirmedAt = Date.now();
-          loadedServerSearch = '';
-          if (updated && storedSnapEntry.data.generated_at) {
-            updated.textContent = `Updated ${formatDate(storedSnapEntry.data.generated_at, { timeStyle: 'short' })}`;
-          }
-          render();
-          return;
-        }
+        render();
+      }
+
+      const verRes = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenant)}`, {
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!verRes.ok) throw new Error('Version unavailable');
+      const version = await verRes.json();
+      const checkedAt = Date.parse(version.checked_at);
+      if (
+        version.tenant_id !== tenant
+        || !(version.revision === null || (typeof version.revision === 'string' && /^(0|[1-9][0-9]*)$/.test(version.revision)))
+        || !Number.isFinite(checkedAt)
+        || checkedAt > Date.now() + 10000
+        || checkedAt < Date.now() - 15000
+      ) {
+        throw new Error('Invalid version');
+      }
+      if (id !== requestId) return;
+      if (version.revision === null) {
+        clearBrowserCache(SNAP_STORAGE_KEY);
+        clearBrowserCache(RESULT_POSTERS_STORAGE_KEY);
+      } else if (!force && snapshot && snapshot.revision === version.revision) {
+        if (page === 'results') fetchResultPosters(false, version.revision);
+        return;
       }
 
       const snapParams = new URLSearchParams({ tenant_id: tenant });
       if (festivalId) snapParams.set('festival_id', festivalId);
-      if (searchTerm) snapParams.set('search', searchTerm);
 
       const snapHeaders = { Accept: 'application/json' };
-      if (!force && !searchTerm && storedSnapEntry?.etag) {
+      if (!force && storedSnapEntry?.etag) {
         snapHeaders['If-None-Match'] = storedSnapEntry.etag;
       }
 
@@ -1378,12 +1534,11 @@
       if (response.status === 304 && storedSnapEntry?.data && storedSnapEntry.data.tenant_id === tenant) {
         if (id !== requestId) return;
         snapshot = storedSnapEntry.data;
-        confirmedAt = Date.now();
-        loadedServerSearch = searchTerm;
         if (updated && storedSnapEntry.data.generated_at) {
           updated.textContent = `Updated ${formatDate(storedSnapEntry.data.generated_at, { timeStyle: 'short' })}`;
         }
         render();
+        if (page === 'results') fetchResultPosters(false, snapshot.revision);
         return;
       }
       if (!response.ok) throw new Error('Data unavailable');
@@ -1391,38 +1546,30 @@
       if (
         data.tenant_id !== tenant
         || !Number.isFinite(Date.parse(data.generated_at))
-        || !Number.isFinite(Date.parse(data.expires_at))
-        || Date.now() >= Date.parse(data.expires_at)
-        || Date.parse(data.expires_at) - Date.parse(data.generated_at) > SNAPSHOT_TTL_MS
       ) {
-        throw new Error('Expired snapshot');
+        throw new Error('Invalid snapshot');
       }
       if (id !== requestId) return;
       const sanitized = sanitizePublicSnapshot(data);
       snapshot = sanitized;
-      confirmedAt = Date.now();
-      loadedServerSearch = searchTerm;
-      if (!searchTerm) {
-        if (sanitized.revision && sanitized.features?.public_page === true) {
-          writeSessionCache(SNAP_STORAGE_KEY, {
-            etag: response.headers.get('ETag') || null,
-            data: sanitized,
-          });
-        } else {
-          clearSessionCache(SNAP_STORAGE_KEY);
-        }
+      if (sanitized.revision && sanitized.features?.public_page === true) {
+        writeBrowserCache(SNAP_STORAGE_KEY, {
+          etag: response.headers.get('ETag') || null,
+          data: sanitized,
+        });
+      } else {
+        clearBrowserCache(SNAP_STORAGE_KEY);
       }
       if (updated && data.generated_at) {
         updated.textContent = `Updated ${formatDate(data.generated_at, { timeStyle: 'short' })}`;
       }
       render();
+      if (page === 'results') fetchResultPosters(force, sanitized.revision);
     } catch {
       if (id !== requestId) return;
-      if (page === 'media') clearSessionCache(MEDIA_STORAGE_KEY);
-      else clearSessionCache(SNAP_STORAGE_KEY);
-      snapshot = null;
-      confirmedAt = 0;
-      render();
+      if (!snapshot) {
+        render();
+      }
     } finally {
       if (refreshBtn) refreshBtn.disabled = false;
     }
@@ -1431,24 +1578,12 @@
   if (search) {
     search.addEventListener('input', () => {
       render();
-      if (page === 'results') {
-        window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(() => refresh(true), 300);
-      }
     });
   }
   if (refreshBtn) refreshBtn.addEventListener('click', () => {
     refresh(true);
-    if (page === 'results') fetchResultPosters(true);
-  });
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) return;
-    const now = Date.now();
-    if (now - lastSnapVisibilityAt < SNAP_VISIBILITY_THROTTLE_MS) return;
-    lastSnapVisibilityAt = now;
-    refresh();
-    if (page === 'results') fetchResultPosters();
+    if (page === 'results') fetchResultPosters(true, snapshot?.revision || null);
   });
   refresh();
-  if (page === 'results') fetchResultPosters();
+  if (page === 'results') fetchResultPosters(false, snapshot?.revision || null);
 })();

@@ -27,8 +27,7 @@
     { id: 'results', label: 'Results', to: '/results', c: '#E11D48' },
     { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
     { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
-    { id: 'gallery', label: 'Gallery', to: '/gallery', c: '#6D28D9' },
-    { id: 'media', label: 'Media', to: '/media', c: '#E11D48', extra: true },
+    { id: 'media', label: 'Media', to: '/media', c: '#6D28D9' },
   ];
 
   const GLYPH_LIST = [
@@ -119,7 +118,7 @@
     ['Results', '/results'],
     ['Standings', '/standings'],
     ['Schedule', '/schedule'],
-    ['Gallery', '/gallery'],
+    ['Media', '/media'],
   ].map(([label, path]) => `<a class="sub-drawer__chip" href="${withTenant(path)}" data-nav-label="${label}">${label}</a>`).join('');
 
   drawer.innerHTML = `
@@ -432,7 +431,6 @@
     ['Results', '/results', 'results'],
     ['Standings', '/standings', 'standings'],
     ['Schedule', '/schedule', 'schedule'],
-    ['Gallery', '/gallery', 'gallery'],
     ['Media', '/media', 'media'],
   ].map(([label, path, id]) => {
     const active = id === page ? ' aria-current="page"' : '';

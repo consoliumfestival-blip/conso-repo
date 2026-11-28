@@ -475,6 +475,11 @@ export function DefaultPublicLeaderboardExperience({ page = 'landing' }: { page?
 
   const filteredSchedules = useMemo(() => {
     return schedules.filter(s => {
+      if (!s.start_time || Number.isNaN(Date.parse(s.start_time))) return false;
+      const localDay = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(new Date(s.start_time));
+      if (localDay !== '2026-11-28' && localDay !== '2026-11-29') return false;
       const itemName = s.items?.item_name_ml || s.items?.item_name_en || s.items?.item_code || 'Scheduled Event';
       const venueName = s.venues?.name || 'Stage';
       const matchesSearch = searchQuery ? (

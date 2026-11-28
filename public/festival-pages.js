@@ -674,14 +674,16 @@
         if (!s.start_time) return false;
         const d = new Date(s.start_time);
         if (Number.isNaN(d.getTime())) return false;
-        const dayNum = d.getDate();
-        return dayNum >= 27 && dayNum <= 30;
+        const day = new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+        }).format(d);
+        return day === '2026-11-28' || day === '2026-11-29';
       })
       .sort((a, b) => Date.parse(a.start_time || '') - Date.parse(b.start_time || ''));
 
     const dayKey = (iso) => {
       const d = new Date(iso);
-      return Number.isNaN(d.getTime()) ? 'TBA' : new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short' }).format(d);
+      return Number.isNaN(d.getTime()) ? 'TBA' : new Intl.DateTimeFormat('en-US', { day: '2-digit', month: 'short', timeZone: 'Asia/Kolkata' }).format(d);
     };
     const days = [...new Set(schedules.map((s) => dayKey(s.start_time)))];
     renderFilterChips([['all', 'All Days'], ...days.map((d) => [d, d])]);

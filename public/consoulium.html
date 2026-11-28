@@ -349,99 +349,6 @@
         </div>
       </section>
     </main>
-    <div class="portal-coming-soon-backdrop" id="landing-coming-soon" role="dialog" aria-modal="true" aria-labelledby="landing-coming-soon-title" hidden>
-      <div class="portal-coming-soon-dialog">
-        <div class="portal-coming-soon-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="portal-coming-soon-badge">Student Portal</div>
-        <h2 class="portal-coming-soon-title" id="landing-coming-soon-title">Available Soon</h2>
-        <p class="portal-coming-soon-desc">Student Portal will be available very soon! You will be able to check candidate profiles, chest numbers, and live results right here.</p>
-        <button type="button" class="portal-coming-soon-btn" id="landing-coming-soon-close">Got it</button>
-      </div>
-    </div>
-    <style>
-      .portal-coming-soon-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 100020;
-        display: grid;
-        place-items: center;
-        padding: 20px;
-        background: rgba(16, 20, 47, 0.52);
-        -webkit-backdrop-filter: blur(8px);
-        backdrop-filter: blur(8px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .22s ease, visibility .22s ease;
-      }
-      .portal-coming-soon-backdrop[hidden] { display: none; }
-      .portal-coming-soon-backdrop.is-open { opacity: 1; visibility: visible; }
-      .portal-coming-soon-dialog {
-        position: relative;
-        width: min(100%, 380px);
-        padding: 28px 24px 24px;
-        border-radius: 24px;
-        background: #ffffff;
-        color: #151515;
-        border: 1.5px solid rgba(32, 33, 36, .14);
-        box-shadow: 0 24px 60px -16px rgba(16, 20, 47, .38);
-        text-align: center;
-        font-family: "Google Sans Flex", "Google Sans", system-ui, -apple-system, sans-serif;
-        transform: translateY(10px) scale(.97);
-        transition: transform .24s cubic-bezier(.16, 1, .3, 1);
-        overflow: hidden;
-      }
-      .portal-coming-soon-backdrop.is-open .portal-coming-soon-dialog { transform: translateY(0) scale(1); }
-      .portal-coming-soon-bars {
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 5px;
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-      }
-      .portal-coming-soon-bars i:nth-child(1) { background: #6d28d9; }
-      .portal-coming-soon-bars i:nth-child(2) { background: #e11d48; }
-      .portal-coming-soon-bars i:nth-child(3) { background: #2563eb; }
-      .portal-coming-soon-bars i:nth-child(4) { background: #10b981; }
-      .portal-coming-soon-bars i:nth-child(5) { background: #f59e0b; }
-      .portal-coming-soon-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 5px 12px;
-        border-radius: 999px;
-        background: rgba(37, 99, 235, .1);
-        color: #2563eb;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: .12em;
-        text-transform: uppercase;
-        margin-bottom: 12px;
-      }
-      .portal-coming-soon-title {
-        margin: 0 0 8px;
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -.025em;
-        color: #10142F;
-      }
-      .portal-coming-soon-desc {
-        margin: 0 0 20px;
-        font-size: 14.5px;
-        line-height: 1.5;
-        color: #5f6368;
-      }
-      .portal-coming-soon-btn {
-        appearance: none;
-        border: 0;
-        border-radius: 999px;
-        background: #202124;
-        color: #fff;
-        font: 600 14px/1 "Google Sans Flex", "Google Sans", system-ui, sans-serif;
-        padding: 13px 28px;
-        cursor: pointer;
-        transition: background-color .2s ease, transform .2s ease;
-      }
-      .portal-coming-soon-btn:hover { background: #10142F; transform: translateY(-1px); }
-    </style>
     <script>
       (function () {
         var DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
@@ -449,8 +356,6 @@
         var scene = document.querySelector('.festival-landing');
         var explore = document.getElementById('landing-explore');
         var portal = document.getElementById('landing-portal');
-        var modal = document.getElementById('landing-coming-soon');
-        var modalClose = document.getElementById('landing-coming-soon-close');
 
         var params = new URLSearchParams(location.search);
         var rawTenant = params.get('tenant_id');
@@ -463,37 +368,9 @@
         var forwardQuery = params.toString();
         if (explore) explore.href = '/explore' + (forwardQuery ? '?' + forwardQuery : '');
 
-        function openModal() {
-          if (!modal) return;
-          modal.hidden = false;
-          requestAnimationFrame(function () {
-            modal.classList.add('is-open');
-            if (modalClose) modalClose.focus({ preventScroll: true });
-          });
-        }
-        function closeModal() {
-          if (!modal) return;
-          modal.classList.remove('is-open');
-          setTimeout(function () {
-            if (!modal.classList.contains('is-open')) modal.hidden = true;
-            if (portal) portal.focus({ preventScroll: true });
-          }, 220);
-        }
-
         if (portal) portal.href = '/candidate-search' + (forwardQuery ? '?' + forwardQuery : '');
-        if (modal) {
-          modal.addEventListener('click', function (e) {
-            if (e.target === modal || e.target === modalClose) closeModal();
-          });
-        }
         document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' && modal && modal.classList.contains('is-open')) {
-            e.preventDefault();
-            closeModal();
-            return;
-          }
           if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-          if (modal && modal.classList.contains('is-open')) return;
           if (e.target && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/i.test(e.target.tagName)) return;
           e.preventDefault();
           location.assign(explore ? explore.href : '/explore');

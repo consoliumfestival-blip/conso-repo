@@ -219,5 +219,38 @@ BEGIN
     OR planned->>'target_reaches_first' <> 'true' THEN
     RAISE EXCEPTION 'Prioritized team C did not reach 1st place in batch: %', planned;
   END IF;
+  -- Even in auto mode when target team D is too far behind to reach 1st in 5
+  -- items, auto batch_spread must not stall D behind closer-spread batches.
+  FOR n IN 1..6 LOOP
+    INSERT INTO items VALUES (md5('climb-d-' || n)::uuid, md5('tenant')::uuid,
+      md5('festival')::uuid, 'Climb D ' || n, NULL, 'climb-d-' || n, ARRAY['GN']);
+    INSERT INTO registrations VALUES (md5('climb-d-reg-' || n)::uuid,
+      md5('climb-d-' || n)::uuid, NULL, md5('D')::uuid, 'approved');
+    INSERT INTO results VALUES (md5('climb-d-res-' || n)::uuid,
+      md5('climb-d-' || n)::uuid, md5('climb-d-reg-' || n)::uuid,
+      md5('festival')::uuid, 15, 1, 'A', true, 'published', false, now());
+  END LOOP;
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('D')::uuid,
+    5, 'auto', 'team');
+  IF planned->>'target_is_first_at_batch_end' <> 'true' THEN
+    RAISE EXCEPTION 'Prioritized team D did not reach 1st place in auto mode: %', planned;
+  END IF;
+  -- Now test when team D is 100+ pts behind (cannot reach 1st in 5 items, so
+  -- batch_target_first = false): auto mode must still climb D instead of
+  -- picking low-spread items for other teams.
+  INSERT INTO items VALUES (md5('gap-c')::uuid, md5('tenant')::uuid,
+    md5('festival')::uuid, 'Gap C', NULL, 'gap-c', ARRAY['GN']);
+  INSERT INTO registrations VALUES (md5('gap-c-reg')::uuid,
+    md5('gap-c')::uuid, NULL, md5('C')::uuid, 'approved');
+  INSERT INTO results VALUES (md5('gap-c-res')::uuid,
+    md5('gap-c')::uuid, md5('gap-c-reg')::uuid,
+    md5('festival')::uuid, 100, 1, 'A', true, 'published', true, now());
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('D')::uuid,
+    5, 'auto', 'team');
+  IF ((planned->'items'->4)->>'team_points')::bigint < 135 THEN
+    RAISE EXCEPTION 'Prioritized team D stalled instead of climbing in auto mode when batch_target_first is false: %', planned;
+  END IF;
 END $team_first_multi_step$;
 ROLLBACK;

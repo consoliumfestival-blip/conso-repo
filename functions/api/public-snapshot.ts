@@ -25,6 +25,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const VERSION_EDGE_TTL_SECONDS = 5;
 const REVISION_DATA_EDGE_TTL_SECONDS = 300;
 const MAX_BROWSER_AGE_MS = 60_000;
+const RPC_PAGE_SIZE = 500;
+const RPC_MAX_ROWS = 10_000;
 const pending = new Map<string, Promise<unknown>>();
 
 function disabledFlags(): PublicFlags {
@@ -78,6 +80,14 @@ function credentials(env: Environment) {
   return { url: url.replace(/\/$/, ''), key };
 }
 
+function parseContentRangeTotal(headerValue: string | null): number | null {
+  if (!headerValue) return null;
+  const slash = headerValue.lastIndexOf('/');
+  if (slash < 0) return null;
+  const totalPart = headerValue.slice(slash + 1).trim();
+  return /^\d+$/.test(totalPart) ? Number(totalPart) : null;
+}
+
 async function supabaseGet<T>(env: Environment, path: string, body?: Record<string, unknown>): Promise<T> {
   const { url, key } = credentials(env);
   const response = await fetch(`${url}/rest/v1/${path}`, {
@@ -92,6 +102,54 @@ async function supabaseGet<T>(env: Environment, path: string, body?: Record<stri
   });
   if (!response.ok) throw new Error(`Public data source returned ${response.status}`);
   return response.json() as Promise<T>;
+}
+
+async function supabaseGetPaged<T>(
+  env: Environment,
+  path: string,
+  body: Record<string, unknown>,
+  pageSize = RPC_PAGE_SIZE,
+  maxRows = RPC_MAX_ROWS,
+): Promise<T[]> {
+  const { url, key } = credentials(env);
+  const rows: T[] = [];
+  let expectedTotal: number | null = null;
+
+  for (let offset = 0; ; offset += pageSize) {
+    const separator = path.includes('?') ? '&' : '?';
+    const response = await fetch(`${url}/rest/v1/${path}${separator}limit=${pageSize}&offset=${offset}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(8_000),
+      headers: {
+        apikey: key,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Prefer: 'count=exact',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) throw new Error(`Public data source returned ${response.status}`);
+
+    const total = parseContentRangeTotal(response.headers.get('Content-Range'));
+    if (total !== null) expectedTotal = total;
+
+    const page = await response.json() as unknown;
+    if (!Array.isArray(page)) throw new Error('Invalid public response');
+    rows.push(...(page as T[]));
+
+    if (expectedTotal !== null) {
+      if (rows.length >= expectedTotal) break;
+      if (page.length === 0) throw new Error('Public data response truncated');
+    } else if (page.length < pageSize) {
+      break;
+    }
+
+    if (rows.length >= maxRows) {
+      throw new Error('Public data exceeded maximum row guard');
+    }
+  }
+
+  return rows;
 }
 
 function cacheKey(requestUrl: URL, kind: 'context' | 'snapshot' | 'version', tenantId: string, festivalId?: string, revision?: string | null) {
@@ -212,9 +270,9 @@ async function loadSnapshot(env: Environment, tenantId: string, festivalId: stri
   const showTeamRoster = features.public_page && features.public_leaderboard && features.sections.results;
   const [leaderboard, results, participantResults, schedules, teamRoster] = await Promise.all([
     showLeaderboard ? supabaseGet<any[]>(env, 'rpc/get_public_leaderboard_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
-    showResults ? supabaseGet<any[]>(env, 'rpc/get_public_published_results_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId, p_include_participant_details: true }) : [],
-    showResults && features.sections.participant_results ? supabaseGet<any[]>(env, 'rpc/get_public_participant_results_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
-    features.sections.schedule ? supabaseGet<any[]>(env, 'rpc/get_public_schedules_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
+    showResults ? supabaseGetPaged<any>(env, 'rpc/get_public_published_results_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId, p_include_participant_details: true }) : [],
+    showResults && features.sections.participant_results ? supabaseGetPaged<any>(env, 'rpc/get_public_participant_results_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
+    features.sections.schedule ? supabaseGetPaged<any>(env, 'rpc/get_public_schedules_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
     showTeamRoster ? supabaseGet<any[]>(env, 'rpc/get_public_team_roster_scoped', { p_tenant_id: tenantId, p_festival_id: festivalId }) : [],
   ]);
   if (![leaderboard, results, participantResults, schedules, teamRoster].every(Array.isArray)) throw new Error('Invalid public response');

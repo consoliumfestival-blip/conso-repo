@@ -10,6 +10,10 @@ const migrationSql = fs.readFileSync(
   path.join(root, 'supabase/migrations/20261128152000_public_result_publish_limit_control.sql'),
   'utf8',
 );
+const optimizeMigrationSql = fs.readFileSync(
+  path.join(root, 'supabase/migrations/20261128170000_optimize_public_candidate_profile_and_limits.sql'),
+  'utf8',
+);
 
 async function setupDatabase() {
   const db = new PGlite();
@@ -370,9 +374,9 @@ async function setupDatabase() {
   `);
 
   await db.exec(migrationSql);
+  await db.exec(optimizeMigrationSql);
 
   await db.exec(`
-    GRANT SELECT ON public.vw_public_results, public.vw_public_leaderboard, public.vw_public_live_status, public.vw_public_participants TO anon, authenticated;
     GRANT EXECUTE ON FUNCTION public.get_public_published_results(uuid, uuid, boolean) TO anon, authenticated, service_role;
     GRANT EXECUTE ON FUNCTION public.get_public_published_results_scoped(uuid, uuid, boolean) TO anon, authenticated, service_role;
     GRANT EXECUTE ON FUNCTION public.get_public_participant_results_scoped(uuid, uuid) TO anon, authenticated, service_role;
@@ -484,6 +488,50 @@ test('toggle ON (limit_public_results=true): public results, profiles, views, Te
     await db.exec('SET ROLE anon');
     const allMode = await db.query('SELECT item_id FROM public.get_public_published_results($1, $2, true)', [tenantId, festivalId]);
     assert.deepEqual(new Set(allMode.rows.map((r) => r.item_id)), new Set([item1, item2, item3]));
+  } finally {
+    await db.close();
+  }
+});
+
+test('optimized candidate profile supports general_team entries, respects limit_public_results, and view grants + deterministic tie-breaks work under anon', async () => {
+  const { db, tenantId, festivalId, orgA, item1, item2, item3 } = await setupDatabase();
+  try {
+    const item4 = id(204);
+    const candC = id(303);
+    const groupReg = id(404);
+    const groupRes = id(504);
+
+    await db.exec(`
+      INSERT INTO public.items VALUES ('${item4}', '${tenantId}', '${festivalId}', 'IT-04', 'Group Song', 'സംഘഗാനം', 'group', ARRAY['GN']::text[]);
+      INSERT INTO public.participants VALUES ('${candC}', '${tenantId}', '${festivalId}', '${orgA}', 'Charlie', '103', 'GN', 'charlie-103', 'Team member', NULL, 'approved', false, true, true);
+      INSERT INTO public.registrations VALUES ('${groupReg}', '${tenantId}', '${festivalId}', '${item4}', NULL, '${orgA}', 'general_team', 'registered');
+      INSERT INTO public.group_members VALUES ('${id(701)}', '${groupReg}', '${candC}');
+      INSERT INTO public.results VALUES ('${groupRes}', '${tenantId}', '${festivalId}', '${item4}', '${groupReg}', 1, 'A', 15, true, 'published', true, '2026-11-28T10:15:00Z', 4);
+      UPDATE public.festival_leaderboard_settings SET ranking_mode = 'LIMITED', item_limit = 2, limit_public_results = true WHERE festival_id = '${festivalId}';
+    `);
+
+    await db.exec('SET ROLE anon');
+    // Charlie has no direct results, only general_team item4 (beyond limit 2) -> excluded from published_results when limit_public_results = true
+    const candLimited = await db.query("SELECT public.get_public_candidate_profile('charlie-103') AS doc");
+    assert.equal(candLimited.rows[0].doc.participated_items.length, 1);
+    assert.equal(candLimited.rows[0].doc.published_results.length, 0);
+
+    // Disable limit_public_results -> Charlie sees group result
+    await db.exec('RESET ROLE');
+    await db.query('UPDATE public.festival_leaderboard_settings SET limit_public_results = false WHERE festival_id = $1', [festivalId]);
+    await db.exec('SET ROLE anon');
+    const candUnlimited = await db.query("SELECT public.get_public_candidate_profile('charlie-103') AS doc");
+    assert.equal(candUnlimited.rows[0].doc.published_results.length, 1);
+    assert.equal(candUnlimited.rows[0].doc.published_results[0].item_id, item4);
+
+    // Deterministic tie-break check when timestamps and item_id/rank match across pages
+    await db.exec('RESET ROLE');
+    await db.query("UPDATE public.results SET published_at = '2026-11-28T10:00:00Z' WHERE festival_id = $1", [festivalId]);
+    await db.exec('SET ROLE anon');
+    const pA = await db.query('SELECT result_id FROM public.get_public_published_results($1, $2, true) LIMIT 2 OFFSET 0', [tenantId, festivalId]);
+    const pB = await db.query('SELECT result_id FROM public.get_public_published_results($1, $2, true) LIMIT 2 OFFSET 2', [tenantId, festivalId]);
+    const combined = [...pA.rows, ...pB.rows].map((r) => r.result_id);
+    assert.equal(new Set(combined).size, 4, 'OFFSET pagination with tie-break yields 4 unique results without duplicates');
   } finally {
     await db.close();
   }

@@ -306,3 +306,71 @@ test('passes ranking_mode, item_limit, and limit_public_results settings through
     globalThis.fetch = origFetch;
   }
 });
+
+test('paginates results and participant_results in 500-row chunks beyond 1,000 rows without truncation', async () => {
+  globalThis.caches = fakeCache();
+  const origFetch = globalThis.fetch;
+  const totalRows = 1250;
+  const makeRow = (i) => ({
+    result_id: `res-${i}`,
+    item_id: itemA,
+    item_category_codes: ['SR'],
+    rank: '1',
+    points_awarded: '5',
+  });
+  globalThis.fetch = async (input) => {
+    const url = new URL(input);
+    const limit = Number(url.searchParams.get('limit') || '500');
+    const offset = Number(url.searchParams.get('offset') || '0');
+    switch (url.pathname) {
+      case '/rest/v1/rpc/get_public_tenant_feature_settings':
+        return new Response(JSON.stringify({
+          public_page: true,
+          public_leaderboard: true,
+          sections: { schedule: true, results: true, participant_results: true, media: true },
+        }), { status: 200 });
+      case '/rest/v1/rpc/get_public_snapshot_revision':
+        return new Response(JSON.stringify(99), { status: 200 });
+      case '/rest/v1/rpc/get_public_leaderboard_settings':
+        return new Response(JSON.stringify([{
+          festival_id: festivalA,
+          is_public_visible: true,
+          show_individual_rankings: true,
+          ranking_mode: 'LIMITED',
+          item_limit: 80,
+          limit_public_results: true,
+        }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_leaderboard_scoped':
+        return new Response(JSON.stringify([{ organisation_id: tenantA, organisation_name: 'Unit A', total_points: '100' }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_team_roster_scoped':
+        return new Response(JSON.stringify([{ organisation_id: tenantA, organisation_name: 'Unit A' }]), { status: 200 });
+      case '/rest/v1/rpc/get_public_published_results_scoped':
+      case '/rest/v1/rpc/get_public_participant_results_scoped': {
+        assert.equal(limit, 500);
+        const end = Math.min(offset + limit, totalRows);
+        const slice = Array.from({ length: Math.max(0, end - offset) }, (_, idx) => makeRow(offset + idx));
+        const rangeHeader = slice.length > 0 ? `${offset}-${offset + slice.length - 1}/${totalRows}` : `*/${totalRows}`;
+        return new Response(JSON.stringify(slice), {
+          status: slice.length < totalRows ? 206 : 200,
+          headers: { 'Content-Range': rangeHeader },
+        });
+      }
+      case '/rest/v1/rpc/get_public_schedules_scoped':
+        return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Range': '*/0' } });
+      case '/rest/v1/items':
+        return new Response(JSON.stringify([{ id: itemA, item_code: 'IT80' }]), { status: 200 });
+      default:
+        throw new Error(`Unexpected origin call: ${url.pathname}`);
+    }
+  };
+  try {
+    const { response, body } = await snapshot(tenantA);
+    assert.equal(response.status, 200);
+    assert.equal(body.results.length, 1250);
+    assert.equal(body.participant_results.length, 1250);
+    assert.equal(body.results[0].result_id, 'res-0');
+    assert.equal(body.results[1249].result_id, 'res-1249');
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

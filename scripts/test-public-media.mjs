@@ -760,3 +760,85 @@ test('limits result posters to included leaderboard items when limit_public_resu
     globalThis.caches = origCaches;
   }
 });
+
+test('paginates allowed results in 500-row chunks when item_limit spans more than 1,000 rows', async () => {
+  const origFetch = globalThis.fetch;
+  const totalAllowed = 1100;
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    if (parsed.pathname.endsWith('/rpc/get_public_snapshot_revision')) {
+      return new Response(JSON.stringify(5), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_tenant_feature_settings')) {
+      return new Response(JSON.stringify({ public_page: true, sections: { media: true } }), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_leaderboard_settings')) {
+      return new Response(JSON.stringify([{
+        festival_id: festivalId,
+        is_public_visible: true,
+        ranking_mode: 'LIMITED',
+        item_limit: 80,
+        limit_public_results: true,
+      }]), { status: 200 });
+    }
+    if (parsed.pathname.endsWith('/rpc/get_public_published_results_scoped')) {
+      const limit = Number(parsed.searchParams.get('limit') || '500');
+      const offset = Number(parsed.searchParams.get('offset') || '0');
+      assert.equal(limit, 500);
+      const end = Math.min(offset + limit, totalAllowed);
+      const slice = Array.from({ length: Math.max(0, end - offset) }, (_, idx) => {
+        const n = offset + idx;
+        return { result_id: `res-${n}`, item_id: n === 1099 ? 'item-old-1099' : `item-${n}` };
+      });
+      return new Response(JSON.stringify(slice), {
+        status: 206,
+        headers: { 'Content-Range': `${offset}-${end - 1}/${totalAllowed}` },
+      });
+    }
+    if (parsed.pathname.endsWith('/generated_assets')) {
+      return new Response(JSON.stringify([
+        {
+          id: 'p-old',
+          render_hash: 'poster_old_item',
+          event_id: 'item-old-1099',
+          result_id: 'res-1099',
+          event_name: 'Old Limited Item',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/old.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-27T08:00:00Z',
+        },
+        {
+          id: 'p-excluded',
+          render_hash: 'poster_excluded',
+          event_id: 'item-outside',
+          result_id: 'res-outside',
+          event_name: 'Outside Limit Item',
+          resolution: 'hd',
+          public_url: 'https://cdn.example.com/posters/out.webp',
+          is_current: true,
+          visibility_status: 'published',
+          created_at: '2026-11-28T10:00:00Z',
+        },
+      ]), { status: 200, headers: { 'Content-Range': '0-1/2' } });
+    }
+    return new Response('Not found', { status: 404 });
+  };
+
+  try {
+    const res = await onRequestGet({
+      request: new Request(`https://consoulium.sabicofficial.in/api/public-media?tenant_id=${tenantId}`),
+      env,
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.deepEqual(
+      body.items.map((i) => i.render_hash),
+      ['poster_old_item'],
+      'Preserves allowed result poster beyond row 1,000 via 500-row pagination',
+    );
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+});

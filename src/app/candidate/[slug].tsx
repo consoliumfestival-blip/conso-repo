@@ -242,11 +242,12 @@ export default function PublicCandidateProfileScreen() {
     );
   }
 
-  if (profileQuery.error || !candidate?.profile) {
+  if (profileQuery.isError || !candidate?.profile) {
+    const isLoadError = profileQuery.isError;
     return (
       <PublicGlassBackdrop>
         <Head>
-          <title>Profile Not Available · Consoulium 2k26</title>
+          <title>{isLoadError ? 'Could Not Load Profile' : 'Profile Not Available'} · Consoulium 2k26</title>
         </Head>
         <View style={styles.gradientBgCenter}>
           <View style={[styles.stateCard, webGlassSurface(18), styles.emptyStateCard]}>
@@ -255,21 +256,38 @@ export default function PublicCandidateProfileScreen() {
               <View style={styles.emptyIcon}>
                 <UserRound size={30} color={PUBLIC_GLASS_THEME.blue} />
               </View>
-              <Text style={styles.emptyTitle}>Profile not available</Text>
-              <Text style={styles.emptyMessage}>
-                This candidate profile may be disabled or not published for public viewing.
+              <Text style={styles.emptyTitle}>
+                {isLoadError ? 'Could not load candidate profile' : 'Profile not available'}
               </Text>
-              {isStandalone ? (
-                <TouchableOpacity onPress={handleLogout} style={[styles.backButton, webPrimaryGradient]}>
-                  <LogOut size={16} color="#FFFFFF" />
-                  <Text style={styles.backButtonText}>Log out</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity onPress={handleBack} style={[styles.backButton, webPrimaryGradient]}>
-                  <ArrowLeft size={16} color="#FFFFFF" />
-                  <Text style={styles.backButtonText}>Go back</Text>
-                </TouchableOpacity>
-              )}
+              <Text style={styles.emptyMessage}>
+                {isLoadError
+                  ? 'Please check your connection and try again.'
+                  : 'This candidate profile may be disabled or not published for public viewing.'}
+              </Text>
+              <View style={styles.emptyActionsRow}>
+                {isLoadError ? (
+                  <TouchableOpacity onPress={() => void profileQuery.refetch()} style={[styles.backButton, webPrimaryGradient]}>
+                    <Text style={styles.backButtonText}>Try again</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {isStandalone ? (
+                  <TouchableOpacity
+                    onPress={handleLogout}
+                    style={[isLoadError ? styles.secondaryActionButton : styles.backButton, !isLoadError && webPrimaryGradient]}
+                  >
+                    <LogOut size={16} color={isLoadError ? PUBLIC_GLASS_THEME.redText : '#FFFFFF'} />
+                    <Text style={isLoadError ? styles.logoutButtonText : styles.backButtonText}>Log out</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    onPress={handleBack}
+                    style={[isLoadError ? styles.secondaryActionButton : styles.backButton, !isLoadError && webPrimaryGradient]}
+                  >
+                    <ArrowLeft size={16} color={isLoadError ? PUBLIC_GLASS_THEME.ink : '#FFFFFF'} />
+                    <Text style={isLoadError ? styles.topBackText : styles.backButtonText}>Go back</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
           </View>
         </View>
@@ -622,6 +640,26 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13.5,
     fontWeight: '700',
+  },
+  emptyActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginTop: 8,
+  },
+  secondaryActionButton: {
+    height: 44,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
   },
   topNavRow: {
     flexDirection: 'row',

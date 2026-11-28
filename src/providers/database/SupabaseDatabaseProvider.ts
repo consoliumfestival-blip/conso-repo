@@ -1499,37 +1499,89 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
     includeParticipantDetails = true,
     scope: 'results' | 'participant_results' = 'results',
   ): Promise<ListResult<T>> {
-    let { data, error } = scope === 'participant_results'
-      ? await supabase.rpc('get_public_participant_results_scoped', {
+    const pageSize = 500;
+    const maxRows = 10_000;
+    const rows: any[] = [];
+    let expectedCount: number | null = null;
+    let useLegacyUnscoped = false;
+
+    const callPage = (from: number) => {
+      const rangeEnd = from + pageSize - 1;
+      const countOpt = from === 0 ? ({ count: 'exact' } as const) : undefined;
+      if (scope === 'participant_results') {
+        return supabase
+          .rpc('get_public_participant_results_scoped', {
+            p_tenant_id: tenantId ?? null,
+            p_festival_id: festivalId ?? null,
+          }, countOpt)
+          .range(from, rangeEnd);
+      }
+      if (useLegacyUnscoped) {
+        return supabase
+          .rpc('get_public_published_results', {
+            p_tenant_id: tenantId ?? null,
+            p_festival_id: festivalId ?? null,
+            p_include_participant_details: includeParticipantDetails,
+          }, countOpt)
+          .range(from, rangeEnd);
+      }
+      return supabase
+        .rpc('get_public_published_results_scoped', {
           p_tenant_id: tenantId ?? null,
           p_festival_id: festivalId ?? null,
-        })
-      : await supabase.rpc('get_public_published_results_scoped', {
-      p_tenant_id: tenantId ?? null,
-      p_festival_id: festivalId ?? null,
-      p_include_participant_details: includeParticipantDetails,
-      });
+          p_include_participant_details: includeParticipantDetails,
+        }, countOpt)
+        .range(from, rangeEnd);
+    };
 
-    if (scope === 'results' && error && ['PGRST202', '42883'].includes((error as any).code)) {
-      ({ data, error } = await supabase.rpc('get_public_published_results', {
-        p_tenant_id: tenantId ?? null,
-        p_festival_id: festivalId ?? null,
-        p_include_participant_details: includeParticipantDetails,
-      }));
+    for (let from = 0; ; from += pageSize) {
+      let { data, error, count } = await callPage(from);
+
+      if (
+        from === 0 &&
+        scope === 'results' &&
+        !useLegacyUnscoped &&
+        error &&
+        ['PGRST202', '42883'].includes((error as any).code)
+      ) {
+        useLegacyUnscoped = true;
+        ({ data, error, count } = await callPage(from));
+      }
+
+      if (error) {
+        return { data: [], error: normalizeError(error) };
+      }
+
+      if (from === 0 && typeof count === 'number') {
+        expectedCount = count;
+      }
+
+      const page = Array.isArray(data) ? (data as any[]) : [];
+      rows.push(...page);
+
+      if (expectedCount !== null) {
+        if (rows.length >= expectedCount) break;
+        if (page.length === 0) {
+          return { data: [], error: { code: 'RESULTS_TRUNCATED', message: 'Unable to load all published results.' } };
+        }
+      } else if (page.length < pageSize) {
+        break;
+      }
+
+      if (rows.length >= maxRows) {
+        return { data: [], error: { code: 'RESULTS_LIMIT_EXCEEDED', message: 'Published results exceeded safe page limit.' } };
+      }
     }
 
-    if (error || !data) {
-      return { data: [], error: normalizeError(error) };
-    }
-
-    // Fetch item_codes for these results
-    const itemIds = Array.from(new Set(data.map((r: any) => r.item_id).filter(Boolean)));
-    let itemCodeMap: Record<string, string> = {};
-    if (itemIds.length > 0) {
+    // Fetch item_codes in bounded chunks so large result lists (>100 items) never hit query size limits
+    const itemIds = Array.from(new Set(rows.map((r: any) => r.item_id).filter(Boolean)));
+    const itemCodeMap: Record<string, string> = {};
+    for (let i = 0; i < itemIds.length; i += 100) {
+      const chunk = itemIds.slice(i, i + 100);
       const { data: itemsData } = await supabase
         .from('items')
         .select('id, item_code')
-        .in('id', itemIds);
+        .in('id', chunk);
       if (itemsData) {
         itemsData.forEach((itm) => {
           itemCodeMap[itm.id] = itm.item_code;
@@ -1537,7 +1589,7 @@ export class SupabaseDatabaseProvider implements DatabaseProvider {
       }
     }
 
-    const mappedData = data.map((row: any) => ({
+    const mappedData = rows.map((row: any) => ({
       ...row,
       item_code: itemCodeMap[row.item_id] || '',
     }));

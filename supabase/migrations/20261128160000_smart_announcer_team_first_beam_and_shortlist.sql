@@ -5,14 +5,9 @@ BEGIN;
 DO $migration$
 DECLARE
   definition text;
+  before_step text;
   old_shortlist_order text;
   new_shortlist_order text;
-  old_selected_order text;
-  new_selected_order text;
-  old_u_order text;
-  new_u_order text;
-  old_best_order text;
-  new_best_order text;
 BEGIN
   SELECT pg_get_functiondef('public.smart_announcer_team_strategy_v2(uuid,uuid,uuid,integer,text,text,uuid[])'::regprocedure)
     INTO definition;
@@ -44,37 +39,33 @@ BEGIN
   END IF;
   definition := replace(definition, old_shortlist_order, new_shortlist_order);
 
-  old_selected_order := '      (selected.value->>''first_step'')::integer ASC,
-      (selected.value->>''mode_violation'')::bigint ASC,';
-  new_selected_order := '      (selected.value->>''first_step'')::integer ASC,
-      CASE WHEN p_priority = ''team'' THEN (selected.value->>''team_rank'')::bigint ELSE 0 END ASC,
-      CASE WHEN p_priority = ''team'' THEN (selected.value->>''leader_gap'')::bigint ELSE 0 END ASC,
-      (selected.value->>''mode_violation'')::bigint ASC,';
-  IF position(old_selected_order IN definition) = 0 THEN
+  before_step := definition;
+  definition := regexp_replace(
+    definition,
+    '\(selected\.value->>''first_step''\)::integer\s+ASC,\s*\(selected\.value->>''mode_violation''\)::bigint\s+ASC,',
+    '(selected.value->>''first_step'')::integer ASC,' || chr(10) ||
+    '      CASE WHEN p_priority = ''team'' THEN (selected.value->>''team_rank'')::bigint ELSE 0 END ASC,' || chr(10) ||
+    '      CASE WHEN p_priority = ''team'' THEN (selected.value->>''leader_gap'')::bigint ELSE 0 END ASC,' || chr(10) ||
+    '      (selected.value->>''mode_violation'')::bigint ASC,',
+    'g'
+  );
+  IF definition = before_step THEN
     RAISE EXCEPTION 'Unexpected selected order definition; no changes applied';
   END IF;
-  definition := replace(definition, old_selected_order, new_selected_order);
 
-  old_u_order := '      (u.value->>''first_step'')::integer ASC,
-      (u.value->>''mode_violation'')::bigint ASC,';
-  new_u_order := '      (u.value->>''first_step'')::integer ASC,
-      CASE WHEN p_priority = ''team'' THEN (u.value->>''team_rank'')::bigint ELSE 0 END ASC,
-      CASE WHEN p_priority = ''team'' THEN (u.value->>''leader_gap'')::bigint ELSE 0 END ASC,
-      (u.value->>''mode_violation'')::bigint ASC,';
-  IF position(old_u_order IN definition) = 0 THEN
-    RAISE EXCEPTION 'Unexpected beam order definition; no changes applied';
+  before_step := definition;
+  definition := regexp_replace(
+    definition,
+    '\(u\.value->>''first_step''\)::integer\s+ASC,\s*\(u\.value->>''mode_violation''\)::bigint\s+ASC,',
+    '(u.value->>''first_step'')::integer ASC,' || chr(10) ||
+    '      CASE WHEN p_priority = ''team'' THEN (u.value->>''team_rank'')::bigint ELSE 0 END ASC,' || chr(10) ||
+    '      CASE WHEN p_priority = ''team'' THEN (u.value->>''leader_gap'')::bigint ELSE 0 END ASC,' || chr(10) ||
+    '      (u.value->>''mode_violation'')::bigint ASC,',
+    'g'
+  );
+  IF definition = before_step THEN
+    RAISE EXCEPTION 'Unexpected beam/best order definition; no changes applied';
   END IF;
-  definition := replace(definition, old_u_order, new_u_order);
-
-  old_best_order := '    (u.value->>''first_step'')::integer ASC, (u.value->>''mode_violation'')::bigint ASC,';
-  new_best_order := '    (u.value->>''first_step'')::integer ASC,
-    CASE WHEN p_priority = ''team'' THEN (u.value->>''team_rank'')::bigint ELSE 0 END ASC,
-    CASE WHEN p_priority = ''team'' THEN (u.value->>''leader_gap'')::bigint ELSE 0 END ASC,
-    (u.value->>''mode_violation'')::bigint ASC,';
-  IF position(old_best_order IN definition) = 0 THEN
-    RAISE EXCEPTION 'Unexpected best order definition; no changes applied';
-  END IF;
-  definition := replace(definition, old_best_order, new_best_order);
 
   EXECUTE definition;
 END $migration$;

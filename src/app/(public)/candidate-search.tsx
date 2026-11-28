@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'expo-router/head';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Platform, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, ScrollView, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react-native';
 import { useAuthStore } from '../../core/store/authStore';
 import { useTenantFeatures } from '../../core/hooks/useTenantFeatures';
@@ -22,13 +22,12 @@ export default function CandidateSearchPage() {
   const routeTenant = Array.isArray(params.tenant_id) ? params.tenant_id[0] : params.tenant_id;
   const rawTenantId = routeTenant || authTenantId || LEGACY_TENANT_ALIAS;
   const tenantId = rawTenantId === LEGACY_TENANT_ALIAS ? DEFAULT_TENANT_ID : rawTenantId;
-  const isConsouliumPortal = tenantId === DEFAULT_TENANT_ID;
   const festivalId = Array.isArray(params.festival_id) ? params.festival_id[0] : params.festival_id;
-  const { settings: publicFeatures, isLoading: featuresLoading } = useTenantFeatures(tenantId, !isConsouliumPortal);
+  const { settings: publicFeatures, isLoading: featuresLoading } = useTenantFeatures(tenantId, true);
   const publicSearchEnabled = publicFeatures.modules.public_page
     && publicFeatures.sections.public_page.results
     && publicFeatures.sections.public_page.participant_results;
-  const search = usePublicCandidateSearch(tenantId, festivalId, debouncedSearch.trim().toLowerCase(), !isConsouliumPortal && !featuresLoading && publicSearchEnabled);
+  const search = usePublicCandidateSearch(tenantId, festivalId, debouncedSearch.trim().toLowerCase(), !featuresLoading && publicSearchEnabled);
   const candidates = useMemo(() => search.data?.pages.flatMap((page) => page.items) ?? [], [search.data]);
   const isWide = width >= 760;
   const isDebouncing = searchText.trim() !== debouncedSearch;
@@ -37,47 +36,6 @@ export default function CandidateSearchPage() {
     const timer = setTimeout(() => setDebouncedSearch(searchText.trim()), 300);
     return () => clearTimeout(timer);
   }, [searchText]);
-
-  if (isConsouliumPortal) {
-    const handleClosePortalPopup = () => {
-      if (Platform.OS === 'web' && typeof window !== 'undefined') {
-        if (window.history.length > 1) {
-          window.history.back();
-        } else {
-          window.location.assign('/explore');
-        }
-        return;
-      }
-      router.back();
-    };
-
-    return (
-      <View style={styles.popupBackdrop}>
-        <Head>
-          <title>Student Portal · Available Soon</title>
-        </Head>
-        <View style={styles.popupCard} accessibilityRole="alert">
-          <View style={styles.popupBars}>
-            <View style={[styles.popupBarSegment, { backgroundColor: '#6D28D9' }]} />
-            <View style={[styles.popupBarSegment, { backgroundColor: '#E11D48' }]} />
-            <View style={[styles.popupBarSegment, { backgroundColor: '#2563EB' }]} />
-            <View style={[styles.popupBarSegment, { backgroundColor: '#10B981' }]} />
-            <View style={[styles.popupBarSegment, { backgroundColor: '#F59E0B' }]} />
-          </View>
-          <View style={styles.popupBadge}>
-            <Text style={styles.popupBadgeText}>STUDENT PORTAL</Text>
-          </View>
-          <Text style={styles.popupTitle}>Available Soon</Text>
-          <Text style={styles.popupMessage}>
-            Student Portal will be available very soon! You will be able to check candidate profiles, chest numbers, and live results right here.
-          </Text>
-          <TouchableOpacity accessibilityRole="button" onPress={handleClosePortalPopup} style={styles.popupActionBtn}>
-            <Text style={styles.popupActionText}>Got it</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   if (featuresLoading) {
     return <View style={styles.loadingScreen}>
@@ -110,6 +68,10 @@ export default function CandidateSearchPage() {
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
 
+          <View style={styles.brandRow}>
+            <Image source={require('@/assets/images/consolium-crest.png')} resizeMode="contain" accessibilityLabel="Consolium logo" style={styles.brandLogo} />
+            <Text style={styles.brandName}>CONSOLIUM</Text>
+          </View>
           <View style={styles.headingBlock}>
             <Text style={styles.eyebrow}>STUDENT PORTAL</Text>
             <Text style={styles.title}>Find a candidate</Text>
@@ -123,7 +85,7 @@ export default function CandidateSearchPage() {
               autoCapitalize="none"
               autoCorrect={false}
               onChangeText={setSearchText}
-              placeholder="Name or chest number"
+              placeholder="Chest number or name"
               placeholderTextColor="#8FA4BD"
               returnKeyType="search"
               style={styles.searchInput}
@@ -223,11 +185,14 @@ const styles = {
   container: { width: '100%' as const, alignSelf: 'center' as const },
   backButton: { minHeight: 42, alignSelf: 'flex-start' as const, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingHorizontal: 10 },
   backText: { color: '#AFC2D8', fontSize: 14, fontWeight: '600' as const },
-  headingBlock: { marginTop: 24, marginBottom: 20 },
+  brandRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 10, marginTop: 12 },
+  brandLogo: { width: 34, height: 34 },
+  brandName: { color: '#FFFFFF', fontSize: 16, letterSpacing: 2, fontWeight: '800' as const },
+  headingBlock: { marginTop: 26, marginBottom: 24, alignItems: 'center' as const },
   eyebrow: { color: '#6EE7B7', fontSize: 11, fontWeight: '800' as const, letterSpacing: 1.6 },
   title: { color: '#FFFFFF', fontSize: 30, lineHeight: 38, fontWeight: '800' as const, marginTop: 5 },
-  subtitle: { color: '#AFC2D8', fontSize: 15, lineHeight: 22, marginTop: 4 },
-  searchBox: { minHeight: 52, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 11, paddingHorizontal: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.06)' },
+  subtitle: { color: '#AFC2D8', fontSize: 15, lineHeight: 22, marginTop: 4, textAlign: 'center' as const },
+  searchBox: { minHeight: 52, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 11, paddingHorizontal: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.09)', ...(Platform.OS === 'web' ? { backdropFilter: 'blur(18px)', boxShadow: '0 12px 40px rgba(0,0,0,0.16)' } as any : {}) },
   searchInput: { flex: 1, minHeight: 50, outlineStyle: 'none' as any, color: '#FFFFFF', fontSize: 15, paddingVertical: 0 },
   clearButton: { minWidth: 38, minHeight: 42, alignItems: 'center' as const, justifyContent: 'center' as const },
   resultsHeading: { minHeight: 48, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, marginTop: 12 },
@@ -235,13 +200,13 @@ const styles = {
   resultCount: { color: '#AFC2D8', fontSize: 12 },
   resultsGrid: { gap: 9 },
   resultsGridWide: { flexDirection: 'row' as const, flexWrap: 'wrap' as const },
-  candidateCard: { minHeight: 68, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: 12, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.045)' },
+  candidateCard: { minHeight: 68, flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: 12, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.07)', ...(Platform.OS === 'web' ? { backdropFilter: 'blur(16px)' } as any : {}) },
   candidateCardWide: { width: 'calc(50% - 5px)' as any },
   candidateInfo: { flex: 1, gap: 5 },
   candidateName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' as const },
   metadataRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8 },
   metadataText: { color: '#AFC2D8', fontSize: 12 },
-  stateCard: { minHeight: 130, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 9, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)' },
+  stateCard: { minHeight: 130, alignItems: 'center' as const, justifyContent: 'center' as const, gap: 9, padding: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)', ...(Platform.OS === 'web' ? { backdropFilter: 'blur(16px)' } as any : {}) },
   stateTitle: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' as const, textAlign: 'center' as const },
   mutedText: { color: '#AFC2D8', fontSize: 13, textAlign: 'center' as const },
   retryButton: { minHeight: 42, alignItems: 'center' as const, justifyContent: 'center' as const, marginTop: 4, paddingHorizontal: 16, borderRadius: 10, backgroundColor: '#087F68' },

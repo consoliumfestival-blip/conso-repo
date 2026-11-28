@@ -342,7 +342,7 @@
             <span class="btn__arrow" aria-hidden="true">→</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
-          <a class="festival-button portal-button" href="#student-portal" id="landing-portal" aria-haspopup="dialog">
+          <a class="festival-button portal-button" href="/candidate-search" id="landing-portal">
             <span>Student Portal</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
@@ -480,13 +480,7 @@
           }, 220);
         }
 
-        if (portal) {
-          portal.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            openModal();
-          });
-        }
+        if (portal) portal.href = '/candidate-search' + (forwardQuery ? '?' + forwardQuery : '');
         if (modal) {
           modal.addEventListener('click', function (e) {
             if (e.target === modal || e.target === modalClose) closeModal();

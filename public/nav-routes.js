@@ -5,13 +5,14 @@
     ['/#journey', '/results'],
     ['#race', '/standings'],
     ['/#race', '/standings'],
-    ['#thought', '/schedule'],
-    ['/#thought', '/schedule'],
+    ['#thought', '/schedules'],
+    ['/#thought', '/schedules'],
     ['#register', '/brochure'],
     ['/#register', '/brochure'],
     ['/results', '/results'],
     ['/standings', '/standings'],
-    ['/schedule', '/schedule'],
+    ['/schedule', '/schedules'],
+    ['/schedules', '/schedules'],
     ['/gallery', '/media'],
     ['/news', '/news'],
     ['/media', '/media'],
@@ -22,13 +23,13 @@
     ['/partners', '/brochure'],
     ['/festival-results.html', '/results'],
     ['/festival-standings.html', '/standings'],
-    ['/festival-schedule.html', '/schedule'],
+    ['/festival-schedule.html', '/schedules'],
     ['/festival-gallery.html', '/media'],
     ['/festival-news.html', '/news'],
     ['/festival-media.html', '/media'],
     ['/festival-brochure.html', '/brochure'],
   ]);
-  const cleanPages = new Set(['/explore', '/consoulium', '/campus', '/results', '/standings', '/schedule', '/news', '/media', '/brochure']);
+  const cleanPages = new Set(['/explore', '/consoulium', '/campus', '/results', '/standings', '/schedules', '/news', '/media', '/brochure']);
   const hiddenTargets = new Set(['/news', '/brochure', '/speakers', '/partners', '#register', '/#register', '/festival-news.html', '/festival-brochure.html']);
   const DEFAULT_TENANT = '45a0c1a0-bda0-4806-8477-f3fd3d6dfbbe';
   const LEGACY_TENANT_ALIAS = 'f87172d1-ed27-4db4-842c-cc00d3d56de2';
@@ -303,6 +304,8 @@
     const link = event.target.closest?.('a');
     if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
+    const rawHref = link.getAttribute('href') || '';
+
     // 1. Central Explore button on Hero -> auto-scroll down smoothly with NO transition animation
     if (link.matches('.hero__ctas a.btn--primary, .hero__ctas a[href="#journey"]')) {
       event.preventDefault();
@@ -323,7 +326,6 @@
     }
 
     // 3. Find Me buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
-    const rawHref = link.getAttribute('href') || '';
     if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta') || rawHref.startsWith('/candidate-search')) {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -387,6 +389,11 @@
       location.assign(nextUrl);
     }
   }, true);
+
+  window.addEventListener('pageshow', scheduleUpdate);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) scheduleUpdate();
+  });
 
   update();
 })();

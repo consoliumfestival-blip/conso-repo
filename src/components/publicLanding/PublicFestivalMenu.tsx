@@ -15,7 +15,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', to: '/explore', c: '#6D28D9' },
   { id: 'results', label: 'Results', to: '/results', c: '#E11D48' },
   { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
-  { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
+  { id: 'schedule', label: 'Schedule', to: '/schedules', c: '#F59E0B' },
   { id: 'media', label: 'Media', to: '/media', c: '#6D28D9' },
   { id: 'find-me', label: 'Find Me', to: '/candidate-search', c: '#2563EB' },
 ];
@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
 const QUICK_CHIPS: ReadonlyArray<readonly [string, string]> = [
   ['Results', '/results'],
   ['Standings', '/standings'],
-  ['Schedule', '/schedule'],
+  ['Schedule', '/schedules'],
   ['Media', '/media'],
   ['Find Me', '/candidate-search'],
 ];
@@ -52,6 +52,7 @@ const PUBLIC_REFERRER_LABELS: Record<string, string> = {
   '/festival-standings.html': 'Standings',
   '/live': 'Standings',
   '/schedule': 'Schedule',
+  '/schedules': 'Schedule',
   '/festival-schedule.html': 'Schedule',
   '/events': 'Schedule',
   '/media': 'Media',

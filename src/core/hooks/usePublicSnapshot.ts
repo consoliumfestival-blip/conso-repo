@@ -25,6 +25,7 @@ export type PublicSnapshot = {
 
 type PublicVersion = { tenant_id: string; revision: string | null; confirmed_at: number };
 const MAX_AGE_MS = 60_000;
+const GC_RETENTION_MS = 10 * 60_000;
 
 function readCachedBrowserSnapshot(tenantId?: string | null): PublicSnapshot | undefined {
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !tenantId) return undefined;
@@ -96,12 +97,12 @@ export function usePublicSnapshot(tenantId?: string | null, enabled = true) {
       : undefined,
     initialDataUpdatedAt: 0,
     staleTime: 0,
-    gcTime: MAX_AGE_MS,
+    gcTime: GC_RETENTION_MS,
     refetchInterval: 20_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
-    retry: false,
+    retry: 2,
   });
   const targetRevision = version.data?.revision;
   const query = useQuery({
@@ -112,29 +113,45 @@ export function usePublicSnapshot(tenantId?: string | null, enabled = true) {
       ? cachedSnap
       : undefined,
     staleTime: Infinity,
-    gcTime: MAX_AGE_MS,
+    gcTime: GC_RETENTION_MS,
     placeholderData: (previous) => previous,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    retry: false,
+    retry: 1,
   });
 
   useEffect(() => {
     const baseTime = version.data?.confirmed_at ?? (query.dataUpdatedAt || undefined);
     if (!baseTime) return;
     const delay = baseTime + MAX_AGE_MS - Date.now();
-    if (delay <= 0) { setExpiryTick((tick) => tick + 1); return; }
-    const timer = setTimeout(() => setExpiryTick((tick) => tick + 1), delay + 1);
+    if (delay <= 0) {
+      setExpiryTick((tick) => tick + 1);
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void version.refetch();
+      }
+      return;
+    }
+    const timer = setTimeout(() => {
+      setExpiryTick((tick) => tick + 1);
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void version.refetch();
+      }
+    }, delay + 1);
     return () => clearTimeout(timer);
-  }, [version.data, query.dataUpdatedAt]);
+  }, [version.data, query.dataUpdatedAt, version]);
 
   void expiryTick;
   const matching = !version.data || query.data?.revision === version.data?.revision;
   const effectiveConfirmedAt = version.data?.confirmed_at ?? (query.dataUpdatedAt || undefined);
-  // Keep the visible rows mounted during a changed-version fetch. If that
-  // fetch fails, the old revision is dropped immediately.
+  const hasLiveConfirmation = version.dataUpdatedAt > 0 || query.dataUpdatedAt > 0;
+  // Keep the visible rows mounted during a changed-version fetch or while a
+  // live-confirmed session refreshes in the background instead of blanking out
+  // after 60s of tab inactivity.
+  const freshData = readFreshPublicSnapshot(query.data, tenantId, Date.now(), effectiveConfirmedAt);
   const data = matching || query.isFetching
-    ? readFreshPublicSnapshot(query.data, tenantId, Date.now(), effectiveConfirmedAt)
+    ? (freshData ?? (hasLiveConfirmation && matching && query.data?.tenant_id?.toLowerCase() === tenantId?.toLowerCase()
+      ? query.data
+      : undefined))
     : undefined;
   const hasError = query.isError || (version.isError && !query.data);
   return {

@@ -78,3 +78,25 @@ test('explore phone hero keeps Find Me and Campus Hub in one row and Campus Hub 
   assert.match(campusHtml, new RegExp(`/standings\\?tenant_id=${CAMPUS}`));
   assert.match(campusHtml, new RegExp(`/candidate-search\\?tenant_id=${CAMPUS}`));
 });
+
+test('public schedule uses /schedules without hijacking admin /schedule and home Find Me has no TDZ error', () => {
+  const navJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'nav-routes.js'), 'utf8');
+  const shellJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'festival-subpage-shell.js'), 'utf8');
+  const homeLeaderboardJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'home-leaderboard.js'), 'utf8');
+  const redirects = fs.readFileSync(path.join(__dirname, '..', 'public', '_redirects'), 'utf8');
+  const menuTsx = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'publicLanding', 'PublicFestivalMenu.tsx'), 'utf8');
+  const snapshotHook = fs.readFileSync(path.join(__dirname, '..', 'src', 'core', 'hooks', 'usePublicSnapshot.ts'), 'utf8');
+
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'public', 'schedule.html')), false);
+  assert.equal(fs.existsSync(path.join(__dirname, '..', 'public', 'schedules.html')), true);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'public', 'schedules.html'), 'utf8'), /data-page="schedule"/);
+
+  assert.ok(navJs.indexOf('const rawHref =') < navJs.indexOf("rawHref === '/campus'"));
+  assert.match(navJs, /\['#thought',\s*'\/schedules'\]/);
+  assert.match(shellJs, /to:\s*'\/schedules'/);
+  assert.match(homeLeaderboardJs, /labelText === 'Schedule' \? '\/schedules'/);
+  assert.match(redirects, /^\/events \/schedules 302$/m);
+  assert.doesNotMatch(redirects, /^\/schedule\s/m);
+  assert.match(menuTsx, /to:\s*'\/schedules'/);
+  assert.match(snapshotHook, /hasLiveConfirmation/);
+});

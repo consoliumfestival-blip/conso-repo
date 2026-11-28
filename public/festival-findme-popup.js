@@ -2,7 +2,7 @@
   const EXPIRES_AT_MS = Date.parse('2026-11-28T12:50:00Z');
   if (Date.now() >= EXPIRES_AT_MS) return;
 
-  const ALLOWED_PATH = /^\/(consoulium|fest|explore|home|results|scores|standings|live|schedule|events|media|gallery|photos|posters|news|brochure|festival-(results|standings|schedule|media|news|brochure))(\.html)?$/;
+  const ALLOWED_PATH = /^\/(consoulium|fest|explore|home|results|scores|standings|live|schedule|schedules|events|media|gallery|photos|posters|news|brochure|festival-(results|standings|schedule|media|news|brochure))(\.html)?$/;
   if (!ALLOWED_PATH.test(location.pathname)) return;
 
   const STORAGE_KEY = 'conso_findme_live_popup_v1';

@@ -29,7 +29,7 @@
     { id: 'home', label: 'Home', to: homePath, c: '#6D28D9' },
     { id: 'results', label: 'Results', to: '/results', c: '#E11D48' },
     { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
-    { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
+    { id: 'schedule', label: 'Schedule', to: '/schedules', c: '#F59E0B' },
     { id: 'media', label: 'Media', to: '/media', c: '#6D28D9' },
     { id: 'find-me', label: 'Find Me', to: '/candidate-search', c: '#2563EB', menuOnly: true },
   ].filter((item) => !isCampus || ['home', 'results', 'standings', 'find-me'].includes(item.id));
@@ -121,7 +121,7 @@
   const quickChipsHtml = [
     ['Results', '/results'],
     ['Standings', '/standings'],
-    ['Schedule', '/schedule'],
+    ['Schedule', '/schedules'],
     ['Media', '/media'],
     ['Find Me', '/candidate-search'],
   ].filter(([label]) => !isCampus || ['Results', 'Standings', 'Find Me'].includes(label))
@@ -291,7 +291,7 @@
     ['Home', homePath, 'home'],
     ['Results', '/results', 'results'],
     ['Standings', '/standings', 'standings'],
-    ['Schedule', '/schedule', 'schedule'],
+    ['Schedule', '/schedules', 'schedule'],
     ['Media', '/media', 'media'],
     ['Find Me', '/candidate-search', 'find-me'],
   ].filter(([, , id]) => !isCampus || ['home', 'results', 'standings', 'find-me'].includes(id)).map(([label, path, id]) => {

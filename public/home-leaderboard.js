@@ -188,7 +188,8 @@ async function install(section) {
       });
       btn.addEventListener('click', (event) => {
         event.preventDefault();
-        const url = new URL('/' + labelText.toLowerCase(), location.origin);
+        const routePath = labelText === 'Schedule' ? '/schedules' : '/' + labelText.toLowerCase();
+        const url = new URL(routePath, location.origin);
         const { customTenant, festivalId } = getScope();
         if (customTenant) url.searchParams.set('tenant_id', customTenant);
         if (festivalId) url.searchParams.set('festival_id', festivalId);

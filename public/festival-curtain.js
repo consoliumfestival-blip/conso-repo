@@ -359,13 +359,13 @@
   window.__consoTransition = { go };
 
   const POPUP_EXPIRES_AT_MS = Date.parse('2026-11-28T12:50:00Z');
-  const POPUP_PATH_RE = /^\/(consoulium|fest|explore|home|results|scores|standings|live|schedule|events|media|gallery|photos|posters|news|brochure|festival-(results|standings|schedule|media|news|brochure))(\.html)?$/;
+  const POPUP_PATH_RE = /^\/(consoulium|fest|explore|home|results|scores|standings|live|schedule|schedules|events|media|gallery|photos|posters|news|brochure|festival-(results|standings|schedule|media|news|brochure))(\.html)?$/;
   if (Date.now() < POPUP_EXPIRES_AT_MS && POPUP_PATH_RE.test(location.pathname)) {
     const injectPopup = () => {
       if (document.getElementById('conso-findme-popup-loader')) return;
       const s = document.createElement('script');
       s.id = 'conso-findme-popup-loader';
-      s.src = '/festival-findme-popup.js?v=20261128i';
+      s.src = '/festival-findme-popup.js?v=20261128j';
       s.defer = true;
       document.head.appendChild(s);
     };

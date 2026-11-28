@@ -49,6 +49,7 @@ export type ScheduleTopicDrawState = {
 };
 
 export type StageTopicPresentation = {
+  draw_id?: string | null;
   item_name: string;
   code_letter: string;
   topic_text: string;
@@ -142,6 +143,14 @@ export const scheduleTopicDrawService = {
   async setPortalDisplayPaused(venueId: string, paused: boolean, expectedVersion: number): Promise<StageTopicDisplayState> {
     const { data, error } = await supabase.rpc('stage_portal_topic_set_paused', {
       p_venue_id: venueId, p_paused: paused, p_expected_version: expectedVersion,
+    });
+    throwOnError(error);
+    return data as StageTopicDisplayState;
+  },
+
+  async showNextQueuedPortalTopic(venueId: string, expectedVersion: number): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('stage_portal_topic_show_next', {
+      p_venue_id: venueId, p_expected_version: expectedVersion,
     });
     throwOnError(error);
     return data as StageTopicDisplayState;
@@ -272,6 +281,15 @@ export const scheduleTopicDrawService = {
     const { data, error } = await supabase.rpc('admin_stage_topic_set_paused', {
       p_venue_id: venueId,
       p_paused: paused,
+      p_expected_version: expectedVersion,
+    });
+    throwOnError(error);
+    return data as StageTopicDisplayState;
+  },
+
+  async showNextQueuedStageTopic(venueId: string, expectedVersion: number): Promise<StageTopicDisplayState> {
+    const { data, error } = await supabase.rpc('admin_stage_topic_show_next', {
+      p_venue_id: venueId,
       p_expected_version: expectedVersion,
     });
     throwOnError(error);

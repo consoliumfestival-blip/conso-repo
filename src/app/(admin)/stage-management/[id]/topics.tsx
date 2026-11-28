@@ -66,20 +66,14 @@ export default function ScheduleTopicDrawPage() {
   const drawTopic = async () => {
     if (!selectedRegistration || !state?.enabled || activeTopicCount === 0) return;
     const isRedraw = !!selectedAssignment;
-    const needsJudgingWarning = state.judging_started;
-    if (isRedraw || needsJudgingWarning) {
-      const title = isRedraw ? 'Confirm re-draw' : 'Confirm topic draw';
-      const details = [
-        isRedraw ? 'This participant already has a topic. Drawing again will replace the current topic.' : '',
-        needsJudgingWarning ? 'Judging has started. Existing marks will not change; notify the assigned judge about the new topic.' : '',
-      ].filter(Boolean).join('\n');
-      if (!await confirm(details, title)) return;
+    if (isRedraw) {
+      if (!await confirm('This participant already has a topic. Drawing again will replace the current topic.', 'Confirm re-draw')) return;
     }
 
     setError('');
     setBusy('draw');
     try {
-      await scheduleTopicDrawService.draw(scheduleId!, selectedRegistration.id, isRedraw, needsJudgingWarning);
+      await scheduleTopicDrawService.draw(scheduleId!, selectedRegistration.id, isRedraw, true);
       await refreshState();
     } catch (drawError: any) {
       setError(drawError?.message || 'Could not draw a topic.');
@@ -213,7 +207,7 @@ export default function ScheduleTopicDrawPage() {
             <View className="flex-row items-start justify-between gap-3">
               <View className="flex-1">
                 <Text className="font-poppins-bold text-sm text-ui-text">Topic pool</Text>
-                <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Drawn topics stay disabled until you activate them here.</Text>
+                <Text className="mt-0.5 font-poppins text-xs text-ui-text-muted">Active topics stay in the random pool across draws unless you disable one manually.</Text>
               </View>
               <View className="rounded-full bg-ui-muted px-2.5 py-1"><Text className="font-poppins-bold text-[10px] text-ui-text">{state?.topics.length ?? 0}</Text></View>
             </View>

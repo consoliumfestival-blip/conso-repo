@@ -3,7 +3,6 @@ import { SsfButton } from '@/components/ui/SsfButton';
 import { scheduleTopicDrawService, type ScheduleTopic, type ScheduleTopicDrawState } from '@/services/scheduleTopicDrawService';
 import {
   DEFAULT_TOPIC_DURATION_MINUTES,
-  MAX_TOPIC_DURATION_MINUTES,
   topicDurationMinutesToSeconds,
 } from '@/core/utils/scheduleTopicSetup';
 import { Plus, Trash2, X } from 'lucide-react-native';
@@ -113,11 +112,7 @@ export function ScheduleTopicSetupModal({
 
   const save = async () => {
     setError('');
-    const durationSeconds = topicDurationMinutesToSeconds(durationMinutes);
-    if (durationSeconds === null) {
-      setError(`Enter a whole number of minutes from 1 to ${MAX_TOPIC_DURATION_MINUTES.toLocaleString()}.`);
-      return;
-    }
+    const durationSeconds = topicDurationMinutesToSeconds(durationMinutes) ?? (DEFAULT_TOPIC_DURATION_MINUTES * 60);
     const cleanTopics = topics.map((topic) => ({ ...topic, topic_text: topic.topic_text.trim() })).filter((topic) => topic.topic_text);
     if (enableOnSave && cleanTopics.length === 0) {
       setError('Add at least one topic before enabling Topic Draw.');
@@ -142,7 +137,7 @@ export function ScheduleTopicSetupModal({
       return;
     }
     onDraftTopicsChange?.(cleanTopics.map(({ id, topic_text }) => ({ ...(id ? { id } : {}), topic_text })));
-    onDraftDurationMinutesChange?.(durationMinutes);
+    onDraftDurationMinutesChange?.(String(Math.round(durationSeconds / 60)));
     onClose();
   };
 
@@ -165,22 +160,9 @@ export function ScheduleTopicSetupModal({
             <View className="min-h-36 items-center justify-center"><ActivityIndicator /><Text className="mt-2 font-poppins text-xs text-ui-text-muted">Loading topics…</Text></View>
           ) : (
             <ScrollView className="px-4 py-3" keyboardShouldPersistTaps="handled">
-              <View className="mb-3">
-                {enableOnSave ? <Text className="mb-2 font-poppins text-xs text-ui-text-muted">Saving will enable Topic Draw for this schedule. Code letters remain locked.</Text> : null}
-                <Text className="mb-1 font-poppins-bold text-xs text-ui-text">Time per participant (minutes) *</Text>
-                <TextInput
-                  value={durationMinutes}
-                  onChangeText={setDurationMinutes}
-                  keyboardType="number-pad"
-                  inputMode="numeric"
-                  maxLength={4}
-                  accessibilityLabel="Time per participant in minutes"
-                  placeholder="5"
-                  placeholderTextColor="#64748B"
-                  className="h-10 rounded-lg border border-ui-border bg-core-surface-white px-3 font-poppins text-sm text-ui-text"
-                />
-                <Text className="mt-1 font-poppins text-[10px] text-ui-text-muted">From 1 minute to 24 hours. The timer starts when the topic is shown.</Text>
-              </View>
+              {enableOnSave ? (
+                <Text className="mb-3 font-poppins text-xs text-ui-text-muted">Saving will enable Topic Draw for this schedule. Code letters remain locked.</Text>
+              ) : null}
               {topics.map((topic, index) => {
                 const rtl = containsArabic(topic.topic_text);
                 return (

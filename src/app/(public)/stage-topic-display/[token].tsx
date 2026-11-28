@@ -1,5 +1,4 @@
 import { scheduleTopicDrawService, type PublicStageTopicDisplay } from '@/services/scheduleTopicDrawService';
-import { stageTopicSecondsRemaining } from '@/core/utils/stageTopicCountdown';
 import { AyaticLoadingScreen } from '@/components/loading-ui/AyaticLoadingScreen';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
@@ -16,9 +15,7 @@ export default function StageTopicDisplay() {
   const displayToken = Array.isArray(token) ? token[0] : token;
   const validToken = !!displayToken && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(displayToken);
   const { width, height } = useWindowDimensions();
-  const [now, setNow] = React.useState(() => Date.now());
   const newest = React.useRef<{ token: string; data: PublicStageTopicDisplay } | null>(null);
-  const serverOffsetMs = React.useRef(0);
   const query = useQuery({
     queryKey: ['public-stage-topic-display', displayToken],
     queryFn: () => scheduleTopicDrawService.getPublicStageDisplay(displayToken!),
@@ -26,25 +23,14 @@ export default function StageTopicDisplay() {
     retry: 1,
     refetchInterval: 2000,
   });
-  React.useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(id);
-  }, []);
   if (query.data && (newest.current?.token !== displayToken
     || query.data.version >= (newest.current?.data.version ?? -1))) {
-    if (newest.current?.data !== query.data || newest.current.token !== displayToken) {
+    if (newest.current?.data !== query.data || newest.current?.token !== displayToken) {
       newest.current = { token: displayToken!, data: query.data };
-      serverOffsetMs.current = Date.parse(query.data.server_time) - Date.now();
     }
   }
-  const state = newest.current?.token === displayToken ? newest.current.data : null;
+  const state = newest.current && newest.current.token === displayToken ? newest.current.data : null;
   const presentation = state?.on_screen;
-  const remaining = presentation
-    ? stageTopicSecondsRemaining(presentation.published_at, presentation.duration_seconds, serverOffsetMs.current, now)
-    : 0;
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-  const timer = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   const compact = width < 620;
 
   const background = '#F4F9F8';
@@ -88,11 +74,13 @@ export default function StageTopicDisplay() {
                   accessibilityLabel="Consolium logo" resizeMode="contain" style={{ width: 36, height: 36 }} />
                 <Text className="font-poppins-bold" style={{ fontSize: compact ? 13 : 18, letterSpacing: 2, color: ink }}>CONSOLIUM</Text>
               </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: compact ? 12 : 20,
-                paddingVertical: 8, backgroundColor: '#E4F1ED', borderRadius: 12, flexShrink: 1 }}>
-                <Text className="font-poppins" style={{ fontSize: 12, color: teal }}>CODE</Text>
-                <Text className="font-poppins-bold" style={{ fontSize: compact ? 24 : 32, color: teal, flexShrink: 1 }}>{presentation.code_letter}</Text>
-              </View>
+              {presentation.code_letter && presentation.code_letter !== '—' ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: compact ? 12 : 20,
+                  paddingVertical: 8, backgroundColor: '#E4F1ED', borderRadius: 12, flexShrink: 1 }}>
+                  <Text className="font-poppins" style={{ fontSize: 12, color: teal }}>CODE</Text>
+                  <Text className="font-poppins-bold" style={{ fontSize: compact ? 24 : 32, color: teal, flexShrink: 1 }}>{presentation.code_letter}</Text>
+                </View>
+              ) : null}
             </View>
             <Text accessibilityRole="header" className="font-poppins-bold" style={{
               fontSize: compact ? 22 : 34, color: teal, textAlign: 'center',
@@ -104,19 +92,12 @@ export default function StageTopicDisplay() {
                 writingDirection: isRtl(presentation.topic_text) ? 'rtl' : 'ltr',
               }}>{presentation.topic_text}</Text>
             </View>
-            <View style={{ alignItems: 'center', gap: 10 }}>
-              <View style={{ alignItems: 'center', minWidth: compact ? 180 : 240, paddingHorizontal: 28,
-                paddingVertical: compact ? 12 : 16, borderRadius: 20, backgroundColor: '#FFFFFF',
-                borderWidth: 1, borderColor: remaining ? '#D7E5E2' : '#E9D9C6' }}>
-                <Text className="font-poppins" style={{ fontSize: 11, letterSpacing: 2, color: '#526B73' }}>TIME REMAINING</Text>
-                <Text accessibilityLiveRegion="none" className="font-poppins-bold" style={{
-                  fontSize: compact ? 42 : 64, lineHeight: compact ? 56 : 82, fontVariant: ['tabular-nums'],
-                  color: remaining ? teal : '#9A3412',
-                }}>{remaining ? timer : 'Time up'}</Text>
+            {query.isError ? (
+              <View style={{ alignItems: 'center' }}>
+                <Text accessibilityLiveRegion="polite" className="font-poppins"
+                  style={{ fontSize: 12, color: '#526B73' }}>Connection lost · reconnecting…</Text>
               </View>
-              {query.isError ? <Text accessibilityLiveRegion="polite" className="font-poppins"
-                style={{ fontSize: 12, color: '#526B73' }}>Connection lost · reconnecting…</Text> : null}
-            </View>
+            ) : null}
           </View>
         )}
       </ScrollView>

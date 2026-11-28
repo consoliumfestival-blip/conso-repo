@@ -6,32 +6,56 @@ export function selectedSavedDraw(
   schedule: StageScheduleRow | undefined,
   participant: StageRegistrationRow | undefined,
   assignment: ScheduleTopicAssignment | undefined,
-  durationSeconds: number | undefined,
+  durationSeconds?: number,
 ): StageTopicDrawPreview | undefined {
-  if (!schedule || !participant || !assignment?.is_current
-    || assignment.registration_id !== participant.id || participant.status === 'rejected'
-    || !participant.code_letter?.trim() || typeof durationSeconds !== 'number'
-    || !Number.isInteger(durationSeconds) || durationSeconds < 60 || durationSeconds > 86400) return undefined;
+  if (
+    !schedule ||
+    !participant ||
+    !assignment?.is_current ||
+    assignment.registration_id !== participant.id ||
+    participant.status === 'rejected'
+  ) {
+    return undefined;
+  }
+
+  const displayCode =
+    participant.code_letter?.trim() ||
+    participant.participant_chest_number?.trim() ||
+    '—';
+  const safeDuration =
+    typeof durationSeconds === 'number' && Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? Math.round(durationSeconds)
+      : 300;
+
   return {
-    schedule_id: schedule.id, registration_id: participant.id, draw_id: assignment.id,
-    item_name: schedule.item_name_en?.trim() || schedule.item_name_ml?.trim() || schedule.item_code?.trim() || 'Item',
-    code_letter: participant.code_letter.trim(), topic_text: assignment.topic_text,
-    duration_seconds: durationSeconds,
+    schedule_id: schedule.id,
+    registration_id: participant.id,
+    draw_id: assignment.id,
+    item_name:
+      schedule.item_name_en?.trim() ||
+      schedule.item_name_ml?.trim() ||
+      schedule.item_code?.trim() ||
+      'Item',
+    code_letter: displayCode,
+    topic_text: assignment.topic_text,
+    duration_seconds: safeDuration,
   };
 }
 
-// A stage may contain pending draws for many events. Selection never falls
-// back to another event, participant, or a newer draw of the same topic text.
 export function selectedReadyTopic(
   ready: StageTopicDisplayState['ready'],
   scheduleId: string,
   registrationId: string,
   drawId: string | undefined,
-  codeLetter: string | null | undefined,
+  _codeLetter: string | null | undefined,
   topicText: string | undefined,
 ) {
-  if (!scheduleId || !registrationId || !drawId || !codeLetter?.trim()) return undefined;
-  return ready.find(item => item.schedule_id === scheduleId
-    && item.registration_id === registrationId && item.draw_id === drawId
-    && item.code_letter === codeLetter.trim() && item.topic_text === topicText);
+  if (!scheduleId || !registrationId || !drawId) return undefined;
+  return ready.find(
+    (item) =>
+      item.schedule_id === scheduleId &&
+      item.registration_id === registrationId &&
+      item.draw_id === drawId &&
+      (topicText === undefined || item.topic_text === topicText),
+  );
 }

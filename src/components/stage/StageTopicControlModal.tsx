@@ -1,6 +1,5 @@
 import { Modal } from '@/components/ui/CoreModal';
 import { SsfButton } from '@/components/ui/SsfButton';
-import { stageTopicSecondsRemaining } from '@/core/utils/stageTopicCountdown';
 import { selectedSavedDraw } from '@/core/utils/stageTopicSelection';
 import { scheduleTopicDrawService, type ScheduleTopicDrawState, type StageTopicDisplayState, type ScheduleTopicAssignment } from '@/services/scheduleTopicDrawService';
 import { stageManagementService, type StageRegistrationRow, type StageScheduleRow } from '@/services/stageManagementService';
@@ -17,14 +16,11 @@ function errorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function confirmDraw(redraw: boolean, judgingStarted: boolean): Promise<boolean> {
-  const details = [
-    redraw ? 'This participant already has a topic. A new draw will replace that assignment.' : '',
-    judgingStarted ? 'Judging has started. Existing marks will not change; notify the assigned judge.' : '',
-  ].filter(Boolean).join('\n');
-  if (!details) return Promise.resolve(true);
-  if (Platform.OS === 'web') return Promise.resolve(window.confirm(`Confirm topic draw\n\n${details}`));
-  return new Promise((resolve) => Alert.alert('Confirm topic draw', details, [
+function confirmDraw(redraw: boolean): Promise<boolean> {
+  if (!redraw) return Promise.resolve(true);
+  const details = 'This participant already has a topic. A new draw will replace that assignment.';
+  if (Platform.OS === 'web') return Promise.resolve(window.confirm(`Confirm re-draw\n\n${details}`));
+  return new Promise((resolve) => Alert.alert('Confirm re-draw', details, [
     { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
     { text: 'Draw', onPress: () => resolve(true) },
   ], { cancelable: true, onDismiss: () => resolve(false) }));
@@ -50,8 +46,6 @@ export function StageTopicControlModal({
   const [showLink, setShowLink] = React.useState(false);
   const [actionError, setActionError] = React.useState('');
   const [notice, setNotice] = React.useState('');
-  const [now, setNow] = React.useState(() => Date.now());
-  const serverOffsetMs = React.useRef(0);
   const stageKey = [portal ? 'portal-stage-topic-display' : 'admin-stage-topic-display', venueId];
   const topicKey = [portal ? 'portal-schedule-topic-draw-state' : 'schedule-topic-draw-state', venueId, scheduleId];
   const stageQuery = useQuery<StageTopicDisplayState>({
@@ -59,15 +53,6 @@ export function StageTopicControlModal({
     queryFn: () => portal ? scheduleTopicDrawService.getPortalDisplayState(venueId) : scheduleTopicDrawService.getStageDisplayState(venueId),
     refetchInterval: 5000,
   });
-  React.useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  React.useEffect(() => {
-    if (stageQuery.data?.server_time) {
-      serverOffsetMs.current = Date.parse(stageQuery.data.server_time) - Date.now();
-    }
-  }, [stageQuery.data]);
   const topicQuery = useQuery<ScheduleTopicDrawState>({
     queryKey: topicKey,
     queryFn: () => portal ? scheduleTopicDrawService.getPortalState(venueId, scheduleId) : scheduleTopicDrawService.getState(scheduleId),
@@ -88,11 +73,6 @@ export function StageTopicControlModal({
     : topicQuery.data?.assignments.find((item) => item.registration_id === registrationId);
   const selectedPreview = selectedSavedDraw(schedule, selected, assignment, topicQuery.data?.participant_duration_seconds);
   const activeTopics = topicQuery.data?.topics.filter((item) => item.is_active).length ?? 0;
-  const onScreen = stageQuery.data?.on_screen;
-  const remaining = onScreen ? stageTopicSecondsRemaining(
-    onScreen.published_at, onScreen.duration_seconds, serverOffsetMs.current, now,
-  ) : 0;
-  const timer = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`;
   const available = (registrationsQuery.data ?? []).filter((item) => item.status !== 'rejected');
   const visible = available.filter((item) => {
     const needle = search.toLowerCase().trim();
@@ -124,15 +104,14 @@ export function StageTopicControlModal({
   const draw = async () => {
     if (!scheduleId || !registrationId || !topicQuery.data?.enabled || !activeTopics || busy) return;
     const redraw = !!assignment;
-    const judgingStarted = !!topicQuery.data.judging_started;
     setBusy('draw');
     setActionError('');
     setNotice('');
     try {
-      if (!await confirmDraw(redraw, judgingStarted)) return;
+      if (!await confirmDraw(redraw)) return;
       const drawn = portal
-        ? await scheduleTopicDrawService.drawPortalTopic(venueId, scheduleId, registrationId, redraw, judgingStarted)
-        : await scheduleTopicDrawService.draw(scheduleId, registrationId, redraw, judgingStarted);
+        ? await scheduleTopicDrawService.drawPortalTopic(venueId, scheduleId, registrationId, redraw, true)
+        : await scheduleTopicDrawService.draw(scheduleId, registrationId, redraw, true);
       setLastDraw({ scheduleId, assignment: {
         id: drawn.assignment_id, registration_id: drawn.registration_id, topic_id: drawn.topic_id,
         topic_text: drawn.topic_text, drawn_at: drawn.drawn_at, is_current: true,
@@ -142,8 +121,8 @@ export function StageTopicControlModal({
         queryClient.invalidateQueries({ queryKey: topicKey }),
       ]);
       setNotice(refreshed.isError
-        ? 'Topic saved. Refresh the stage display to check whether it is ready.'
-        : 'Topic saved. Show Next will display this selected draw after checking its stage and participant.');
+        ? 'Topic drawn and saved. Press Show Next when ready to show it on stage.'
+        : 'Topic drawn and queued. Audience screen stays unchanged until you press Show Next.');
     } catch (error: any) {
       setActionError(error?.message || 'Could not draw a topic.');
     } finally {
@@ -157,40 +136,40 @@ export function StageTopicControlModal({
       setActionError(`Show Next unavailable: ${errorMessage(stageQuery.error, 'Could not load stage display. Retry stage display.')}`);
       return;
     }
-    if (!stageQuery.data || stageQuery.isPending || stageQuery.isFetching) {
-      setActionError('Stage display is still loading. Wait for it to finish, then try Show Next again.');
+    if (!stageQuery.data || stageQuery.isPending) {
+      setActionError('Stage display is still loading. Wait a moment and try Show Next again.');
       return;
     }
-    if (stageQuery.data.paused) {
-      setActionError('The stage display is paused. Press Resume before Show Next.');
-      return;
-    }
-    if (!schedule || !selected) {
-      setActionError('Select the event and participant whose topic should be shown.');
-      return;
-    }
-    if (topicQuery.isError || registrationsQuery.isError || topicQuery.isFetching || registrationsQuery.isFetching) {
-      setActionError('The selected event or participant is still loading or could not be refreshed. Retry before Show Next.');
-      return;
-    }
-    if (!selectedPreview) {
-      setActionError('Select a participant with a saved topic and a code letter. Refresh event topics if the saved draw is not visible.');
+    const readyQueue = stageQuery.data.ready ?? [];
+    const onScreenDrawId = stageQuery.data.on_screen?.draw_id;
+    const canPublishSelected = !!selectedPreview && onScreenDrawId !== selectedPreview.draw_id;
+    if (!canPublishSelected && readyQueue.length === 0 && !selectedPreview) {
+      setActionError('Draw a topic for a participant or select a saved draw first.');
       return;
     }
     setBusy('next');
     setActionError('');
     try {
-      const next = portal
-        ? await scheduleTopicDrawService.showSavedPortalDraw(venueId, stageQuery.data.version, selectedPreview)
-        : await scheduleTopicDrawService.showSavedStageDraw(venueId, stageQuery.data.version, selectedPreview);
+      const next = canPublishSelected
+        ? (portal
+            ? await scheduleTopicDrawService.showSavedPortalDraw(venueId, stageQuery.data.version, selectedPreview!)
+            : await scheduleTopicDrawService.showSavedStageDraw(venueId, stageQuery.data.version, selectedPreview!))
+        : readyQueue.length > 0
+          ? (portal
+              ? await scheduleTopicDrawService.showNextQueuedPortalTopic(venueId, stageQuery.data.version)
+              : await scheduleTopicDrawService.showNextQueuedStageTopic(venueId, stageQuery.data.version))
+          : (portal
+              ? await scheduleTopicDrawService.showSavedPortalDraw(venueId, stageQuery.data.version, selectedPreview!)
+              : await scheduleTopicDrawService.showSavedStageDraw(venueId, stageQuery.data.version, selectedPreview!));
       queryClient.setQueryData(stageKey, next);
-      setNotice(`Shown: ${selectedPreview.item_name} · Code ${selectedPreview.code_letter} · ${selectedPreview.topic_text}`);
+      const shown = next?.on_screen ?? selectedPreview;
+      if (shown) {
+        const codePart = shown.code_letter && shown.code_letter !== '—' ? ` · Code ${shown.code_letter}` : '';
+        setNotice(`Shown: ${shown.item_name}${codePart} · ${shown.topic_text}`);
+      }
     } catch (error: any) {
-      setActionError(`Show Next failed: ${errorMessage(error, 'The request failed without an error description. Check your connection and retry stage display.')}`);
-      // Reload only this event's saved draw and participants after a rejected
-      // preview; do not retain a local draw snapshot that may have been replaced.
-      setLastDraw(null);
-      await Promise.all([stageQuery.refetch(), topicQuery.refetch(), registrationsQuery.refetch()]);
+      setActionError(`Show Next failed: ${errorMessage(error, 'Could not update stage display. Check your connection and retry.')}`);
+      await Promise.all([stageQuery.refetch(), topicQuery.refetch()]);
     } finally {
       setBusy('');
     }
@@ -220,7 +199,7 @@ export function StageTopicControlModal({
           <View className="flex-row items-start justify-between border-b border-ui-border px-4 py-3">
             <View className="min-w-0 flex-1">
               <Text className="font-poppins-bold text-base text-ui-text">Stage topics · {venueName}</Text>
-              <Text className="font-poppins text-xs text-ui-text-muted">Select an event and participant. Show Next displays only their current drawn topic.</Text>
+              <Text className="font-poppins text-xs text-ui-text-muted">Draw topics ahead of time. The audience screen updates only when you press Show Next.</Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close topic controls" onPress={onClose} className="ml-2 rounded-lg border border-ui-border px-3 py-1.5">
               <Text className="font-poppins-bold text-sm text-ui-text">✕</Text>
@@ -255,19 +234,18 @@ export function StageTopicControlModal({
             <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
               <Text className="font-poppins text-xs text-ui-text-muted">Selected event</Text>
               <Text className="font-poppins-bold text-sm text-ui-text">{schedule?.item_name_en || schedule?.item_name_ml || schedule?.item_code || 'Choose an event'}</Text>
-              <Text className="font-poppins text-xs text-ui-text-muted">{selected ? `${selected.participant_name || 'Participant'} · Code ${selected.code_letter || 'Not assigned'}` : 'Choose a participant below to preview their saved draw.'}</Text>
+              <Text className="font-poppins text-xs text-ui-text-muted">{selected ? `${selected.participant_name || 'Participant'} · ${selected.code_letter ? `Code ${selected.code_letter}` : selected.participant_chest_number ? `Chest ${selected.participant_chest_number}` : 'No code'}` : 'Choose a participant below to draw or preview a topic.'}</Text>
               <Text selectable className="font-poppins-bold text-sm text-ui-text">{selectedPreview ? selectedPreview.topic_text : 'No saved draw selected.'}</Text>
-              {selectedPreview ? <Text className="font-poppins text-xs text-ui-text-muted">Duration: {Math.floor(selectedPreview.duration_seconds / 60)} min</Text> : null}
+              {stageQuery.data?.ready?.length ? <Text className="font-poppins text-xs text-ui-text-muted">Queued for Show Next: {stageQuery.data.ready.length}</Text> : null}
               <View className="flex-row flex-wrap items-center gap-2">
                 <SsfButton label="Show Next" accessibilityLabel={`Show selected draw for ${schedule?.item_name_en || schedule?.item_name_ml || schedule?.item_code || 'selected event'}`} size="sm" onPress={() => { void showNext(); }} isLoading={busy === 'next'} disabled={!!busy} />
               </View>
               {!!actionError && <Text accessibilityRole="alert" accessibilityLiveRegion="assertive" selectable className="font-poppins text-xs text-core-danger-red-700">{actionError}</Text>}
-              {stageQuery.data?.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Audience display is paused. Use Resume under Audience display before Show Next.</Text> : null}
             </View>
             {schedule && topicQuery.data?.enabled ? (
               <>
                 <Text className="font-poppins text-xs text-ui-text-muted">
-                  {activeTopics} active topics · {Math.round(topicQuery.data.participant_duration_seconds / 60)} min per participant
+                  {activeTopics} active topics in random pool
                 </Text>
                 <View className="gap-1">
                   {topicQuery.data.topics.map((topic) => <View key={topic.id} className="flex-row items-center justify-between gap-2 rounded-lg border border-ui-border bg-core-surface-white px-3 py-1.5">
@@ -300,7 +278,6 @@ export function StageTopicControlModal({
                   {!visible.length ? <Text className="font-poppins text-xs text-ui-text-muted">No matching participants.</Text> : null}
                 </ScrollView>
                 {assignment ? <Text className="font-poppins text-xs text-ui-text-muted">Current draw: {assignment.topic_text}</Text> : null}
-                {selected && !selected.code_letter?.trim() ? <Text className="font-poppins text-xs text-ui-text-muted">Assign a code letter before showing this saved draw. A new random draw is not required.</Text> : null}
                 <SsfButton label={assignment ? 'Re-draw topic' : 'Draw topic'} size="sm" onPress={() => { void draw(); }} isLoading={busy === 'draw'} disabled={!!busy || !selected || !activeTopics} />
               </>
             ) : topicQuery.isPending ? <Text className="font-poppins text-xs text-ui-text-muted">Loading topic setup…</Text>
@@ -318,18 +295,14 @@ export function StageTopicControlModal({
                 <View className="gap-2 rounded-xl border border-ui-border bg-ui-muted p-3">
                   <Text className="font-poppins-bold text-sm text-ui-text">
                     {stageQuery.data.paused ? 'Display paused' : stageQuery.data.on_screen
-                      ? `Audience screen now: ${stageQuery.data.on_screen.item_name} · Code ${stageQuery.data.on_screen.code_letter}`
+                      ? `Audience screen now: ${stageQuery.data.on_screen.item_name}${stageQuery.data.on_screen.code_letter && stageQuery.data.on_screen.code_letter !== '—' ? ` · Code ${stageQuery.data.on_screen.code_letter}` : ''}`
                       : 'Audience screen waiting'}
                   </Text>
-                  {onScreen && !stageQuery.data.paused ? (
-                    <Text className="font-poppins-bold text-sm text-ui-text">On-screen timer: {timer}</Text>
-                  ) : null}
                   <View className="flex-row flex-wrap gap-2">
                     <SsfButton label="Refresh stage display" size="sm" variant="outline" isLoading={stageQuery.isFetching} disabled={!!busy} onPress={() => { void stageQuery.refetch(); }} />
                     <SsfButton label={stageQuery.data.paused ? 'Resume' : 'Pause'} size="sm" variant="outline" onPress={() => { void togglePause(); }} isLoading={busy === 'pause'} disabled={!!busy} />
                     <SsfButton label="Link & QR" size="sm" variant="outline" onPress={() => portal ? setShowLink((value) => !value) : onOpenLink?.()} disabled={!!busy || (portal && !displayUrl)} />
                   </View>
-                  {stageQuery.data.paused ? <Text className="font-poppins text-xs text-ui-text-muted">Resume the display before Show Next. The selected topic will not be shown until you press Show Next.</Text> : null}
                   {showLink && displayUrl ? <View className="items-center gap-2 rounded-lg border border-ui-border bg-core-surface-white p-3">
                     <QRCode value={displayUrl} size={150} />
                     <Text selectable className="font-poppins text-xs text-ui-text-muted">{displayUrl}</Text>

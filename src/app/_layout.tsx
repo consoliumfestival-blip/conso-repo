@@ -38,7 +38,7 @@ import { ButtonThemeSurface } from '@/components/ui/ButtonThemeSurface';
 
 // Removed top-level preventAutoHideAsync, moving it inside component
 
-const LOADING_BG = "#011635";
+const LOADING_BG = "#050816";
 
 function AppLoadingScreen() {
   const pathname = usePathname();
@@ -50,7 +50,7 @@ function AppLoadingScreen() {
   const logoutTeamLeader = useAuthStore((state) => state.logoutTeamLeader);
   const [logoutError, setLogoutError] = useState('');
   const segments = useSegments();
-  const isPublicRoute = segments[0] === '(public)';
+  const isPublicRoute = segments[0] === '(public)' || segments[0] === 'candidate';
 
   if (teamRoute && teamSessionStatus === 'error') {
     return (
@@ -224,7 +224,18 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontError, initialized]);
 
-  if ((!fontsLoaded && !fontError) || !initialized) {
+  const isAnonPublicCandidateWeb = Platform.OS === 'web'
+    && (pathname === '/candidate-search' || pathname.startsWith('/candidate/'))
+    && typeof window !== 'undefined'
+    && (() => {
+      try {
+        return !Object.keys(window.localStorage).some((k) => k.startsWith('sb-') && k.endsWith('-auth-token'));
+      } catch {
+        return false;
+      }
+    })();
+
+  if (!isAnonPublicCandidateWeb && ((!fontsLoaded && !fontError) || !initialized)) {
     return <AppLoadingScreen />;
   }
 

@@ -31,8 +31,12 @@
         flex: 1;
       }
     </style>
+    <script src="/festival-curtain.js?v=20261128h"></script>
     <style>
       #portal-bootstrap-loader { display: none; }
+      html[data-public-candidate],
+      html[data-public-candidate] body { background: #050816 !important; }
+      html[data-public-candidate] #portal-bootstrap-loader { display: none !important; }
       html[data-private-loading] body { background: #FFFEF9 !important; }
       html[data-private-loading] #portal-bootstrap-loader {
         display: flex;
@@ -61,6 +65,10 @@
     <script>
       (function () {
         var path = location.pathname;
+        if (/^\/(candidate-search|candidate)(\/|$)/.test(path)) {
+          document.documentElement.setAttribute('data-public-candidate', '');
+          return;
+        }
         if (path === '/' || /^\/(leaderboard|participant-result|unavailable)(\/|$)/.test(path)) return;
         document.documentElement.setAttribute('data-private-loading', '');
 

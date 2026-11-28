@@ -210,34 +210,60 @@ export default function PublicCandidateProfileScreen() {
           </View>
         </View>
 
-        <View style={[styles.statsGrid, !isTablet && styles.statsGridMobile]}>
-          {stats.map((stat, idx) => {
-            const Icon = stat.icon;
-            const spanFullOnMobile = !isTablet && idx === 2;
-            return (
-              <View
-                key={stat.id}
-                style={[
-                  styles.statCard,
-                  webGlassSurface(18),
-                  !isTablet && styles.statCardMobile,
-                  spanFullOnMobile && styles.statCardMobileFull,
-                ]}
-              >
-                <View style={styles.statTop}>
-                  <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
-                    <Icon size={19} color={stat.tone} />
+        <View style={isTablet ? styles.statsGrid : styles.statsStackMobile}>
+          {isTablet ? (
+            stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <View key={stat.id} style={[styles.statCard, styles.statCardDesktop, webGlassSurface(18)]}>
+                  <View style={styles.statTop}>
+                    <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
+                      <Icon size={19} color={stat.tone} />
+                    </View>
+                    <Text style={styles.statValue}>{stat.value}</Text>
                   </View>
-                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
-                <Text style={styles.statLabel}>{stat.label}</Text>
+              );
+            })
+          ) : (
+            <>
+              <View style={styles.statsRowMobile}>
+                {stats.slice(0, 2).map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <View key={stat.id} style={[styles.statCard, styles.statCardMobileHalf, webGlassSurface(18)]}>
+                      <View style={styles.statTop}>
+                        <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
+                          <Icon size={18} color={stat.tone} />
+                        </View>
+                        <Text style={styles.statValue}>{stat.value}</Text>
+                      </View>
+                      <Text style={styles.statLabel} numberOfLines={2}>{stat.label}</Text>
+                    </View>
+                  );
+                })}
               </View>
-            );
-          })}
+              {stats.slice(2).map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <View key={stat.id} style={[styles.statCard, styles.statCardMobileFull, webGlassSurface(18)]}>
+                    <View style={styles.statTop}>
+                      <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
+                        <Icon size={18} color={stat.tone} />
+                      </View>
+                      <Text style={styles.statValue}>{stat.value}</Text>
+                    </View>
+                    <Text style={styles.statLabel}>{stat.label}</Text>
+                  </View>
+                );
+              })}
+            </>
+          )}
         </View>
 
         <View style={[styles.sections, isDesktop && styles.sectionsDesktop]}>
-          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop && { flex: 1 }]}>
+          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Participated Items</Text>
               <View style={styles.sectionCountPill}>
@@ -270,7 +296,7 @@ export default function PublicCandidateProfileScreen() {
             )}
           </View>
 
-          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop && { flex: 1 }]}>
+          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Published Results</Text>
               <View style={styles.sectionCountPill}>
@@ -406,6 +432,7 @@ const styles = StyleSheet.create({
   },
   topNavRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 12,
@@ -593,13 +620,15 @@ const styles = StyleSheet.create({
     gap: 14,
     marginTop: 18,
   },
-  statsGridMobile: {
-    flexWrap: 'wrap',
+  statsStackMobile: {
+    gap: 10,
+    marginTop: 16,
+  },
+  statsRowMobile: {
+    flexDirection: 'row',
     gap: 10,
   },
   statCard: {
-    flex: 1,
-    minHeight: 102,
     borderWidth: 1,
     borderColor: PUBLIC_GLASS_THEME.glassBorder,
     borderRadius: 22,
@@ -608,14 +637,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
-  statCardMobile: {
-    flex: 0,
-    width: (Platform.OS === 'web' ? 'calc(50% - 5px)' : '48%') as any,
-    minHeight: 92,
-    padding: 14,
+  statCardDesktop: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 104,
+  },
+  statCardMobileHalf: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 94,
+    padding: 15,
   },
   statCardMobileFull: {
     width: '100%',
+    minHeight: 84,
+    padding: 15,
   },
   statTop: {
     flexDirection: 'row',
@@ -660,6 +696,9 @@ const styles = StyleSheet.create({
     backgroundColor: PUBLIC_GLASS_THEME.glassBg,
     padding: 20,
     overflow: 'hidden',
+  },
+  sectionCardFull: {
+    width: '100%',
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -16,9 +16,11 @@ export default function Root({ children }: PropsWithChildren) {
         <link rel="apple-touch-icon" sizes="167x167" href="/brand/apple-touch-icon-167.png" />
         <link rel="apple-touch-icon" sizes="152x152" href="/brand/apple-touch-icon-152.png" />
         <title>Consolium</title>
+        <script src="/festival-curtain.js?v=20261128h" />
         <ScrollViewStyleReset />
         <style dangerouslySetInnerHTML={{ __html: `
           #portal-bootstrap-loader{display:none}
+          html[data-public-candidate],html[data-public-candidate] body{background:#050816!important}
           html[data-private-loading] body{background:#FFFEF9!important}
           html[data-private-loading] #portal-bootstrap-loader{display:flex;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;background:#FFFEF9}
           .bootstrap-logo{position:relative;width:134px;height:133px}
@@ -27,7 +29,7 @@ export default function Root({ children }: PropsWithChildren) {
           @media(prefers-reduced-motion:reduce){.bootstrap-logo img{animation:none;opacity:1}}
         ` }} />
         <script dangerouslySetInnerHTML={{ __html: `
-          (function(){var p=location.pathname;if(p==='/'||/^\\/(leaderboard|participant-result|unavailable)(\\/|$)/.test(p))return;
+          (function(){var p=location.pathname;if(/^\\/(candidate-search|candidate)(\\/|$)/.test(p)){document.documentElement.setAttribute('data-public-candidate','');return;}if(p==='/'||/^\\/(leaderboard|participant-result|unavailable)(\\/|$)/.test(p))return;
           document.documentElement.setAttribute('data-private-loading','');
         })();
         ` }} />

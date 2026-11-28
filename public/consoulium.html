@@ -13,6 +13,7 @@
     <meta property="og:image" content="https://consoulium.sabicofficial.in/brand/consolium-icon-512.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/png" sizes="48x48" href="/brand/favicon.png" />
+    <script src="/festival-curtain.js?v=20261128h"></script>
     <style>
       html, body { margin: 0; background: #fff; overflow-x: clip; scrollbar-width: none; -ms-overflow-style: none; }
       html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; height: 0; }
@@ -343,7 +344,7 @@
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
           <a class="festival-button portal-button" href="/candidate-search" id="landing-portal">
-            <span>Student Portal</span>
+            <span>Find Me</span>
             <span class="btn__bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
           </a>
         </div>
@@ -368,7 +369,16 @@
         var forwardQuery = params.toString();
         if (explore) explore.href = '/explore' + (forwardQuery ? '?' + forwardQuery : '');
 
-        if (portal) portal.href = '/candidate-search' + (forwardQuery ? '?' + forwardQuery : '');
+        if (portal) {
+          portal.href = '/candidate-search' + (forwardQuery ? '?' + forwardQuery : '');
+          portal.addEventListener('click', function (e) {
+            if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            if (window.__consoTransition) {
+              e.preventDefault();
+              window.__consoTransition.go(portal.href, 'Find Me');
+            }
+          });
+        }
         document.addEventListener('keydown', function (e) {
           if (e.key !== 'Enter' || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
           if (e.target && /^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/i.test(e.target.tagName)) return;

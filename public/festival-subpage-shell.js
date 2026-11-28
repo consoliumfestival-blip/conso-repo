@@ -28,6 +28,7 @@
     { id: 'standings', label: 'Standings', to: '/standings', c: '#10B981' },
     { id: 'schedule', label: 'Schedule', to: '/schedule', c: '#F59E0B' },
     { id: 'media', label: 'Media', to: '/media', c: '#6D28D9' },
+    { id: 'find-me', label: 'Find Me', to: '/candidate-search', c: '#2563EB', menuOnly: true },
   ];
 
   const GLYPH_LIST = [
@@ -56,7 +57,7 @@
   // Inject Floating Glass Pill Navbar
   const nav = document.createElement('header');
   nav.className = 'sub-nav';
-  const linksHtml = NAV_ITEMS.map((item) => {
+  const linksHtml = NAV_ITEMS.filter((item) => !item.menuOnly).map((item) => {
     const active = item.id === page ? ' aria-current="page"' : '';
     const extraCls = item.extra ? ' sub-nav__link--extra' : '';
     return `<a class="sub-nav__link${extraCls}" href="${withTenant(item.to)}"${active}>${item.label}</a>`;
@@ -69,8 +70,8 @@
         <span class="sub-nav__brand-text">Consoulium 2k26</span>
       </a>
       <nav class="sub-nav__links" aria-label="Festival navigation">${linksHtml}</nav>
-      <a class="sub-nav__cta" href="${withTenant('/candidate-search')}" id="sub-portal-btn">
-        <span>Student Portal</span>
+      <a class="sub-nav__cta" href="${withTenant('/candidate-search')}" id="sub-portal-btn" data-nav-label="Find Me">
+        <span>Find Me</span>
         <span class="sub-nav__cta-arrow" aria-hidden="true">→</span>
       </a>
     </div>
@@ -119,6 +120,7 @@
     ['Standings', '/standings'],
     ['Schedule', '/schedule'],
     ['Media', '/media'],
+    ['Find Me', '/candidate-search'],
   ].map(([label, path]) => `<a class="sub-drawer__chip" href="${withTenant(path)}" data-nav-label="${label}">${label}</a>`).join('');
 
   drawer.innerHTML = `
@@ -142,8 +144,8 @@
             <strong class="sub-drawer__date">26 – 29 Nov 2026</strong>
             <span class="sub-drawer__venue">Bukhari Campus, Kondotty</span>
           </div>
-          <a class="sub-drawer__portal" href="${withTenant('/candidate-search')}" id="sub-drawer-portal">
-            <span>Student Portal</span>
+          <a class="sub-drawer__portal" href="${withTenant('/candidate-search')}" id="sub-drawer-portal" data-nav-label="Find Me">
+            <span>Find Me</span>
             <span aria-hidden="true">→</span>
           </a>
         </aside>
@@ -263,7 +265,6 @@
     if (url.origin !== location.origin) return;
     if (url.pathname === '/candidate-search') {
       if (drawer.classList.contains('is-open')) setDrawer(false);
-      return;
     }
     e.preventDefault();
     if (url.pathname === location.pathname && !url.hash) {
@@ -288,6 +289,7 @@
     ['Standings', '/standings', 'standings'],
     ['Schedule', '/schedule', 'schedule'],
     ['Media', '/media', 'media'],
+    ['Find Me', '/candidate-search', 'find-me'],
   ].map(([label, path, id]) => {
     const active = id === page ? ' aria-current="page"' : '';
     return `<a href="${withTenant(path)}"${active}>${label}</a>`;

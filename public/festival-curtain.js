@@ -218,7 +218,23 @@
             obs.observe(document.documentElement, { childList: true, subtree: true });
             setTimeout(finish, 350);
           })
-        : Promise.resolve();
+        : location.pathname.startsWith('/candidate') && !document.querySelector('[data-public-portal-ready="1"]')
+          ? new Promise((resolve) => {
+              let settled = false;
+              let obs = null;
+              const finish = () => {
+                if (settled) return;
+                settled = true;
+                obs?.disconnect();
+                resolve();
+              };
+              obs = new MutationObserver(() => {
+                if (document.querySelector('[data-public-portal-ready="1"]')) finish();
+              });
+              obs.observe(document.documentElement, { childList: true, subtree: true });
+              setTimeout(finish, 1800);
+            })
+          : Promise.resolve();
 
       Promise.all([fontWait, heroWait]).then(() => {
         requestAnimationFrame(() => {
@@ -263,6 +279,7 @@
     if (path.includes('standings')) return 'Standings';
     if (path.includes('schedule')) return 'Schedule';
     if (path.includes('gallery') || path.includes('media')) return 'Media';
+    if (path.includes('candidate')) return 'Find Me';
     if (path.includes('news')) return 'News';
     if (path.includes('brochure')) return 'Brochure';
     if (path.includes('explore')) return 'Home';

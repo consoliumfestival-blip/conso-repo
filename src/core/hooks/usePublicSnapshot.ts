@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { LeaderboardRow, PublicPublishedResultRow } from '../../services/leaderboardService';
@@ -26,6 +26,32 @@ export type PublicSnapshot = {
 type PublicVersion = { tenant_id: string; revision: string | null; confirmed_at: number };
 const MAX_AGE_MS = 60_000;
 
+function readCachedBrowserSnapshot(tenantId?: string | null): PublicSnapshot | undefined {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !tenantId) return undefined;
+  try {
+    const raw = window.localStorage.getItem(`conso_pub_snap_v2:${tenantId}:active`)
+      ?? window.sessionStorage.getItem(`conso_pub_snap_v2:${tenantId}:active`);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as { data?: PublicSnapshot };
+    const snap = parsed?.data;
+    if (!snap || snap.tenant_id?.toLowerCase() !== tenantId.toLowerCase() || !snap.features) return undefined;
+    return snap;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCachedBrowserSnapshot(tenantId: string, snapshot: PublicSnapshot) {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+  try {
+    if (snapshot.revision && snapshot.features?.public_page === true) {
+      window.localStorage.setItem(`conso_pub_snap_v2:${tenantId}:active`, JSON.stringify({ data: snapshot }));
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
 async function fetchPublicVersion(tenantId: string, signal?: AbortSignal): Promise<PublicVersion> {
   const response = await fetch(`/api/public-version?tenant_id=${encodeURIComponent(tenantId)}`, {
     cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' }, signal,
@@ -42,26 +68,33 @@ async function fetchPublicVersion(tenantId: string, signal?: AbortSignal): Promi
   return { tenant_id: tenantId, revision: data.revision, confirmed_at: confirmedAt };
 }
 
-async function fetchPublicSnapshot(tenantId: string, revision: string | null, signal?: AbortSignal): Promise<PublicSnapshot> {
+async function fetchPublicSnapshot(tenantId: string, expectedRevision: string | null | undefined, signal?: AbortSignal): Promise<PublicSnapshot> {
   const response = await fetch(`/api/public-snapshot?tenant_id=${encodeURIComponent(tenantId)}`, {
     cache: 'no-store', credentials: 'omit', headers: { Accept: 'application/json' }, signal,
   });
   if (!response.ok) throw new Error(`Public snapshot returned ${response.status}`);
   const snapshot = await response.json() as PublicSnapshot;
   const receivedAt = Date.now();
-  if (snapshot.revision !== revision || !readFreshPublicSnapshot(snapshot, tenantId, receivedAt, receivedAt)) {
+  if ((expectedRevision !== undefined && snapshot.revision !== expectedRevision)
+      || !readFreshPublicSnapshot(snapshot, tenantId, receivedAt, receivedAt)) {
     throw new Error('Public snapshot version is stale or invalid');
   }
+  writeCachedBrowserSnapshot(tenantId, snapshot);
   return snapshot;
 }
 
 export function usePublicSnapshot(tenantId?: string | null, enabled = true) {
   const active = Platform.OS === 'web' && enabled && !!tenantId;
+  const cachedSnap = useMemo(() => (active ? readCachedBrowserSnapshot(tenantId) : undefined), [active, tenantId]);
   const [expiryTick, setExpiryTick] = useState(0);
   const version = useQuery({
     queryKey: ['public-snapshot-version', tenantId],
     queryFn: ({ signal }) => fetchPublicVersion(tenantId!, signal),
     enabled: active,
+    initialData: cachedSnap
+      ? { tenant_id: tenantId!, revision: cachedSnap.revision ?? null, confirmed_at: Date.now() }
+      : undefined,
+    initialDataUpdatedAt: 0,
     staleTime: 0,
     gcTime: MAX_AGE_MS,
     refetchInterval: 20_000,
@@ -70,10 +103,14 @@ export function usePublicSnapshot(tenantId?: string | null, enabled = true) {
     refetchOnReconnect: true,
     retry: false,
   });
+  const targetRevision = version.data?.revision;
   const query = useQuery({
-    queryKey: ['public-snapshot', tenantId, version.data?.revision],
-    queryFn: ({ signal }) => fetchPublicSnapshot(tenantId!, version.data!.revision, signal),
-    enabled: active && !!version.data,
+    queryKey: ['public-snapshot', tenantId, targetRevision ?? 'boot'],
+    queryFn: ({ signal }) => fetchPublicSnapshot(tenantId!, targetRevision, signal),
+    enabled: active,
+    initialData: cachedSnap && (targetRevision === undefined || cachedSnap.revision === targetRevision)
+      ? cachedSnap
+      : undefined,
     staleTime: Infinity,
     gcTime: MAX_AGE_MS,
     placeholderData: (previous) => previous,
@@ -83,27 +120,29 @@ export function usePublicSnapshot(tenantId?: string | null, enabled = true) {
   });
 
   useEffect(() => {
-    if (!version.data) return;
-    const delay = version.data.confirmed_at + MAX_AGE_MS - Date.now();
+    const baseTime = version.data?.confirmed_at ?? (query.dataUpdatedAt || undefined);
+    if (!baseTime) return;
+    const delay = baseTime + MAX_AGE_MS - Date.now();
     if (delay <= 0) { setExpiryTick((tick) => tick + 1); return; }
     const timer = setTimeout(() => setExpiryTick((tick) => tick + 1), delay + 1);
     return () => clearTimeout(timer);
-  }, [version.data]);
+  }, [version.data, query.dataUpdatedAt]);
 
   void expiryTick;
-  const matching = query.data?.revision === version.data?.revision;
+  const matching = !version.data || query.data?.revision === version.data?.revision;
+  const effectiveConfirmedAt = version.data?.confirmed_at ?? (query.dataUpdatedAt || undefined);
   // Keep the visible rows mounted during a changed-version fetch. If that
   // fetch fails, the old revision is dropped immediately.
   const data = matching || query.isFetching
-    ? readFreshPublicSnapshot(query.data, tenantId, Date.now(), version.data?.confirmed_at)
+    ? readFreshPublicSnapshot(query.data, tenantId, Date.now(), effectiveConfirmedAt)
     : undefined;
-  const hasError = version.isError || query.isError;
+  const hasError = query.isError || (version.isError && !query.data);
   return {
     ...query,
     data,
-    isLoading: active && !hasError && (!version.data || query.isLoading || !data),
+    isLoading: active && !hasError && (!data || query.isLoading),
     isError: hasError,
-    error: version.error ?? query.error,
+    error: query.error ?? version.error,
     isRefetching: version.isFetching || query.isFetching,
     refetch: async () => {
       const ver = await version.refetch();

@@ -263,6 +263,13 @@
       if (portalLink.getAttribute('href') !== nextPortalHref) {
         portalLink.setAttribute('href', nextPortalHref);
       }
+      const walker = document.createTreeWalker(portalLink, NodeFilter.SHOW_TEXT);
+      let textNode;
+      while ((textNode = walker.nextNode())) {
+        if (/student\s*portal/i.test(textNode.nodeValue || '')) {
+          textNode.nodeValue = textNode.nodeValue.replace(/student\s*portal/gi, 'Find Me');
+        }
+      }
       portalLink.removeAttribute('aria-haspopup');
     }
   };
@@ -290,7 +297,7 @@
       return;
     }
 
-    // 2. Student Portal buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
+    // 2. Find Me buttons (top nav, hero ghost CTA, mobile menu drawer, or any /candidate-search link) -> /candidate-search
     const rawHref = link.getAttribute('href') || '';
     if (link.matches('.nav__cta, .hero__ctas a.btn--ghost, .menu__cta') || rawHref.startsWith('/candidate-search')) {
       event.preventDefault();
@@ -300,7 +307,9 @@
       const portalUrl = new URL('/candidate-search', location.origin);
       if (customTenant) portalUrl.searchParams.set('tenant_id', customTenant);
       if (festivalId) portalUrl.searchParams.set('festival_id', festivalId);
-      location.assign(portalUrl.pathname + portalUrl.search);
+      const nextPortal = portalUrl.pathname + portalUrl.search;
+      if (window.__consoTransition) window.__consoTransition.go(nextPortal, 'Find Me');
+      else location.assign(nextPortal);
       return;
     }
 

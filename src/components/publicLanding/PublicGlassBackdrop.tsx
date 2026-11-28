@@ -115,7 +115,9 @@ export function PublicGlassBackdrop({ children }: { children: React.ReactNode })
         )}
         <View style={styles.horizonLine} />
       </View>
-      <View style={styles.contentLayer}>{children}</View>
+      <View style={styles.contentLayer} {...(Platform.OS === 'web' ? { dataSet: { publicPortalReady: '1' } } : {})}>
+        {children}
+      </View>
     </View>
   );
 }

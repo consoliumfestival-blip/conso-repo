@@ -53,7 +53,7 @@ export default function CandidateSearchPage() {
         <View style={styles.loadingScreen}>
           <View style={[styles.loadingCard, webGlassSurface(18)]}>
             <ActivityIndicator size="large" color={PUBLIC_GLASS_THEME.green} />
-            <Text style={styles.mutedText}>Loading Student Portal…</Text>
+            <Text style={styles.mutedText}>Loading Find Me…</Text>
           </View>
         </View>
       </PublicGlassBackdrop>
@@ -65,7 +65,7 @@ export default function CandidateSearchPage() {
       <PublicGlassBackdrop>
         <View style={styles.loadingScreen}>
           <View style={[styles.stateCard, webGlassSurface(18), { width: '100%', maxWidth: 420 }]}>
-            <Text style={styles.stateTitle}>Could not load Student Portal</Text>
+            <Text style={styles.stateTitle}>Could not load Find Me</Text>
             <Text style={styles.mutedText}>Please check your connection and try again.</Text>
             <TouchableOpacity accessibilityRole="button" onPress={() => refetchFeatures()} style={[styles.retryButton, webPrimaryGradient]}>
               <Text style={styles.retryText}>Try again</Text>
@@ -77,7 +77,7 @@ export default function CandidateSearchPage() {
   }
 
   if (!publicSearchEnabled) {
-    return <PublicUnavailableScreen title="Student Portal unavailable." message="Candidate profiles are not enabled for this festival." />;
+    return <PublicUnavailableScreen title="Find Me unavailable." message="Candidate profiles are not enabled for this festival." />;
   }
 
   const openProfile = (slug: string) => {
@@ -90,7 +90,7 @@ export default function CandidateSearchPage() {
   return (
     <PublicGlassBackdrop>
       <Head>
-        <title>Student Portal · Candidate Search</title>
+        <title>Find Me · Candidate Search</title>
         <meta name="description" content="Find a candidate profile by name or chest number." />
       </Head>
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -110,7 +110,7 @@ export default function CandidateSearchPage() {
           <View style={styles.headingBlock}>
             <View style={[styles.eyebrowPill, webGlassSurface(14)]}>
               <View style={styles.eyebrowDot} />
-              <Text style={styles.eyebrow}>STUDENT PORTAL · AYATIC CODEX</Text>
+              <Text style={styles.eyebrow}>FIND ME · AYATIC CODEX</Text>
             </View>
             <Text style={[styles.title, isWide && styles.titleDesktop]}>Find a candidate</Text>
             <Text style={styles.subtitle}>
@@ -262,7 +262,7 @@ const styles = {
   loadingCard: { alignItems: 'center' as const, justifyContent: 'center' as const, gap: 14, paddingHorizontal: 30, paddingVertical: 28, borderRadius: 24, borderWidth: 1, borderColor: PUBLIC_GLASS_THEME.glassBorder, backgroundColor: PUBLIC_GLASS_THEME.glassBg },
   scrollContent: { flexGrow: 1, paddingHorizontal: 18, paddingTop: 22, paddingBottom: 56 },
   container: { width: '100%' as const, alignSelf: 'center' as const },
-  topBar: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: 12, marginBottom: 24 },
+  topBar: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const, gap: 12, marginBottom: 24 },
   backButton: { height: 40, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingHorizontal: 15, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.22)', backgroundColor: PUBLIC_GLASS_THEME.glassBg },
   backText: { color: PUBLIC_GLASS_THEME.ink, fontSize: 13.5, fontWeight: '600' as const },
   brandPill: { height: 40, flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: PUBLIC_GLASS_THEME.glassBorder, backgroundColor: PUBLIC_GLASS_THEME.glassBg },

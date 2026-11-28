@@ -188,4 +188,36 @@ BEGIN
     RAISE EXCEPTION 'Top-3 spread was skewed by trailing 4th team D: %', planned;
   END IF;
 END $top3_spread$;
+DO $team_first_multi_step$
+DECLARE n integer; planned jsonb;
+BEGIN
+  -- Team C starts 25 points behind Team A/B. With >12 candidates in very_small
+  -- mode, Team C needs 3 multi-step catch-up items (+10 each) to reach 1st.
+  -- Shortlist and intermediate beam depths must not prune those catch-up items.
+  FOR n IN 1..3 LOOP
+    INSERT INTO items VALUES (md5('catchup-c-' || n)::uuid, md5('tenant')::uuid,
+      md5('festival')::uuid, 'Catchup C ' || n, NULL, 'catchup-c-' || n, ARRAY['GN']);
+    INSERT INTO registrations VALUES (md5('catchup-c-reg-' || n)::uuid,
+      md5('catchup-c-' || n)::uuid, NULL, md5('C')::uuid, 'approved');
+    INSERT INTO results VALUES (md5('catchup-c-res-' || n)::uuid,
+      md5('catchup-c-' || n)::uuid, md5('catchup-c-reg-' || n)::uuid,
+      md5('festival')::uuid, 10, 1, 'A', true, 'published', false, now());
+  END LOOP;
+  FOR n IN 1..15 LOOP
+    INSERT INTO items VALUES (md5('noise-b-' || n)::uuid, md5('tenant')::uuid,
+      md5('festival')::uuid, 'Noise B ' || n, NULL, 'noise-b-' || n, ARRAY['GN']);
+    INSERT INTO registrations VALUES (md5('noise-b-reg-' || n)::uuid,
+      md5('noise-b-' || n)::uuid, NULL, md5('B')::uuid, 'approved');
+    INSERT INTO results VALUES (md5('noise-b-res-' || n)::uuid,
+      md5('noise-b-' || n)::uuid, md5('noise-b-reg-' || n)::uuid,
+      md5('festival')::uuid, 1, 4, 'C', true, 'published', false, now());
+  END LOOP;
+  planned := smart_announcer_team_strategy_v2(
+    md5('tenant')::uuid, md5('festival')::uuid, md5('C')::uuid,
+    5, 'very_small', 'team');
+  IF planned->>'target_is_first_at_batch_end' <> 'true'
+    OR planned->>'target_reaches_first' <> 'true' THEN
+    RAISE EXCEPTION 'Prioritized team C did not reach 1st place in batch: %', planned;
+  END IF;
+END $team_first_multi_step$;
 ROLLBACK;

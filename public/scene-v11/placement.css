@@ -882,6 +882,26 @@ img.nav__logo-img {
   outline-offset: 3px;
 }
 
+@media (min-width: 900px) {
+  .hero .hero__ctas .btn--campus-hub {
+    background: transparent;
+    background-image: none;
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+    font-weight: 600;
+  }
+
+  .hero .hero__ctas .btn--campus-hub:hover {
+    background: var(--ink);
+    color: var(--sky-2);
+    transform: none;
+    box-shadow: none;
+  }
+}
+
 /* Temporarily hide News and Brochure links across explore navigation, menu, and footer */
 .nav__link[data-id="speakers"],
 .nav__link[data-id="register"],

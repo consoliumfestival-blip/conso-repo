@@ -34,7 +34,7 @@
 /standings
   Cache-Control: public, max-age=0, must-revalidate
 
-/schedule
+/schedules
   Cache-Control: public, max-age=0, must-revalidate
 
 /gallery

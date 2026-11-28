@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/api/app-update-notes", "/api/campus-category-standings", "/api/public-media", "/api/public-snapshot", "/api/public-version", "/portal-manifest"],
+  "include": ["/api/app-update-notes", "/api/campus-category-standings", "/api/public-media", "/api/public-snapshot", "/api/public-version", "/portal-manifest", "/schedule"],
   "exclude": []
 }

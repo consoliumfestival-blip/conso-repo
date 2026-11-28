@@ -99,4 +99,11 @@ test('public schedule uses /schedules without hijacking admin /schedule and home
   assert.doesNotMatch(redirects, /^\/schedule\s/m);
   assert.match(menuTsx, /to:\s*'\/schedules'/);
   assert.match(snapshotHook, /hasLiveConfirmation/);
+  const headers = fs.readFileSync(path.join(__dirname, '..', 'public', '_headers'), 'utf8');
+  const routes = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'public', '_routes.json'), 'utf8'));
+  const scheduleFn = fs.readFileSync(path.join(__dirname, '..', 'functions', 'schedule.ts'), 'utf8');
+  assert.doesNotMatch(headers, /^\/schedule$/m);
+  assert.match(headers, /^\/schedules$/m);
+  assert.ok(routes.include.includes('/schedule'));
+  assert.match(scheduleFn, /no-store/);
 });

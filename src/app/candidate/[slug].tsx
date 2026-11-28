@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'expo-router/head';
 import {
   ActivityIndicator,
@@ -17,21 +17,39 @@ import {
   Award,
   BookOpen,
   Building2,
+  LogOut,
+  Medal,
   ShieldCheck,
-  Sparkles,
   Trophy,
   UserRound,
 } from 'lucide-react-native';
 import { usePublicCandidateProfile } from '../../core/hooks/useParticipants';
 import {
+  FestivalAccentBar,
   getPublicRankBadgeStyle,
   PUBLIC_GLASS_THEME,
   PublicGlassBackdrop,
   webGlassSurface,
   webPrimaryGradient,
 } from '../../components/publicLanding/PublicGlassBackdrop';
+import {
+  DEFAULT_PUBLIC_TENANT_ID,
+  LEGACY_PUBLIC_TENANT_ALIAS,
+  PublicFestivalMenu,
+  navigateBackFromCandidateProfile,
+} from '../../components/publicLanding/PublicFestivalMenu';
+import { CandidateAppBanner, CandidateStandaloneLogin } from '../../components/publicLanding/CandidateAppControls';
+import {
+  clearPinnedCandidate,
+  disableCandidatePushNotifications,
+  isCandidateLoggedOut,
+  isCandidateStandaloneMode,
+  readPinnedCandidate,
+  updateCandidateManifestMetadata,
+  writePinnedCandidate,
+} from '../../core/utils/candidateWebPush';
 
-const nativeFont = (fontFamily: string) => (Platform.OS === 'web' ? {} : { fontFamily });
+const nativeFont = (fontFamily: string) => ({ fontFamily });
 
 const formatDate = (value: string | null) => {
   if (!value) return 'Published';
@@ -46,13 +64,90 @@ export default function PublicCandidateProfileScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
+  const routeTenant = Array.isArray(params.tenant_id) ? params.tenant_id[0] : params.tenant_id;
+  const festivalId = Array.isArray(params.festival_id) ? params.festival_id[0] : params.festival_id;
+  const installedPortalParam = Array.isArray(params.installedPortal)
+    ? params.installedPortal[0]
+    : params.installedPortal;
+  const effectiveTenantId =
+    routeTenant && routeTenant !== LEGACY_PUBLIC_TENANT_ALIAS
+      ? routeTenant
+      : DEFAULT_PUBLIC_TENANT_ID;
+  const isStandalone = isCandidateStandaloneMode(installedPortalParam);
+  const [loggedOutInApp, setLoggedOutInApp] = useState(() => isStandalone && isCandidateLoggedOut());
   const { width } = useWindowDimensions();
   const isDesktop = (width || 0) >= 1024;
   const isTablet = (width || 0) >= 640;
   const isMobile = (width || 0) < 640;
 
+  const handleBack = () =>
+    navigateBackFromCandidateProfile(router, {
+      tenantId: routeTenant,
+      festivalId,
+    });
+
+  const handleLogout = () => {
+    void disableCandidatePushNotifications();
+    clearPinnedCandidate();
+    setLoggedOutInApp(true);
+  };
+
+  const handleSwitchCandidate = (nextSlug: string, nextName: string) => {
+    writePinnedCandidate({
+      slug: nextSlug,
+      name: nextName,
+      tenant_id: routeTenant || null,
+      festival_id: festivalId || null,
+    });
+    setLoggedOutInApp(false);
+    router.replace({
+      pathname: '/candidate/[slug]',
+      params: {
+        slug: nextSlug,
+        installedPortal: 'candidate',
+        ...(routeTenant ? { tenant_id: routeTenant } : {}),
+        ...(festivalId ? { festival_id: festivalId } : {}),
+      },
+    } as any);
+  };
+
   const profileQuery = usePublicCandidateProfile(slug);
   const candidate = profileQuery.data;
+
+  useEffect(() => {
+    if (!slug) return;
+    updateCandidateManifestMetadata({
+      slug,
+      name: candidate?.profile?.name || null,
+      tenantId: routeTenant || null,
+      festivalId: festivalId || null,
+    });
+  }, [slug, candidate?.profile?.name, routeTenant, festivalId]);
+
+  useEffect(() => {
+    if (!isStandalone || loggedOutInApp) return;
+    const pinned = readPinnedCandidate();
+    if (pinned && pinned.slug && pinned.slug !== slug) {
+      router.replace({
+        pathname: '/candidate/[slug]',
+        params: {
+          slug: pinned.slug,
+          installedPortal: 'candidate',
+          ...(pinned.tenant_id ? { tenant_id: pinned.tenant_id } : {}),
+          ...(pinned.festival_id ? { festival_id: pinned.festival_id } : {}),
+        },
+      } as any);
+      return;
+    }
+    if (!pinned && candidate?.profile) {
+      writePinnedCandidate({
+        slug: candidate.profile.slug,
+        name: candidate.profile.name,
+        tenant_id: routeTenant || null,
+        festival_id: festivalId || null,
+      });
+    }
+  }, [isStandalone, loggedOutInApp, slug, candidate?.profile, routeTenant, festivalId, router]);
 
   const stats = useMemo(() => {
     const results = candidate?.published_results ?? [];
@@ -62,9 +157,10 @@ export default function PublicCandidateProfileScreen() {
         label: 'Participated Items',
         value: `${candidate?.participated_items.length ?? 0}`,
         icon: BookOpen,
-        tone: PUBLIC_GLASS_THEME.green,
+        tone: PUBLIC_GLASS_THEME.greenText,
         bg: PUBLIC_GLASS_THEME.greenSoft,
         border: PUBLIC_GLASS_THEME.greenBorder,
+        cardGradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.13), rgba(255, 255, 255, 0.80))',
       },
       {
         id: 'results',
@@ -74,29 +170,50 @@ export default function PublicCandidateProfileScreen() {
         tone: PUBLIC_GLASS_THEME.blueText,
         bg: PUBLIC_GLASS_THEME.blueSoft,
         border: PUBLIC_GLASS_THEME.blueBorder,
+        cardGradient: 'linear-gradient(135deg, rgba(37, 99, 235, 0.13), rgba(255, 255, 255, 0.80))',
       },
       {
-        id: 'wins',
-        label: 'First Places',
+        id: 'first',
+        label: '1st Place',
         value: `${results.filter((result) => result.rank === 1).length}`,
         icon: Trophy,
-        tone: PUBLIC_GLASS_THEME.amberText,
-        bg: PUBLIC_GLASS_THEME.amberSoft,
-        border: PUBLIC_GLASS_THEME.amberBorder,
+        tone: '#B45309',
+        bg: 'rgba(245, 158, 11, 0.15)',
+        border: 'rgba(245, 158, 11, 0.42)',
+        cardGradient: 'linear-gradient(135deg, #FEF3C7, rgba(255, 255, 255, 0.84))',
       },
-      /* Hidden for now - to be published after Sahithyolsav
       {
-        id: 'points',
-        label: 'Public Points',
-        value: `${results.reduce((sum, result) => sum + (result.points_awarded || 0), 0)}`,
+        id: 'second',
+        label: '2nd Place',
+        value: `${results.filter((result) => result.rank === 2).length}`,
         icon: Medal,
-        tone: PUBLIC_GLASS_THEME.amberText,
-        bg: PUBLIC_GLASS_THEME.amberSoft,
-        border: PUBLIC_GLASS_THEME.amberBorder,
+        tone: '#475569',
+        bg: 'rgba(148, 163, 184, 0.20)',
+        border: 'rgba(100, 116, 139, 0.36)',
+        cardGradient: 'linear-gradient(135deg, #E2E8F0, rgba(255, 255, 255, 0.86))',
       },
-      */
+      {
+        id: 'third',
+        label: '3rd Place',
+        value: `${results.filter((result) => result.rank === 3).length}`,
+        icon: Award,
+        tone: '#C2410C',
+        bg: 'rgba(234, 88, 12, 0.14)',
+        border: 'rgba(234, 88, 12, 0.34)',
+        cardGradient: 'linear-gradient(135deg, #FFEDD5, rgba(255, 255, 255, 0.84))',
+      },
     ];
   }, [candidate]);
+
+  if (isStandalone && loggedOutInApp) {
+    return (
+      <CandidateStandaloneLogin
+        tenantId={effectiveTenantId}
+        festivalId={festivalId}
+        onSelectCandidate={handleSwitchCandidate}
+      />
+    );
+  }
 
   if (profileQuery.isLoading) {
     return (
@@ -105,9 +222,12 @@ export default function PublicCandidateProfileScreen() {
           <title>Candidate Profile · Consoulium 2k26</title>
         </Head>
         <View style={styles.gradientBgCenter}>
-          <View style={[styles.stateCard, webGlassSurface(18)]}>
-            <ActivityIndicator color={PUBLIC_GLASS_THEME.green} size="large" />
-            <Text style={styles.centerText}>Loading candidate profile...</Text>
+          <View style={[styles.stateCard, webGlassSurface(18), { minWidth: 280 }]}>
+            <FestivalAccentBar height={5} />
+            <View style={styles.stateCardBody}>
+              <ActivityIndicator color={PUBLIC_GLASS_THEME.blue} size="large" />
+              <Text style={styles.centerText}>Loading candidate profile...</Text>
+            </View>
           </View>
         </View>
       </PublicGlassBackdrop>
@@ -122,31 +242,37 @@ export default function PublicCandidateProfileScreen() {
         </Head>
         <View style={styles.gradientBgCenter}>
           <View style={[styles.stateCard, webGlassSurface(18), styles.emptyStateCard]}>
-            <View style={styles.emptyIcon}>
-              <UserRound size={30} color={PUBLIC_GLASS_THEME.blueText} />
+            <FestivalAccentBar height={5} />
+            <View style={styles.stateCardBody}>
+              <View style={styles.emptyIcon}>
+                <UserRound size={30} color={PUBLIC_GLASS_THEME.blue} />
+              </View>
+              <Text style={styles.emptyTitle}>Profile not available</Text>
+              <Text style={styles.emptyMessage}>
+                This candidate profile may be disabled or not published for public viewing.
+              </Text>
+              {isStandalone ? (
+                <TouchableOpacity onPress={handleLogout} style={[styles.backButton, webPrimaryGradient]}>
+                  <LogOut size={16} color="#FFFFFF" />
+                  <Text style={styles.backButtonText}>Log out</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={handleBack} style={[styles.backButton, webPrimaryGradient]}>
+                  <ArrowLeft size={16} color="#FFFFFF" />
+                  <Text style={styles.backButtonText}>Go back</Text>
+                </TouchableOpacity>
+              )}
             </View>
-            <Text style={styles.emptyTitle}>Profile not available</Text>
-            <Text style={styles.emptyMessage}>
-              This candidate profile may be disabled or not published for public viewing.
-            </Text>
-            <TouchableOpacity onPress={() => router.back()} style={[styles.backButton, webPrimaryGradient]}>
-              <ArrowLeft size={16} color="#FFFFFF" />
-              <Text style={styles.backButtonText}>Go back</Text>
-            </TouchableOpacity>
           </View>
         </View>
+        {!isStandalone ? (
+          <PublicFestivalMenu currentId="candidate-profile" tenantId={routeTenant} festivalId={festivalId} />
+        ) : null}
       </PublicGlassBackdrop>
     );
   }
 
   const { profile, participated_items, published_results } = candidate;
-  const avatarInitials = (profile.name || 'Candidate')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0))
-    .join('')
-    .toUpperCase();
 
   return (
     <PublicGlassBackdrop>
@@ -164,58 +290,84 @@ export default function PublicCandidateProfileScreen() {
         ]}
       >
         <View style={styles.topNavRow}>
-          <TouchableOpacity onPress={() => router.back()} style={[styles.topBack, webGlassSurface(16)]}>
-            <ArrowLeft size={16} color={PUBLIC_GLASS_THEME.ink} />
-            <Text style={styles.topBackText}>Back to Portal</Text>
-          </TouchableOpacity>
-          <View style={[styles.brandPill, webGlassSurface(16)]}>
-            <Image source={require('@/assets/images/consolium-crest.png')} resizeMode="contain" accessibilityLabel="Consolium logo" style={styles.brandLogo} />
-            <Text style={styles.brandLabel}>CONSOULIUM 2K26</Text>
+          {isStandalone ? (
+            <View style={[styles.brandPill, webGlassSurface(16)]}>
+              <Image source={require('@/assets/images/consolium-crest.png')} resizeMode="contain" accessibilityLabel="Consolium logo" style={styles.brandLogo} />
+              <Text style={styles.brandLabel}>CONSOULIUM 2K26</Text>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={handleBack} style={[styles.topBack, webGlassSurface(16)]}>
+              <ArrowLeft size={16} color={PUBLIC_GLASS_THEME.ink} />
+              <Text style={styles.topBackText}>Back to Portal</Text>
+            </TouchableOpacity>
+          )}
+          {isStandalone ? (
+            <TouchableOpacity onPress={handleLogout} style={[styles.logoutButton, webGlassSurface(16)]}>
+              <LogOut size={15} color={PUBLIC_GLASS_THEME.redText} />
+              <Text style={styles.logoutButtonText}>Log out</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[styles.brandPill, webGlassSurface(16)]}>
+              <Image source={require('@/assets/images/consolium-crest.png')} resizeMode="contain" accessibilityLabel="Consolium logo" style={styles.brandLogo} />
+              <Text style={styles.brandLabel}>CONSOULIUM 2K26</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={[styles.hero, webGlassSurface(20)]}>
+          <FestivalAccentBar height={4} />
+          <View style={[styles.heroBody, isDesktop && styles.heroBodyDesktop]}>
+            <View style={styles.heroMain}>
+              <Text style={[styles.name, isMobile && styles.nameMobile]}>{profile.name}</Text>
+              {profile.category_code || profile.organisation_name ? (
+                <View style={styles.metaRow}>
+                  {profile.category_code ? (
+                    <View style={styles.metaPill}>
+                      <Award size={14} color={PUBLIC_GLASS_THEME.blueText} />
+                      <Text style={styles.metaPillText}>{profile.category_code}</Text>
+                    </View>
+                  ) : null}
+                  {profile.organisation_name ? (
+                    <View style={styles.metaPillUnit}>
+                      <Building2 size={14} color={PUBLIC_GLASS_THEME.amberText} />
+                      <Text style={styles.metaPillUnitText} numberOfLines={1}>
+                        {profile.organisation_name}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+              {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+            </View>
           </View>
         </View>
 
-        <View style={[styles.hero, webGlassSurface(20), isDesktop && styles.heroDesktop]}>
-          <View style={[styles.avatar, isMobile && styles.avatarMobile]}>
-            <Text style={[styles.avatarInitials, isMobile && styles.avatarInitialsMobile]}>
-              {avatarInitials}
-            </Text>
-          </View>
-          <View style={styles.heroMain}>
-            <View style={styles.publicPill}>
-              <Sparkles size={13} color={PUBLIC_GLASS_THEME.greenText} />
-              <Text style={styles.publicPillText}>Public Candidate Profile</Text>
-            </View>
-            <Text style={[styles.name, isMobile && styles.nameMobile]}>{profile.name}</Text>
-            <View style={styles.metaRow}>
-              {profile.category_code ? (
-                <View style={styles.metaPill}>
-                  <Award size={14} color={PUBLIC_GLASS_THEME.blueText} />
-                  <Text style={styles.metaPillText}>{profile.category_code}</Text>
-                </View>
-              ) : null}
-              {profile.organisation_name ? (
-                <View style={styles.metaPillUnit}>
-                  <Building2 size={14} color={PUBLIC_GLASS_THEME.amberText} />
-                  <Text style={styles.metaPillUnitText} numberOfLines={1}>
-                    {profile.organisation_name}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-            {profile.bio ? (
-              <Text style={styles.bio}>{profile.bio}</Text>
-            ) : (
-              <Text style={styles.bioMuted}>Candidate bio has not been added yet.</Text>
-            )}
-          </View>
-        </View>
+        <CandidateAppBanner
+          slug={slug || profile.slug}
+          candidateName={profile.name}
+          tenantId={effectiveTenantId}
+          festivalId={festivalId}
+          isStandalone={isStandalone}
+        />
 
-        <View style={isTablet ? styles.statsGrid : styles.statsStackMobile}>
-          {isTablet ? (
+        <View style={isDesktop ? styles.statsGrid : styles.statsStackMobile}>
+          {isDesktop ? (
             stats.map((stat) => {
               const Icon = stat.icon;
               return (
-                <View key={stat.id} style={[styles.statCard, styles.statCardDesktop, webGlassSurface(18)]}>
+                <View
+                  key={stat.id}
+                  style={[
+                    styles.statCard,
+                    styles.statCardDesktop,
+                    webGlassSurface(18),
+                    {
+                      backgroundColor: stat.bg,
+                      borderColor: stat.border,
+                      ...(Platform.OS === 'web' ? { backgroundImage: stat.cardGradient } as any : {}),
+                    },
+                  ]}
+                >
                   <View style={styles.statTop}>
                     <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
                       <Icon size={19} color={stat.tone} />
@@ -232,7 +384,19 @@ export default function PublicCandidateProfileScreen() {
                 {stats.slice(0, 2).map((stat) => {
                   const Icon = stat.icon;
                   return (
-                    <View key={stat.id} style={[styles.statCard, styles.statCardMobileHalf, webGlassSurface(18)]}>
+                    <View
+                      key={stat.id}
+                      style={[
+                        styles.statCard,
+                        styles.statCardMobileHalf,
+                        webGlassSurface(18),
+                        {
+                          backgroundColor: stat.bg,
+                          borderColor: stat.border,
+                          ...(Platform.OS === 'web' ? { backgroundImage: stat.cardGradient } as any : {}),
+                        },
+                      ]}
+                    >
                       <View style={styles.statTop}>
                         <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
                           <Icon size={18} color={stat.tone} />
@@ -244,26 +408,40 @@ export default function PublicCandidateProfileScreen() {
                   );
                 })}
               </View>
-              {stats.slice(2).map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <View key={stat.id} style={[styles.statCard, styles.statCardMobileFull, webGlassSurface(18)]}>
-                    <View style={styles.statTop}>
-                      <View style={[styles.statIcon, { backgroundColor: stat.bg, borderColor: stat.border }]}>
-                        <Icon size={18} color={stat.tone} />
+              <View style={styles.statsRowMobile}>
+                {stats.slice(2).map((stat) => {
+                  const Icon = stat.icon;
+                  return (
+                    <View
+                      key={stat.id}
+                      style={[
+                        styles.statCard,
+                        styles.statCardMobileThird,
+                        webGlassSurface(18),
+                        {
+                          backgroundColor: stat.bg,
+                          borderColor: stat.border,
+                          ...(Platform.OS === 'web' ? { backgroundImage: stat.cardGradient } as any : {}),
+                        },
+                      ]}
+                    >
+                      <View style={styles.statTop}>
+                        <View style={[styles.statIcon, styles.statIconSmall, { backgroundColor: stat.bg, borderColor: stat.border }]}>
+                          <Icon size={16} color={stat.tone} />
+                        </View>
+                        <Text style={[styles.statValue, styles.statValueSmall]}>{stat.value}</Text>
                       </View>
-                      <Text style={styles.statValue}>{stat.value}</Text>
+                      <Text style={styles.statLabel} numberOfLines={1}>{stat.label}</Text>
                     </View>
-                    <Text style={styles.statLabel}>{stat.label}</Text>
-                  </View>
-                );
-              })}
+                  );
+                })}
+              </View>
             </>
           )}
         </View>
 
         <View style={[styles.sections, isDesktop && styles.sectionsDesktop]}>
-          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
+          <View style={[styles.sectionCard, styles.sectionCardGreen, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Participated Items</Text>
               <View style={styles.sectionCountPill}>
@@ -296,7 +474,7 @@ export default function PublicCandidateProfileScreen() {
             )}
           </View>
 
-          <View style={[styles.sectionCard, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
+          <View style={[styles.sectionCard, styles.sectionCardPurple, webGlassSurface(18), isDesktop ? { flex: 1 } : styles.sectionCardFull]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Published Results</Text>
               <View style={styles.sectionCountPill}>
@@ -336,6 +514,9 @@ export default function PublicCandidateProfileScreen() {
           </View>
         </View>
       </ScrollView>
+      {!isStandalone ? (
+        <PublicFestivalMenu currentId="candidate-profile" tenantId={routeTenant} festivalId={festivalId} />
+      ) : null}
     </PublicGlassBackdrop>
   );
 }
@@ -349,10 +530,13 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   stateCard: {
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.glassBorder,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
     borderRadius: 24,
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
+  },
+  stateCardBody: {
     paddingHorizontal: 28,
     paddingVertical: 26,
     alignItems: 'center',
@@ -368,18 +552,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    paddingBottom: 56,
+    paddingTop: 26,
+    paddingBottom: 96,
     maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
   },
   contentDesktop: {
     padding: 32,
-    paddingBottom: 64,
+    paddingTop: 32,
+    paddingBottom: 96,
   },
   contentMobile: {
     padding: 16,
-    paddingBottom: 40,
+    paddingTop: 24,
+    paddingBottom: 96,
   },
   centerText: {
     ...nativeFont('Outfit_400Regular'),
@@ -399,7 +586,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     ...nativeFont('Outfit_700Bold'),
-    color: '#FFFFFF',
+    color: PUBLIC_GLASS_THEME.ink,
     fontSize: 22,
     fontWeight: '700',
     textAlign: 'center',
@@ -413,12 +600,10 @@ const styles = StyleSheet.create({
     maxWidth: 360,
   },
   backButton: {
-    height: 42,
+    height: 44,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(147, 197, 253, 0.45)',
-    backgroundColor: PUBLIC_GLASS_THEME.blue,
-    paddingHorizontal: 20,
+    backgroundColor: PUBLIC_GLASS_THEME.ink,
+    paddingHorizontal: 22,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -442,8 +627,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
     paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
@@ -455,12 +640,29 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
   },
+  logoutButton: {
+    height: 40,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: PUBLIC_GLASS_THEME.redBorder,
+    backgroundColor: PUBLIC_GLASS_THEME.redSoft,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  logoutButtonText: {
+    ...nativeFont('Outfit_700Bold'),
+    color: PUBLIC_GLASS_THEME.redText,
+    fontSize: 13.5,
+    fontWeight: '700',
+  },
   brandPill: {
     height: 40,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.glassBorder,
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
     paddingHorizontal: 14,
     flexDirection: 'row',
     alignItems: 'center',
@@ -471,94 +673,51 @@ const styles = StyleSheet.create({
     height: 22,
   },
   brandLabel: {
+    ...nativeFont('Outfit_700Bold'),
     color: PUBLIC_GLASS_THEME.ink,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1.4,
   },
   hero: {
-    borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.glassBorder,
-    borderRadius: 26,
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
-    padding: 22,
-    gap: 20,
-  },
-  heroDesktop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 30,
-    gap: 26,
-  },
-  avatar: {
-    width: 118,
-    height: 118,
-    borderRadius: 59,
-    borderWidth: 2,
-    borderColor: 'rgba(96, 165, 250, 0.55)',
-    backgroundColor: 'rgba(37, 99, 235, 0.22)',
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
-    ...(Platform.OS === 'web' ? { boxShadow: '0 0 32px rgba(37, 99, 235, 0.28)' } as any : {}),
+    borderWidth: 1,
+    borderColor: PUBLIC_GLASS_THEME.blueBorder,
+    borderRadius: 22,
+    backgroundColor: PUBLIC_GLASS_THEME.blueSoft,
+    ...(Platform.OS === 'web'
+      ? { backgroundImage: 'linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(109, 40, 217, 0.07), rgba(255, 255, 255, 0.84))' } as any
+      : {}),
   },
-  avatarMobile: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+  heroBody: {
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
-  avatarInitials: {
-    ...nativeFont('Outfit_700Bold'),
-    color: '#DBEAFE',
-    fontSize: 38,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  avatarInitialsMobile: {
-    fontSize: 30,
+  heroBodyDesktop: {
+    paddingHorizontal: 24,
+    paddingVertical: 18,
   },
   heroMain: {
     flex: 1,
     minWidth: 0,
   },
-  publicPill: {
-    alignSelf: 'flex-start',
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: PUBLIC_GLASS_THEME.greenSoft,
-    borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.greenBorder,
-    paddingHorizontal: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  publicPillText: {
-    ...nativeFont('Outfit_700Bold'),
-    color: PUBLIC_GLASS_THEME.greenText,
-    fontSize: 10.5,
-    fontWeight: '700',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-  },
   name: {
     ...nativeFont('Outfit_700Bold'),
-    color: '#FFFFFF',
-    fontSize: 34,
-    lineHeight: 40,
+    color: PUBLIC_GLASS_THEME.ink,
+    fontSize: 28,
+    lineHeight: 33,
     fontWeight: '700',
-    letterSpacing: -0.7,
+    letterSpacing: -0.6,
   },
   nameMobile: {
-    fontSize: 27,
-    lineHeight: 33,
+    fontSize: 23,
+    lineHeight: 28,
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 12,
+    marginTop: 8,
   },
   metaPill: {
     height: 30,
@@ -602,7 +761,7 @@ const styles = StyleSheet.create({
   },
   bio: {
     ...nativeFont('Outfit_400Regular'),
-    color: '#E2E8F0',
+    color: '#334155',
     fontSize: 14.5,
     lineHeight: 22,
     marginTop: 14,
@@ -630,9 +789,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.glassBorder,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
     borderRadius: 22,
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
     padding: 18,
     justifyContent: 'space-between',
     gap: 10,
@@ -653,6 +812,21 @@ const styles = StyleSheet.create({
     minHeight: 84,
     padding: 15,
   },
+  statCardMobileThird: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 86,
+    padding: 12,
+  },
+  statIconSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+  },
+  statValueSmall: {
+    fontSize: 22,
+    lineHeight: 26,
+  },
   statTop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -669,7 +843,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...nativeFont('Outfit_700Bold'),
-    color: '#FFFFFF',
+    color: PUBLIC_GLASS_THEME.ink,
     fontSize: 26,
     lineHeight: 30,
     fontWeight: '700',
@@ -691,11 +865,25 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     borderWidth: 1,
-    borderColor: PUBLIC_GLASS_THEME.glassBorder,
+    borderColor: PUBLIC_GLASS_THEME.glassBorderStrong,
     borderRadius: 24,
-    backgroundColor: PUBLIC_GLASS_THEME.glassBg,
+    backgroundColor: PUBLIC_GLASS_THEME.glassBgStrong,
     padding: 20,
     overflow: 'hidden',
+  },
+  sectionCardGreen: {
+    borderColor: PUBLIC_GLASS_THEME.greenBorder,
+    backgroundColor: PUBLIC_GLASS_THEME.greenSoft,
+    ...(Platform.OS === 'web'
+      ? { backgroundImage: 'linear-gradient(155deg, rgba(16, 185, 129, 0.10), rgba(255, 255, 255, 0.84))' } as any
+      : {}),
+  },
+  sectionCardPurple: {
+    borderColor: PUBLIC_GLASS_THEME.purpleBorder,
+    backgroundColor: PUBLIC_GLASS_THEME.purpleSoft,
+    ...(Platform.OS === 'web'
+      ? { backgroundImage: 'linear-gradient(155deg, rgba(109, 40, 217, 0.10), rgba(37, 99, 235, 0.06), rgba(255, 255, 255, 0.84))' } as any
+      : {}),
   },
   sectionCardFull: {
     width: '100%',
@@ -707,11 +895,11 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.10)',
+    borderBottomColor: PUBLIC_GLASS_THEME.hairline,
   },
   sectionTitle: {
     ...nativeFont('Outfit_700Bold'),
-    color: '#FFFFFF',
+    color: PUBLIC_GLASS_THEME.ink,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.2,
@@ -720,12 +908,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: PUBLIC_GLASS_THEME.surfaceSubtle,
     borderWidth: 1,
     borderColor: PUBLIC_GLASS_THEME.glassBorder,
   },
   sectionCountText: {
-    color: '#CBD5E1',
+    ...nativeFont('Outfit_700Bold'),
+    color: PUBLIC_GLASS_THEME.ink,
     fontSize: 12,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
@@ -741,7 +930,7 @@ const styles = StyleSheet.create({
   itemRow: {
     minHeight: 62,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.09)',
+    borderTopColor: PUBLIC_GLASS_THEME.hairline,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -765,7 +954,7 @@ const styles = StyleSheet.create({
   },
   itemName: {
     ...nativeFont('Outfit_700Bold'),
-    color: '#FFFFFF',
+    color: PUBLIC_GLASS_THEME.ink,
     fontSize: 14.5,
     fontWeight: '700',
   },
@@ -778,7 +967,7 @@ const styles = StyleSheet.create({
   resultRow: {
     minHeight: 66,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.09)',
+    borderTopColor: PUBLIC_GLASS_THEME.hairline,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -802,12 +991,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: 'rgba(7, 11, 24, 0.68)',
+    backgroundColor: PUBLIC_GLASS_THEME.purpleSoft,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.18)',
+    borderColor: PUBLIC_GLASS_THEME.purpleBorder,
   },
   gradePillText: {
-    color: '#FFE082',
+    ...nativeFont('Outfit_700Bold'),
+    color: PUBLIC_GLASS_THEME.purpleText,
     fontSize: 11.5,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],

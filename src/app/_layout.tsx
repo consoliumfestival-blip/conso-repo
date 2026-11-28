@@ -38,7 +38,7 @@ import { ButtonThemeSurface } from '@/components/ui/ButtonThemeSurface';
 
 // Removed top-level preventAutoHideAsync, moving it inside component
 
-const LOADING_BG = "#050816";
+const LOADING_BG = "#FAFBFD";
 
 function AppLoadingScreen() {
   const pathname = usePathname();

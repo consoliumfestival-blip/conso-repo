@@ -151,7 +151,7 @@ export const useJudges = () => {
 
   const publishResults = useMutation({
     mutationFn: (input: CompetitionPublication) => judgeService.publishResults(input),
-    onSuccess: () => {
+    onSuccess: (_data, input) => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       queryClient.invalidateQueries({ queryKey: ['markEntries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduleReadiness'] });
@@ -161,6 +161,23 @@ export const useJudges = () => {
       queryClient.invalidateQueries({ queryKey: ['public-published-results'] });
       queryClient.invalidateQueries({ predicate: query => Array.isArray(query.queryKey)
         && ['leaderboard-preview', 'admin-leaderboard', 'team-standings', 'team-leader-standings', 'unitProfile', 'publicSchedule'].includes(String(query.queryKey[0])) });
+      if (Platform.OS === 'web' && input?.scheduleId) {
+        supabase.auth.getSession().then(({ data }) => {
+          const token = data.session?.access_token;
+          if (!token) return;
+          fetch('/api/candidate-push', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              action: 'notify-schedule-published',
+              schedule_id: input.scheduleId,
+            }),
+          }).catch(() => {});
+        }).catch(() => {});
+      }
     },
   });
 
